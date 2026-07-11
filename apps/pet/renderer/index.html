@@ -9,8 +9,26 @@
   </head>
   <body>
     <div id="shell" data-mode="raft">
-      <img class="device-shell" src="../assets/tamagotchi/device-shell-v2.png" alt="" draggable="false" />
-      <button type="button" id="btn-settings" class="settings-hardware-btn" title="Settings" aria-label="Settings" aria-pressed="false">&#9881;</button>
+      <img id="service-chassis" src="../assets/tamagotchi/service-chassis-clean.png" alt="" draggable="false" aria-hidden="true" />
+      <section id="service-monitor" aria-label="Versus network activity monitor">
+        <header class="service-monitor-header"><strong>VERSUS BUS</strong><span id="service-monitor-clock">--:--:--</span></header>
+        <div class="service-monitor-status" aria-label="Subsystem status">
+          <span>CHAIN <b id="service-chain-status">--</b></span>
+          <span>WAKU <b id="service-waku-status">--</b></span>
+          <span>BRAIN <b id="service-brain-status">--</b></span>
+        </div>
+        <div id="service-terminal" class="service-terminal" aria-live="polite"></div>
+        <footer class="service-monitor-footer"><span id="service-event-count">LOG 000</span><strong>TELEM NONE</strong><i aria-hidden="true"></i></footer>
+      </section>
+      <div id="service-sockets" aria-hidden="true">
+        <span class="service-screw-socket" data-screw-socket-id="0"></span>
+        <span class="service-screw-socket" data-screw-socket-id="1"></span>
+        <span class="service-screw-socket" data-screw-socket-id="2"></span>
+        <span class="service-screw-socket" data-screw-socket-id="3"></span>
+      </div>
+      <div id="faceplate-layer">
+        <img class="device-shell" src="../assets/tamagotchi/device-shell-v2.png" alt="" draggable="false" />
+        <button type="button" id="btn-settings" class="settings-hardware-btn" title="Settings" aria-label="Settings" aria-pressed="false">&#9881;</button>
 
       <header id="titlebar">
         <img class="hero-logo" src="../assets/brand/logo_full.png" alt="Versus" draggable="false" />
@@ -335,6 +353,23 @@
         </div>
         <button type="button" id="btn-mode" class="btn dock-btn">Mode</button>
       </section>
+        <div id="service-blackout" aria-hidden="true"></div>
+        <span class="service-screw-hole" data-screw-hole-id="0" aria-hidden="true"></span>
+        <span class="service-screw-hole" data-screw-hole-id="1" aria-hidden="true"></span>
+        <span class="service-screw-hole" data-screw-hole-id="2" aria-hidden="true"></span>
+        <span class="service-screw-hole" data-screw-hole-id="3" aria-hidden="true"></span>
+      </div>
+
+      <div id="service-hardware" aria-label="Device faceplate screws">
+        <button type="button" class="service-screw service-screw-installed is-visible" data-screw-id="0" aria-label="Loosen upper-left faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-installed is-visible" data-screw-id="1" aria-label="Loosen upper-right faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-installed is-visible" data-screw-id="2" aria-label="Loosen lower-left faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-installed is-visible" data-screw-id="3" aria-label="Loosen lower-right faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-loose" data-loose-screw-id="0" aria-label="Reinstall upper-left faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-loose" data-loose-screw-id="1" aria-label="Reinstall upper-right faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-loose" data-loose-screw-id="2" aria-label="Reinstall lower-left faceplate screw"></button>
+        <button type="button" class="service-screw service-screw-loose" data-loose-screw-id="3" aria-label="Reinstall lower-right faceplate screw"></button>
+      </div>
     </div>
     <script src="cypher-profiles.js"></script>
     <script src="cypher-layouts.js"></script>

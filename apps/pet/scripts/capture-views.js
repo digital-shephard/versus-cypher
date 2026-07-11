@@ -53,6 +53,22 @@ let agentState = {
 };
 
 function stubIpc() {
+  const activityNow = Date.now();
+  ipcMain.handle("service:activitySnapshot", () => ({
+    version: 1,
+    telemetry: "none",
+    chain: "local_sim",
+    waku: "off",
+    brain: "local",
+    events: [
+      { id: 1, at: activityNow - 3200, channel: "system", direction: "local", operation: "device_boot", destination: "local_device", status: "ready", durationMs: null, bytes: null },
+      { id: 2, at: activityNow - 2900, channel: "local", direction: "local", operation: "chain_simulator", destination: "local_device", status: "ready", durationMs: null, bytes: null },
+      { id: 3, at: activityNow - 2300, channel: "waku", direction: "local", operation: "mesh_config", destination: "versus_mesh", status: "off", durationMs: null, bytes: null },
+      { id: 4, at: activityNow - 1800, channel: "brain", direction: "local", operation: "brain_config", destination: "local_model", status: "ready", durationMs: null, bytes: null },
+      { id: 5, at: activityNow - 900, channel: "local", direction: "out", operation: "state_read", destination: "local_device", status: "pending", durationMs: null, bytes: null },
+      { id: 6, at: activityNow - 868, channel: "local", direction: "in", operation: "state_read", destination: "local_device", status: "ok", durationMs: 32, bytes: 284 },
+    ],
+  }));
   ipcMain.handle("bond:load", () => null); // start at deposit view
   ipcMain.handle("bond:save", () => true);
   ipcMain.handle("wallet:ensure", () => ({ address: STUB_ADDR, network: "base", chainId: 8453 }));
@@ -215,6 +231,107 @@ async function main() {
   })()`, true);
   if (settingsHitTarget.visibleWidth < 24 || settingsHitTarget.visibleHeight < 24 || settingsHitTarget.hitId !== "btn-settings") {
     throw new Error(`settings side button is not clickable: ${JSON.stringify(settingsHitTarget)}`);
+  }
+
+  const windowControlTargets = await win.webContents.executeJavaScript(`(() => {
+    return ["btn-hide", "btn-quit"].map((id) => {
+      const button = document.getElementById(id);
+      const rect = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { id, left: rect.left, top: rect.top, width: rect.width, height: rect.height, hitId: hit?.id || "" };
+    });
+  })()`, true);
+  if (windowControlTargets.some((target) => target.width < 24 || target.height < 24 || target.hitId !== target.id)) {
+    throw new Error(`window controls are not clickable: ${JSON.stringify(windowControlTargets)}`);
+  }
+
+  if (process.env.CAPTURE_SERVICE_ONLY === "1") {
+    await exec(win, `__pet.setBond(${JSON.stringify(ACTIVE_BOND)}); __pet.showClass(); __pet.setMode("raft"); __pet.setPhase("noon");`);
+    await sleep(700);
+    await shoot(win, "service-01-assembled");
+
+    const holeAlignment = await win.webContents.executeJavaScript(`(() => {
+      return [0, 1, 2, 3].map((id) => {
+        const screwRect = document.querySelector(\`[data-screw-id="\${id}"]\`).getBoundingClientRect();
+        const holeRect = document.querySelector(\`[data-screw-hole-id="\${id}"]\`).getBoundingClientRect();
+        const socketRect = document.querySelector(\`[data-screw-socket-id="\${id}"]\`).getBoundingClientRect();
+        return {
+          id,
+          dx: Math.abs((screwRect.left + screwRect.width / 2) - (holeRect.left + holeRect.width / 2)),
+          dy: Math.abs((screwRect.top + screwRect.height / 2) - (holeRect.top + holeRect.height / 2)),
+          socketDx: Math.abs((screwRect.left + screwRect.width / 2) - (socketRect.left + socketRect.width / 2)),
+          socketDy: Math.abs((screwRect.top + screwRect.height / 2) - (socketRect.top + socketRect.height / 2)),
+        };
+      });
+    })()`, true);
+    if (holeAlignment.some(({ dx, dy, socketDx, socketDy }) => dx > 1 || dy > 1 || socketDx > 1 || socketDy > 1)) {
+      throw new Error(`CSS screw holes are misaligned before opening: ${JSON.stringify(holeAlignment)}`);
+    }
+
+    await exec(win, `document.querySelectorAll("[data-screw-id]").forEach((button) => button.click());`);
+    await sleep(2100);
+    const opened = await win.webContents.executeJavaScript(`(() => ({
+      stage: document.getElementById("shell").dataset.serviceStage,
+      installed: document.querySelectorAll("[data-screw-id].is-visible").length,
+      loose: document.querySelectorAll("[data-loose-screw-id].is-visible").length,
+    }))()`, true);
+    if (opened.stage !== "open" || opened.installed !== 0 || opened.loose !== 4) {
+      throw new Error(`service chassis did not open cleanly: ${JSON.stringify(opened)}`);
+    }
+    const separatedLayers = await win.webContents.executeJavaScript(`(() => {
+      return [0, 1, 2, 3].map((id) => {
+        const screw = document.querySelector(\`[data-screw-id="\${id}"]\`);
+        const hole = document.querySelector(\`[data-screw-hole-id="\${id}"]\`);
+        const socket = document.querySelector(\`[data-screw-socket-id="\${id}"]\`);
+        screw.classList.add("is-targeting");
+        const screwRect = screw.getBoundingClientRect();
+        const holeRect = hole.getBoundingClientRect();
+        const socketRect = socket.getBoundingClientRect();
+        screw.classList.remove("is-targeting");
+        return {
+          id,
+          socketDx: Math.abs((screwRect.left + screwRect.width / 2) - (socketRect.left + socketRect.width / 2)),
+          socketDy: Math.abs((screwRect.top + screwRect.height / 2) - (socketRect.top + socketRect.height / 2)),
+          holeTravel: (holeRect.top + holeRect.height / 2) - (socketRect.top + socketRect.height / 2),
+        };
+      });
+    })()`, true);
+    if (separatedLayers.some(({ socketDx, socketDy, holeTravel }) => socketDx > 1 || socketDy > 1 || holeTravel < 500)) {
+      throw new Error(`faceplate holes did not separate from chassis sockets: ${JSON.stringify(separatedLayers)}`);
+    }
+    await shoot(win, "service-02-open");
+
+    await exec(win, `document.getElementById("faceplate-layer").click();`);
+    await sleep(900);
+    const returned = await win.webContents.executeJavaScript(`document.getElementById("shell").dataset.serviceStage`, true);
+    if (returned !== "awaiting-screws") throw new Error(`faceplate did not return before screws: ${returned}`);
+    await shoot(win, "service-03-faceplate-returned");
+
+    await exec(win, `document.getElementById("faceplate-layer").click();`);
+    await sleep(900);
+    const reopened = await win.webContents.executeJavaScript(`document.getElementById("shell").dataset.serviceStage`, true);
+    if (reopened !== "open") throw new Error(`loose faceplate did not lower again: ${reopened}`);
+    await shoot(win, "service-03b-reopened");
+
+    await exec(win, `document.getElementById("faceplate-layer").click();`);
+    await sleep(900);
+    const readyToScrew = await win.webContents.executeJavaScript(`document.getElementById("shell").dataset.serviceStage`, true);
+    if (readyToScrew !== "awaiting-screws") throw new Error(`faceplate did not return after second opening: ${readyToScrew}`);
+
+    await exec(win, `document.querySelectorAll("[data-loose-screw-id]").forEach((button) => button.click());`);
+    await sleep(1500);
+    const reassembled = await win.webContents.executeJavaScript(`(() => ({
+      stage: document.getElementById("shell").dataset.serviceStage,
+      installed: document.querySelectorAll("[data-screw-id].is-visible").length,
+      loose: document.querySelectorAll("[data-loose-screw-id].is-visible").length,
+    }))()`, true);
+    if (reassembled.stage !== "closed" || reassembled.installed !== 4 || reassembled.loose !== 0) {
+      throw new Error(`service chassis did not reassemble cleanly: ${JSON.stringify(reassembled)}`);
+    }
+    await shoot(win, "service-04-reassembled");
+    console.log(`done -> ${OUT}`);
+    app.exit(0);
+    return;
   }
 
   // Kill long crossfades so per-phase shots are deterministic.

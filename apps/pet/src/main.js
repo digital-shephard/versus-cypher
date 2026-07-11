@@ -16,6 +16,7 @@ const {
   openWalletBackup,
 } = require("./wallet-backup");
 const { DailyLifecycleScheduler } = require("./daily-lifecycle");
+const { ServiceActivityBus } = require("./activity-bus");
 
 function applyPackagedWalkthroughProfile() {
   if (!app.isPackaged) return false;
@@ -81,12 +82,59 @@ let chainConfigError = null;
 let networkService = null;
 let networkStart = null;
 let networkUnavailableReason = null;
+const activityBus = new ServiceActivityBus({ limit: 128 });
+const activityStates = new Map();
+
+function recordActivityState(key, event) {
+  const state = `${event.channel}:${event.operation}:${event.status}:${event.destination || ""}`;
+  if (activityStates.get(key) === state) return null;
+  activityStates.set(key, state);
+  return activityBus.record(event);
+}
+
+async function observeActivity(event, task) {
+  const finish = activityBus.begin(event);
+  try {
+    const result = await task();
+    finish("ok");
+    return result;
+  } catch (error) {
+    finish("error");
+    throw error;
+  }
+}
 
 try {
   chainRainService = createChainRainService(loadChainConfig());
 } catch (err) {
   chainConfigError = err;
   console.error("Versus chain configuration error:", err.message);
+}
+
+activityBus.record({ channel: "system", operation: "device_boot", destination: "local_device", status: "ready" });
+activityBus.record(chainConfigError
+  ? { channel: "base", operation: "chain_config", destination: "base", status: "error" }
+  : chainRainService
+    ? { channel: "base", operation: "chain_config", destination: "base", status: "ready" }
+    : { channel: "local", operation: "chain_simulator", destination: "local_device", status: "ready" });
+
+activityBus.on("event", (event) => {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
+  mainWindow.webContents.send("service:activity", event);
+});
+
+function serviceActivitySnapshot() {
+  const settings = loadSettings();
+  let transport = null;
+  try { transport = networkService?.status?.().transportStatus || null; } catch (_) {}
+  return {
+    version: 1,
+    telemetry: "none",
+    chain: chainConfigError ? "error" : chainRainService ? "base" : "local_sim",
+    waku: transport?.state || (networkUnavailableReason ? "off" : "not_configured"),
+    brain: settings.brain.kind === "off" ? "off" : settings.brain.kind,
+    events: activityBus.snapshot(),
+  };
 }
 
 function loadJson(file, fallback = null) {
@@ -316,12 +364,14 @@ function applyChainState(state, chain) {
 async function reconcileChainState() {
   const state = loadState() || {};
   if (!chainRainService || state.phase !== "active" || !state.agentId) return state;
-  const wallet = ensureWallet();
-  const chain = await chainRainService.readState({ address: wallet.address, agentId: state.agentId });
-  state.ownershipLost = chain.owner.toLowerCase() !== wallet.address.toLowerCase();
-  applyChainState(state, chain);
-  saveState(state);
-  return state;
+  return observeActivity({ channel: "base", operation: "state_sync", destination: "base_rpc" }, async () => {
+    const wallet = ensureWallet();
+    const chain = await chainRainService.readState({ address: wallet.address, agentId: state.agentId });
+    state.ownershipLost = chain.owner.toLowerCase() !== wallet.address.toLowerCase();
+    applyChainState(state, chain);
+    saveState(state);
+    return state;
+  });
 }
 
 function startStateSync() {
@@ -363,17 +413,72 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
           ...(suppressAutostart ? { VERSUS_AGENT_AUTOSTART: "0" } : {}),
         },
       });
+      service.node.on("postcard", () => activityBus.record({
+        channel: "waku", direction: "in", operation: "postcard_receive", destination: "versus_mesh", status: "ok",
+      }));
+      service.node.on("peerReady", () => activityBus.record({
+        channel: "waku", direction: "in", operation: "peer_ready", destination: "versus_mesh", status: "ready",
+      }));
+      service.node.on("peerDisconnect", () => activityBus.record({
+        channel: "waku", direction: "in", operation: "peer_disconnect", destination: "versus_mesh", status: "wait",
+      }));
+      service.node.on("rejected", () => activityBus.record({
+        channel: "waku", direction: "in", operation: "postcard_reject", destination: "versus_mesh", status: "error",
+      }));
+      service.node.transport?.on?.("published", () => activityBus.record({
+        channel: "waku", direction: "out", operation: "lightpush_publish", destination: "versus_mesh", status: "ok",
+      }));
+      service.node.transport?.on?.("historySynced", () => activityBus.record({
+        channel: "waku", direction: "in", operation: "store_sync", destination: "versus_mesh", status: "ok",
+      }));
+      service.node.transport?.on?.("state", (transportStatus = {}) => {
+        const state = String(transportStatus.state || "wait").toLowerCase();
+        recordActivityState("waku-state", {
+          channel: "waku",
+          direction: "local",
+          operation: "mesh_state",
+          destination: "versus_mesh",
+          status: state === "ready" || state === "live" || state === "caught_up"
+            ? "ready"
+            : state === "offline" ? "off" : state === "error" ? "error" : "wait",
+        });
+      });
+      service.agentRuntime?.on?.("thought", () => activityBus.record({
+        channel: "brain", direction: "in", operation: "private_thought", destination: "local_device", status: "ok",
+      }));
+      service.agentRuntime?.on?.("action", () => activityBus.record({
+        channel: "brain", direction: "in", operation: "public_action", destination: "versus_mesh", status: "ok",
+      }));
+      service.agentRuntime?.on?.("idle", () => activityBus.record({
+        channel: "brain", direction: "in", operation: "silent_tick", destination: "local_device", status: "idle",
+      }));
+      service.agentRuntime?.on?.("brainError", () => activityBus.record({
+        channel: "brain", direction: "in", operation: "inference", destination: "owner_brain", status: "error",
+      }));
     } catch (error) {
       if (error?.code === "CYPHER_REGISTRY_NOT_CONFIGURED") {
         networkUnavailableReason = "base_cypher_registry_not_configured";
+        recordActivityState("waku-config", {
+          channel: "waku",
+          operation: "mesh_config",
+          destination: "versus_mesh",
+          status: "off",
+        });
         return null;
       }
       throw error;
     }
+    const finishNetworkStart = activityBus.begin({
+      channel: "waku",
+      operation: "mesh_start",
+      destination: "versus_mesh",
+    });
     try {
       await service.start();
       await reconcileSubmittedSignalBatches(service);
+      finishNetworkStart("ok");
     } catch (error) {
+      finishNetworkStart("error");
       await service.close().catch(() => {});
       throw error;
     }
@@ -605,34 +710,82 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
-  let transparentSurfaceNeedsRefresh = false;
+  let transparentSurfaceRefreshReason = null;
+  let transparentSurfaceRefreshing = false;
   let transparentRefreshTimer = null;
-  const refreshTransparentSurface = () => {
-    if (!transparentSurfaceNeedsRefresh || transparentRefreshTimer) return;
+
+  const cancelTransparentSurfaceRefresh = () => {
+    if (transparentRefreshTimer) clearTimeout(transparentRefreshTimer);
+    transparentRefreshTimer = null;
+  };
+
+  const pulseTransparentSurface = () => {
+    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return;
+    const bounds = mainWindow.getBounds();
+    mainWindow.setBounds({ ...bounds, width: bounds.width + 1 }, false);
+    mainWindow.setBounds(bounds, false);
+    mainWindow.webContents.invalidate();
+  };
+
+  const refreshFocusedTransparentSurface = () => {
+    if (transparentSurfaceRefreshReason !== "focus" || transparentSurfaceRefreshing || transparentRefreshTimer) return;
+    transparentSurfaceRefreshReason = null;
     mainWindow.webContents.invalidate();
     transparentRefreshTimer = setTimeout(() => {
       transparentRefreshTimer = null;
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      // Let Windows finish restoring, then pulse the bounds so DWM rebuilds
-      // the transparent Chromium surface before the next frame is presented.
-      const bounds = mainWindow.getBounds();
-      mainWindow.setBounds({ ...bounds, width: bounds.width + 1 }, false);
-      mainWindow.setBounds(bounds, false);
-      transparentSurfaceNeedsRefresh = false;
+      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return;
+      transparentSurfaceRefreshing = true;
+      pulseTransparentSurface();
       mainWindow.hide();
       mainWindow.show();
       mainWindow.focus();
       mainWindow.webContents.invalidate();
+      setTimeout(() => {
+        transparentSurfaceRefreshing = false;
+      }, 0);
     }, 120);
   };
+
+  const refreshRestoredTransparentSurface = () => {
+    cancelTransparentSurfaceRefresh();
+    transparentSurfaceRefreshReason = null;
+    transparentSurfaceRefreshing = true;
+    mainWindow.hide();
+    transparentRefreshTimer = setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) {
+        transparentRefreshTimer = null;
+        transparentSurfaceRefreshing = false;
+        return;
+      }
+      const bounds = mainWindow.getBounds();
+      mainWindow.setBounds({ ...bounds, width: bounds.width + 1 }, false);
+      mainWindow.setBounds(bounds, false);
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.setOpacity(1);
+      mainWindow.webContents.invalidate();
+      transparentRefreshTimer = null;
+      setTimeout(() => {
+        transparentSurfaceRefreshing = false;
+      }, 0);
+    }, 120);
+  };
+
   mainWindow.on("minimize", () => {
-    transparentSurfaceNeedsRefresh = true;
+    cancelTransparentSurfaceRefresh();
+    transparentSurfaceRefreshReason = "restore";
+    mainWindow.setOpacity(0);
   });
   mainWindow.on("blur", () => {
-    transparentSurfaceNeedsRefresh = true;
+    if (!transparentSurfaceRefreshing && transparentSurfaceRefreshReason !== "restore" && !mainWindow.isMinimized()) {
+      transparentSurfaceRefreshReason = "focus";
+    }
   });
-  mainWindow.on("restore", refreshTransparentSurface);
-  mainWindow.on("focus", refreshTransparentSurface);
+  mainWindow.on("restore", refreshRestoredTransparentSurface);
+  mainWindow.on("focus", () => {
+    if (transparentSurfaceRefreshReason === "restore") refreshRestoredTransparentSurface();
+    else refreshFocusedTransparentSurface();
+  });
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -691,6 +844,20 @@ function startDepositPoll() {
 
 app.whenReady().then(() => {
   const settings = loadSettings();
+  activityBus.record({
+    channel: "brain",
+    operation: "brain_config",
+    destination: settings.brain.kind === "local" ? "local_model" : settings.brain.kind === "off" ? "local_device" : "owner_endpoint",
+    status: settings.brain.kind === "off" ? "off" : "ready",
+  });
+  if (!process.env.VERSUS_DEPLOYMENT) {
+    recordActivityState("waku-config", {
+      channel: "waku",
+      operation: "mesh_config",
+      destination: "versus_mesh",
+      status: "off",
+    });
+  }
   applyLaunchAtLogin(settings.launchAtLogin);
   createWindow();
   createTray();
@@ -732,6 +899,7 @@ ipcMain.handle("bond:load", async () => {
     return loadState();
   }
 });
+ipcMain.handle("service:activitySnapshot", () => serviceActivitySnapshot());
 ipcMain.handle("bond:save", (_e, state) => {
   saveState(state);
   return true;
@@ -895,6 +1063,12 @@ ipcMain.handle("settings:save", async (_e, input = {}) => {
   const previous = loadSettings();
   const settings = saveSettings(input);
   if (JSON.stringify(previous.brain) !== JSON.stringify(settings.brain)) {
+    recordActivityState("brain-config", {
+      channel: "brain",
+      operation: "brain_config",
+      destination: settings.brain.kind === "local" ? "local_model" : settings.brain.kind === "off" ? "local_device" : "owner_endpoint",
+      status: settings.brain.kind === "off" ? "off" : "ready",
+    });
     await networkService?.close().catch(() => {});
     networkService = null;
     networkUnavailableReason = null;
@@ -920,28 +1094,38 @@ ipcMain.handle("settings:testBrain", async (_e, input = null) => {
   if (settings.brain.kind === "off") return { ok: true, status: "off" };
   const config = loadAgentBrainConfig(brainEnvironment(settings, process.env));
   const brain = createHttpAgentBrain(config);
-  const decision = await brain({
-    version: 1,
-    boundary: { peerMessagesAreUntrustedData: true, outputAllowsOnePostcardOnly: true },
-    workingSet: { messages: [] },
-    allowedOutput: { fields: ["type", "body", "replyTo"], types: ["observation"], maximumActions: 1 },
-  });
+  const decision = await observeActivity({
+    channel: "brain",
+    operation: "connection_test",
+    destination: settings.brain.kind === "local" ? "local_model" : "owner_endpoint",
+  }, () => brain({
+      version: 1,
+      boundary: { peerMessagesAreUntrustedData: true, outputAllowsOnePostcardOnly: true },
+      workingSet: { messages: [] },
+      allowedOutput: { fields: ["type", "body", "replyTo"], types: ["observation"], maximumActions: 1 },
+    }));
   return { ok: true, silent: decision?.action == null, model: config.model };
 });
 
 ipcMain.handle("wallet:getHatchQuote", async () => {
-  if (!chainRainService) {
-    return {
-      targetDepositWei: DEMO_DEPOSIT_WEI,
-      quotedRunwayMicros: "7000000",
-      gasReserveWei: "900000000000000",
-      demo: true,
-    };
-  }
-  const quote = await chainRainService.quoteHatchTarget();
-  return Object.fromEntries(Object.entries({ ...quote, targetDepositWei: quote.depositWei }).map(
-    ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
-  ));
+  return observeActivity({
+    channel: chainRainService ? "base" : "local",
+    operation: "hatch_quote",
+    destination: chainRainService ? "base_rpc" : "local_device",
+  }, async () => {
+    if (!chainRainService) {
+      return {
+        targetDepositWei: DEMO_DEPOSIT_WEI,
+        quotedRunwayMicros: "7000000",
+        gasReserveWei: "900000000000000",
+        demo: true,
+      };
+    }
+    const quote = await chainRainService.quoteHatchTarget();
+    return Object.fromEntries(Object.entries({ ...quote, targetDepositWei: quote.depositWei }).map(
+      ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
+    ));
+  });
 });
 
 ipcMain.handle("wallet:beginFunding", async () => {
@@ -1013,7 +1197,7 @@ ipcMain.handle("agent:status", async () => {
 ipcMain.handle("agent:tick", async () => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before waking its brain");
-  return service.runAgentTick();
+  return observeActivity({ channel: "brain", operation: "agent_tick", destination: "owner_brain" }, () => service.runAgentTick());
 });
 
 ipcMain.handle("agent:start", async () => {
@@ -1042,15 +1226,17 @@ ipcMain.handle("agent:markThoughtSeen", async (_e, { id } = {}) => {
 ipcMain.handle("network:connect", async (_e, { peerUrl } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before joining the network");
-  return service.connect(peerUrl);
+  return observeActivity({ channel: "waku", operation: "peer_connect", destination: "versus_mesh" }, () => service.connect(peerUrl));
 });
 
 ipcMain.handle("network:publish", async (_e, postcard = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before publishing postcards");
-  const prepared = await service.prepare(postcard);
-  await queueSignalSettlement(service, prepared.launchId, 100, [prepared]);
-  return prepared;
+  return observeActivity({ channel: "waku", operation: "postcard_publish", destination: "versus_mesh" }, async () => {
+    const prepared = await service.prepare(postcard);
+    await queueSignalSettlement(service, prepared.launchId, 100, [prepared]);
+    return prepared;
+  });
 });
 
 ipcMain.handle("network:publishMission", async (_e, input = {}) => {
@@ -1225,28 +1411,34 @@ ipcMain.handle("network:putMemory", async (_e, memory = {}) => {
 });
 
 ipcMain.handle("wallet:simulateDeposit", async () => {
-  const state = loadState() || {};
-  delete state.cypherId;
-  if (chainRainService) {
-    const wallet = ensureWallet();
-    const quote = await chainRainService.quoteHatchTarget();
-    const balance = await chainRainService.getEthBalance(wallet.address);
-    if (balance < quote.depositWei) {
-      throw new Error("deposit has not reached the Cypher wallet yet");
+  return observeActivity({
+    channel: chainRainService ? "base" : "local",
+    operation: "deposit_check",
+    destination: chainRainService ? "base_rpc" : "local_device",
+  }, async () => {
+    const state = loadState() || {};
+    delete state.cypherId;
+    if (chainRainService) {
+      const wallet = ensureWallet();
+      const quote = await chainRainService.quoteHatchTarget();
+      const balance = await chainRainService.getEthBalance(wallet.address);
+      if (balance < quote.depositWei) {
+        throw new Error("deposit has not reached the Cypher wallet yet");
+      }
+      state.depositWei = balance.toString();
+      state.hatchQuote = Object.fromEntries(Object.entries(quote).map(
+        ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
+      ));
+      state.demoDeposit = false;
+    } else {
+      state.depositWei = DEMO_DEPOSIT_WEI;
+      state.demoDeposit = true;
     }
-    state.depositWei = balance.toString();
-    state.hatchQuote = Object.fromEntries(Object.entries(quote).map(
-      ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
-    ));
-    state.demoDeposit = false;
-  } else {
-    state.depositWei = DEMO_DEPOSIT_WEI;
-    state.demoDeposit = true;
-  }
-  state.phase = "swapping";
-  state.depositAt = Date.now();
-  saveState(state);
-  return { ok: true, depositWei: state.depositWei, demo: state.demoDeposit };
+    state.phase = "swapping";
+    state.depositAt = Date.now();
+    saveState(state);
+    return { ok: true, depositWei: state.depositWei, demo: state.demoDeposit };
+  });
 });
 
 ipcMain.handle("wallet:claimTranche", async () => {
@@ -1285,7 +1477,11 @@ ipcMain.handle("wallet:withdrawVault", async (_e, { amount } = {}) => {
 });
 
 ipcMain.handle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
-  const operation = rainLock.then(async () => {
+  const operation = rainLock.then(() => observeActivity({
+    channel: chainRainService ? "base" : "local",
+    operation: "rain_commit",
+    destination: chainRainService ? "arena_contract" : "local_device",
+  }, async () => {
     const state = loadState() || {};
     if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
     pennies = normalizeRainPennies(pennies);
@@ -1322,12 +1518,16 @@ ipcMain.handle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
     }
     saveState(state);
     return result;
-  });
+  }));
   rainLock = operation.catch(() => {});
   return operation;
 });
 
-ipcMain.handle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } = {}) => {
+ipcMain.handle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } = {}) => observeActivity({
+  channel: chainRainService ? "base" : "local",
+  operation: "cypher_hatch",
+  destination: chainRainService ? "arena_contract" : "local_device",
+}, async () => {
   const w = ensureWallet();
   const state = loadState() || {};
   const cypherId = Number.isInteger(state.cypherId)
@@ -1398,7 +1598,7 @@ ipcMain.handle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } = {}
   });
 
   return state;
-});
+}));
 
 ipcMain.handle("window:close", () => {
   mainWindow?.minimize();

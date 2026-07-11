@@ -1,5 +1,176 @@
 const $ = (id) => document.getElementById(id);
 
+const SERVICE_SCREW_COUNT = 4;
+const removedServiceScrews = new Set();
+let serviceStage = "closed";
+let serviceTimer = null;
+let serviceActivity = [];
+let serviceActivityStatus = { chain: "local_sim", waku: "not_configured", brain: "off", telemetry: "none" };
+
+function serviceStatusLabel(kind, value) {
+  const labels = {
+    chain: { local_sim: "SIM", base: "BASE", error: "ERR" },
+    waku: { not_configured: "OFF", off: "OFF", offline: "OFF", reconnecting: "WAIT", caught_up: "LIVE", live: "LIVE", ready: "LIVE" },
+    brain: { off: "OFF", local: "LOCAL", cloud: "CLOUD", external: "HOOK" },
+  };
+  return labels[kind]?.[String(value || "").toLowerCase()] || String(value || "--").slice(0, 5).toUpperCase();
+}
+
+function formatServiceTime(at) {
+  const date = new Date(Number(at) || Date.now());
+  return [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+function renderServiceMonitor() {
+  $("service-chain-status").textContent = serviceStatusLabel("chain", serviceActivityStatus.chain);
+  $("service-waku-status").textContent = serviceStatusLabel("waku", serviceActivityStatus.waku);
+  $("service-brain-status").textContent = serviceStatusLabel("brain", serviceActivityStatus.brain);
+  $("service-event-count").textContent = `LOG ${String(serviceActivity.length).padStart(3, "0")}`;
+  const terminal = $("service-terminal");
+  terminal.replaceChildren();
+  for (const activity of serviceActivity.slice(-14)) {
+    const row = document.createElement("div");
+    row.className = "service-terminal-line";
+    row.dataset.status = activity.status;
+    const direction = activity.status === "error" ? "!" : activity.direction === "out" ? ">" : activity.direction === "in" ? "<" : ".";
+    const result = activity.status === "pending"
+      ? "..."
+      : `${String(activity.status || "ok").toUpperCase()}${activity.durationMs == null ? "" : ` ${activity.durationMs}ms`}`;
+    for (const [tag, className, text] of [
+      ["time", "", formatServiceTime(activity.at)],
+      ["span", "service-direction", direction],
+      ["span", "service-channel", String(activity.channel || "system").toUpperCase()],
+      ["span", "service-operation", String(activity.operation || "activity").toUpperCase()],
+      ["span", "service-result", result],
+    ]) {
+      const part = document.createElement(tag);
+      if (className) part.className = className;
+      part.textContent = text;
+      row.appendChild(part);
+    }
+    terminal.appendChild(row);
+  }
+}
+
+async function wireServiceMonitor() {
+  const updateClock = () => { $("service-monitor-clock").textContent = formatServiceTime(Date.now()); };
+  updateClock();
+  window.setInterval(updateClock, 1000);
+  try {
+    const snapshot = await window.versus?.getServiceActivity?.();
+    if (snapshot) {
+      serviceActivityStatus = snapshot;
+      serviceActivity = Array.isArray(snapshot.events) ? snapshot.events.slice(-128) : [];
+      renderServiceMonitor();
+    }
+  } catch (_) {
+    renderServiceMonitor();
+  }
+  window.versus?.onServiceActivity?.((activity) => {
+    serviceActivity.push(activity);
+    if (serviceActivity.length > 128) serviceActivity.splice(0, serviceActivity.length - 128);
+    renderServiceMonitor();
+  });
+}
+
+function setServiceStage(stage) {
+  serviceStage = stage;
+  $("shell").dataset.serviceStage = stage;
+  document.querySelectorAll("[data-loose-screw-id]").forEach((button) => {
+    button.disabled = stage !== "awaiting-screws";
+  });
+}
+
+function scheduleServiceStep(callback, delay) {
+  if (serviceTimer) window.clearTimeout(serviceTimer);
+  serviceTimer = window.setTimeout(() => {
+    serviceTimer = null;
+    callback();
+  }, delay);
+}
+
+function openServiceChassis() {
+  if (serviceStage !== "closed" || removedServiceScrews.size !== SERVICE_SCREW_COUNT) return;
+  setServiceStage("powerdown");
+  scheduleServiceStep(() => {
+    setServiceStage("opening");
+    scheduleServiceStep(() => setServiceStage("open"), 840);
+  }, 420);
+}
+
+function closeServiceChassis() {
+  if (serviceStage !== "open") return;
+  setServiceStage("closing");
+  scheduleServiceStep(() => setServiceStage("awaiting-screws"), 840);
+}
+
+function reopenServiceChassis() {
+  if (serviceStage !== "awaiting-screws" || removedServiceScrews.size !== SERVICE_SCREW_COUNT) return;
+  setServiceStage("opening");
+  scheduleServiceStep(() => setServiceStage("open"), 840);
+}
+
+function loosenServiceScrew(button) {
+  if (serviceStage !== "closed" || button.classList.contains("is-loosening")) return;
+  const id = Number(button.dataset.screwId);
+  if (!Number.isInteger(id) || removedServiceScrews.has(id)) return;
+  button.classList.add("is-loosening");
+  button.disabled = true;
+  window.setTimeout(() => {
+    button.classList.remove("is-visible", "is-loosening");
+    const loose = document.querySelector(`[data-loose-screw-id="${id}"]`);
+    loose.classList.add("is-visible", "is-landed");
+    loose.disabled = serviceStage !== "awaiting-screws";
+    removedServiceScrews.add(id);
+    if (removedServiceScrews.size === SERVICE_SCREW_COUNT) openServiceChassis();
+  }, 620);
+}
+
+function reinstallServiceScrew(loose) {
+  if (serviceStage !== "awaiting-screws" || loose.classList.contains("is-returning")) return;
+  const id = Number(loose.dataset.looseScrewId);
+  const installed = document.querySelector(`[data-screw-id="${id}"]`);
+  if (!installed || !removedServiceScrews.has(id)) return;
+  const from = loose.getBoundingClientRect();
+  installed.classList.add("is-targeting");
+  const to = installed.getBoundingClientRect();
+  installed.classList.remove("is-targeting");
+  loose.style.setProperty("--return-x", `${to.left + to.width / 2 - (from.left + from.width / 2)}px`);
+  loose.style.setProperty("--return-y", `${to.top + to.height / 2 - (from.top + from.height / 2)}px`);
+  loose.classList.remove("is-landed");
+  loose.classList.add("is-returning");
+  loose.disabled = true;
+  window.setTimeout(() => {
+    loose.classList.remove("is-visible", "is-returning");
+    loose.style.removeProperty("--return-x");
+    loose.style.removeProperty("--return-y");
+    installed.disabled = false;
+    installed.classList.add("is-visible", "is-tightening");
+    removedServiceScrews.delete(id);
+    window.setTimeout(() => installed.classList.remove("is-tightening"), 460);
+    if (removedServiceScrews.size === 0) {
+      scheduleServiceStep(() => setServiceStage("closed"), 480);
+    }
+  }, 520);
+}
+
+function wireServiceChassis() {
+  setServiceStage("closed");
+  document.querySelectorAll("[data-screw-id]").forEach((button) => {
+    button.addEventListener("click", () => loosenServiceScrew(button));
+  });
+  document.querySelectorAll("[data-loose-screw-id]").forEach((button) => {
+    button.addEventListener("click", () => reinstallServiceScrew(button));
+  });
+  $("faceplate-layer").addEventListener("click", (event) => {
+    if (serviceStage !== "open" && serviceStage !== "awaiting-screws") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (serviceStage === "open") closeServiceChassis();
+    else reopenServiceChassis();
+  }, true);
+}
+
 // Wire window chrome first so boot errors never trap the user.
 function wireChrome() {
   const hide = $("btn-hide");
@@ -20,6 +191,8 @@ function wireChrome() {
   });
 }
 wireChrome();
+wireServiceChassis();
+wireServiceMonitor();
 
 const roster = window.VERSUS_CYPHERS || {
   CYPHERS: [{ id: 0, name: "Calfire", file: "Calfire.gif" }],

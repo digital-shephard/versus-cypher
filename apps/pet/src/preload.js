@@ -1,6 +1,12 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("versus", {
+  getServiceActivity: () => ipcRenderer.invoke("service:activitySnapshot"),
+  onServiceActivity: (callback) => {
+    const listener = (_event, activity) => callback(activity);
+    ipcRenderer.on("service:activity", listener);
+    return () => ipcRenderer.removeListener("service:activity", listener);
+  },
   loadBond: () => ipcRenderer.invoke("bond:load"),
   saveBond: (state) => ipcRenderer.invoke("bond:save", state),
   ensureWallet: () => ipcRenderer.invoke("wallet:ensure"),
