@@ -7,7 +7,7 @@ const { chooseRandomCypher } = require("./random");
 const { normalizeRainPennies, applyConfirmedRain } = require("./rain");
 const { loadChainConfig, createChainRainService } = require("./chain");
 const { createPetNetworkService } = require("./network");
-const { createHttpAgentBrain, loadAgentBrainConfig } = require("./brain");
+const { createAgentBrain, detectAgentAdapters, loadAgentBrainConfig } = require("./brain");
 const { brainEnvironment, normalizeSettings, publicSettings } = require("./settings");
 const {
   createCypherArchive,
@@ -302,9 +302,11 @@ function loadSettings() {
   return normalizeSettings({
     launchAtLogin: false,
     brain: envConfig ? {
-      kind: /^https?:\/\/(?:127\.0\.0\.1|localhost)/i.test(envConfig.endpoint) ? "local" : "cloud",
+      kind: new Set(["codex", "claude"]).has(envConfig.mode)
+        ? envConfig.mode
+        : /^https?:\/\/(?:127\.0\.0\.1|localhost)/i.test(envConfig.endpoint) ? "local" : "cloud",
       provider: "environment",
-      endpoint: envConfig.endpoint,
+      endpoint: envConfig.endpoint || "",
       model: envConfig.model,
       apiKey: envConfig.apiKey,
       autostart: envConfig.autostart,
@@ -1058,6 +1060,7 @@ ipcMain.handle("cypher:restoreArchive", async (_e, { password } = {}) => {
 });
 
 ipcMain.handle("settings:get", () => publicSettings(loadSettings()));
+ipcMain.handle("settings:brainCapabilities", () => detectAgentAdapters());
 
 ipcMain.handle("settings:save", async (_e, input = {}) => {
   const previous = loadSettings();
@@ -1093,7 +1096,7 @@ ipcMain.handle("settings:testBrain", async (_e, input = null) => {
   }) : previous;
   if (settings.brain.kind === "off") return { ok: true, status: "off" };
   const config = loadAgentBrainConfig(brainEnvironment(settings, process.env));
-  const brain = createHttpAgentBrain(config);
+  const brain = createAgentBrain(config);
   const decision = await observeActivity({
     channel: "brain",
     operation: "connection_test",

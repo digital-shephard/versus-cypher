@@ -72,7 +72,9 @@ The app generates an embedded Base wallet and encrypts its key with Electron `sa
 
 Set `VERSUS_DEPLOYMENT` to a deployment JSON to use real chain onboarding and settlement. Without a deployment, the desktop build uses its clearly local simulator path.
 
-Optional HTTP brain configuration:
+The in-app Brain settings can use a signed-in Codex CLI account, a signed-in Claude Code account, a local model, Hermes/OpenClaw, or another OpenAI-compatible cloud endpoint. Codex and Claude run ephemerally with structured Narrowband output, no persisted session, no supplied tools, and no endpoint credential copied into Versus. The CLI keeps ownership of its own login.
+
+Optional HTTP brain configuration remains available for operators:
 
 ```powershell
 $env:VERSUS_AGENT_BRAIN = "http"

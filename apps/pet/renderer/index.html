@@ -309,14 +309,17 @@
             <label>Connection
               <select id="setting-brain-kind">
                 <option value="off">Off</option>
+                <option value="codex">Codex account</option>
+                <option value="claude">Claude account</option>
                 <option value="cloud">Cloud API</option>
                 <option value="local">Local model</option>
-                <option value="external">Agent hook</option>
+                <option value="external">Hermes / OpenClaw</option>
               </select>
             </label>
-            <label>Endpoint<input id="setting-brain-endpoint" type="url" spellcheck="false" placeholder="http://127.0.0.1:11434/v1/chat/completions" /></label>
-            <label>Model<input id="setting-brain-model" type="text" spellcheck="false" placeholder="model name" /></label>
-            <label>API key<input id="setting-brain-key" type="password" autocomplete="off" placeholder="unchanged" /></label>
+            <p id="brain-adapter-status" class="brain-adapter-status">No brain selected</p>
+            <label id="brain-endpoint-field">Endpoint<input id="setting-brain-endpoint" type="url" spellcheck="false" placeholder="http://127.0.0.1:11434/v1/chat/completions" /></label>
+            <label id="brain-model-field">Model<input id="setting-brain-model" type="text" spellcheck="false" placeholder="model name" /></label>
+            <label id="brain-key-field">API key<input id="setting-brain-key" type="password" autocomplete="off" placeholder="unchanged" /></label>
             <label class="settings-check"><input id="setting-brain-auto" type="checkbox" checked /><span>Wake brain with app</span></label>
             <div class="settings-actions"><button type="button" id="btn-test-brain">Test</button><button type="submit">Save</button></div>
           </form>
@@ -332,7 +335,7 @@
         </section>
 
         <section id="funding-overlay" class="funding-overlay hidden" aria-label="Add runway">
-          <button type="button" id="btn-close-runway-funding" class="funding-close" aria-label="Close">x</button>
+          <button type="button" id="btn-close-runway-funding" class="funding-close" title="Back" aria-label="Back">&larr;</button>
           <p class="funding-kicker">ADD RUNWAY</p>
           <strong>Send ETH on Base</strong>
           <img id="runway-address-qr" alt="QR code for the Cypher wallet" draggable="false" />

@@ -64,7 +64,7 @@ The onboarding path uses the Uniswap V3 QuoterV2 and SwapRouter02. It displays t
 
 At startup and every minute, the main process reconciles NFT ownership, Cypher stats, runway, gas, tickets, tranche state, class state, withdrawable rewards, and genesis provenance from the configured chain. The vault's runway control can accept another ETH deposit, swap only the newly detected amount, and replenish the existing Cypher.
 
-The shell's side settings control switches the LCD to owner configuration without adding a conventional application window. It supports cloud HTTP brains, local OpenAI-compatible model servers, external agent hooks, brain connection testing, launch-on-login, manual chain refresh, encrypted wallet backup/restore, and an explicitly confirmed emergency-key copy. API keys are encrypted with Electron `safeStorage`; portable wallet backups use password-derived AES-256-GCM encryption.
+The shell's side settings control switches the LCD to owner configuration without adding a conventional application window. It supports signed-in Codex CLI and Claude Code account adapters, cloud HTTP brains, local OpenAI-compatible model servers, external agent hooks, brain connection testing, launch-on-login, manual chain refresh, encrypted wallet backup/restore, and an explicitly confirmed emergency-key copy. CLI adapters use fixed executable discovery, stdin-only Narrowband context, structured output, ephemeral sessions, isolated temporary working directories, and disabled tool surfaces; Versus never reads their account credentials. API keys for HTTP brains are encrypted with Electron `safeStorage`; portable wallet backups use password-derived AES-256-GCM encryption.
 
 ## Daily agent harness
 

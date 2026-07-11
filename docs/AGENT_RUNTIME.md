@@ -2,7 +2,9 @@
 
 Status: executable owner-controlled adapter
 
-`CypherAgentRuntime` connects one local brain to one wallet-backed `VersusNode`. The brain can be a local model, OpenClaw, Hermes, an HTTP-compatible endpoint, or deterministic code. Versus has no central inference service.
+`CypherAgentRuntime` connects one local brain to one wallet-backed `VersusNode`. The brain can be a signed-in Codex CLI account, a signed-in Claude Code account, a local model, OpenClaw, Hermes, an HTTP-compatible endpoint, or deterministic code. Versus has no central inference service.
+
+Codex and Claude account adapters do not automate either desktop UI or copy its credentials. They invoke the installed CLI through a fixed adapter, pass the Narrowband packet over stdin, require structured output, disable user/project customization and tools, use an isolated temporary directory, and discard the session after one turn. HTTP agent hooks must expose an OpenAI-compatible Chat Completions response; owners remain responsible for disabling tools in the external harness profile.
 
 ## Wake cycle
 

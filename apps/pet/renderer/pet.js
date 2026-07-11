@@ -242,6 +242,7 @@ let helpFlipped = false;
 let settingsOpen = false;
 let settingsTab = "brain";
 let currentSettings = null;
+let brainCapabilities = null;
 let fundingOpen = false;
 let signalFlipped = false;
 let networkSnapshot = null;
@@ -589,6 +590,46 @@ function renderSettings(settings) {
   if ($("setting-brain-auto")) $("setting-brain-auto").checked = brain.autostart !== false;
   if ($("setting-launch-login")) $("setting-launch-login").checked = Boolean(settings?.launchAtLogin);
   if ($("settings-wallet-address")) $("settings-wallet-address").textContent = wallet?.address || "Wallet not loaded";
+  updateBrainAdapterFields();
+}
+
+function updateBrainAdapterFields() {
+  const kind = $("setting-brain-kind")?.value || "off";
+  const http = ["cloud", "local", "external"].includes(kind);
+  const cli = ["codex", "claude"].includes(kind);
+  $("brain-endpoint-field")?.classList.toggle("hidden", !http);
+  $("brain-key-field")?.classList.toggle("hidden", !http);
+  $("brain-model-field")?.classList.toggle("hidden", kind === "off");
+  if ($("setting-brain-model")) {
+    $("setting-brain-model").placeholder = cli ? "default model" : "model name";
+    $("setting-brain-model").required = http;
+  }
+  if ($("setting-brain-endpoint")) {
+    $("setting-brain-endpoint").required = http;
+    $("setting-brain-endpoint").placeholder = kind === "external"
+      ? "http://127.0.0.1:8642/v1/chat/completions"
+      : "http://127.0.0.1:11434/v1/chat/completions";
+  }
+  const status = $("brain-adapter-status");
+  if (!status) return;
+  status.classList.remove("ready", "missing");
+  if (kind === "off") status.textContent = "Daily rain only - no inference";
+  else if (kind === "codex" || kind === "claude") {
+    const installed = Boolean(brainCapabilities?.[kind]?.installed);
+    status.textContent = installed
+      ? `${kind} found - uses its own account login`
+      : `${kind} not found on this computer`;
+    status.classList.add(installed ? "ready" : "missing");
+  } else if (kind === "local") {
+    status.textContent = "Local OpenAI-compatible inference";
+    status.classList.add("ready");
+  } else if (kind === "external") {
+    status.textContent = "Narrowband HTTP - no tools";
+    status.classList.add("ready");
+  } else {
+    status.textContent = "Hosted OpenAI-compatible inference";
+    status.classList.add("ready");
+  }
 }
 
 function settingsInput() {
@@ -618,7 +659,12 @@ async function setSettingsOpen(open) {
     setSettingsTab(settingsTab);
     setSettingsStatus("LOADING");
     try {
-      renderSettings(await window.versus.getSettings());
+      const [settings, capabilities] = await Promise.all([
+        window.versus.getSettings(),
+        window.versus.getBrainCapabilities(),
+      ]);
+      brainCapabilities = capabilities;
+      renderSettings(settings);
       setSettingsStatus("LOCAL CONTROL");
     } catch (error) {
       setSettingsStatus(settingsErrorMessage(error), true);
@@ -643,6 +689,15 @@ function ipcErrorMessage(error) {
 
 function settingsErrorMessage(error) {
   const message = ipcErrorMessage(error);
+  if (/disabled Claude subscription access|Claude subscription access.*disabled|Use an Anthropic API key|Claude Code needs.*API key/i.test(message)) {
+    return "Claude account blocked. Enable subscription or add an API key.";
+  }
+  if (/Codex.*(?:login|sign in|authentication)|unauthorized.*Codex/i.test(message)) {
+    return "Sign into Codex CLI on this computer, then test again.";
+  }
+  if (/(?:Codex CLI|Claude Code) is not installed/i.test(message)) {
+    return message;
+  }
   if (/http (?:401|403)\b/i.test(message)) {
     return "That brain endpoint rejected the API key.";
   }
@@ -2387,6 +2442,7 @@ $("btn-mode").onclick = () => {
 
 $("settings-tab-brain")?.addEventListener("click", () => setSettingsTab("brain"));
 $("settings-tab-device")?.addEventListener("click", () => setSettingsTab("device"));
+$("setting-brain-kind")?.addEventListener("change", updateBrainAdapterFields);
 
 $("settings-brain-panel")?.addEventListener("submit", async (event) => {
   event.preventDefault();

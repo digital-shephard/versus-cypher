@@ -16,7 +16,7 @@ const {
   VersusNode,
   WakuPostcardTransport,
 } = require("@versus/network");
-const { createHttpAgentBrain, loadAgentBrainConfig, publicBrainConfig } = require("./brain");
+const { createAgentBrain, loadAgentBrainConfig, publicBrainConfig } = require("./brain");
 const { ThoughtQueue } = require("./thought-queue");
 const { BASE_CHAIN_ID, createBaseProvider } = require("./base-rpc");
 
@@ -791,7 +791,7 @@ async function createPetNetworkService({
   }
   if (agentConfig === undefined) agentConfig = loadAgentBrainConfig(env);
   if (agentBrain === undefined) {
-    agentBrain = agentConfig ? createHttpAgentBrain(agentConfig) : null;
+    agentBrain = createAgentBrain(agentConfig);
   }
 
   return new PetNetworkService({

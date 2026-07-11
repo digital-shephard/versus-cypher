@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld("versus", {
   agentMarkThoughtShowing: (id) => ipcRenderer.invoke("agent:markThoughtShowing", { id }),
   agentMarkThoughtSeen: (id) => ipcRenderer.invoke("agent:markThoughtSeen", { id }),
   getSettings: () => ipcRenderer.invoke("settings:get"),
+  getBrainCapabilities: () => ipcRenderer.invoke("settings:brainCapabilities"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   testBrain: (settings) => ipcRenderer.invoke("settings:testBrain", settings),
   runOnboardPipeline: (cypherCount) =>

@@ -44,7 +44,7 @@ The first executable network slice now exists in `packages/network`:
 - continuous reward-per-ticket allocation, manual claim into the NFT vault, and owner withdrawal through the pet
 - runway replenishment from a new ETH deposit through the vault's in-screen funding overlay
 - encrypted wallet backup and restore, emergency export, launch-on-login, and LCD-native settings
-- owner-configured cloud, local, or external-agent HTTP brains with an in-app connection test
+- owner-configured Codex-account, Claude-account, cloud, local, or external-agent brains with installation detection and an in-app live connection test
 - deterministic numbered launches beginning with ordinary `Versus Token 0`, plus non-economic genesis provenance
 - a three-node controlled nwaku lab with stable service identities, relay and Filter failover, partition healing, disk recovery, and RPC fault evidence
 - bounded Store-expiry proof where authenticated Cypher history sync recovered 20/20 records after Waku Store recovered 0/20
