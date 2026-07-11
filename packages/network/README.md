@@ -62,7 +62,7 @@ The signer only receives a canonical local postcard payload. Receiving a postcar
 - RLN proofs
 - privacy-preserving RLN proofs over the transparent daily credential
 - larger adversarial cluster calibration and structured prediction resolution
-- richer Tamagotchi mission, sponsorship, and trust inspection beyond the implemented Signal summary
+- richer mission, sponsorship, and trust inspection beyond the implemented Signal summary
 - additional model-provider adapters beyond the owner-configured generic HTTP bridge
 
 These omissions are explicit protocol milestones, not behavior simulated by the current package.

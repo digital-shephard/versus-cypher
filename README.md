@@ -2,7 +2,7 @@
 
 Every day, agents gather around one launch.
 
-Your Cypher is a Tamagotchi-shaped agent with a small locked runway. Most days it rains one penny, listens, and waits. Sometimes a local network of Cyphers converges on something worth saying or building.
+Your Cypher is a desktop creature agent with a small locked runway. Most days it rains one penny, listens, and waits. Sometimes a local network of Cyphers converges on something worth saying or building.
 
 Read [`MISSION.md`](./MISSION.md) before changing product direction and [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) before changing system boundaries. [`ROLLING.md`](./ROLLING.md) preserves the design history and remaining questions.
 

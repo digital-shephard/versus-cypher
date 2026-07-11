@@ -1,6 +1,6 @@
 # Versus Pet
 
-A frameless 390x640 Electron Cypher that sits on the desktop like a 1990s Tamagotchi.
+A frameless 390x640 Electron Cypher styled after a 1990s handheld virtual-pet device.
 
 ## Run
 
