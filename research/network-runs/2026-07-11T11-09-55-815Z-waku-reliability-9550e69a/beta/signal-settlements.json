@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0xb5a55c48c069394e3cc8194d1a0c1fdcd1d7f010",
+        "signals": [
+          {
+            "id": "0x2149780a09e099b4e3cbf86a8211b39333d3537db3adb0baea8c850215d012f2",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xc271180a536211e8e2c32eed10bd91f30f0bedfc859e0c54e4f186f4a91667a5",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xb5a55c48c069394e3cc8194d1a0c1fdcd1d7f010",
+          "cypherId": "2",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 0,
+          "rateNullifier": "0x271deb37f7c7f8654f7b8ea45d7d2075c3d09e344a155de7a5d8ab52162afb98",
+          "createdAt": 1783768229,
+          "expiresAt": 1783854629,
+          "body": "filter failover signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xcac572245c45a2617f1a76287808f0b604570b91e087c37f9689b07fd3464180631d001eebda541d176ddc1c73dca8ca570ba2d699e588ca9944322f168a971c1b",
+          "id": "0x2149780a09e099b4e3cbf86a8211b39333d3537db3adb0baea8c850215d012f2"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768213261,
+      "transactionHash": "0xc38ec17d9e4a48ed537cf180eef89a69e80d2f7a4952c8fbc3efc06084f90d15",
+      "publishedIds": [
+        "0x2149780a09e099b4e3cbf86a8211b39333d3537db3adb0baea8c850215d012f2"
+      ],
+      "submittedAt": 1783768213339,
+      "blockNumber": "36",
+      "confirmedAt": 1783768213370,
+      "publishedAt": 1783768213442
+    }
+  ]
+}

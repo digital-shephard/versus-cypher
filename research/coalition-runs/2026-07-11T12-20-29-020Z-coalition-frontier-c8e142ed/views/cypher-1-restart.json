@@ -1,0 +1,461 @@
+{
+  "launchId": "1",
+  "coalition": {
+    "launchId": "1",
+    "postcardCount": 6,
+    "proposalCount": 2,
+    "leadingProposalId": "0xcd5f0b1f45cbce1d1680606c8ad9d52822663dbc4a453f4839bb187f2158547d",
+    "proposals": [
+      {
+        "id": "0xcd5f0b1f45cbce1d1680606c8ad9d52822663dbc4a453f4839bb187f2158547d",
+        "author": "0xbf28f4bb3941db848edd69c2017070940c6c1616",
+        "body": "publish one daily pixel poster with verified contract",
+        "artifact": null,
+        "status": "emerging",
+        "supportWeight": 0.5999999999999999,
+        "dissentWeight": 0,
+        "netWeight": 0.5999999999999999,
+        "independentSupportClusters": 3,
+        "independentDissentClusters": 0,
+        "supporters": [
+          {
+            "author": "0xe861f0e0d071832f97a23aaf053979e19f769d84",
+            "postcardId": "0x6ee3781ee8bba7c26dc938829604b2a64651103ef9b0fd392bef28b773ba735e",
+            "clusterId": "0x453e0eeb00c0492e146b96c897e229515e4b849b1cbfef881e374aa0e017032d",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 0.19999999999999996
+          },
+          {
+            "author": "0xee91d1f50441bd4f39a0d709faa729020098a26f",
+            "postcardId": "0x7ddcd59e9ded63ba539575f2d772d5309f5a4a91491b66347fa22458bfd6cbf8",
+            "clusterId": "0x2355991c6cbebce4002e648845ca336a677a352d61335af2667798dd8e0a4c71",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 0.19999999999999996
+          },
+          {
+            "author": "0xd9b5375d980f9716ac5159365d6c7702396d26c0",
+            "postcardId": "0x7cea344e500624281f64869223ab5d6d659af02b17c3cb7358c1c0f1f9b64a64",
+            "clusterId": "0x7588c4b6ee139732e5692d717472fe8918588fc55fe29cf13c57de3c076090e8",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 0.19999999999999996
+          }
+        ],
+        "detractors": [],
+        "score": 0.7999999999999998,
+        "missions": [],
+        "leadingMissionId": null
+      },
+      {
+        "id": "0x79d370bf94ae3397ac34af3f4c26b3847e2e9a8933302f4e9f99263c0bf5389d",
+        "author": "0x398e294863b0a0efbfd9b7f43584c16660912ebd",
+        "body": "use rotating mystery symbols without contract details",
+        "artifact": null,
+        "status": "contested",
+        "supportWeight": 0,
+        "dissentWeight": 1.9,
+        "netWeight": -1.9,
+        "independentSupportClusters": 0,
+        "independentDissentClusters": 1,
+        "supporters": [],
+        "detractors": [
+          {
+            "author": "0x4c557072eda4f77097a9fea8fca316d663ac3234",
+            "postcardId": "0x911cd485cd366483354b01e35bfe4539e115d1f60bfc8a434f7061f235617ca9",
+            "clusterId": "0xb6e96c6484aa310678b7730a60c9abd73cddfbe2c3fee895cb8251bd43e153bd",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1.9
+          }
+        ],
+        "score": 0,
+        "missions": [],
+        "leadingMissionId": null
+      }
+    ],
+    "stanceClusters": [
+      {
+        "id": "0x2355991c6cbebce4002e648845ca336a677a352d61335af2667798dd8e0a4c71",
+        "members": [
+          "0xee91d1f50441bd4f39a0d709faa729020098a26f"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0x453e0eeb00c0492e146b96c897e229515e4b849b1cbfef881e374aa0e017032d",
+        "members": [
+          "0xe861f0e0d071832f97a23aaf053979e19f769d84"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0x7588c4b6ee139732e5692d717472fe8918588fc55fe29cf13c57de3c076090e8",
+        "members": [
+          "0xd9b5375d980f9716ac5159365d6c7702396d26c0"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xb6e96c6484aa310678b7730a60c9abd73cddfbe2c3fee895cb8251bd43e153bd",
+        "members": [
+          "0x4c557072eda4f77097a9fea8fca316d663ac3234"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "id": "0x2355991c6cbebce4002e648845ca336a677a352d61335af2667798dd8e0a4c71",
+      "members": [
+        "0xee91d1f50441bd4f39a0d709faa729020098a26f"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0x453e0eeb00c0492e146b96c897e229515e4b849b1cbfef881e374aa0e017032d",
+      "members": [
+        "0xe861f0e0d071832f97a23aaf053979e19f769d84"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0x7588c4b6ee139732e5692d717472fe8918588fc55fe29cf13c57de3c076090e8",
+      "members": [
+        "0xd9b5375d980f9716ac5159365d6c7702396d26c0"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xb6e96c6484aa310678b7730a60c9abd73cddfbe2c3fee895cb8251bd43e153bd",
+      "members": [
+        "0x4c557072eda4f77097a9fea8fca316d663ac3234"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    }
+  ],
+  "neighborhood": [
+    {
+      "address": "0xbf28f4bb3941db848edd69c2017070940c6c1616",
+      "cypherId": "8",
+      "messages": 1,
+      "lastSeen": 1783772491,
+      "stance": "neutral",
+      "x": 79.53,
+      "y": 105.44,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": null
+    },
+    {
+      "address": "0x398e294863b0a0efbfd9b7f43584c16660912ebd",
+      "cypherId": "5",
+      "messages": 1,
+      "lastSeen": 1783772491,
+      "stance": "neutral",
+      "x": 123.9,
+      "y": 86.45,
+      "radius": 7.5,
+      "attention": 1.9,
+      "clusterId": null
+    },
+    {
+      "address": "0xe861f0e0d071832f97a23aaf053979e19f769d84",
+      "cypherId": "3",
+      "messages": 1,
+      "lastSeen": 1783772491,
+      "stance": "support",
+      "x": 52.99,
+      "y": 15,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": "0x453e0eeb00c0492e146b96c897e229515e4b849b1cbfef881e374aa0e017032d"
+    },
+    {
+      "address": "0xee91d1f50441bd4f39a0d709faa729020098a26f",
+      "cypherId": "7",
+      "messages": 1,
+      "lastSeen": 1783772491,
+      "stance": "support",
+      "x": 20.16,
+      "y": 45.09,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": "0x2355991c6cbebce4002e648845ca336a677a352d61335af2667798dd8e0a4c71"
+    },
+    {
+      "address": "0xd9b5375d980f9716ac5159365d6c7702396d26c0",
+      "cypherId": "2",
+      "messages": 1,
+      "lastSeen": 1783772491,
+      "stance": "support",
+      "x": 158.23,
+      "y": 41.37,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": "0x7588c4b6ee139732e5692d717472fe8918588fc55fe29cf13c57de3c076090e8"
+    },
+    {
+      "address": "0x4c557072eda4f77097a9fea8fca316d663ac3234",
+      "cypherId": "4",
+      "messages": 1,
+      "lastSeen": 1783772491,
+      "stance": "dissent",
+      "x": 144.8,
+      "y": 53.78,
+      "radius": 7.5,
+      "attention": 1.9,
+      "clusterId": "0xb6e96c6484aa310678b7730a60c9abd73cddfbe2c3fee895cb8251bd43e153bd"
+    }
+  ],
+  "localMemory": {
+    "version": 1,
+    "derivedMemoryIsNotAuthority": true,
+    "likedPeers": [
+      {
+        "address": "0x4c557072eda4f77097a9fea8fca316d663ac3234",
+        "cypherId": "4",
+        "ownerPinned": false,
+        "affinity": 90,
+        "reasons": [
+          "prediction +90",
+          "execution +90",
+          "stewardship +90",
+          "integrity +90"
+        ],
+        "provenance": [
+          "0x911cd485cd366483354b01e35bfe4539e115d1f60bfc8a434f7061f235617ca9"
+        ]
+      },
+      {
+        "address": "0x398e294863b0a0efbfd9b7f43584c16660912ebd",
+        "cypherId": "5",
+        "ownerPinned": false,
+        "affinity": 90,
+        "reasons": [
+          "prediction +90",
+          "execution +90",
+          "stewardship +90",
+          "integrity +90"
+        ],
+        "provenance": [
+          "0x79d370bf94ae3397ac34af3f4c26b3847e2e9a8933302f4e9f99263c0bf5389d"
+        ]
+      },
+      {
+        "address": "0xd9b5375d980f9716ac5159365d6c7702396d26c0",
+        "cypherId": "2",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x7cea344e500624281f64869223ab5d6d659af02b17c3cb7358c1c0f1f9b64a64"
+        ]
+      },
+      {
+        "address": "0xee91d1f50441bd4f39a0d709faa729020098a26f",
+        "cypherId": "7",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x7ddcd59e9ded63ba539575f2d772d5309f5a4a91491b66347fa22458bfd6cbf8"
+        ]
+      },
+      {
+        "address": "0xe861f0e0d071832f97a23aaf053979e19f769d84",
+        "cypherId": "3",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x6ee3781ee8bba7c26dc938829604b2a64651103ef9b0fd392bef28b773ba735e"
+        ]
+      },
+      {
+        "address": "0xbf28f4bb3941db848edd69c2017070940c6c1616",
+        "cypherId": "8",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0xcd5f0b1f45cbce1d1680606c8ad9d52822663dbc4a453f4839bb187f2158547d"
+        ]
+      }
+    ],
+    "memories": [
+      {
+        "id": "mem:0cacd08728de9de309cf6677a7f9950556d1ee26d5723ed9c5e045224a6265d2",
+        "kind": "owner-preference",
+        "subjectType": "launch",
+        "subjectId": "1",
+        "statement": "favor a recognizable mystery symbol that changes with every launch",
+        "sources": [
+          "0x79d370bf94ae3397ac34af3f4c26b3847e2e9a8933302f4e9f99263c0bf5389d"
+        ],
+        "confidence": 100,
+        "untrustedSources": false
+      }
+    ]
+  },
+  "trust": {
+    "peers": {
+      "0xbf28f4bb3941db848edd69c2017070940c6c1616": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772445994
+      },
+      "0x398e294863b0a0efbfd9b7f43584c16660912ebd": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772445964
+      },
+      "0x27a0c9335c949e575e5345d44b7a64021c9abd4d": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772445925
+      },
+      "0xd9b5375d980f9716ac5159365d6c7702396d26c0": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772445934
+      },
+      "0xe861f0e0d071832f97a23aaf053979e19f769d84": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772445944
+      },
+      "0x4c557072eda4f77097a9fea8fca316d663ac3234": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772445953
+      },
+      "0x4bcdfbdfb15792279f5d2caadcd8a23c9132458b": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772445974
+      },
+      "0xee91d1f50441bd4f39a0d709faa729020098a26f": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772445984
+      }
+    },
+    "contributions": {}
+  },
+  "database": {
+    "schemaVersion": 1,
+    "postcards": 6,
+    "postcardBytes": 4358,
+    "pinnedPostcards": 0,
+    "durablePostcards": 2,
+    "peers": 6,
+    "memories": 1,
+    "fileBytes": 73728,
+    "walBytes": 8272,
+    "shmBytes": 32768,
+    "totalFileBytes": 114768
+  }
+}

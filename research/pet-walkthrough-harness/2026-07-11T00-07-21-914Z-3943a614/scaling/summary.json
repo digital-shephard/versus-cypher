@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "passed": true,
+  "scales": [
+    { "percent": 100, "width": 390, "height": 640, "raft": true, "brainSettings": true },
+    { "percent": 125, "width": 490, "height": 805, "raft": true, "brainSettings": true, "cypher": true },
+    { "percent": 150, "width": 588, "height": 960, "raft": true, "brainSettings": true, "deviceSettings": true }
+  ],
+  "checks": {
+    "shellContained": true,
+    "sideButtonContained": true,
+    "screenContained": true,
+    "hardwareControlsContained": true,
+    "settingsControlsReachable": true
+  },
+  "finalScalePercent": 100
+}

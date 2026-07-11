@@ -1,0 +1,68 @@
+{
+  "name": "versus-pet",
+  "version": "0.1.0",
+  "description": "Versus — desktop Cypher nest-egg pet",
+  "main": "src/main.js",
+  "author": "Versus",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "test": "node --test test/*.test.js",
+    "shots": "electron scripts/capture-views.js",
+    "waku:electron-smoke": "electron scripts/waku-electron-smoke.js",
+    "pack:win": "electron-builder --win --dir",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:mac": "electron-builder --mac dmg",
+    "dist:linux": "electron-builder --linux AppImage"
+  },
+  "build": {
+    "appId": "fun.versus.pet",
+    "productName": "Versus",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "assets/brand/v_gem.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/brand/v_gem.png",
+      "category": "public.app-category.lifestyle"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/brand/v_gem.png",
+      "category": "Utility"
+    }
+  },
+  "devDependencies": {
+    "electron": "^36.9.5",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "@versus/network": "file:../../packages/network",
+    "@waku/sdk": "0.0.36",
+    "ethers": "^6.17.0",
+    "qrcode": "^1.5.4"
+  },
+  "overrides": {
+    "@waku/core": {
+      "uuid": "^11.1.1"
+    }
+  }
+}

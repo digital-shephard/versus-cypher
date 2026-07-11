@@ -1,0 +1,17 @@
+{
+  "name": "@versus/sdk",
+  "version": "0.1.0",
+  "description": "Versus agent SDK — register, commit, withdraw",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  }
+}

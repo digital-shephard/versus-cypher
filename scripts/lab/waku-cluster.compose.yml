@@ -1,0 +1,128 @@
+name: versus-waku-lab
+
+x-waku-common: &waku-common
+  image: wakuorg/nwaku:v0.38.1
+  restart: "no"
+  networks:
+    - versus-waku
+  command:
+    - --log-level=INFO
+    - --log-format=JSON
+    - --nodekey=0000000000000000000000000000000000000000000000000000000000000001
+    - --relay=true
+    - --filter=true
+    - --lightpush=true
+    - --store=true
+    - --store-message-retention-policy=time:${VERSUS_WAKU_STORE_RETENTION_SECONDS:-3600};capacity:10000;size:100MB
+    - --store-message-db-url=sqlite:///data/store.sqlite3
+    - --cluster-id=66
+    - --num-shards-in-network=8
+    - --shard=0
+    - --discv5-discovery=false
+    - --peer-exchange=false
+    - --rendezvous=false
+    - --ip-colocation-limit=0
+    - --websocket-support=true
+    - --websocket-port=8000
+    - --rest=true
+    - --rest-address=0.0.0.0
+    - --rest-port=8645
+    - --rest-admin=true
+    - --metrics-server=true
+    - --metrics-server-address=0.0.0.0
+    - --metrics-server-port=8008
+
+services:
+  node1:
+    <<: *waku-common
+    volumes:
+      - node1-data:/data
+    ports:
+      - 127.0.0.1:18000:8000
+      - 127.0.0.1:18645:8645
+      - 127.0.0.1:18008:8008
+
+  node2:
+    <<: *waku-common
+    command:
+      - --log-level=INFO
+      - --log-format=JSON
+      - --nodekey=0000000000000000000000000000000000000000000000000000000000000002
+      - --relay=true
+      - --filter=true
+      - --lightpush=true
+      - --store=true
+      - --store-message-retention-policy=time:${VERSUS_WAKU_STORE_RETENTION_SECONDS:-3600};capacity:10000;size:100MB
+      - --store-message-db-url=sqlite:///data/store.sqlite3
+      - --cluster-id=66
+      - --num-shards-in-network=8
+      - --shard=0
+      - --discv5-discovery=false
+      - --peer-exchange=false
+      - --rendezvous=false
+      - --ip-colocation-limit=0
+      - --websocket-support=true
+      - --websocket-port=8000
+      - --rest=true
+      - --rest-address=0.0.0.0
+      - --rest-port=8645
+      - --rest-admin=true
+      - --metrics-server=true
+      - --metrics-server-address=0.0.0.0
+      - --metrics-server-port=8008
+      - --staticnode=${VERSUS_WAKU_NODE1}
+    volumes:
+      - node2-data:/data
+    ports:
+      - 127.0.0.1:18001:8000
+      - 127.0.0.1:18646:8645
+      - 127.0.0.1:18009:8008
+    depends_on:
+      - node1
+
+  node3:
+    <<: *waku-common
+    command:
+      - --log-level=INFO
+      - --log-format=JSON
+      - --nodekey=0000000000000000000000000000000000000000000000000000000000000003
+      - --relay=true
+      - --filter=true
+      - --lightpush=true
+      - --store=true
+      - --store-message-retention-policy=time:${VERSUS_WAKU_STORE_RETENTION_SECONDS:-3600};capacity:10000;size:100MB
+      - --store-message-db-url=sqlite:///data/store.sqlite3
+      - --cluster-id=66
+      - --num-shards-in-network=8
+      - --shard=0
+      - --discv5-discovery=false
+      - --peer-exchange=false
+      - --rendezvous=false
+      - --ip-colocation-limit=0
+      - --websocket-support=true
+      - --websocket-port=8000
+      - --rest=true
+      - --rest-address=0.0.0.0
+      - --rest-port=8645
+      - --rest-admin=true
+      - --metrics-server=true
+      - --metrics-server-address=0.0.0.0
+      - --metrics-server-port=8008
+      - --staticnode=${VERSUS_WAKU_NODE1}
+    volumes:
+      - node3-data:/data
+    ports:
+      - 127.0.0.1:18002:8000
+      - 127.0.0.1:18647:8645
+      - 127.0.0.1:18010:8008
+    depends_on:
+      - node1
+
+networks:
+  versus-waku:
+    driver: bridge
+
+volumes:
+  node1-data:
+  node2-data:
+  node3-data:

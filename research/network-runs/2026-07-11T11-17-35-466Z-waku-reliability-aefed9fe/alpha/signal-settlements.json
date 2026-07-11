@@ -1,0 +1,390 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0xb7f8e965c33f417b34604186187843fabee8a44619343046e64d3746e349ee73",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xd52f30f1342040dc56475591decaf82008224dbbd5afe66d607fbce53c7e863f",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 0,
+          "rateNullifier": "0x33d9cd34a831a72742d5f481f7af4b20be6dea42b61a5f145ed1bbb687c45ab4",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "controlled baseline signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x5d51d5e7ddf675df1dce903f69661050f76a002da2806fcb6893f1e647eb50115cf900b44a62b52004055b09562bd8285cc0f3f584dec8e932062a1b0ed8ecad1c",
+          "id": "0xb7f8e965c33f417b34604186187843fabee8a44619343046e64d3746e349ee73"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768661566,
+      "transactionHash": "0x54497a5baa66875148b8bacc8c96b4f53a70a03e8b43d3d1ce50a68034192ae7",
+      "publishedIds": [
+        "0xb7f8e965c33f417b34604186187843fabee8a44619343046e64d3746e349ee73"
+      ],
+      "submittedAt": 1783768661647,
+      "blockNumber": "34",
+      "confirmedAt": 1783768661661,
+      "publishedAt": 1783768661816
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0x53e082e82ace4c481ff80f0d72565687247ca21e54214f310ce4bb9dca200366",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xe03570e4da6c0edddec34f7203404c267c117f97c665101137b652872e51814a",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 1,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 1,
+          "rateNullifier": "0xb2e5a6dfa1efa99ef8e1624028f556c09aec5550b3f44b3d45606c507e9103f9",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "relay failover signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xba541733b2eaa38ff22a2328c14ecdec161635720acf7cb25749f603148001f15c180f02d117a3aa7fbb885b873d610dff2b29e752bf2517651c08bc9ae7ead31b",
+          "id": "0x53e082e82ace4c481ff80f0d72565687247ca21e54214f310ce4bb9dca200366"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768664180,
+      "transactionHash": "0x89af2922e7e8e16c2e7f355571acd0659aa5ec994ad50c91e60b9627b5ec5763",
+      "publishedIds": [
+        "0x53e082e82ace4c481ff80f0d72565687247ca21e54214f310ce4bb9dca200366"
+      ],
+      "submittedAt": 1783768664260,
+      "blockNumber": "35",
+      "confirmedAt": 1783768664288,
+      "publishedAt": 1783768699434
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0xb4f57e5971b51fc723284051585f5f18b4d8a0d6e50dfed1b680bf34671525df",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x868c684a03fc6bea10f6fb7b11aa7b322281c68bfeb1f2eb61517991b72dc4cd",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 2,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 2,
+          "rateNullifier": "0x39b3f85e9af7dec2e869720061a2ef6a91209bbc1ae796b2b7395457e3b437c5",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "publisher crash recovery signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xa1ef7a9e369941ae3c7a7cbe5b58e068566087a3d1c72372204de81f8ee627210e4c3068f354b23e82bd1e70d505912bec81f7a562792cf67e3d8033a5b46b7c1b",
+          "id": "0xb4f57e5971b51fc723284051585f5f18b4d8a0d6e50dfed1b680bf34671525df"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768696509,
+      "transactionHash": "0x5369f4b642c62845cbbec7c81059a5dd3d23e9ae9038dc1625ea88351e6b29c0",
+      "publishedIds": [
+        "0xb4f57e5971b51fc723284051585f5f18b4d8a0d6e50dfed1b680bf34671525df"
+      ],
+      "submittedAt": 1783768696585,
+      "blockNumber": "37",
+      "confirmedAt": 1783768696599,
+      "publishedAt": 1783768699530
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0x7dccbcaccaf2f7e4a06f6f89a159959341214532de36a413e3fbfe30113e04c6",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x1915f4fb84cc9b003de1637f301a5dcff7c45fc7f54ab17f2b26ba75229c5913",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 3,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 3,
+          "rateNullifier": "0xf2521277549fa928e72f3b95ca2d9e63efc779d344c5bb3f70741bc8bc1a09f6",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "controlled dropped boundary signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x4f6a1a80a0ca83305c9cf83748ac0db8e031f003fdaa09023e032c51c1eca43a75b3f96728adf68d885f31369c4b302c97d4f567e7a5857402f7588aa798f4461c",
+          "id": "0x7dccbcaccaf2f7e4a06f6f89a159959341214532de36a413e3fbfe30113e04c6"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768699828,
+      "transactionHash": "0x7c621464720cf97b689700d55427ea30a3514ec6f4702309435c4a966f6ce48b",
+      "publishedIds": [
+        "0x7dccbcaccaf2f7e4a06f6f89a159959341214532de36a413e3fbfe30113e04c6"
+      ],
+      "submittedAt": 1783768699904,
+      "blockNumber": "38",
+      "confirmedAt": 1783768699933,
+      "publishedAt": 1783768701262
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0x1d47f934bf83dafdbee262597b7744f14958449fb61c6a13e1a97225a4484e7a",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xdf2264fba19b2aa8f1575cc4cbd7a10b57aff1be888b92b1a368b04fc9f06853",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 4,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 4,
+          "rateNullifier": "0x91f3e9fb60a62856075e49dfcfd5414d6142b88b2d821f95b69538b944450028",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "controlled reorder first signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xc72a52d87e26aa6e36986f1177ecf3c455567d1dc5660f98440bad82667b00794c80535687669df0da13eb75fb6cdcf4f1407201eccc47446b4adcf2643cb4381b",
+          "id": "0x1d47f934bf83dafdbee262597b7744f14958449fb61c6a13e1a97225a4484e7a"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768701473,
+      "transactionHash": "0x241f152cd22f4b31563290cfca6892eb955352e9cbf0782beb9461b7a161d00c",
+      "publishedIds": [
+        "0x1d47f934bf83dafdbee262597b7744f14958449fb61c6a13e1a97225a4484e7a"
+      ],
+      "submittedAt": 1783768701546,
+      "blockNumber": "39",
+      "confirmedAt": 1783768701574,
+      "publishedAt": 1783768702334
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0x5dff85a9f97c929faf1426a40ca54689f149e71b1896d5ce4ed4c90ecea9bac6",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x4eb59e93738d5c0ce394d625a6fcf842c407ec1158d66886aec19e9deaaffefd",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 5,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 5,
+          "rateNullifier": "0x6bde6140e374627c8af52e6cb2607596339c34583e08ef3d2575d69cf1edb8ea",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "controlled reorder second signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xe4e110c33ba49d4a3484fb4413d97d542148229ab37b73f19df16444cc678ca043a95774d267f5a25d329a261f2aae6970940f63dca7e6280c48e386df83216b1c",
+          "id": "0x5dff85a9f97c929faf1426a40ca54689f149e71b1896d5ce4ed4c90ecea9bac6"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768701640,
+      "transactionHash": "0x743f173a30973d051588b2b0a330030c11db6982d2e68f178a1a41e470fa314a",
+      "publishedIds": [
+        "0x5dff85a9f97c929faf1426a40ca54689f149e71b1896d5ce4ed4c90ecea9bac6"
+      ],
+      "submittedAt": 1783768701683,
+      "blockNumber": "40",
+      "confirmedAt": 1783768701697,
+      "publishedAt": 1783768702150
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+        "signals": [
+          {
+            "id": "0xef86c781aaf2a0f82154a87b301754ea1d25bbde79f1a7dc7deb7a1eedcaa393",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x6507eda3c137a281cea638b8250f45521b5d066023a32586f8d76642e5a34bc7",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xc5fab1ddf9fc3349750642aef3155e1ab77a02bd",
+          "cypherId": "1",
+          "sequence": 6,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 6,
+          "rateNullifier": "0x4b4430eaf90a1bb059f8f39daa04fb3457987b3da075cd5b0b3ba47181e187c4",
+          "createdAt": 1783768688,
+          "expiresAt": 1783855088,
+          "body": "controlled reorder third signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x25f7eccf850fe17681f07130c9aff79e117bb85c0dc269ed61336907266ae8cb07891365e9aa5f5245d918fb99e323d506f55c79a2ad8a9061f2bd704fdcc5ce1b",
+          "id": "0xef86c781aaf2a0f82154a87b301754ea1d25bbde79f1a7dc7deb7a1eedcaa393"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768701749,
+      "transactionHash": "0x3cf603dde9360435cd1f2b1c5245e3755a13d8b0403508fb347503f10929c33f",
+      "publishedIds": [
+        "0xef86c781aaf2a0f82154a87b301754ea1d25bbde79f1a7dc7deb7a1eedcaa393"
+      ],
+      "submittedAt": 1783768701825,
+      "blockNumber": "41",
+      "confirmedAt": 1783768701853,
+      "publishedAt": 1783768701966
+    }
+  ]
+}

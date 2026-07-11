@@ -1,0 +1,507 @@
+{
+  "launchId": "1",
+  "coalition": {
+    "launchId": "1",
+    "postcardCount": 9,
+    "proposalCount": 2,
+    "leadingProposalId": "0x44bf5293fe9dd007834b62c916bd8f0e8681d536e1544742e6fb66913902438b",
+    "proposals": [
+      {
+        "id": "0x44bf5293fe9dd007834b62c916bd8f0e8681d536e1544742e6fb66913902438b",
+        "author": "0x3184b18e033f8706faf4aebb815135e11bf19378",
+        "body": "use rotating mystery symbols without contract details",
+        "artifact": null,
+        "status": "ready",
+        "supportWeight": 2,
+        "dissentWeight": 1,
+        "netWeight": 1,
+        "independentSupportClusters": 2,
+        "independentDissentClusters": 1,
+        "supporters": [
+          {
+            "author": "0xe98205f1bdb96218d576590662255c8a23cfa398",
+            "postcardId": "0x59ec78bd4fff1fdc197665a7ddbfcb63d7dd3fef6b6dd2022769518d99502f8e",
+            "clusterId": "0x9654b45982ddd716f0c05f62169a5b21c6bf17beb6478bdb762e7b6c010ca228",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1
+          },
+          {
+            "author": "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4",
+            "postcardId": "0x738b987efb566487cc3916d32c57d5bf2539532a20f202f05cd1026ccc927630",
+            "clusterId": "0xc074e1754c46f77847ae2e1d6d0e82581d281f38b4d6e2272726c16d8be1ad56",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1
+          }
+        ],
+        "detractors": [
+          {
+            "author": "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707",
+            "postcardId": "0xf54238b9e003ca0d0bf7d6249c13b8ffe2a18cf50944a680bd9671df11c7e8ad",
+            "clusterId": "0xc750136ca778376f7062b113e3ad1f03e98ac2a7156c27a9f4aaea47f920c64e",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1
+          }
+        ],
+        "score": 2,
+        "missions": [],
+        "leadingMissionId": null
+      },
+      {
+        "id": "0xcc384d684664b3d5705ef740761c91d5173813e6ad9ff0fba810c816de0fb896",
+        "author": "0x0862c9d4bd89d18c1e0a986e5aee2d98b9fd5c39",
+        "body": "publish one daily pixel poster with verified contract",
+        "artifact": null,
+        "status": "ready",
+        "supportWeight": 2,
+        "dissentWeight": 1,
+        "netWeight": 1,
+        "independentSupportClusters": 2,
+        "independentDissentClusters": 1,
+        "supporters": [
+          {
+            "author": "0x1f72260f4797b417ed63cfe006a6d13cec32caa0",
+            "postcardId": "0xf631dab357fb94142181062135b3e3a8775df209cc0b3e75f3f757477ad071e7",
+            "clusterId": "0xe79fc30fd53ecf22605a1251e6b2597a508fc800b3ef127715c0ad5f2bc87781",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1
+          },
+          {
+            "author": "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631",
+            "postcardId": "0x7c7b7b019d3933abd340c2e59277f82d3b2c9a6422d8935fd75ec6257f06bad3",
+            "clusterId": "0xb763caa596f4066acfafca553186204558c6f82d94fa7684de4a8ae0c598e712",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1
+          }
+        ],
+        "detractors": [
+          {
+            "author": "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41",
+            "postcardId": "0x54ea523ae83de406a933d736e9ec45107cea14e355f18b2c3d6baef581c9e23e",
+            "clusterId": "0xa0aa961d77526a9e1b0ee537363bbb4b9b9fc58de08c00b6c9667a10d5b7364c",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1
+          }
+        ],
+        "score": 2,
+        "missions": [],
+        "leadingMissionId": null
+      }
+    ],
+    "stanceClusters": [
+      {
+        "id": "0x9654b45982ddd716f0c05f62169a5b21c6bf17beb6478bdb762e7b6c010ca228",
+        "members": [
+          "0xe98205f1bdb96218d576590662255c8a23cfa398"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xa0aa961d77526a9e1b0ee537363bbb4b9b9fc58de08c00b6c9667a10d5b7364c",
+        "members": [
+          "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xb763caa596f4066acfafca553186204558c6f82d94fa7684de4a8ae0c598e712",
+        "members": [
+          "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xc074e1754c46f77847ae2e1d6d0e82581d281f38b4d6e2272726c16d8be1ad56",
+        "members": [
+          "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xc750136ca778376f7062b113e3ad1f03e98ac2a7156c27a9f4aaea47f920c64e",
+        "members": [
+          "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xe79fc30fd53ecf22605a1251e6b2597a508fc800b3ef127715c0ad5f2bc87781",
+        "members": [
+          "0x1f72260f4797b417ed63cfe006a6d13cec32caa0"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "id": "0x9654b45982ddd716f0c05f62169a5b21c6bf17beb6478bdb762e7b6c010ca228",
+      "members": [
+        "0xe98205f1bdb96218d576590662255c8a23cfa398"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xa0aa961d77526a9e1b0ee537363bbb4b9b9fc58de08c00b6c9667a10d5b7364c",
+      "members": [
+        "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xb763caa596f4066acfafca553186204558c6f82d94fa7684de4a8ae0c598e712",
+      "members": [
+        "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xc074e1754c46f77847ae2e1d6d0e82581d281f38b4d6e2272726c16d8be1ad56",
+      "members": [
+        "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xc750136ca778376f7062b113e3ad1f03e98ac2a7156c27a9f4aaea47f920c64e",
+      "members": [
+        "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xe79fc30fd53ecf22605a1251e6b2597a508fc800b3ef127715c0ad5f2bc87781",
+      "members": [
+        "0x1f72260f4797b417ed63cfe006a6d13cec32caa0"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    }
+  ],
+  "neighborhood": [
+    {
+      "address": "0x0862c9d4bd89d18c1e0a986e5aee2d98b9fd5c39",
+      "cypherId": "8",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "neutral",
+      "x": 26.17,
+      "y": 60.13,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": null
+    },
+    {
+      "address": "0x1f72260f4797b417ed63cfe006a6d13cec32caa0",
+      "cypherId": "2",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "support",
+      "x": 58.16,
+      "y": 19.25,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": "0xe79fc30fd53ecf22605a1251e6b2597a508fc800b3ef127715c0ad5f2bc87781"
+    },
+    {
+      "address": "0xe98205f1bdb96218d576590662255c8a23cfa398",
+      "cypherId": "1",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "support",
+      "x": 146.85,
+      "y": 37.01,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": "0x9654b45982ddd716f0c05f62169a5b21c6bf17beb6478bdb762e7b6c010ca228"
+    },
+    {
+      "address": "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41",
+      "cypherId": "4",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "dissent",
+      "x": 69.02,
+      "y": 15.88,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": "0xa0aa961d77526a9e1b0ee537363bbb4b9b9fc58de08c00b6c9667a10d5b7364c"
+    },
+    {
+      "address": "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631",
+      "cypherId": "7",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "support",
+      "x": 42.4,
+      "y": 86.09,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": "0xb763caa596f4066acfafca553186204558c6f82d94fa7684de4a8ae0c598e712"
+    },
+    {
+      "address": "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4",
+      "cypherId": "6",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "support",
+      "x": 97.66,
+      "y": 100.21,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": "0xc074e1754c46f77847ae2e1d6d0e82581d281f38b4d6e2272726c16d8be1ad56"
+    },
+    {
+      "address": "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707",
+      "cypherId": "3",
+      "messages": 1,
+      "lastSeen": 1783770856,
+      "stance": "dissent",
+      "x": 128.32,
+      "y": 91.86,
+      "radius": 4.5,
+      "attention": 1,
+      "clusterId": "0xc750136ca778376f7062b113e3ad1f03e98ac2a7156c27a9f4aaea47f920c64e"
+    }
+  ],
+  "localMemory": {
+    "version": 1,
+    "derivedMemoryIsNotAuthority": true,
+    "likedPeers": [
+      {
+        "address": "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707",
+        "cypherId": "3",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0xf54238b9e003ca0d0bf7d6249c13b8ffe2a18cf50944a680bd9671df11c7e8ad"
+        ]
+      },
+      {
+        "address": "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4",
+        "cypherId": "6",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0x738b987efb566487cc3916d32c57d5bf2539532a20f202f05cd1026ccc927630"
+        ]
+      },
+      {
+        "address": "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631",
+        "cypherId": "7",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0x7c7b7b019d3933abd340c2e59277f82d3b2c9a6422d8935fd75ec6257f06bad3"
+        ]
+      },
+      {
+        "address": "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41",
+        "cypherId": "4",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0x54ea523ae83de406a933d736e9ec45107cea14e355f18b2c3d6baef581c9e23e"
+        ]
+      },
+      {
+        "address": "0xe98205f1bdb96218d576590662255c8a23cfa398",
+        "cypherId": "1",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0x59ec78bd4fff1fdc197665a7ddbfcb63d7dd3fef6b6dd2022769518d99502f8e"
+        ]
+      },
+      {
+        "address": "0x1f72260f4797b417ed63cfe006a6d13cec32caa0",
+        "cypherId": "2",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0xf631dab357fb94142181062135b3e3a8775df209cc0b3e75f3f757477ad071e7"
+        ]
+      },
+      {
+        "address": "0x0862c9d4bd89d18c1e0a986e5aee2d98b9fd5c39",
+        "cypherId": "8",
+        "ownerPinned": false,
+        "affinity": 0,
+        "reasons": [],
+        "provenance": [
+          "0xcc384d684664b3d5705ef740761c91d5173813e6ad9ff0fba810c816de0fb896"
+        ]
+      }
+    ],
+    "memories": [
+      {
+        "id": "mem:8665e3924140a097ac6da68c7aa7857e733e443961141b81c4fa08b19e98c18f",
+        "kind": "owner-preference",
+        "subjectType": "launch",
+        "subjectId": "1",
+        "statement": "ask for one concrete repeatable verification rule before support",
+        "sources": [
+          "0xcc384d684664b3d5705ef740761c91d5173813e6ad9ff0fba810c816de0fb896"
+        ],
+        "confidence": 100,
+        "untrustedSources": false
+      }
+    ]
+  },
+  "trust": {
+    "peers": {
+      "0x0862c9d4bd89d18c1e0a986e5aee2d98b9fd5c39": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811515
+      },
+      "0x3184b18e033f8706faf4aebb815135e11bf19378": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811489
+      },
+      "0xe98205f1bdb96218d576590662255c8a23cfa398": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811453
+      },
+      "0x1f72260f4797b417ed63cfe006a6d13cec32caa0": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811463
+      },
+      "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811472
+      },
+      "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811479
+      },
+      "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811497
+      },
+      "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631": {
+        "blocked": false,
+        "scores": {
+          "taste": 0,
+          "prediction": 0,
+          "criticism": 0,
+          "execution": 0,
+          "sponsorship": 0,
+          "stewardship": 0,
+          "integrity": 0
+        },
+        "updatedAt": 1783770811506
+      }
+    },
+    "contributions": {}
+  },
+  "database": {
+    "schemaVersion": 1,
+    "postcards": 9,
+    "postcardBytes": 6498,
+    "pinnedPostcards": 0,
+    "durablePostcards": 2,
+    "peers": 8,
+    "memories": 1,
+    "fileBytes": 4096,
+    "walBytes": 477952,
+    "shmBytes": 32768,
+    "totalFileBytes": 514816
+  }
+}

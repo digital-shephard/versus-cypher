@@ -1,0 +1,12 @@
+node_modules/
+cache/
+artifacts/
+coverage/
+coverage.json
+.env
+.typechain/
+deployments/localhost.json
+
+# Local throwaway Sepolia key material
+.test-wallet.json
+

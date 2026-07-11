@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-29-17-505Z-waku-capacity-1727885b",
+  "passed": true,
+  "completedAt": "2026-07-11T11:35:26.291Z",
+  "results": [
+    {
+      "version": 1,
+      "count": 2,
+      "stagePassed": true,
+      "topicScope": "cap-8dfdd0be7a30",
+      "connectDurationMs": 1784,
+      "publishDurationMs": 64,
+      "convergenceDurationMs": 264,
+      "expectedAccepted": 4,
+      "actualAccepted": 4,
+      "deliveryRatio": 1,
+      "missingAccepted": 0,
+      "minRecords": 2,
+      "maxRecords": 2,
+      "publishErrors": 0,
+      "latencyMs": {
+        "count": 2,
+        "p50": 61,
+        "p95": 67,
+        "max": 67
+      },
+      "peakRssBytes": 125796352,
+      "cpuUserMicros": 562000,
+      "cpuSystemMicros": 391000,
+      "durationMs": 2151,
+      "process": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false
+      }
+    },
+    {
+      "version": 1,
+      "count": 8,
+      "stagePassed": true,
+      "topicScope": "cap-727967035248",
+      "connectDurationMs": 1775,
+      "publishDurationMs": 185,
+      "convergenceDurationMs": 0,
+      "expectedAccepted": 64,
+      "actualAccepted": 64,
+      "deliveryRatio": 1,
+      "missingAccepted": 0,
+      "minRecords": 8,
+      "maxRecords": 8,
+      "publishErrors": 0,
+      "latencyMs": {
+        "count": 56,
+        "p50": 107,
+        "p95": 174,
+        "max": 181
+      },
+      "peakRssBytes": 162598912,
+      "cpuUserMicros": 719000,
+      "cpuSystemMicros": 516000,
+      "durationMs": 2024,
+      "process": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false
+      }
+    },
+    {
+      "version": 1,
+      "count": 32,
+      "stagePassed": true,
+      "topicScope": "cap-c6ce5c165abe",
+      "connectDurationMs": 4587,
+      "publishDurationMs": 4094,
+      "convergenceDurationMs": 255,
+      "expectedAccepted": 1024,
+      "actualAccepted": 1024,
+      "deliveryRatio": 1,
+      "missingAccepted": 0,
+      "minRecords": 32,
+      "maxRecords": 32,
+      "publishErrors": 0,
+      "latencyMs": {
+        "count": 992,
+        "p50": 630,
+        "p95": 1112,
+        "max": 1654
+      },
+      "peakRssBytes": 259457024,
+      "cpuUserMicros": 4906000,
+      "cpuSystemMicros": 703000,
+      "durationMs": 9123,
+      "process": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false
+      }
+    },
+    {
+      "version": 1,
+      "count": 100,
+      "stagePassed": true,
+      "topicScope": "cap-c9b76109dda6",
+      "connectDurationMs": 12655,
+      "publishDurationMs": 19804,
+      "convergenceDurationMs": 259,
+      "expectedAccepted": 10000,
+      "actualAccepted": 10000,
+      "deliveryRatio": 1,
+      "missingAccepted": 0,
+      "minRecords": 100,
+      "maxRecords": 100,
+      "publishErrors": 0,
+      "latencyMs": {
+        "count": 9900,
+        "p50": 1082,
+        "p95": 2111,
+        "max": 2606
+      },
+      "peakRssBytes": 360517632,
+      "cpuUserMicros": 19282000,
+      "cpuSystemMicros": 3484000,
+      "durationMs": 33134,
+      "process": {
+        "exitCode": 0,
+        "signal": null,
+        "timedOut": false
+      }
+    },
+    {
+      "version": 1,
+      "count": 500,
+      "stagePassed": false,
+      "failedAt": "2026-07-11T11:35:25.243Z",
+      "error": {
+        "message": "Timed out waiting for a remote peer.",
+        "stack": "Error: Timed out waiting for a remote peer.\n    at Timeout._onTimeout (file:///C:/Users/Razgriz/Documents/Github/perps/packages/network/node_modules/@waku/sdk/dist/waku/wait_for_remote_peer.js:159:102)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)"
+      },
+      "peakRssBytes": 448159744,
+      "durationMs": 110821,
+      "process": {
+        "exitCode": 1,
+        "signal": null,
+        "timedOut": false
+      }
+    }
+  ],
+  "sharding": {
+    "measuredLowerBound": 100,
+    "measuredFailure": 500,
+    "recommendation": "introduce neighborhood or interest sharding above 100 concurrent launch clients before retrying 500"
+  }
+}

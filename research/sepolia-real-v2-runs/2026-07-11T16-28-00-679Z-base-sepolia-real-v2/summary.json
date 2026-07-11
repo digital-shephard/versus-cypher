@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T16-28-00-679Z-base-sepolia-real-v2",
+  "passed": true,
+  "durationMs": 87146,
+  "chainId": 84532,
+  "wallet": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+  "deploymentPath": "C:\\Users\\Razgriz\\Documents\\Github\\perps\\versus\\deployments\\baseSepolia-v5-real-v2.json",
+  "externalV2": {
+    "factory": "0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e",
+    "router": "0x1689E7B1F10000AE47eBfE339a4f69dECd19F602",
+    "weth": "0x4200000000000000000000000000000000000006"
+  },
+  "floorPerClass": "30000",
+  "finalCurrentClassId": "3",
+  "factoryPairsBefore": "10534",
+  "factoryPairsAfter": "10536",
+  "classes": [
+    {
+      "classId": 1,
+      "agentId": 1,
+      "token": "0x8eF497B953A5D248385290181FaC36388bd15779",
+      "pair": "0x7060eafa108155eeef3a0d9376ecc324281505E4",
+      "name": "Versus Token 0",
+      "symbol": "VRS0",
+      "graduationHash": "0x56db7cac3f3b44b2cd2b7d3027c5ceb7b76a5b7f135899df5db0e666b737e467",
+      "sellHash": "0x2fc5b1361bbc52acb9ed471af54a282d006a470eee7df1b1092c44e5684b04e9",
+      "usdcSeeded": "30000",
+      "buyUsdc": "5000",
+      "buyTaxTokens": "712448192082320994712019",
+      "sellTokens": "35266185508074889238244962",
+      "sellerUsdcReceived": "2623",
+      "ticketRewardsAdded": "78",
+      "protocolAdded": "8",
+      "reservesBefore": [
+        "30000",
+        "500000000000000000000000000"
+      ],
+      "reservesAfter": [
+        "32299",
+        "464733814491925110761755038"
+      ]
+    },
+    {
+      "classId": 2,
+      "agentId": 2,
+      "token": "0x2Dc8f825d9B57d00F664388C50dFa086244A0bE3",
+      "pair": "0x3b1dd108318Ac30e5862a519C28a6f04f398d620",
+      "name": "Versus Token 1",
+      "symbol": "VRS1",
+      "graduationHash": "0x0456522a0169371700bbbabd0ac7fd58401fee639f5ee04c50db2b17d0ba9835",
+      "sellHash": "0x0cb8e2d3b632cd78727f0aded1834546b8b52f023779e58a2ed0a4b88faad1dd",
+      "usdcSeeded": "30000",
+      "buyUsdc": "5000",
+      "buyTaxTokens": "712448192082320994712019",
+      "sellTokens": "35266185508074889238244962",
+      "sellerUsdcReceived": "2623",
+      "ticketRewardsAdded": "78",
+      "protocolAdded": "8",
+      "reservesBefore": [
+        "500000000000000000000000000",
+        "30000"
+      ],
+      "reservesAfter": [
+        "464733814491925110761755038",
+        "32299"
+      ]
+    }
+  ],
+  "claims": {
+    "agentOne": "117",
+    "agentTwo": "39"
+  },
+  "vaults": {
+    "agentOne": "117",
+    "agentTwo": "39"
+  },
+  "gas": {
+    "startWei": "100736788374568617",
+    "endWei": "100679007677132446",
+    "spentWei": "57780697436171"
+  },
+  "transactions": [
+    {
+      "label": "approve Arena test USDC",
+      "hash": "0xa3ecb743cf4586d08f9e6680218e86b49bb8835a55ee8a345ec70961f1f40bc5",
+      "blockNumber": 44014898,
+      "gasUsed": "46269"
+    },
+    {
+      "label": "approve external V2 router test USDC",
+      "hash": "0xca3eb12d448ca201267ff5398f6502d1f904c86e2f7329ef96ab7c05666be92a",
+      "blockNumber": 44014900,
+      "gasUsed": "46245"
+    },
+    {
+      "label": "hatch class-one Cypher",
+      "hash": "0x2c5819ec106d0374c85fd13770a20e963d3e6ab89318acb444942f93c69c483c",
+      "blockNumber": 44014903,
+      "gasUsed": "164416",
+      "cypherId": 0,
+      "runway": "7000000"
+    },
+    {
+      "label": "hatch class-two Cypher",
+      "hash": "0x5df6f28f60e8a1287aff3a5b4a8e54e36d24744c527c0e8729d2b00d7adf5bca",
+      "blockNumber": 44014905,
+      "gasUsed": "133028",
+      "cypherId": 1,
+      "runway": "7000000"
+    },
+    {
+      "label": "fill class 1 with three pennies",
+      "hash": "0xf043e6a0ba97b92ed88a36c1dacfaa7867c1a4aaea9b628bcc7a2d0b22b1033f",
+      "blockNumber": 44014908,
+      "gasUsed": "278161",
+      "classId": 1,
+      "agentId": 1,
+      "pennies": 3
+    },
+    {
+      "label": "graduate class 1",
+      "hash": "0x56db7cac3f3b44b2cd2b7d3027c5ceb7b76a5b7f135899df5db0e666b737e467",
+      "blockNumber": 44014911,
+      "gasUsed": "3749503",
+      "classId": 1
+    },
+    {
+      "label": "buy VRS0 with tiny fake USDC",
+      "hash": "0xc327ccce9bf18b95dee15fd0981c126d4457716ed95f7f5c070dc5fd08e27825",
+      "blockNumber": 44014914,
+      "gasUsed": "179475",
+      "classId": 1,
+      "amountIn": "5000"
+    },
+    {
+      "label": "approve external V2 router VRS0",
+      "hash": "0x06ae9910e9539307430e70cf2e65737d87ec06855bfb108912ffed3b6e845359",
+      "blockNumber": 44014917,
+      "gasUsed": "46245",
+      "classId": 1
+    },
+    {
+      "label": "sell VRS0 and atomically swap tax",
+      "hash": "0x2fc5b1361bbc52acb9ed471af54a282d006a470eee7df1b1092c44e5684b04e9",
+      "blockNumber": 44014919,
+      "gasUsed": "292753",
+      "classId": 1,
+      "amountIn": "35266185508074889238244962",
+      "accumulatedBuyTax": "712448192082320994712019"
+    },
+    {
+      "label": "fill class 2 with three pennies",
+      "hash": "0x8b19b90bb2dcd54b11af9dd635aa08221d3a110ef809999736dda64ed8bfb1d3",
+      "blockNumber": 44014922,
+      "gasUsed": "278838",
+      "classId": 2,
+      "agentId": 2,
+      "pennies": 3
+    },
+    {
+      "label": "graduate class 2",
+      "hash": "0x0456522a0169371700bbbabd0ac7fd58401fee639f5ee04c50db2b17d0ba9835",
+      "blockNumber": 44014925,
+      "gasUsed": "3749453",
+      "classId": 2
+    },
+    {
+      "label": "buy VRS1 with tiny fake USDC",
+      "hash": "0x99f1a81bce8a969981fba330ce6a6cbfaa3fdbc0d28e02a268137f6b88b4844b",
+      "blockNumber": 44014928,
+      "gasUsed": "179513",
+      "classId": 2,
+      "amountIn": "5000"
+    },
+    {
+      "label": "approve external V2 router VRS1",
+      "hash": "0x71b970d62a35cf3d819e88bd9f67ee455d1b0f1369f0b32fc988720e7c5c2f0a",
+      "blockNumber": 44014930,
+      "gasUsed": "46245",
+      "classId": 2
+    },
+    {
+      "label": "sell VRS1 and atomically swap tax",
+      "hash": "0x0cb8e2d3b632cd78727f0aded1834546b8b52f023779e58a2ed0a4b88faad1dd",
+      "blockNumber": 44014933,
+      "gasUsed": "207111",
+      "classId": 2,
+      "amountIn": "35266185508074889238244962",
+      "accumulatedBuyTax": "712448192082320994712019"
+    },
+    {
+      "label": "claim agent 1 rolling rewards",
+      "hash": "0xb57f322b69aa198549c7ef80d2b66ddf5ba9064a02446df6990e8fd6bc25ce25",
+      "blockNumber": 44014936,
+      "gasUsed": "127914",
+      "agentId": 1,
+      "amount": "117"
+    },
+    {
+      "label": "claim agent 2 rolling rewards",
+      "hash": "0xc22941cfb1996c3180f8cf1aac174eb63d74b631e2847169db36f1cddef23eb8",
+      "blockNumber": 44014938,
+      "gasUsed": "77212",
+      "agentId": 2,
+      "amount": "39"
+    }
+  ]
+}

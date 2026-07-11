@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-17-35-466Z-waku-reliability-aefed9fe",
+  "passed": true,
+  "durationMs": 92137,
+  "topicScope": "fault-880b25d07963",
+  "scenarios": {
+    "normal_two_way": true,
+    "relay_kill": true,
+    "filter_failover": true,
+    "publisher_crash": true,
+    "drop_and_retry": true,
+    "delay_duplicate_reorder": true,
+    "partition_heal": true,
+    "disk_restart": true,
+    "rpc_outage_recovery": true
+  },
+  "crash": {
+    "postcardId": "0xb4f57e5971b51fc723284051585f5f18b4d8a0d6e50dfed1b680bf34671525df",
+    "recovered": true,
+    "noDoubleSettlement": true
+  },
+  "partition": {
+    "postcardId": "0x895773145eebd8ef13fd6ef8dbf2f60b833d3ab22a9436e753febd30ee9d23d6",
+    "blockedDuringPartition": true,
+    "healed": true
+  },
+  "rpc": {
+    "failedOffline": true,
+    "noSpendWhileOffline": true,
+    "oneRecoverySpend": true
+  },
+  "restartComparisons": {
+    "alpha": {
+      "before": 10,
+      "after": 10,
+      "exact": true
+    },
+    "beta": {
+      "before": 10,
+      "after": 10,
+      "exact": true
+    },
+    "partitionAlpha": {
+      "before": 10,
+      "after": 10,
+      "exact": true
+    },
+    "partitionBeta": {
+      "before": 7,
+      "after": 7,
+      "exact": true
+    }
+  },
+  "finalHistoryCounts": {
+    "alpha": 11,
+    "beta": 11,
+    "partitionAlpha": 11,
+    "partitionBeta": 8
+  },
+  "chain": {
+    "blockNumber": 44,
+    "classPotMicros": "150000",
+    "totalTickets": "15",
+    "tickets": [
+      "8",
+      "3",
+      "3",
+      "1"
+    ],
+    "runway": [
+      "6920000",
+      "6970000",
+      "6970000",
+      "6990000"
+    ]
+  },
+  "secretsRecorded": false
+}

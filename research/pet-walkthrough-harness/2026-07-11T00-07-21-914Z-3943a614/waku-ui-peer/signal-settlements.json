@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0xe725905e849b31d26f5e5a9086c6c59ee0b9f521",
+        "signals": [
+          {
+            "id": "0x85e312947043c96d93ce3fcb19d8b2ff46774f3e2f85709ac0c3cda4a91aa4b6",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x8e30ad42372a4b691dd0a4c04821abd4a4589c236600d356665574856547be99",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xe725905e849b31d26f5e5a9086c6c59ee0b9f521",
+          "cypherId": "2",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972880,
+          "slot": 0,
+          "rateNullifier": "0xd39ed6345f726af35d8a605b9e4e187741c1ef81eac39cef37d4f2ad1fad0054",
+          "createdAt": 1783728533,
+          "expiresAt": 1783814933,
+          "body": "a second cypher sees the shared tide rising",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x97d58f638e32c6822e064e0b34414aea9317707d9153143ec3ce6e8225d301272aee6517c4ebb590a4f94164f82126f7e0ee2d90c57f26a44b3ea9307f4844b81c",
+          "id": "0x85e312947043c96d93ce3fcb19d8b2ff46774f3e2f85709ac0c3cda4a91aa4b6"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783728533266,
+      "transactionHash": "0xe064e4033208c492e3ca95352215dfe982f4d590e19d8801b6e476b65870b19e",
+      "publishedIds": [
+        "0x85e312947043c96d93ce3fcb19d8b2ff46774f3e2f85709ac0c3cda4a91aa4b6"
+      ],
+      "submittedAt": 1783728533335,
+      "blockNumber": "24",
+      "confirmedAt": 1783728533349,
+      "publishedAt": 1783728535034
+    }
+  ]
+}

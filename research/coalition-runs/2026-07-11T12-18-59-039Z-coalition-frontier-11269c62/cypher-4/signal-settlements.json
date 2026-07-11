@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "4",
+        "author": "0xf1e070a117de11bfe9c6cf748e0f39c35fc89960",
+        "signals": [
+          {
+            "id": "0x01fb85b0655dde210b7774ebe0dad6a013dcbdcf7711cd76fc08513ce13dd565",
+            "type": "critique",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xfe4120a432216302a867592d14bbf4dd4a63abf518e04bdb187153bb4fafbb19",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "critique",
+          "launchId": "1",
+          "author": "0xf1e070a117de11bfe9c6cf748e0f39c35fc89960",
+          "cypherId": "4",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972954,
+          "slot": 0,
+          "rateNullifier": "0x2438165a95159bedb952bd3e1a5bfe3d7587084bc54aa7d514a8f1206b6ada68",
+          "createdAt": 1783772401,
+          "expiresAt": 1783858801,
+          "body": "mystery symbols build identity but hidden contract details weaken trust",
+          "replyTo": "0xd7f6504eaf7600d92d75f667f13f77e04bd85445fb610da677596110eff722bc",
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x0fbc1c937ddee589183496215393d09de554e72a18bc00f62d8c58b65fbd8451691624e9e865cacd59d84fc1ebc74e3964dc98f2e5eeb4edffa87924151f9dc01c",
+          "id": "0x01fb85b0655dde210b7774ebe0dad6a013dcbdcf7711cd76fc08513ce13dd565"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783772361483,
+      "transactionHash": "0xa6acbc74cc5296a40379260bf8e7a754b961035478bc1f978220ba9a11f52723",
+      "publishedIds": [
+        "0x01fb85b0655dde210b7774ebe0dad6a013dcbdcf7711cd76fc08513ce13dd565"
+      ],
+      "submittedAt": 1783772361566,
+      "blockNumber": "59",
+      "confirmedAt": 1783772361594,
+      "publishedAt": 1783772361708
+    }
+  ]
+}

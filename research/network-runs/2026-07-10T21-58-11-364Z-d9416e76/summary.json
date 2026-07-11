@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T21-58-11-364Z-d9416e76",
+  "passed": true,
+  "durationMs": 4382,
+  "proposalId": "0x2e16d967f45884cc44066fa1ae4b781960cbffda0c5a26a55ccabd76db3f3f2e",
+  "critiqueId": "0x619eaf0d83403d8d56ec2ba4339a72192b2584211a5ca13aba3763f9ac7ce692",
+  "alphaAcceptedIds": [
+    "0x2e16d967f45884cc44066fa1ae4b781960cbffda0c5a26a55ccabd76db3f3f2e",
+    "0x619eaf0d83403d8d56ec2ba4339a72192b2584211a5ca13aba3763f9ac7ce692"
+  ],
+  "betaAcceptedIds": [
+    "0x2e16d967f45884cc44066fa1ae4b781960cbffda0c5a26a55ccabd76db3f3f2e",
+    "0x619eaf0d83403d8d56ec2ba4339a72192b2584211a5ca13aba3763f9ac7ce692"
+  ],
+  "restart": {
+    "sameDayTickStatuses": [
+      "idle",
+      "idle"
+    ],
+    "nextDayTickStatuses": [
+      "duplicate_decision",
+      "idle"
+    ],
+    "exactHistoryCounts": [
+      2,
+      2
+    ]
+  },
+  "localDatabases": [
+    {
+      "schemaVersion": 1,
+      "postcards": 2,
+      "postcardBytes": 1397,
+      "pinnedPostcards": 0,
+      "durablePostcards": 1,
+      "peers": 2,
+      "memories": 0,
+      "fileBytes": 65536
+    },
+    {
+      "schemaVersion": 1,
+      "postcards": 2,
+      "postcardBytes": 1397,
+      "pinnedPostcards": 0,
+      "durablePostcards": 1,
+      "peers": 2,
+      "memories": 0,
+      "fileBytes": 65536
+    }
+  ],
+  "chain": {
+    "classPotMicros": "80000",
+    "participantCount": 2,
+    "alphaRunway": "6950000",
+    "betaRunway": "6970000",
+    "alphaTickets": "5",
+    "betaTickets": "3",
+    "totalTickets": "8"
+  }
+}

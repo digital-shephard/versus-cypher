@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "7",
+        "author": "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631",
+        "signals": [
+          {
+            "id": "0x7c7b7b019d3933abd340c2e59277f82d3b2c9a6422d8935fd75ec6257f06bad3",
+            "type": "endorsement",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xd72e06f9daf522fb37dfa72fc3e8e77f2ee52eb2e74e4ca338d927dc3079f2e4",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "endorsement",
+          "launchId": "1",
+          "author": "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631",
+          "cypherId": "7",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972951,
+          "slot": 0,
+          "rateNullifier": "0x97291ee59bf58259fc52bd60310228f20b9cd45fc9ce987edb01343471ea7b09",
+          "createdAt": 1783770856,
+          "expiresAt": 1783857256,
+          "body": "support verification while giving each poster a distinct visual ritual",
+          "replyTo": "0xcc384d684664b3d5705ef740761c91d5173813e6ad9ff0fba810c816de0fb896",
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x4d6563ff65dc8f3c162a1a43342e06a7355361c8ef47609e882794301e55ba8d5d2ffe41dbc8139d10c4307034e7321a8647a4d46e290580680e75d48308b53e1c",
+          "id": "0x7c7b7b019d3933abd340c2e59277f82d3b2c9a6422d8935fd75ec6257f06bad3"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783770811531,
+      "transactionHash": "0x10dc7f33262ebdf903d3305e40b876831067ce02bbe856b1b08086b9962b7c3a",
+      "publishedIds": [
+        "0x7c7b7b019d3933abd340c2e59277f82d3b2c9a6422d8935fd75ec6257f06bad3"
+      ],
+      "submittedAt": 1783770811601,
+      "blockNumber": "58",
+      "confirmedAt": 1783770811630,
+      "publishedAt": 1783770811713
+    }
+  ]
+}

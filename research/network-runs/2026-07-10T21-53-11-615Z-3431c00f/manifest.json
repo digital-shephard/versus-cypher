@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T21-53-11-615Z-3431c00f",
+  "startedAt": "2026-07-10T21:53:11.623Z",
+  "transport": "tcp",
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337,
+    "rpcPort": 50629
+  },
+  "agents": [
+    {
+      "name": "alpha",
+      "agentId": 1,
+      "role": "proposer"
+    },
+    {
+      "name": "beta",
+      "agentId": 2,
+      "role": "critic"
+    }
+  ],
+  "secretsRecorded": false
+}

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "84532",
+        "arena": "0xb58d83dfe713cd63928156885e61317b85793e09",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0x7f253f5609dbec6fd27071460c2d6f33ee3b9652",
+        "signals": [
+          {
+            "id": "0x6f3eb3be56e6fa7f9d9947342899f23ab2901801ac5b1d6f1351a99cfa805188",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xf8f31c5b36f2d0f4ee2b88beb86ea4301b7cc9cfe53295b0250190899bab5242",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0x7f253f5609dbec6fd27071460c2d6f33ee3b9652",
+          "cypherId": "2",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972991,
+          "slot": 0,
+          "rateNullifier": "0x7923f465fa6324f1a8b4c24027c74891b651b860a1aef28f8acb5d00de198266",
+          "createdAt": 1783795010,
+          "expiresAt": 1783881410,
+          "body": "base sepolia beta live signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xfa2674bfca00beb23641d595809511c9f130a327788f7d9f563bb6e4fb203d412202cc434ed535991e1573d68c7fc661404336564a2f91452cdfdcb41ddd495f1b",
+          "id": "0x6f3eb3be56e6fa7f9d9947342899f23ab2901801ac5b1d6f1351a99cfa805188"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783784234923,
+      "transactionHash": "0x882489a69e8181d7e5ac54cd19d0b78d4d5d79e5f094c38dcc57c1d9333aef92",
+      "publishedIds": [
+        "0x6f3eb3be56e6fa7f9d9947342899f23ab2901801ac5b1d6f1351a99cfa805188"
+      ],
+      "submittedAt": 1783784235241,
+      "blockNumber": "44013374",
+      "confirmedAt": 1783784239600,
+      "publishedAt": 1783784240047
+    }
+  ]
+}

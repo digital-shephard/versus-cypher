@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-53-14-630Z-coalition-control-11b48b89",
+  "seed": "57695ef6-bcf1-4d82-ac98-abd0baced807",
+  "codeRevision": "sha256:1fb8896a6ec0ec3a",
+  "startedAt": "2026-07-11T11:53:14.630Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "scenario": "eight-cypher-paid-coalition-with-local-trust-divergence",
+  "mode": "deterministic-reproducibility-control",
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337
+  },
+  "waku": {
+    "image": "wakuorg/nwaku:v0.38.1",
+    "clusterId": 66,
+    "nodePeerIds": [
+      "16Uiu2HAm3cuhhRL2msUuLF62KRSfneFDx94RsuouyW25Ho42cFMq",
+      "16Uiu2HAm8kegYGp6XeybmZAuNcnLosyjsRwZ44yLgfEuqLqYL9zt",
+      "16Uiu2HAmCCQRbp36trRMKRjqhRv1GAD7i1Epty3q2LiutAYCJ1oN"
+    ],
+    "topicScope": "coalition-4dcb1c04e961d7c7"
+  },
+  "agents": [
+    {
+      "name": "cypher-1",
+      "agentId": 1,
+      "address": "0xe98205f1bdB96218D576590662255C8A23cfA398",
+      "strategy": "mystery-curator",
+      "localBias": "mystery",
+      "model": "deterministic-memory-guided"
+    },
+    {
+      "name": "cypher-2",
+      "agentId": 2,
+      "address": "0x1F72260F4797B417eD63cfe006a6D13ceC32Caa0",
+      "strategy": "verification-curator",
+      "localBias": "verified",
+      "model": "deterministic-memory-guided"
+    },
+    {
+      "name": "cypher-3",
+      "agentId": 3,
+      "address": "0xEc2d0431E9ff637BF53D04E1187dA5a9fE81E707",
+      "strategy": "risk-auditor",
+      "localBias": "verified",
+      "model": "deterministic-risk-auditor"
+    },
+    {
+      "name": "cypher-4",
+      "agentId": 4,
+      "address": "0xF1fb05B4A9b7b59f689E89bFAbD9B9E77Dae2B41",
+      "strategy": "originality-auditor",
+      "localBias": "mystery",
+      "model": "deterministic-originality-auditor"
+    },
+    {
+      "name": "cypher-5",
+      "agentId": 5,
+      "address": "0x3184b18e033f8706Faf4aEBB815135e11bF19378",
+      "strategy": "verification-questioner",
+      "localBias": "neutral",
+      "model": "deterministic-verification-questioner"
+    },
+    {
+      "name": "cypher-6",
+      "agentId": 6,
+      "address": "0xB3c56A3aAF501714ab2bd3859dc53d04F49e31C4",
+      "strategy": "mystery-builder",
+      "localBias": "mystery",
+      "model": "deterministic-memory-guided"
+    },
+    {
+      "name": "cypher-7",
+      "agentId": 7,
+      "address": "0xeB558c26D49b9c6bE0fcAc886B4F52c91d1bb631",
+      "strategy": "bridge-builder",
+      "localBias": "verified",
+      "model": "deterministic-bridge-builder"
+    },
+    {
+      "name": "cypher-8",
+      "agentId": 8,
+      "address": "0x0862C9D4BD89d18c1e0A986e5AEE2D98B9FD5C39",
+      "strategy": "quiet-observer",
+      "localBias": "critical",
+      "model": "deterministic-quiet-observer"
+    }
+  ],
+  "modelCatalog": [],
+  "secretsRecorded": false
+}

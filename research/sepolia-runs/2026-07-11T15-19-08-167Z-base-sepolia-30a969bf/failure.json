@@ -1,0 +1,6 @@
+{
+  "runId": "2026-07-11T15-19-08-167Z-base-sepolia-30a969bf",
+  "failedAt": "2026-07-11T15:21:25.988Z",
+  "message": "alpha postcard did not reach beta",
+  "stack": "Error: alpha postcard did not reach beta\n    at assert (C:\\Users\\Razgriz\\Documents\\Github\\perps\\versus\\scripts\\run-base-sepolia-e2e.js:54:25)\n    at main (C:\\Users\\Razgriz\\Documents\\Github\\perps\\versus\\scripts\\run-base-sepolia-e2e.js:324:5)"
+}

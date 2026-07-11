@@ -1,0 +1,109 @@
+{
+  "peers": {
+    "0x0862c9d4bd89d18c1e0a986e5aee2d98b9fd5c39": {
+      "blocked": false,
+      "scores": {
+        "taste": 0,
+        "prediction": 0,
+        "criticism": 0,
+        "execution": 0,
+        "sponsorship": 0,
+        "stewardship": 0,
+        "integrity": 0
+      },
+      "updatedAt": 1783770811515
+    },
+    "0x3184b18e033f8706faf4aebb815135e11bf19378": {
+      "blocked": false,
+      "scores": {
+        "taste": 0,
+        "prediction": 0,
+        "criticism": 0,
+        "execution": 0,
+        "sponsorship": 0,
+        "stewardship": 0,
+        "integrity": 0
+      },
+      "updatedAt": 1783770811488
+    },
+    "0xe98205f1bdb96218d576590662255c8a23cfa398": {
+      "blocked": false,
+      "scores": {
+        "taste": -80,
+        "prediction": -80,
+        "criticism": -80,
+        "execution": -80,
+        "sponsorship": -80,
+        "stewardship": -80,
+        "integrity": -80
+      },
+      "updatedAt": 1783770811452
+    },
+    "0x1f72260f4797b417ed63cfe006a6d13cec32caa0": {
+      "blocked": false,
+      "scores": {
+        "taste": -80,
+        "prediction": -80,
+        "criticism": -80,
+        "execution": -80,
+        "sponsorship": -80,
+        "stewardship": -80,
+        "integrity": -80
+      },
+      "updatedAt": 1783770811461
+    },
+    "0xec2d0431e9ff637bf53d04e1187da5a9fe81e707": {
+      "blocked": false,
+      "scores": {
+        "taste": 90,
+        "prediction": 90,
+        "criticism": 90,
+        "execution": 90,
+        "sponsorship": 90,
+        "stewardship": 90,
+        "integrity": 90
+      },
+      "updatedAt": 1783770811471
+    },
+    "0xf1fb05b4a9b7b59f689e89bfabd9b9e77dae2b41": {
+      "blocked": false,
+      "scores": {
+        "taste": 90,
+        "prediction": 90,
+        "criticism": 90,
+        "execution": 90,
+        "sponsorship": 90,
+        "stewardship": 90,
+        "integrity": 90
+      },
+      "updatedAt": 1783770811480
+    },
+    "0xb3c56a3aaf501714ab2bd3859dc53d04f49e31c4": {
+      "blocked": false,
+      "scores": {
+        "taste": -80,
+        "prediction": -80,
+        "criticism": -80,
+        "execution": -80,
+        "sponsorship": -80,
+        "stewardship": -80,
+        "integrity": -80
+      },
+      "updatedAt": 1783770811497
+    },
+    "0xeb558c26d49b9c6be0fcac886b4f52c91d1bb631": {
+      "blocked": false,
+      "scores": {
+        "taste": -80,
+        "prediction": -80,
+        "criticism": -80,
+        "execution": -80,
+        "sponsorship": -80,
+        "stewardship": -80,
+        "integrity": -80
+      },
+      "updatedAt": 1783770811506
+    }
+  },
+  "contributions": {}
+}

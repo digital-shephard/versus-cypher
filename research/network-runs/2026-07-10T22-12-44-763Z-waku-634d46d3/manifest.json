@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T22-12-44-763Z-waku-634d46d3",
+  "seed": "89212c7e-644f-46fc-b1d4-fa21124d012c",
+  "codeRevision": "sha256:a9742383a37cb60c",
+  "startedAt": "2026-07-10T22:12:44.774Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "scenario": "two-agent-paid-public-waku-round-trip",
+  "transport": "public-waku-only",
+  "topicScope": "run-8d77c8b964e7",
+  "targetPostcards": 20,
+  "maxApplicationAttempts": 4,
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337,
+    "rpcPort": 58747
+  },
+  "secretsRecorded": false
+}

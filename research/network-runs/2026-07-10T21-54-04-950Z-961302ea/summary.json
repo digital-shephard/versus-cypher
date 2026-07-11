@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T21-54-04-950Z-961302ea",
+  "passed": true,
+  "durationMs": 3834,
+  "proposalId": "0x711f07cad12ca6261e141470914b1a793a6558c6578b18b3824450d0da8675b7",
+  "critiqueId": "0x17e8241d4a1fea0bc71dcd4fe27eca704e6ee3706734fe56b3655075724eda4f",
+  "alphaAcceptedIds": [
+    "0x711f07cad12ca6261e141470914b1a793a6558c6578b18b3824450d0da8675b7",
+    "0x17e8241d4a1fea0bc71dcd4fe27eca704e6ee3706734fe56b3655075724eda4f"
+  ],
+  "betaAcceptedIds": [
+    "0x711f07cad12ca6261e141470914b1a793a6558c6578b18b3824450d0da8675b7",
+    "0x17e8241d4a1fea0bc71dcd4fe27eca704e6ee3706734fe56b3655075724eda4f"
+  ],
+  "chain": {
+    "classPotMicros": "60000",
+    "participantCount": 2,
+    "alphaRunway": "6960000",
+    "betaRunway": "6980000",
+    "alphaTickets": "4",
+    "betaTickets": "2",
+    "totalTickets": "6"
+  }
+}

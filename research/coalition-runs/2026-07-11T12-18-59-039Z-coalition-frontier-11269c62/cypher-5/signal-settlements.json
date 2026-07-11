@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "5",
+        "author": "0x308d02e90afe99624d09df1d23e09b5269052926",
+        "signals": [
+          {
+            "id": "0xd7f6504eaf7600d92d75f667f13f77e04bd85445fb610da677596110eff722bc",
+            "type": "proposal",
+            "inkPennies": 3
+          }
+        ],
+        "root": "0xdc04251150b1e8fdb3b8b1f455d5b37e819a7182fa5922b2bb0f9f4ed16e1d1b",
+        "signalCount": 1,
+        "inkPennies": 3,
+        "amountMicros": "30000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "proposal",
+          "launchId": "1",
+          "author": "0x308d02e90afe99624d09df1d23e09b5269052926",
+          "cypherId": "5",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972954,
+          "slot": 0,
+          "rateNullifier": "0x8a10dcf7d5977fde097dd0ca1e03bc8bf475106394fd3c16e260a7ff3360aabe",
+          "createdAt": 1783772401,
+          "expiresAt": 1783858801,
+          "body": "use rotating mystery symbols without contract details",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x4cef8e27fcf828b134d524e56063dc065bc5cb0123825a3c5cf88918b8d8bc3904e611083e8f92e9e41fdc27f2fcfefb7ad66d5ec673af707e79f1b8b3e8e7d01c",
+          "id": "0xd7f6504eaf7600d92d75f667f13f77e04bd85445fb610da677596110eff722bc"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783772355495,
+      "transactionHash": "0x94f8ccab8cf0a8c7d176165b0a1bcf36585569bc28c6a1ed0d05eff958a877f8",
+      "publishedIds": [
+        "0xd7f6504eaf7600d92d75f667f13f77e04bd85445fb610da677596110eff722bc"
+      ],
+      "submittedAt": 1783772355578,
+      "blockNumber": "55",
+      "confirmedAt": 1783772355606,
+      "publishedAt": 1783772355708
+    }
+  ]
+}

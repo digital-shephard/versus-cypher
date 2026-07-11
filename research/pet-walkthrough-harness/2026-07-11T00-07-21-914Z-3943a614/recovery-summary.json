@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "passed": true,
+  "archive": {
+    "file": "versus-cypher-full-cCf2b7.versus-archive.json",
+    "bytes": 5976,
+    "format": "versus-cypher-archive",
+    "formatVersion": 1,
+    "kdf": "scrypt-n32768-r8-p1",
+    "cipher": "aes-256-gcm",
+    "plaintextTopLevelData": false
+  },
+  "restored": {
+    "profileLabel": "restore2",
+    "walletAddress": "0xcCf2b7c12818ad5367A52e9B4361785ae8b3aA43",
+    "agentId": 1,
+    "cypherId": 7,
+    "runwayMicros": "6980000",
+    "tickets": "702",
+    "postcards": 1,
+    "peerProfiles": 1,
+    "durableMemories": 0,
+    "privateThoughts": 1,
+    "privateThoughtSeen": true,
+    "encryptedWalletOnly": true,
+    "canonicalAssertionsPassed": true
+  },
+  "launchOnLogin": {
+    "enablePassed": true,
+    "enabledItemName": "Versus Walkthrough",
+    "exactExecutable": true,
+    "disablePassed": true,
+    "finalEnabled": false
+  },
+  "secretsRecorded": false
+}

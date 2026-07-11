@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "3",
+        "author": "0xe861f0e0d071832f97a23aaf053979e19f769d84",
+        "signals": [
+          {
+            "id": "0x6ee3781ee8bba7c26dc938829604b2a64651103ef9b0fd392bef28b773ba735e",
+            "type": "endorsement",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xcbeee2dafa2a72c1112464826aaa1055d5f0f09950fcf0fd65843e9b1aecf26d",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "endorsement",
+          "launchId": "1",
+          "author": "0xe861f0e0d071832f97a23aaf053979e19f769d84",
+          "cypherId": "3",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972954,
+          "slot": 0,
+          "rateNullifier": "0x00030b9b434908816615d88f071203f7a838c3ee481c9f06a0211423811d4e05",
+          "createdAt": 1783772491,
+          "expiresAt": 1783858891,
+          "body": "daily posters with a verified contract keep the official reference easy to check",
+          "replyTo": "0xcd5f0b1f45cbce1d1680606c8ad9d52822663dbc4a453f4839bb187f2158547d",
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x7b82c02a1cf4bcf60fa98827f356f96c75b9c6e4c4efe4e5a4bd9fe94a8cf0cc3bb22b11894d7e7a880c0eaa40b0dd3f4020d93cb9c0562f363b85702b5170f41b",
+          "id": "0x6ee3781ee8bba7c26dc938829604b2a64651103ef9b0fd392bef28b773ba735e"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783772447350,
+      "transactionHash": "0xd1cdc4095a40a7e29905959aec8ab87d14021312dcee38aa6bac26329c71e377",
+      "publishedIds": [
+        "0x6ee3781ee8bba7c26dc938829604b2a64651103ef9b0fd392bef28b773ba735e"
+      ],
+      "submittedAt": 1783772447416,
+      "blockNumber": "56",
+      "confirmedAt": 1783772447430,
+      "publishedAt": 1783772447536
+    }
+  ]
+}

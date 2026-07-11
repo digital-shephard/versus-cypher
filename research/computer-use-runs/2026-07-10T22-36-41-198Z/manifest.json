@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T22-36-41-198Z",
+  "startedAt": "2026-07-10T22:36:41.198Z",
+  "executable": "apps/pet/dist-walkthrough/win-unpacked/Versus.exe",
+  "electron": "36.9.5",
+  "profileKind": "disposable-clean",
+  "computerUse": true,
+  "secretsRecorded": false
+}

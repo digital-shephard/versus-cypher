@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-58-40-449975Z-stable-baseline",
+  "createdAt": "2026-07-11T11:58:40.972148+00:00",
+  "sourceRuns": [
+    "research/computer-use-runs/2026-07-10T22-36-41-198Z",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614"
+  ],
+  "bounds": {
+    "width": [
+      300,
+      1000
+    ],
+    "height": [
+      450,
+      1200
+    ],
+    "minimumVisibleRatio": 0.1,
+    "minimumLuminanceStddev": 8.0,
+    "maximumHorizontalCenterOffsetRatio": 0.08,
+    "minimumAlphaBoundsWidthRatio": 0.55,
+    "minimumAlphaBoundsHeightRatio": 0.7,
+    "maximumCornerVisibleRatio": 0.45,
+    "exactDuplicateImagesAllowed": false
+  },
+  "expectedCounts": {
+    "walkthrough": 27,
+    "network": 4,
+    "scaling": 8
+  },
+  "secretsRecorded": false
+}

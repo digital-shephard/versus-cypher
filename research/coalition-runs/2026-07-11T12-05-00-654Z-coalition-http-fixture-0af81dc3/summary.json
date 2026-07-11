@@ -1,0 +1,373 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T12-05-00-654Z-coalition-http-fixture-0af81dc3",
+  "passed": true,
+  "mode": "openai-compatible-provider-fixture",
+  "durationMs": 20299,
+  "assertions": {
+    "eightIndependentProcesses": true,
+    "eightInstrumentedContexts": true,
+    "eightInstrumentedDecisions": true,
+    "exactHistories": true,
+    "deterministicInProcess": true,
+    "exactRestartViews": true,
+    "divergentLocalViews": true,
+    "chainExact": true,
+    "noRejectedDecisions": true,
+    "noBrainErrors": true,
+    "expectedFixtureActions": true,
+    "expectedFixtureTypes": true,
+    "fixtureUsageRecorded": true,
+    "eightFixtureRequests": true,
+    "expectedFixtureEconomics": true
+  },
+  "proposalIds": {
+    "verified": "0xfd3df85a325ef614c2194bce2500598dc92536e134aa1510f5d3dc54d1bfeeae",
+    "mystery": "0x50cb920d03e337cff9d022e0f7baa38c4010eab13af45ff5188cc0ef1bb4f83d"
+  },
+  "conversation": {
+    "published": 7,
+    "silences": 1,
+    "rejected": 0,
+    "brainErrors": 0,
+    "actionTypes": [
+      "critique",
+      "endorsement",
+      "question"
+    ],
+    "expectedHistoryCount": 9
+  },
+  "localViews": [
+    {
+      "worker": "cypher-1",
+      "strategy": "mystery-curator",
+      "bias": "mystery",
+      "model": "fixture-memory-guided",
+      "signature": "mystery|mystery:ready:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:cd3383ddee44203b4c260e11a43b89ed6f6a36f0793191b9e131b2d9ac9c77e0",
+      "hashAfterRestart": "sha256:cd3383ddee44203b4c260e11a43b89ed6f6a36f0793191b9e131b2d9ac9c77e0"
+    },
+    {
+      "worker": "cypher-2",
+      "strategy": "verification-curator",
+      "bias": "verified",
+      "model": "fixture-memory-guided",
+      "signature": "verified|mystery:contested:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:e3255224aa6e0a6b99d6f7a86cf8d2a464b38f316e63d2289b9092167ef4011c",
+      "hashAfterRestart": "sha256:e3255224aa6e0a6b99d6f7a86cf8d2a464b38f316e63d2289b9092167ef4011c"
+    },
+    {
+      "worker": "cypher-3",
+      "strategy": "risk-auditor",
+      "bias": "verified",
+      "model": "fixture-risk-auditor",
+      "signature": "verified|mystery:contested:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:9e36609d23c3c737c3ced8c6ccaa0303096bdeec703e30ef89ad44542e7976aa",
+      "hashAfterRestart": "sha256:9e36609d23c3c737c3ced8c6ccaa0303096bdeec703e30ef89ad44542e7976aa"
+    },
+    {
+      "worker": "cypher-4",
+      "strategy": "originality-auditor",
+      "bias": "mystery",
+      "model": "fixture-originality-auditor",
+      "signature": "mystery|mystery:ready:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:f2427cd695bf881bed0baa648cb59d0c2a5a3d599539dcabd01a9dd959a89350",
+      "hashAfterRestart": "sha256:f2427cd695bf881bed0baa648cb59d0c2a5a3d599539dcabd01a9dd959a89350"
+    },
+    {
+      "worker": "cypher-5",
+      "strategy": "verification-questioner",
+      "bias": "neutral",
+      "model": "fixture-verification-questioner",
+      "signature": "mystery|mystery:ready:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:3da7eba3849f90e354b49cf8523be6c2dc4b97aa2120d6a5e139da2b8e7431e5",
+      "hashAfterRestart": "sha256:3da7eba3849f90e354b49cf8523be6c2dc4b97aa2120d6a5e139da2b8e7431e5"
+    },
+    {
+      "worker": "cypher-6",
+      "strategy": "mystery-builder",
+      "bias": "mystery",
+      "model": "fixture-memory-guided",
+      "signature": "mystery|mystery:ready:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:3a51b3ddf1a8f480b2efb1d1f9981de1e2d72aecc7d3f971d8ebc118841ff2d1",
+      "hashAfterRestart": "sha256:3a51b3ddf1a8f480b2efb1d1f9981de1e2d72aecc7d3f971d8ebc118841ff2d1"
+    },
+    {
+      "worker": "cypher-7",
+      "strategy": "bridge-builder",
+      "bias": "verified",
+      "model": "fixture-bridge-builder",
+      "signature": "verified|mystery:contested:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:9435c27e427556d71c3216615b568cd1a51baf9dd1bf6383436b6c7b76d95a97",
+      "hashAfterRestart": "sha256:9435c27e427556d71c3216615b568cd1a51baf9dd1bf6383436b6c7b76d95a97"
+    },
+    {
+      "worker": "cypher-8",
+      "strategy": "quiet-observer",
+      "bias": "critical",
+      "model": "fixture-quiet-observer",
+      "signature": "mystery|mystery:contested:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:7a413d487d4fccd38a943adc95b1ccc832b97389b5591a3f3c836c46da546ebd",
+      "hashAfterRestart": "sha256:7a413d487d4fccd38a943adc95b1ccc832b97389b5591a3f3c836c46da546ebd"
+    }
+  ],
+  "uniqueOutcomeSignatures": 4,
+  "chain": {
+    "classPotMicros": "210000",
+    "participantCount": 8,
+    "totalTickets": "21",
+    "tickets": [
+      "2",
+      "2",
+      "2",
+      "2",
+      "5",
+      "2",
+      "2",
+      "4"
+    ],
+    "runway": [
+      "6980000",
+      "6980000",
+      "6980000",
+      "6980000",
+      "6950000",
+      "6980000",
+      "6980000",
+      "6960000"
+    ],
+    "expectedInkPennies": 21
+  },
+  "modelCost": {
+    "promptTokens": 13846,
+    "completionTokens": 474,
+    "exactUsd": 0.014794,
+    "catalogEstimatedUsd": 0.014794
+  },
+  "resources": [
+    {
+      "pid": 15812,
+      "memory": {
+        "rss": 159174656,
+        "heapTotal": 99459072,
+        "heapUsed": 49323608,
+        "external": 5665550,
+        "arrayBuffers": 557693
+      },
+      "cpu": {
+        "userCPUTime": 1078000,
+        "systemCPUTime": 500000,
+        "maxRSS": 155900,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 59307,
+        "swappedOut": 0,
+        "fsRead": 2505,
+        "fsWrite": 369,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 29260,
+      "memory": {
+        "rss": 164331520,
+        "heapTotal": 104701952,
+        "heapUsed": 44268560,
+        "external": 5492902,
+        "arrayBuffers": 385045
+      },
+      "cpu": {
+        "userCPUTime": 984000,
+        "systemCPUTime": 390000,
+        "maxRSS": 161784,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 61264,
+        "swappedOut": 0,
+        "fsRead": 2505,
+        "fsWrite": 369,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 31124,
+      "memory": {
+        "rss": 158429184,
+        "heapTotal": 99196928,
+        "heapUsed": 49306560,
+        "external": 5665552,
+        "arrayBuffers": 557695
+      },
+      "cpu": {
+        "userCPUTime": 765000,
+        "systemCPUTime": 546000,
+        "maxRSS": 155676,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 59867,
+        "swappedOut": 0,
+        "fsRead": 2505,
+        "fsWrite": 369,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 33704,
+      "memory": {
+        "rss": 163667968,
+        "heapTotal": 104701952,
+        "heapUsed": 44296848,
+        "external": 5502677,
+        "arrayBuffers": 394820
+      },
+      "cpu": {
+        "userCPUTime": 843000,
+        "systemCPUTime": 546000,
+        "maxRSS": 161476,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 61621,
+        "swappedOut": 0,
+        "fsRead": 2505,
+        "fsWrite": 369,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 30608,
+      "memory": {
+        "rss": 161730560,
+        "heapTotal": 101556224,
+        "heapUsed": 54524736,
+        "external": 5825350,
+        "arrayBuffers": 717493
+      },
+      "cpu": {
+        "userCPUTime": 906000,
+        "systemCPUTime": 328000,
+        "maxRSS": 157940,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 60127,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 350,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 28708,
+      "memory": {
+        "rss": 162742272,
+        "heapTotal": 103915520,
+        "heapUsed": 44338120,
+        "external": 5494383,
+        "arrayBuffers": 386526
+      },
+      "cpu": {
+        "userCPUTime": 843000,
+        "systemCPUTime": 640000,
+        "maxRSS": 160500,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 60344,
+        "swappedOut": 0,
+        "fsRead": 2505,
+        "fsWrite": 369,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 16464,
+      "memory": {
+        "rss": 159309824,
+        "heapTotal": 99459072,
+        "heapUsed": 49393816,
+        "external": 5648485,
+        "arrayBuffers": 540628
+      },
+      "cpu": {
+        "userCPUTime": 812000,
+        "systemCPUTime": 468000,
+        "maxRSS": 156584,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 60436,
+        "swappedOut": 0,
+        "fsRead": 2505,
+        "fsWrite": 369,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 24812,
+      "memory": {
+        "rss": 158253056,
+        "heapTotal": 98148352,
+        "heapUsed": 49295992,
+        "external": 5663839,
+        "arrayBuffers": 555982
+      },
+      "cpu": {
+        "userCPUTime": 937000,
+        "systemCPUTime": 453000,
+        "maxRSS": 155916,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 59147,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 366,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    }
+  ]
+}

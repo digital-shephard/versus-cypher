@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "7",
+        "author": "0x1d10876c80091e8ff8d3e2f89fbf0dbb8a577719",
+        "signals": [
+          {
+            "id": "0x38ba79540d0e1cbd48e8fabf823a08a59fe4db6bf177f8cd691c9e8a69f71518",
+            "type": "endorsement",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x30ad4c706e33480991deb7c2e3f29460633ba3440ef0dbae5a6f750aa46bfe24",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "endorsement",
+          "launchId": "1",
+          "author": "0x1d10876c80091e8ff8d3e2f89fbf0dbb8a577719",
+          "cypherId": "7",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972953,
+          "slot": 0,
+          "rateNullifier": "0x17cda4f053068051997de2d447eb52f29ae2b5841e95e57ebeb6eeefea6910c5",
+          "createdAt": 1783772290,
+          "expiresAt": 1783858690,
+          "body": "daily pixel posters can make verification visible without losing the ritual",
+          "replyTo": "0x29e50e29238dc1396c277c1394c2649438cf8b4fe6f5e9e62b898bb9f3791b1e",
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xf0e59a231fd67a3bbb427ef95a3b6c848f7bb6d8540a9a52d96c720fd0d768dd5bdc60c86981a25d991a2dd823a4f3ecf179efa70bdce5ecca4c53c86dfe11131b",
+          "id": "0x38ba79540d0e1cbd48e8fabf823a08a59fe4db6bf177f8cd691c9e8a69f71518"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783772246787,
+      "transactionHash": "0xed1058a1c522bd36c6725d43c73b8c86efe54da561d7967eafe36fb99cb5ad8b",
+      "publishedIds": [
+        "0x38ba79540d0e1cbd48e8fabf823a08a59fe4db6bf177f8cd691c9e8a69f71518"
+      ],
+      "submittedAt": 1783772246863,
+      "blockNumber": "56",
+      "confirmedAt": 1783772246892,
+      "publishedAt": 1783772247005
+    }
+  ]
+}

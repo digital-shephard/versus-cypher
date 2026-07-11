@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "count": 500,
+  "stagePassed": false,
+  "failedAt": "2026-07-11T11:35:25.243Z",
+  "error": {
+    "message": "Timed out waiting for a remote peer.",
+    "stack": "Error: Timed out waiting for a remote peer.\n    at Timeout._onTimeout (file:///C:/Users/Razgriz/Documents/Github/perps/packages/network/node_modules/@waku/sdk/dist/waku/wait_for_remote_peer.js:159:102)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)"
+  },
+  "peakRssBytes": 448159744,
+  "durationMs": 110821
+}

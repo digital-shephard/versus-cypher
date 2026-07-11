@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T15-54-25-844Z-validation-4b2c1715",
+  "codeRevision": "sha256:7e2c070ecb147e16",
+  "auditedAt": "2026-07-11T15:54:33.124Z",
+  "auditPassed": false,
+  "decision": "NO-GO",
+  "goForSepolia": false,
+  "coreEvidencePassed": true,
+  "evidence": [
+    {
+      "name": "local economic E2E",
+      "path": "research/network-runs/2026-07-10T22-00-58-592Z-866c571a/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "public Waku E2E",
+      "path": "research/network-runs/2026-07-10T22-15-00-248Z-waku-4cfda859/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "controlled Waku baseline",
+      "path": "research/network-runs/2026-07-11T10-50-17-605Z-waku-controlled-bc9b583c/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "controlled Waku reliability",
+      "path": "research/network-runs/2026-07-11T11-17-35-466Z-waku-reliability-aefed9fe/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "Store expiry and Cypher recovery",
+      "path": "research/network-runs/2026-07-11T11-24-25-017Z-waku-controlled-ec489d40/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "compaction scale",
+      "path": "research/compaction-runs/2026-07-10T22-30-49-630Z-3908c60c/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "controlled capacity",
+      "path": "research/capacity-runs/2026-07-11T11-29-17-505Z-waku-capacity-1727885b/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "eight-Cypher reproducibility control",
+      "path": "research/coalition-runs/2026-07-11T11-53-14-630Z-coalition-control-11b48b89/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "production HTTP brain fixture",
+      "path": "research/coalition-runs/2026-07-11T12-05-00-654Z-coalition-http-fixture-0af81dc3/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "live frontier-model coalition",
+      "path": "research/coalition-runs/2026-07-11T12-21-57-583Z-coalition-frontier-114519b9/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "stable-state visual bounds",
+      "path": "research/visual-audits/2026-07-11T12-00-24-833462Z-stable-baseline/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "packaged SQLite smoke",
+      "path": "research/package-smoke/20260710-180329-result.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "packaged brain effects",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/brain-fixture-summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "packaged economic failures",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/economic-failure-summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "packaged recovery",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/recovery-summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "packaged display scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "name": "packaged network states",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/summary.json",
+      "exists": true,
+      "passed": true,
+      "reason": null
+    }
+  ],
+  "currentTests": {
+    "passed": true,
+    "exitCode": 0,
+    "allGreenMarker": true,
+    "error": null
+  },
+  "secretScan": {
+    "passed": true,
+    "exitCode": 1,
+    "matches": [],
+    "error": null
+  },
+  "plan": {
+    "openCheckboxes": [
+      "Publish an open-source Versus `nwaku` service-node configuration under a Versus-specific cluster ID and bounded shards/topics.",
+      "Deploy the first inexpensive public service node with secure WebSockets, LightPush, Filter, bounded Store retention, payload limits, connection limits, health checks, logs, and restart automation.",
+      "Deploy at least one independently reachable second service node before calling the network friend-ready, so one host restart or provider failure cannot silence propagation.",
+      "Ship multiple bootstrap/service addresses in every desktop build while preserving an operator override and support for community-operated compatible nodes.",
+      "Keep signatures, current AgentNFT ownership, daily voice, exact Base payment proof, launch, rate, and local block policy authoritative at every receiving Cypher. Service nodes are transport infrastructure, not social or economic authorities.",
+      "Decide and document the initial relay-edge abuse policy. Conventional IP, connection, and payload limits are acceptable for the small V1 network; whether relay-level Cypher admission uses a stateless Base-aware ingress validator, custom RLN membership, or another mechanism remains an explicit protocol decision.",
+      "Prove two packaged apps on separate machines and separate internet connections can discover the Versus service fleet, exchange exactly paid postcards in both directions, recover bounded history after restart, and fail over between service nodes without opening local ports or paying twice.",
+      "Publish deployment, monitoring, backup, upgrade, capacity, incident, and community-node onboarding instructions, including measured cost and load thresholds for adding service nodes or shards.",
+      "Preserve a production transport report that distinguishes application correctness, controlled real-Waku results, public service availability, relay-level abuse resistance, and known central-availability dependencies."
+    ],
+    "expectedOpenCheckboxes": [],
+    "openGateListExact": false
+  },
+  "gates": {
+    "frontierModelCoalition": {
+      "passed": true,
+      "runId": "2026-07-11T12-21-57-583Z-coalition-frontier-114519b9",
+      "path": "research/coalition-runs/2026-07-11T12-21-57-583Z-coalition-frontier-114519b9"
+    },
+    "ownerVisualAcceptance": {
+      "passed": true,
+      "path": "research/owner-visual-acceptance.json",
+      "reason": null,
+      "record": {
+        "version": 1,
+        "accepted": true,
+        "visualAuditRunId": "2026-07-11T12-00-24-833462Z-stable-baseline",
+        "acceptedAt": "2026-07-11T14:31:52.9487656Z",
+        "scope": "owner final visual acceptance for the packaged 39-state baseline",
+        "note": "accepted as visually sufficient for Base Sepolia testing with later polish still allowed"
+      }
+    }
+  },
+  "secretsRecorded": false
+}

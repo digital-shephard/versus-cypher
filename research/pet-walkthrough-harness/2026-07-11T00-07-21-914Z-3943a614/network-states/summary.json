@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "passed": true,
+  "states": {
+    "offline": {
+      "visible": true,
+      "peerCount": 0,
+      "source": "packaged-fixture"
+    },
+    "reconnecting": {
+      "visible": true,
+      "copyMentionsRequiredPeers": true,
+      "source": "packaged-fixture"
+    },
+    "caught_up": {
+      "visible": true,
+      "peerCount": 3,
+      "acceptedPostcards": 1,
+      "source": "public-waku"
+    },
+    "degraded_store": {
+      "visible": true,
+      "liveDeliveryExplained": true,
+      "localMemoryExplained": true,
+      "source": "packaged-fixture"
+    }
+  },
+  "transportUnitTests": {
+    "reconnectingToCaughtUp": true,
+    "requiredPeerLoss": true,
+    "missingStore": true,
+    "storeFailure": true,
+    "closeToOffline": true
+  },
+  "finalFixture": "actual",
+  "secretsRecorded": false
+}

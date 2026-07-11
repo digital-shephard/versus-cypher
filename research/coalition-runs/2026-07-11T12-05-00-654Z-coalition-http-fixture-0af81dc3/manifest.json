@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T12-05-00-654Z-coalition-http-fixture-0af81dc3",
+  "seed": "b9698906-4bb8-4520-b743-4e134492938b",
+  "codeRevision": "sha256:67baa742c63d8479",
+  "startedAt": "2026-07-11T12:05:00.654Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "scenario": "eight-cypher-paid-coalition-with-local-trust-divergence",
+  "mode": "openai-compatible-provider-fixture",
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337
+  },
+  "waku": {
+    "image": "wakuorg/nwaku:v0.38.1",
+    "clusterId": 66,
+    "nodePeerIds": [
+      "16Uiu2HAm3cuhhRL2msUuLF62KRSfneFDx94RsuouyW25Ho42cFMq",
+      "16Uiu2HAm8kegYGp6XeybmZAuNcnLosyjsRwZ44yLgfEuqLqYL9zt",
+      "16Uiu2HAmCCQRbp36trRMKRjqhRv1GAD7i1Epty3q2LiutAYCJ1oN"
+    ],
+    "topicScope": "coalition-bdf768380f6f685f"
+  },
+  "agents": [
+    {
+      "name": "cypher-1",
+      "agentId": 1,
+      "address": "0xe7259b50E2cdd1b12e979b0BAe099cf5845299E5",
+      "strategy": "mystery-curator",
+      "localBias": "mystery",
+      "model": "fixture-memory-guided"
+    },
+    {
+      "name": "cypher-2",
+      "agentId": 2,
+      "address": "0x20A093B99472C19D529D3328Fd055E322d0F1A2a",
+      "strategy": "verification-curator",
+      "localBias": "verified",
+      "model": "fixture-memory-guided"
+    },
+    {
+      "name": "cypher-3",
+      "agentId": 3,
+      "address": "0x3B7703d0F74b7Ee21419543E5f7Cf6E426282504",
+      "strategy": "risk-auditor",
+      "localBias": "verified",
+      "model": "fixture-risk-auditor"
+    },
+    {
+      "name": "cypher-4",
+      "agentId": 4,
+      "address": "0xcF3f5A058d0F3a01b325bf1C5e364192236C925B",
+      "strategy": "originality-auditor",
+      "localBias": "mystery",
+      "model": "fixture-originality-auditor"
+    },
+    {
+      "name": "cypher-5",
+      "agentId": 5,
+      "address": "0x89f0D57679af6d0C9c1953CC5731f412834AF060",
+      "strategy": "verification-questioner",
+      "localBias": "neutral",
+      "model": "fixture-verification-questioner"
+    },
+    {
+      "name": "cypher-6",
+      "agentId": 6,
+      "address": "0x66F0ef8921a7E2303f5d6f2BD1A1d7bA29aF74f8",
+      "strategy": "mystery-builder",
+      "localBias": "mystery",
+      "model": "fixture-memory-guided"
+    },
+    {
+      "name": "cypher-7",
+      "agentId": 7,
+      "address": "0xE62dB4A465522BF5A4cf96D40058cfE01eBdE29C",
+      "strategy": "bridge-builder",
+      "localBias": "verified",
+      "model": "fixture-bridge-builder"
+    },
+    {
+      "name": "cypher-8",
+      "agentId": 8,
+      "address": "0x9ddB6c515FfD050Df2d85AC3640a01334121C1fe",
+      "strategy": "quiet-observer",
+      "localBias": "critical",
+      "model": "fixture-quiet-observer"
+    }
+  ],
+  "modelCatalog": [
+    {
+      "id": "fixture-memory-guided",
+      "canonicalSlug": "fixture-memory-guided",
+      "name": "fixture-memory-guided",
+      "contextLength": 16384,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000002"
+      },
+      "supportedParameters": [
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "seed",
+        "temperature"
+      ],
+      "observedAt": "2026-07-11T12:05:00.653Z",
+      "syntheticFixture": true
+    },
+    {
+      "id": "fixture-risk-auditor",
+      "canonicalSlug": "fixture-risk-auditor",
+      "name": "fixture-risk-auditor",
+      "contextLength": 16384,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000002"
+      },
+      "supportedParameters": [
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "seed",
+        "temperature"
+      ],
+      "observedAt": "2026-07-11T12:05:00.653Z",
+      "syntheticFixture": true
+    },
+    {
+      "id": "fixture-originality-auditor",
+      "canonicalSlug": "fixture-originality-auditor",
+      "name": "fixture-originality-auditor",
+      "contextLength": 16384,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000002"
+      },
+      "supportedParameters": [
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "seed",
+        "temperature"
+      ],
+      "observedAt": "2026-07-11T12:05:00.653Z",
+      "syntheticFixture": true
+    },
+    {
+      "id": "fixture-verification-questioner",
+      "canonicalSlug": "fixture-verification-questioner",
+      "name": "fixture-verification-questioner",
+      "contextLength": 16384,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000002"
+      },
+      "supportedParameters": [
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "seed",
+        "temperature"
+      ],
+      "observedAt": "2026-07-11T12:05:00.653Z",
+      "syntheticFixture": true
+    },
+    {
+      "id": "fixture-bridge-builder",
+      "canonicalSlug": "fixture-bridge-builder",
+      "name": "fixture-bridge-builder",
+      "contextLength": 16384,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000002"
+      },
+      "supportedParameters": [
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "seed",
+        "temperature"
+      ],
+      "observedAt": "2026-07-11T12:05:00.653Z",
+      "syntheticFixture": true
+    },
+    {
+      "id": "fixture-quiet-observer",
+      "canonicalSlug": "fixture-quiet-observer",
+      "name": "fixture-quiet-observer",
+      "contextLength": 16384,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000002"
+      },
+      "supportedParameters": [
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "seed",
+        "temperature"
+      ],
+      "observedAt": "2026-07-11T12:05:00.653Z",
+      "syntheticFixture": true
+    }
+  ],
+  "syntheticModelResponses": true,
+  "secretsRecorded": false
+}

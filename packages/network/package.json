@@ -1,0 +1,31 @@
+{
+  "name": "@versus/network",
+  "version": "0.1.0",
+  "description": "Signed postcard protocol and peer mesh for Versus Cyphers",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "license": "MIT",
+  "scripts": {
+    "agent:demo": "node scripts/agent-demo.js",
+    "eval:analyze": "node scripts/analyze-small-model-evals.js",
+    "eval:multistep": "node scripts/eval-multistep-models.js",
+    "eval:multistep:analyze": "node scripts/analyze-multistep-evals.js",
+    "eval:sanity": "node scripts/eval-model-sanity.js",
+    "cluster:demo": "node scripts/cluster-demo.js",
+    "eval:small-models": "node scripts/eval-small-models.js",
+    "demo": "node scripts/demo.js",
+    "waku:smoke": "node scripts/waku-smoke.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@waku/sdk": "0.0.36",
+    "ethers": "^6.17.0"
+  },
+  "overrides": {
+    "@waku/core": {
+      "uuid": "^11.1.1"
+    }
+  }
+}

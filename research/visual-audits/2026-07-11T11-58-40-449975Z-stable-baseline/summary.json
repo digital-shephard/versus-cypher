@@ -1,0 +1,1360 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-58-40-449975Z-stable-baseline",
+  "passed": false,
+  "categoryCounts": {
+    "walkthrough": 27,
+    "network": 4,
+    "scaling": 8
+  },
+  "countChecks": {
+    "walkthrough": true,
+    "network": true,
+    "scaling": true
+  },
+  "allImageChecks": false,
+  "uniqueChecks": true,
+  "duplicates": [],
+  "failedImages": [
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-caught-up.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-offline.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-reconnecting.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-store-degraded.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-100-brain-settings.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-100-raft.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-125-brain-settings.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-125-mode-visible.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-125-raft.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-150-brain-settings.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-150-device-settings.png",
+    "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-150-raft.png"
+  ],
+  "images": [
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/01-deposit.png",
+      "filename": "01-deposit.png",
+      "sha256": "sha256:fbb01dd9c85c359b11f059d1ea7ce880577211fba353a1d68c8efc7b6e3e55e4",
+      "bytes": 300485,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 91.66,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/01b-deposit-qr.png",
+      "filename": "01b-deposit-qr.png",
+      "sha256": "sha256:34a21e2e735727db4840c7db250263ea3703868d5df7dc75af18691f3308e255",
+      "bytes": 250129,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 93.961,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/02-hatch-crack-one.png",
+      "filename": "02-hatch-crack-one.png",
+      "sha256": "sha256:a352b18682e5ea156d64dd108408ebe23f357beb95cb630ad5eb0aea69638999",
+      "bytes": 304394,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 90.304,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/03-hatch-crack-two.png",
+      "filename": "03-hatch-crack-two.png",
+      "sha256": "sha256:ea6810d39409e839d5c655750f99688f0e628ba77fa0932458824319f5918719",
+      "bytes": 308095,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 92.682,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/04-hatch-burst.png",
+      "filename": "04-hatch-burst.png",
+      "sha256": "sha256:fe8ce277aa66f6d3cb1659dd65da331ecd8d67381043c19d19c8ed24c29c845d",
+      "bytes": 298678,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 95.265,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/04-raft-evening.png",
+      "filename": "04-raft-evening.png",
+      "sha256": "sha256:e0c2687287bf8833b837051b8cfa988854afd8e8c7a2a78a71d5cc2e5d58a0aa",
+      "bytes": 266447,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 90.894,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/04-raft-morning.png",
+      "filename": "04-raft-morning.png",
+      "sha256": "sha256:1541e3f0f2c4ffc93511ddefcee0ada306d4cabad1627e4f5d9c8085080e4665",
+      "bytes": 265512,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 90.211,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/04-raft-night.png",
+      "filename": "04-raft-night.png",
+      "sha256": "sha256:cbdbef905b83c37df83e8e48b5859dcbfc28522c3d46e5a4206845331adb8448",
+      "bytes": 257780,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 94.686,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/04-raft-noon.png",
+      "filename": "04-raft-noon.png",
+      "sha256": "sha256:ae40997fdb0568f150bfc993f804840cb8b269b614333402b723a60a715264f2",
+      "bytes": 272154,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 88.364,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/04b-raft-thought.png",
+      "filename": "04b-raft-thought.png",
+      "sha256": "sha256:97df2215f83d5fe2002bf69b421b008a16ee9bb649b409c31f435e8326dd2255",
+      "bytes": 246846,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 96.318,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/05-hatch-whiteout.png",
+      "filename": "05-hatch-whiteout.png",
+      "sha256": "sha256:9cb9440941b12b4fb18360f6a8492ce8c27e8ee654487ac371efa78520293a2f",
+      "bytes": 273707,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 96.149,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/05-raft-fill-03.png",
+      "filename": "05-raft-fill-03.png",
+      "sha256": "sha256:fafb526a4a1c944bea94af6fce42f4b32588e1fe0f8e72ca115f856367bfb9f1",
+      "bytes": 284778,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 89.194,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/06-hatch-reveal.png",
+      "filename": "06-hatch-reveal.png",
+      "sha256": "sha256:f756f122c57d0951b9448c4ab8f128282a6e4eca209c002d285380b12c10710c",
+      "bytes": 280998,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 90.292,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/06-raft-fill-90.png",
+      "filename": "06-raft-fill-90.png",
+      "sha256": "sha256:5d20da97258bbdeacb718762275b091a891afdfde2fa0fe4276e6dce281d97cb",
+      "bytes": 258767,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 88.241,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/06b-raft-grad-near.png",
+      "filename": "06b-raft-grad-near.png",
+      "sha256": "sha256:e0621fe5aa4eb504482bd89ce056f2d65e4bdc19f804a06a54f8d8ae6ccb037b",
+      "bytes": 257228,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 88.068,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/07-mode-cypher.png",
+      "filename": "07-mode-cypher.png",
+      "sha256": "sha256:401aad856bd4512f64f6f72d711583fc754f6323a30dd216612b5132d4e08a52",
+      "bytes": 236221,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 96.641,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/07b-mode-cypher-back.png",
+      "filename": "07b-mode-cypher-back.png",
+      "sha256": "sha256:92651e1e6095da506f82396695f956ee3d7e18615a2c022c5cf2af9933cf3afd",
+      "bytes": 221373,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 98.204,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/08-mode-vault.png",
+      "filename": "08-mode-vault.png",
+      "sha256": "sha256:6fa3f7621bb6659e60dc3ccf565e55e4e7484b2f94df0fe332476df8e1c02ed6",
+      "bytes": 242467,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 93.946,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/09-vault-claim-ready.png",
+      "filename": "09-vault-claim-ready.png",
+      "sha256": "sha256:be30e75113fe3ae9ad3852166678e4ca6f01c491df6e7e6409d6ef3f496c6281",
+      "bytes": 247462,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 93.017,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/10-vault-claim-received.png",
+      "filename": "10-vault-claim-received.png",
+      "sha256": "sha256:1d852bff484985b3af30a0128b3c303c6475f57c1b3ee8cb4ba0313792e4bd31",
+      "bytes": 254698,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 92.593,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/10b-mode-signal.png",
+      "filename": "10b-mode-signal.png",
+      "sha256": "sha256:976da0dba1bb97eb46b5c74a9e54993247f19133c0f2efdd4a38a53e714533fd",
+      "bytes": 229863,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 93.454,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/10c-mode-signal-brain.png",
+      "filename": "10c-mode-signal-brain.png",
+      "sha256": "sha256:16dacc4e26708bbe10214946f87f4082a588ca4b3fac3a992013d6bdcb8e0f27",
+      "bytes": 229996,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 93.084,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/11-help-basics.png",
+      "filename": "11-help-basics.png",
+      "sha256": "sha256:c2d79bf6c2378186e06cdd98e7b7c9cf7447349ccc943ab71762971e05ab530b",
+      "bytes": 224915,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 97.919,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/12-help-details.png",
+      "filename": "12-help-details.png",
+      "sha256": "sha256:f3a8af98d620d1d818f24b77ca9d064f2052338c377735e56255bef46ee4a92b",
+      "bytes": 229408,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 97.396,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/13-settings-brain.png",
+      "filename": "13-settings-brain.png",
+      "sha256": "sha256:82824863a69393781f3937c0aa9d5122091587c260dc2555136c8bc6ade56487",
+      "bytes": 216132,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.75258,
+      "luminanceStddev": 97.546,
+      "alphaBounds": [
+        0,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/14-settings-device.png",
+      "filename": "14-settings-device.png",
+      "sha256": "sha256:22cbe0f29747c8628cfdb55bf0ed701d3c50019f606fe9990a8c3c03af007a8a",
+      "bytes": 214181,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.75258,
+      "luminanceStddev": 96.784,
+      "alphaBounds": [
+        0,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "walkthrough",
+      "path": "research/computer-use-runs/2026-07-10T22-36-41-198Z/shots/15-runway-funding.png",
+      "filename": "15-runway-funding.png",
+      "sha256": "sha256:91f9a107d89b1387d3e5a6b409bb9d05d477a4f1b97eb8860c5a3ec8465158aa",
+      "bytes": 206432,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 0.752432,
+      "luminanceStddev": 98.613,
+      "alphaBounds": [
+        1,
+        34,
+        390,
+        622
+      ],
+      "centerOffsetRatio": 0.001282,
+      "boundsWidthRatio": 0.997436,
+      "boundsHeightRatio": 0.91875,
+      "cornerVisibleRatios": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": true
+      },
+      "passed": true
+    },
+    {
+      "category": "network",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-caught-up.png",
+      "filename": "signal-caught-up.png",
+      "sha256": "sha256:fd50fd83305162c53c440a0c6294e4c18ab22098225d2842d3ece61633b688b0",
+      "bytes": 40209,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 89.282,
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        640
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "network",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-offline.png",
+      "filename": "signal-offline.png",
+      "sha256": "sha256:3932b7822f6fe365aafc249c61e0a32719fd66a8633ba69870230ee91f3fc176",
+      "bytes": 40245,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 89.275,
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        640
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "network",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-reconnecting.png",
+      "filename": "signal-reconnecting.png",
+      "sha256": "sha256:bc9ea6bb6ba2401f532eebf8ec50d527865eaa99b79aec2880733f67efbcfb48",
+      "bytes": 40814,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 89.266,
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        640
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "network",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/network-states/signal-store-degraded.png",
+      "filename": "signal-store-degraded.png",
+      "sha256": "sha256:2ace350c5741f78e60ee7affbf192db98d8a267bff6d67652eabcd3d4bf1d8ab",
+      "bytes": 41324,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 89.257,
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        640
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-100-brain-settings.png",
+      "filename": "scale-100-brain-settings.png",
+      "sha256": "sha256:9292a29b7427653594d3bdb50e21f3ada783d43ee3086a7b4085bf126b64e1f2",
+      "bytes": 46570,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 90.751,
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        640
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-100-raft.png",
+      "filename": "scale-100-raft.png",
+      "sha256": "sha256:3405cef6a0fe4f71a9c44978a99a57ac3c382f05a27243a3184f2a563af00f5d",
+      "bytes": 41216,
+      "width": 390,
+      "height": 640,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 91.069,
+      "alphaBounds": [
+        0,
+        0,
+        390,
+        640
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-125-brain-settings.png",
+      "filename": "scale-125-brain-settings.png",
+      "sha256": "sha256:f734c36d411ee33bcc233ce2c2b91a79d69b7089f8557cf721453f1d4b4de635",
+      "bytes": 68911,
+      "width": 490,
+      "height": 803,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 92.072,
+      "alphaBounds": [
+        0,
+        0,
+        490,
+        803
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-125-mode-visible.png",
+      "filename": "scale-125-mode-visible.png",
+      "sha256": "sha256:b140eedc74d1923b741b4f51e1cd35137b6846d568b885bd49b1aa2e17d31844",
+      "bytes": 68751,
+      "width": 490,
+      "height": 805,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 94.024,
+      "alphaBounds": [
+        0,
+        0,
+        490,
+        805
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-125-raft.png",
+      "filename": "scale-125-raft.png",
+      "sha256": "sha256:48bbaaf100af5b3538898372fc88901061fe6f601b7519a6a0f9da6d7d93882d",
+      "bytes": 59786,
+      "width": 490,
+      "height": 805,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 91.856,
+      "alphaBounds": [
+        0,
+        0,
+        490,
+        805
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-150-brain-settings.png",
+      "filename": "scale-150-brain-settings.png",
+      "sha256": "sha256:c83bce1f044bad733ace43252e34c09ed075666dd1e8c71aeb4ca523de0bde1e",
+      "bytes": 93035,
+      "width": 588,
+      "height": 960,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 92.243,
+      "alphaBounds": [
+        0,
+        0,
+        588,
+        960
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-150-device-settings.png",
+      "filename": "scale-150-device-settings.png",
+      "sha256": "sha256:5f3907558fc8901bd6fa51f25c72289e0f22d370ea1ab35a63535fd1063a67d7",
+      "bytes": 92693,
+      "width": 588,
+      "height": 960,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 91.551,
+      "alphaBounds": [
+        0,
+        0,
+        588,
+        960
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    },
+    {
+      "category": "scaling",
+      "path": "research/pet-walkthrough-harness/2026-07-11T00-07-21-914Z-3943a614/scaling/scale-150-raft.png",
+      "filename": "scale-150-raft.png",
+      "sha256": "sha256:d91c32f2931a60c9943e545d9d6f5520cde98402592f64ee27fe19ee0f55188d",
+      "bytes": 80658,
+      "width": 588,
+      "height": 960,
+      "visibleRatio": 1.0,
+      "luminanceStddev": 92.831,
+      "alphaBounds": [
+        0,
+        0,
+        588,
+        960
+      ],
+      "centerOffsetRatio": 0.0,
+      "boundsWidthRatio": 1.0,
+      "boundsHeightRatio": 1.0,
+      "cornerVisibleRatios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "checks": {
+        "validDimensions": true,
+        "notBlank": true,
+        "contentCentered": true,
+        "contentSubstantial": true,
+        "cornersNotClipped": false
+      },
+      "passed": false
+    }
+  ]
+}

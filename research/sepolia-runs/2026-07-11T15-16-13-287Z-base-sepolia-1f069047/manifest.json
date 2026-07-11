@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T15-16-13-287Z-base-sepolia-1f069047",
+  "scenario": "two-cypher-base-sepolia-economic-and-public-waku-e2e",
+  "startedAt": "2026-07-11T15:16:13.289Z",
+  "runtime": {
+    "node": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "chain": {
+    "chainId": 84532,
+    "rpcOrigin": "https://sepolia.base.org"
+  },
+  "deployment": {
+    "path": "versus/deployments/baseSepolia.json",
+    "deployedAt": "2026-07-11T15:11:09.254Z",
+    "contracts": {
+      "usdc": "0xeFB8c95Be667708Bb2c7C8f8b99282Db864EA0Ad",
+      "v2Factory": "0x03499047A426d02E1Ef84144d43591e337D59B29",
+      "v2Router": "0xA98b50d169A23a53Ad9B7e8C63C213860c9CB446",
+      "agents": "0x3A69e68f508223c170045920eb6ee5604Ec93546",
+      "arena": "0x087Dc1F50c854EeB13C9f79eefDb942afbBB58bd",
+      "syndicate": "0x160f045D5c03665Ce0521aE7cEfb6BB2eb3403Aa",
+      "treasury": "0x54eD8d68e57291e799BFE47846D9572B50D748a7",
+      "missionEscrow": "0xa47c98e5900a9AFD14264f04Df76128F8C236FCb",
+      "graduation": "0x8E59F90453c783E3aDf6cBf7994dC4BC3BaD44C4",
+      "router": "0xA98b50d169A23a53Ad9B7e8C63C213860c9CB446",
+      "protocolRecipient": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+      "graduationFloor": "1000000"
+    }
+  },
+  "actors": {
+    "master": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "alpha": "0xb910074d0ee87a75c2E2912024696A2c6127743b",
+    "beta": "0x6319EA6C3F2761F111c848D0728116B51FDBc98D"
+  },
+  "secretsRecorded": false
+}

@@ -1,0 +1,26 @@
+{
+  "name": "versus-contracts",
+  "version": "0.1.0",
+  "description": "Versus — daily agent nest-egg arena on Base",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:hardhat": "hardhat run scripts/deploy.js",
+    "simulate": "hardhat run scripts/simulate.js",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
+    "deploy:base": "hardhat run scripts/deploy.js --network base",
+    "test:all": "node ../scripts/test-all.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.3.1"
+  }
+}

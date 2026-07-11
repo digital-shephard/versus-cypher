@@ -1,0 +1,6 @@
+{
+  "runId": "2026-07-11T15-24-04-042Z-base-sepolia-82108024",
+  "failedAt": "2026-07-11T15:38:43.288Z",
+  "message": "could not coalesce error (error={ \"code\": -32016, \"message\": \"over rate limit\" }, payload={ \"id\": 42, \"jsonrpc\": \"2.0\", \"method\": \"eth_getTransactionCount\", \"params\": [ \"0xea78e0fb02987a602ae6408b8932f705a982c96a\", \"pending\" ] }, code=UNKNOWN_ERROR, version=6.17.0)",
+  "stack": "Error: could not coalesce error (error={ \"code\": -32016, \"message\": \"over rate limit\" }, payload={ \"id\": 42, \"jsonrpc\": \"2.0\", \"method\": \"eth_getTransactionCount\", \"params\": [ \"0xea78e0fb02987a602ae6408b8932f705a982c96a\", \"pending\" ] }, code=UNKNOWN_ERROR, version=6.17.0)\n    at makeError (C:\\Users\\Razgriz\\Documents\\Github\\perps\\versus\\node_modules\\ethers\\lib.commonjs\\utils\\errors.js:137:21)\n    at JsonRpcProvider.getRpcError (C:\\Users\\Razgriz\\Documents\\Github\\perps\\versus\\node_modules\\ethers\\lib.commonjs\\providers\\provider-jsonrpc.js:749:41)\n    at C:\\Users\\Razgriz\\Documents\\Github\\perps\\versus\\node_modules\\ethers\\lib.commonjs\\providers\\provider-jsonrpc.js:302:45\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+}

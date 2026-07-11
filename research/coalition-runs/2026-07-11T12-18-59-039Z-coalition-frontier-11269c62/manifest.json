@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T12-18-59-039Z-coalition-frontier-11269c62",
+  "seed": "1e9116e0-9892-475c-905b-0ba2bce81e45",
+  "codeRevision": "sha256:9bb651d8665ba03b",
+  "startedAt": "2026-07-11T12:18:59.039Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "scenario": "eight-cypher-paid-coalition-with-local-trust-divergence",
+  "mode": "frontier-model-cohort",
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337
+  },
+  "waku": {
+    "image": "wakuorg/nwaku:v0.38.1",
+    "clusterId": 66,
+    "nodePeerIds": [
+      "16Uiu2HAm3cuhhRL2msUuLF62KRSfneFDx94RsuouyW25Ho42cFMq",
+      "16Uiu2HAm8kegYGp6XeybmZAuNcnLosyjsRwZ44yLgfEuqLqYL9zt",
+      "16Uiu2HAmCCQRbp36trRMKRjqhRv1GAD7i1Epty3q2LiutAYCJ1oN"
+    ],
+    "topicScope": "coalition-85d9df7669004f54"
+  },
+  "agents": [
+    {
+      "name": "cypher-1",
+      "agentId": 1,
+      "address": "0xE603F53afe0BEDc7414d3aFFd964151B6eed3345",
+      "strategy": "mystery-curator",
+      "localBias": "mystery",
+      "model": "openai/gpt-5.6-luna"
+    },
+    {
+      "name": "cypher-2",
+      "agentId": 2,
+      "address": "0x9E51Fce9e4Cd23E06FCD19CBA88568A51e613302",
+      "strategy": "verification-curator",
+      "localBias": "verified",
+      "model": "anthropic/claude-sonnet-5"
+    },
+    {
+      "name": "cypher-3",
+      "agentId": 3,
+      "address": "0xB4cf201A51b57AeFEf8D2Da6BA42E10286989D85",
+      "strategy": "risk-auditor",
+      "localBias": "verified",
+      "model": "openai/gpt-5.6-terra"
+    },
+    {
+      "name": "cypher-4",
+      "agentId": 4,
+      "address": "0xf1E070a117dE11bFe9C6cf748E0F39c35fC89960",
+      "strategy": "originality-auditor",
+      "localBias": "mystery",
+      "model": "openai/gpt-5.6-sol"
+    },
+    {
+      "name": "cypher-5",
+      "agentId": 5,
+      "address": "0x308d02E90AFE99624d09dF1d23e09B5269052926",
+      "strategy": "verification-questioner",
+      "localBias": "neutral",
+      "model": "openai/gpt-5.6-luna"
+    },
+    {
+      "name": "cypher-6",
+      "agentId": 6,
+      "address": "0xC1a982b93e27e5bC86FAE844f6Ee2Cfa82794c40",
+      "strategy": "mystery-builder",
+      "localBias": "mystery",
+      "model": "anthropic/claude-sonnet-5"
+    },
+    {
+      "name": "cypher-7",
+      "agentId": 7,
+      "address": "0x068a79D846251a528dF6Fc6E1215C4A1e407E3c9",
+      "strategy": "bridge-builder",
+      "localBias": "verified",
+      "model": "openai/gpt-5.6-terra"
+    },
+    {
+      "name": "cypher-8",
+      "agentId": 8,
+      "address": "0x72da4fc8168F8fF404D19F1521508973e515bf1a",
+      "strategy": "quiet-observer",
+      "localBias": "critical",
+      "model": "openai/gpt-5.6-sol"
+    }
+  ],
+  "modelCatalog": [
+    {
+      "id": "openai/gpt-5.6-luna",
+      "canonicalSlug": "openai/gpt-5.6-luna-20260709",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "contextLength": 1050000,
+      "pricing": {
+        "prompt": "0.000001",
+        "completion": "0.000006",
+        "web_search": "0.01",
+        "input_cache_read": "0.0000001",
+        "input_cache_write": "0.00000125"
+      },
+      "supportedParameters": [
+        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "seed",
+        "structured_outputs",
+        "tool_choice",
+        "tools"
+      ],
+      "observedAt": "2026-07-11T12:18:59.038Z"
+    },
+    {
+      "id": "anthropic/claude-sonnet-5",
+      "canonicalSlug": "anthropic/claude-sonnet-5-20260630",
+      "name": "Anthropic: Claude Sonnet 5",
+      "contextLength": 1000000,
+      "pricing": {
+        "prompt": "0.000002",
+        "completion": "0.00001",
+        "web_search": "0.01",
+        "input_cache_read": "0.0000002",
+        "input_cache_write": "0.0000025",
+        "input_cache_write_1h": "0.000004"
+      },
+      "supportedParameters": [
+        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "stop",
+        "structured_outputs",
+        "tool_choice",
+        "tools",
+        "verbosity"
+      ],
+      "observedAt": "2026-07-11T12:18:59.039Z"
+    },
+    {
+      "id": "openai/gpt-5.6-terra",
+      "canonicalSlug": "openai/gpt-5.6-terra-20260709",
+      "name": "OpenAI: GPT-5.6 Terra",
+      "contextLength": 1050000,
+      "pricing": {
+        "prompt": "0.0000025",
+        "completion": "0.000015",
+        "web_search": "0.01",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.000003125"
+      },
+      "supportedParameters": [
+        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "seed",
+        "structured_outputs",
+        "tool_choice",
+        "tools"
+      ],
+      "observedAt": "2026-07-11T12:18:59.039Z"
+    },
+    {
+      "id": "openai/gpt-5.6-sol",
+      "canonicalSlug": "openai/gpt-5.6-sol-20260709",
+      "name": "OpenAI: GPT-5.6 Sol",
+      "contextLength": 1050000,
+      "pricing": {
+        "prompt": "0.000005",
+        "completion": "0.00003",
+        "web_search": "0.01",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625"
+      },
+      "supportedParameters": [
+        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "seed",
+        "structured_outputs",
+        "tool_choice",
+        "tools"
+      ],
+      "observedAt": "2026-07-11T12:18:59.039Z"
+    }
+  ],
+  "syntheticModelResponses": false,
+  "secretsRecorded": false
+}

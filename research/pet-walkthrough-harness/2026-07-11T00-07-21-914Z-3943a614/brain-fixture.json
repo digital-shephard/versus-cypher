@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "pid": 38172,
+  "port": 57958,
+  "baseUrl": "http://127.0.0.1:57958",
+  "endpoints": {
+    "success": "http://127.0.0.1:57958/v1/success",
+    "key": "http://127.0.0.1:57958/v1/key",
+    "timeout": "http://127.0.0.1:57958/v1/timeout",
+    "malformed": "http://127.0.0.1:57958/v1/malformed",
+    "httpError": "http://127.0.0.1:57958/v1/http-error"
+  },
+  "requiredTestKey": "walkthrough-key",
+  "recordsSecrets": false,
+  "startedAt": "2026-07-11T00:18:12.427Z"
+}

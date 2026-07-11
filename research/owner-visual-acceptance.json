@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "accepted": true,
+  "visualAuditRunId": "2026-07-11T12-00-24-833462Z-stable-baseline",
+  "acceptedAt": "2026-07-11T14:31:52.9487656Z",
+  "scope": "owner final visual acceptance for the packaged 39-state baseline",
+  "note": "accepted as visually sufficient for Base Sepolia testing with later polish still allowed"
+}

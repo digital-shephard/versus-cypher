@@ -1,0 +1,164 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "generatedAt": "2026-07-11T00:27:20.238Z",
+  "requestCount": 11,
+  "byRoute": {
+    "/v1/success": {
+      "count": 4,
+      "keyAccepted": 0,
+      "keyRejected": 0
+    },
+    "/v1/key": {
+      "count": 3,
+      "keyAccepted": 1,
+      "keyRejected": 2
+    },
+    "/v1/malformed": {
+      "count": 2,
+      "keyAccepted": 1,
+      "keyRejected": 1
+    },
+    "/v1/timeout": {
+      "count": 2,
+      "keyAccepted": 1,
+      "keyRejected": 0
+    }
+  },
+  "requests": [
+    {
+      "at": 1783729214946,
+      "route": "/v1/success",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": false,
+      "keyValid": false
+    },
+    {
+      "at": 1783729227334,
+      "route": "/v1/success",
+      "bodyBytes": 4032,
+      "bodySha256": "1471b3060a34e91fbe33d0102e7c3cf1e7631393afd08942051f6fad222f5f8d",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": false,
+      "keyValid": false
+    },
+    {
+      "at": 1783729291162,
+      "route": "/v1/success",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": false,
+      "keyValid": false
+    },
+    {
+      "at": 1783729304629,
+      "route": "/v1/success",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": false,
+      "keyValid": false
+    },
+    {
+      "at": 1783729353374,
+      "route": "/v1/key",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": true,
+      "keyValid": false
+    },
+    {
+      "at": 1783729386357,
+      "route": "/v1/key",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": true,
+      "keyValid": true
+    },
+    {
+      "at": 1783729398790,
+      "route": "/v1/malformed",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": true,
+      "keyValid": true
+    },
+    {
+      "at": 1783729410131,
+      "route": "/v1/timeout",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": true,
+      "keyValid": true
+    },
+    {
+      "at": 1783729533932,
+      "route": "/v1/timeout",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": false,
+      "keyValid": false
+    },
+    {
+      "at": 1783729548421,
+      "route": "/v1/key",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": true,
+      "keyValid": false
+    },
+    {
+      "at": 1783729560954,
+      "route": "/v1/malformed",
+      "bodyBytes": 880,
+      "bodySha256": "643e04e0a18215c3287865edac980f7a76c7f9f604efb6aa57a858b9a0274dd1",
+      "model": "walkthrough-brain",
+      "messageCount": 2,
+      "keyPresent": true,
+      "keyValid": false
+    }
+  ],
+  "privateThoughts": [
+    {
+      "id": "1783729227336-ucmhuaf",
+      "text": "the shared tide is worth watching quietly",
+      "state": "seen",
+      "createdAt": 1783729227336,
+      "seenAt": 1783729245989
+    }
+  ],
+  "publicPostcards": {
+    "total": 1,
+    "authoredByLocalCypher": 0
+  },
+  "checks": {
+    "successfulResponseObserved": true,
+    "badKeyObserved": true,
+    "validKeyObserved": true,
+    "timeoutObserved": true,
+    "malformedObserved": true,
+    "privateThoughtSeen": true,
+    "silencePublishedNothing": true
+  },
+  "secretsRecorded": false,
+  "passed": true
+}

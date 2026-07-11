@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0xb2f4995584b308cb0b3f2a9ce40f82aff36de9bf",
+        "signals": [
+          {
+            "id": "0x7ce625dd44aec784f325ace717a9e7c84bdd042f36294d2023d45fd54878ccdf",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x1572f0a3b43b6981b025326baf8e77c0c10f52a69883e5d00bf6c9417576ca42",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xb2f4995584b308cb0b3f2a9ce40f82aff36de9bf",
+          "cypherId": "2",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 0,
+          "rateNullifier": "0x271deb37f7c7f8654f7b8ea45d7d2075c3d09e344a155de7a5d8ab52162afb98",
+          "createdAt": 1783768573,
+          "expiresAt": 1783854973,
+          "body": "filter failover signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0xaa7fdb5f7b8c63a6cc4d0bbf52658070d335c30b433ae01594612d98ea71e1ef3be41d32bae9bf99848bac8e269873c093131840caa59402811f63a5a23145f11b",
+          "id": "0x7ce625dd44aec784f325ace717a9e7c84bdd042f36294d2023d45fd54878ccdf"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783768557874,
+      "transactionHash": "0x584ed09a930306a7fa8522a5db033b5c8569f59992699152dc96fbc63e44f9bf",
+      "publishedIds": [
+        "0x7ce625dd44aec784f325ace717a9e7c84bdd042f36294d2023d45fd54878ccdf"
+      ],
+      "submittedAt": 1783768557974,
+      "blockNumber": "36",
+      "confirmedAt": 1783768557999,
+      "publishedAt": 1783768558082
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0xb2f4995584b308cb0b3f2a9ce40f82aff36de9bf",
+        "signals": [
+          {
+            "id": "0x1449ba6fc5edd0dc78bbc80b259fef9822d9c45bcfdd6e8746f3177c568b7ea1",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xf68b5b1bd38ee9dea07bf65f2f4d3e15f8469d1cb5ab78b64697b4f8006415b9",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xb2f4995584b308cb0b3f2a9ce40f82aff36de9bf",
+          "cypherId": "2",
+          "sequence": 1,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 1,
+          "rateNullifier": "0x7df74322829a19e7f224f20a0c31f89135e6c494cf4d5a8bbeaa7689c83bd6f4",
+          "createdAt": 1783768573,
+          "expiresAt": 1783854973,
+          "body": "rpc outage should not settle",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x0a739d9e28386670d10dc4f9c96be74eb8c6dd48969b88c5c41f9f8f18af00fa4b710ee9cf223bc5e38d64d239faed9431ebcd33a7f58c03822409725837d0381b",
+          "id": "0x1449ba6fc5edd0dc78bbc80b259fef9822d9c45bcfdd6e8746f3177c568b7ea1"
+        }
+      ],
+      "status": "failed",
+      "preparedAt": 1783768631557,
+      "transactionHash": null,
+      "publishedIds": [],
+      "failure": "server response 503 Service Unavailable (request={  }, response={  }, error=null, info={ \"requestUrl\": \"http://127.0.0.1:51220\", \"responseBody\": \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":2,\\\"error\\\":{\\\"code\\\":-32098,\\\"message\\\":\\\"controlled rpc offline\\",
+      "failedAt": 1783768631585
+    },
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0xb2f4995584b308cb0b3f2a9ce40f82aff36de9bf",
+        "signals": [
+          {
+            "id": "0x63929cf3f5beaf96a6e06fe018214d4027d0191ff1c7d4c05b79cb722c917da5",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0xf455229f9c9b29ac90d5622d94268a303a05799228a1754f3db0f1e3605ddd32",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xb2f4995584b308cb0b3f2a9ce40f82aff36de9bf",
+          "cypherId": "2",
+          "sequence": 1,
+          "voiceDay": 20645,
+          "epoch": 2972947,
+          "slot": 1,
+          "rateNullifier": "0x7df74322829a19e7f224f20a0c31f89135e6c494cf4d5a8bbeaa7689c83bd6f4",
+          "createdAt": 1783768573,
+          "expiresAt": 1783854973,
+          "body": "rpc recovery signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x80ec8a070e74ffd25c1721a638b536b750946c539c44c0c5b3e2acb22d7f943b7677490123199ec47a15163c12fefd12df3e30a442b6597c0b99bc87a75381f01c",
+          "id": "0x63929cf3f5beaf96a6e06fe018214d4027d0191ff1c7d4c05b79cb722c917da5"
+        }
+      ],
+      "status": "failed",
+      "preparedAt": 1783768631669,
+      "transactionHash": null,
+      "publishedIds": [],
+      "failure": "server response 503 Service Unavailable (request={  }, response={  }, error=null, info={ \"requestUrl\": \"http://127.0.0.1:51220\", \"responseBody\": \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":2,\\\"error\\\":{\\\"code\\\":-32098,\\\"message\\\":\\\"controlled rpc offline\\",
+      "failedAt": 1783768631671
+    }
+  ]
+}

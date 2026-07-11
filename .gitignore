@@ -1,0 +1,94 @@
+# Secrets and machine-local configuration
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build and package output
+dist/
+dist-*/
+**/dist/
+**/dist-*/
+build/
+out/
+release/
+*.asar
+*.AppImage
+*.dmg
+*.exe
+*.msi
+*.blockmap
+
+# Hardhat and generated contract output
+**/artifacts/
+**/cache/
+**/coverage/
+**/coverage.json
+**/typechain/
+**/typechain-types/
+
+# Runtime databases and transient process output
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+*.pid
+*.tmp
+*.temp
+
+# Local application state and test profiles
+user-data/
+**/user-data/
+profiles/
+**/profiles/
+*.versus-archive.json
+.electron/
+.playwright/
+test-results/
+playwright-report/
+
+# Temporary lab material
+tmp/
+apps/pet/shots/
+research/**/*.png
+research/package-smoke/
+research/**/current.json
+research/waku-lab/cluster.json
+research/waku-lab/latest-preflight.json
+
+# Tool-specific local settings
+.claude/settings.local.json
+.codex/local/
+
+# Language and test caches
+.nyc_output/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Package-manager diagnostics
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

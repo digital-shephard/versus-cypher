@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-01-33-182Z-waku-reliability-3782e78e",
+  "codeRevision": "sha256:cbcee097952eee11",
+  "startedAt": "2026-07-11T11:01:33.184Z",
+  "scenario": "controlled-waku-destructive-reliability",
+  "topicScope": "fault-8502d046fffd",
+  "cluster": {
+    "image": "wakuorg/nwaku:v0.38.1",
+    "dockerVersion": "29.2.1",
+    "clusterId": 66,
+    "numShardsInCluster": 8,
+    "nodes": [
+      {
+        "name": "node1",
+        "peerId": "16Uiu2HAm9jQyWV32qQJa6rJayG1zURLDsSCAeu67WSbooxmKwNkA",
+        "websocketMultiaddr": "/ip4/127.0.0.1/tcp/18000/ws/p2p/16Uiu2HAm9jQyWV32qQJa6rJayG1zURLDsSCAeu67WSbooxmKwNkA"
+      },
+      {
+        "name": "node2",
+        "peerId": "16Uiu2HAmH6bqvSzdfY9pUCQY6zZkgipwSiomZxBdueNFguxzkQhd",
+        "websocketMultiaddr": "/ip4/127.0.0.1/tcp/18001/ws/p2p/16Uiu2HAmH6bqvSzdfY9pUCQY6zZkgipwSiomZxBdueNFguxzkQhd"
+      },
+      {
+        "name": "node3",
+        "peerId": "16Uiu2HAmLD9dwuX2zzrXsbSDaXU5cH6uv3thfdfMWUNNi5njCnBm",
+        "websocketMultiaddr": "/ip4/127.0.0.1/tcp/18002/ws/p2p/16Uiu2HAmLD9dwuX2zzrXsbSDaXU5cH6uv3thfdfMWUNNi5njCnBm"
+      }
+    ]
+  },
+  "faults": [
+    "relay-kill",
+    "publisher-crash",
+    "filter-failover",
+    "partition-heal",
+    "drop-delay-duplicate-reorder",
+    "process-restart",
+    "rpc-outage"
+  ],
+  "secretsRecorded": false
+}

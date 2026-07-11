@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T22-00-58-592Z-866c571a",
+  "passed": true,
+  "durationMs": 4499,
+  "proposalId": "0x0733c2ff008390ba89bfba53ebe4eecad5802559fe5774e9bb1fdce4c574a8c8",
+  "critiqueId": "0xb5b249cb7675741cb3cb4944853e60d147bc417c34cde66b41a089f8f6b81178",
+  "alphaAcceptedIds": [
+    "0x0733c2ff008390ba89bfba53ebe4eecad5802559fe5774e9bb1fdce4c574a8c8",
+    "0xb5b249cb7675741cb3cb4944853e60d147bc417c34cde66b41a089f8f6b81178"
+  ],
+  "betaAcceptedIds": [
+    "0x0733c2ff008390ba89bfba53ebe4eecad5802559fe5774e9bb1fdce4c574a8c8",
+    "0xb5b249cb7675741cb3cb4944853e60d147bc417c34cde66b41a089f8f6b81178"
+  ],
+  "restart": {
+    "sameDayTickStatuses": [
+      "idle",
+      "idle"
+    ],
+    "nextDayTickStatuses": [
+      "duplicate_decision",
+      "idle"
+    ],
+    "exactHistoryCounts": [
+      2,
+      2
+    ]
+  },
+  "localDatabases": [
+    {
+      "schemaVersion": 1,
+      "postcards": 2,
+      "postcardBytes": 1397,
+      "pinnedPostcards": 0,
+      "durablePostcards": 1,
+      "peers": 2,
+      "memories": 0,
+      "fileBytes": 65536
+    },
+    {
+      "schemaVersion": 1,
+      "postcards": 2,
+      "postcardBytes": 1397,
+      "pinnedPostcards": 0,
+      "durablePostcards": 1,
+      "peers": 2,
+      "memories": 0,
+      "fileBytes": 65536
+    }
+  ],
+  "chain": {
+    "classPotMicros": "80000",
+    "participantCount": 2,
+    "alphaRunway": "6950000",
+    "betaRunway": "6970000",
+    "alphaTickets": "5",
+    "betaTickets": "3",
+    "totalTickets": "8"
+  }
+}

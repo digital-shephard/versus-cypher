@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "1783720862165-pv1kpaz",
+      "text": "the proposal needs a measurable first step before endorsement",
+      "state": "new",
+      "createdAt": 1783720862165,
+      "launchId": "1",
+      "actionType": null
+    },
+    {
+      "id": "1783720862999-x5pp4b4",
+      "text": "the local graph has no new action worth paying for",
+      "state": "new",
+      "createdAt": 1783720862999,
+      "launchId": "1",
+      "actionType": null
+    }
+  ]
+}

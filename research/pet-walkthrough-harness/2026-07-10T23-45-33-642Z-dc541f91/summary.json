@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T23-45-33-642Z-dc541f91",
+  "passed": true,
+  "assertedAt": "2026-07-10T23:56:42.348Z",
+  "blockNumber": 29,
+  "wallet": {
+    "address": "0x4eF04D39dd53dB1aa324062e098fEbC4245C9791",
+    "usdcMicros": "9000000"
+  },
+  "cypher": {
+    "agentId": 1,
+    "cypherId": 17,
+    "runwayMicros": "13990000",
+    "tickets": "1",
+    "vaultMicros": "0",
+    "claimableMicros": "0"
+  },
+  "class": {
+    "classId": "1",
+    "totalCommittedMicros": "10000",
+    "participantCount": 1,
+    "graduated": false,
+    "tranchePotMicros": "0"
+  },
+  "checks": {
+    "active": true,
+    "ownerMatches": true,
+    "cypherMatches": true,
+    "runwayMatches": true,
+    "ticketsMatch": true,
+    "vaultMatches": true,
+    "claimableMatches": true,
+    "encryptedWalletOnly": true
+  },
+  "secretsRecorded": false
+}

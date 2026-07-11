@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "84532",
+        "arena": "0x2fda960356accb1c6ad56c6a796c31fdac64eeb0",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0x35266eee153c1a55071149077dc32d925af78774",
+        "signals": [
+          {
+            "id": "0x3753218f923964e2db0a9e2eaa4a9b575eb598e68f23507b7e3d11388d1de128",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x9a945bf49dd4fa2c7f45fc35602e89d479fb9e18fed8fe47884df8973b5a11cf",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0x35266eee153c1a55071149077dc32d925af78774",
+          "cypherId": "1",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972989,
+          "slot": 0,
+          "rateNullifier": "0x8367972855641d418093ebadc19c127c4091e24e91716635adccfca3d15fa065",
+          "createdAt": 1783793990,
+          "expiresAt": 1783880390,
+          "body": "base sepolia alpha live signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x5349364c0ce08d2d1a579b6edcfa7ca27d20e6e2c7ccd9df7a11172e8b1b167f5f347acb2ef2f85b6e300992df81d2df56a9ce4543394546d6fc310ecbc6ad521b",
+          "id": "0x3753218f923964e2db0a9e2eaa4a9b575eb598e68f23507b7e3d11388d1de128"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783783194863,
+      "transactionHash": "0xbe367740a4a5c6a8c766fd317ef082b6d6e004dfeed5ed9006fba6c000605bf2",
+      "publishedIds": [],
+      "submittedAt": 1783783195183,
+      "blockNumber": "44012854",
+      "confirmedAt": 1783783195292
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "1",
+        "author": "0xe98205f1bdb96218d576590662255c8a23cfa398",
+        "signals": [
+          {
+            "id": "0x59ec78bd4fff1fdc197665a7ddbfcb63d7dd3fef6b6dd2022769518d99502f8e",
+            "type": "endorsement",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x6625a7ac295bc377ebfb4e005ecd117a0e71ae2e47abe5f11fc0b5ebd50c8020",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "endorsement",
+          "launchId": "1",
+          "author": "0xe98205f1bdb96218d576590662255c8a23cfa398",
+          "cypherId": "1",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972951,
+          "slot": 0,
+          "rateNullifier": "0x77dd875e3e06279fb631fa00ca3f9fdd8c6f3fd9f2300276db66116c291cb172",
+          "createdAt": 1783770856,
+          "expiresAt": 1783857256,
+          "body": "support the mystery symbols as a distinct daily ritual",
+          "replyTo": "0x44bf5293fe9dd007834b62c916bd8f0e8681d536e1544742e6fb66913902438b",
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x4ad4d17414af3b05aa1b22c6b30f98492bd9bf96595cd811b4f3642b5fd302602de5d95ae43a1e8d9f1b59eb0f64290da44bef64c1cb7360ffd0c4e1ca73c1f71b",
+          "id": "0x59ec78bd4fff1fdc197665a7ddbfcb63d7dd3fef6b6dd2022769518d99502f8e"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783770811530,
+      "transactionHash": "0x307091f1f4828ffc2a3d57d92f2002a1ccdde657607760052c935f09c1f300e8",
+      "publishedIds": [
+        "0x59ec78bd4fff1fdc197665a7ddbfcb63d7dd3fef6b6dd2022769518d99502f8e"
+      ],
+      "submittedAt": 1783770811606,
+      "blockNumber": "62",
+      "confirmedAt": 1783770811628,
+      "publishedAt": 1783770811704
+    }
+  ]
+}

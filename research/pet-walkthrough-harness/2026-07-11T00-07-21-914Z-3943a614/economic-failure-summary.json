@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "passed": true,
+  "cases": {
+    "rpcOutage": {
+      "passed": true,
+      "visibleState": "Base connection is offline. Try again when it returns.",
+      "transportStatus": 503,
+      "recoveryState": "CHAIN CURRENT"
+    },
+    "emptyRunway": {
+      "passed": true,
+      "beforeMicros": "6990000",
+      "afterMicros": "0",
+      "visibleState": "VAULT EMPTY",
+      "replenishedMicros": "7000000"
+    },
+    "insufficientGas": {
+      "passed": true,
+      "afterWei": "0",
+      "visibleState": "NEEDS GAS",
+      "recoveryFundingWei": "3000000000000000"
+    }
+  },
+  "final": {
+    "blockNumber": 36,
+    "runwayMicros": "6980000",
+    "tickets": "702",
+    "classCommittedMicros": "7040000",
+    "participantCount": 2,
+    "assertionsPassed": true
+  },
+  "secretsRecorded": false
+}

@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T15-24-04-042Z-base-sepolia-82108024",
+  "passed": true,
+  "durationMs": 946702,
+  "assertions": {
+    "deploymentReceiptsAndCode": true,
+    "immutableConfiguration": true,
+    "twoDistinctRegisteredCyphers": true,
+    "dailyVoiceConfirmed": true,
+    "realWakuPaidRoundTrip": true,
+    "localHistorySurvivesRestart": true,
+    "exactOneDollarClass": true,
+    "graduationAndLiquidity": true,
+    "taxAssignedToCurrentMonth": true,
+    "arbitraryPriorMonthRejected": true,
+    "prematureCurrentMonthRejected": true,
+    "missionReleasedAndWithdrawn": true,
+    "runwayReplenished": true,
+    "restartStateExact": true,
+    "noSecretsRecorded": true
+  },
+  "chain": {
+    "chainId": 84532,
+    "startBlock": 44012971,
+    "endBlock": 44013451,
+    "masterBalanceStartWei": "790493853113917",
+    "masterBalanceEndWei": "787677306557635",
+    "masterSpentWei": "2816546556282",
+    "balanceMeasurementScope": "final successful continuation only"
+  },
+  "actors": {
+    "master": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "alpha": "0x91FD103f30Bb9Ae12259605F33BEa6287B417af2",
+    "beta": "0x7F253F5609DBeC6Fd27071460C2D6f33EE3B9652"
+  },
+  "cyphers": {
+    "alpha": {
+      "agentId": 1,
+      "runway": "6520000",
+      "tickets": "98"
+    },
+    "beta": {
+      "agentId": 2,
+      "runway": "6980000",
+      "tickets": "2"
+    }
+  },
+  "conversation": {
+    "postcardIds": [
+      "0x6f3eb3be56e6fa7f9d9947342899f23ab2901801ac5b1d6f1351a99cfa805188",
+      "0xdcde1f5f3cabcf385e4d4a996a7638f7210e17ce2558488133db27e43d84d3a0"
+    ],
+    "launchId": "1",
+    "wakuNetworkKind": "controlled-real-waku",
+    "restartHistoryExact": true
+  },
+  "transportEvidence": {
+    "controlledRealWaku": {
+      "passed": true,
+      "image": "wakuorg/nwaku:v0.38.1",
+      "nodeCount": 3
+    },
+    "publicWakuAtRunTime": {
+      "passed": false,
+      "blocker": "public cluster-1 service peers rejected v3 with RLN validation failed and v2 with proof generation failed",
+      "paidPostcardRemainedQueuedWithoutRepayment": true
+    }
+  },
+  "graduation": {
+    "classId": 1,
+    "token": "0x1f116f7eD9B36D063Ae39D102Af79D1E751eda10",
+    "pair": "0x026b6027C2041a55B7c7CF535C79DA88bc53CD6a",
+    "tokenName": "Versus Token 0",
+    "tokenSymbol": "VRS0",
+    "usdcSeeded": "1000000"
+  },
+  "tranche": {
+    "currentMonth": "688",
+    "currentPendingPot": "1092",
+    "nextFinalizableAt": 1785888000,
+    "successfulLiveClaimDeferredUntilMonthEnd": true,
+    "localClaimPathCoveredByContractSuite": true
+  },
+  "mission": {
+    "escrowId": "1",
+    "amount": "1000000",
+    "withdrawn": "1000000"
+  },
+  "transactions": [
+    {
+      "label": "fund alpha gas",
+      "actor": "master",
+      "hash": "0xbe07fcc99c7405d8960f6b180e4c170bbfc171491aa90deb2690fc40fe549ed8",
+      "blockNumber": 44012979,
+      "status": 1,
+      "gasUsed": "21000"
+    },
+    {
+      "label": "fund beta gas",
+      "actor": "master",
+      "hash": "0x60cc46e831de23fca671e6bb520e795fe5bed2784dc2100477af9f3819329371",
+      "blockNumber": 44012980,
+      "status": 1,
+      "gasUsed": "21000"
+    },
+    {
+      "label": "mint alpha test usdc",
+      "actor": "master",
+      "hash": "0x11c4beeb03f8fdfc9c0058213c603cd46edc32c8581813d79e948dcf725b1321",
+      "blockNumber": 44012983,
+      "status": 1,
+      "gasUsed": "50993"
+    },
+    {
+      "label": "mint beta test usdc",
+      "actor": "master",
+      "hash": "0x4b0ac2eb466081c1163588f2edefaee2e0815de4adccb770f114367e0b12161f",
+      "blockNumber": 44012985,
+      "status": 1,
+      "gasUsed": "50993"
+    },
+    {
+      "label": "approve alpha arena",
+      "actor": "alpha",
+      "hash": "0x81af3552878e1b13961061a4ddd948f457a309a7fd3c5b341041de1de2e4c623",
+      "blockNumber": 44012988,
+      "status": 1,
+      "gasUsed": "46269"
+    },
+    {
+      "label": "hatch alpha cypher",
+      "actor": "alpha",
+      "hash": "0xbf487d9b1db8a40906c8fed3933dc1bc57542b5c93201dc77f586e45e2992752",
+      "blockNumber": 44012990,
+      "status": 1,
+      "gasUsed": "184328",
+      "agentId": "1"
+    },
+    {
+      "label": "approve beta arena",
+      "actor": "beta",
+      "hash": "0xe51a7c8a3d2c3f2da1b33d9291abe4e5240d73258cadc4889cb2095a5db97c66",
+      "blockNumber": 44012993,
+      "status": 1,
+      "gasUsed": "46269"
+    },
+    {
+      "label": "hatch beta cypher",
+      "actor": "beta",
+      "hash": "0x97da53e5ca9857146a3dd692474720df429ab3cafb00eb0a78965086bcc8c3cc",
+      "blockNumber": 44012995,
+      "status": 1,
+      "gasUsed": "145328",
+      "agentId": "2"
+    },
+    {
+      "label": "commit alpha daily voice",
+      "actor": "alpha",
+      "hash": "0xb321cb2be5c36f7fd1e3b806f56156a3b4d8fc1e349084c90f8becdeb06390e5",
+      "blockNumber": 44012997,
+      "status": 1,
+      "gasUsed": "310378"
+    },
+    {
+      "label": "commit beta daily voice",
+      "actor": "beta",
+      "hash": "0x5ed1a72361f55ad32414b31cf95834ef03cb3876a9f8995876ba125d86e01c33",
+      "blockNumber": 44013000,
+      "status": 1,
+      "gasUsed": "223301"
+    },
+    {
+      "label": "settle and publish alpha postcard",
+      "actor": "alpha",
+      "hash": "0x4afc380528fd1d1513a853ee6e2f6f7ed46f0fa8a7b746b0f74ec009e2c2169a",
+      "blockNumber": 44013004,
+      "status": 1,
+      "gasUsed": "128636",
+      "postcardId": "0xdcde1f5f3cabcf385e4d4a996a7638f7210e17ce2558488133db27e43d84d3a0"
+    },
+    {
+      "label": "settle and publish beta postcard",
+      "actor": "beta",
+      "hash": "0x882489a69e8181d7e5ac54cd19d0b78d4d5d79e5f094c38dcc57c1d9333aef92",
+      "blockNumber": 44013374,
+      "status": 1,
+      "gasUsed": "128636",
+      "postcardId": "0x6f3eb3be56e6fa7f9d9947342899f23ab2901801ac5b1d6f1351a99cfa805188"
+    },
+    {
+      "label": "fill class with ninety six pennies",
+      "actor": "alpha",
+      "hash": "0xd5380fdc2d652a22b0e8d226c708e5e5e5388648c53fc1c9831ffb4cd3de0e82",
+      "blockNumber": 44013379,
+      "status": 1,
+      "gasUsed": "103835",
+      "pennies": 96
+    },
+    {
+      "label": "graduate Versus Token 0",
+      "actor": "master",
+      "hash": "0x4e77be8fe1958757bf93f75f6b07eb18eaea906ffe063dc10a849bb76584834a",
+      "blockNumber": 44013381,
+      "status": 1,
+      "gasUsed": "2384262",
+      "classId": 1
+    },
+    {
+      "label": "approve mock router for tax volume",
+      "actor": "master",
+      "hash": "0x88b02f197df21a8981ebe3101c1c5266cf9b7318295136c86655c4312bc0a7a1",
+      "blockNumber": 44013428,
+      "status": 1,
+      "gasUsed": "46269"
+    },
+    {
+      "label": "buy graduated token",
+      "actor": "master",
+      "hash": "0x75eac5a4987cf885162fa1dae6dc1202cd337b086deefa31ac4cec2b5a088fbf",
+      "blockNumber": 44013430,
+      "status": 1,
+      "gasUsed": "169109",
+      "buyAmount": "100000"
+    },
+    {
+      "label": "harvest graduated token tax",
+      "actor": "master",
+      "hash": "0x8dda37ff96ee2ee542e35578cd1a9f13cfc3c8e60d14a68222531f1150e8cf09",
+      "blockNumber": 44013433,
+      "status": 1,
+      "gasUsed": "197236",
+      "classId": 1
+    },
+    {
+      "label": "approve alpha mission escrow",
+      "actor": "alpha",
+      "hash": "0x9c1d2d7e6a83c518bee3bbf3176ec5d19a367568e4905914f867b9e9b8a07439",
+      "blockNumber": 44013436,
+      "status": 1,
+      "gasUsed": "46269"
+    },
+    {
+      "label": "sponsor mission",
+      "actor": "alpha",
+      "hash": "0x25003bffb32f1d16162e43ddd895b29da90cdb3220657c78fe6d1228aaaf846d",
+      "blockNumber": 44013438,
+      "status": 1,
+      "gasUsed": "208323",
+      "escrowId": "1"
+    },
+    {
+      "label": "release mission into beta vault",
+      "actor": "alpha",
+      "hash": "0x4652837e63a9dadc6a48d50e244f0733b2169099f925392e65029506f7b10137",
+      "blockNumber": 44013441,
+      "status": 1,
+      "gasUsed": "84344",
+      "escrowId": "1"
+    },
+    {
+      "label": "withdraw beta vault",
+      "actor": "beta",
+      "hash": "0xcc45962435e69c484c5aae639ceb7b4c5740fd73e12b8e86dd153ee011753529",
+      "blockNumber": 44013444,
+      "status": 1,
+      "gasUsed": "58912",
+      "amount": "1000000"
+    },
+    {
+      "label": "mint alpha runway topup",
+      "actor": "master",
+      "hash": "0x59d643fe513163fafeb3e23cbc2676544385df009006e3e77e18d89983bb7cc1",
+      "blockNumber": 44013447,
+      "status": 1,
+      "gasUsed": "33893"
+    },
+    {
+      "label": "replenish alpha runway",
+      "actor": "alpha",
+      "hash": "0x0816e3a0694e0e3e5c850cc6a606d5d919ab5be82ecce93e403be833b5b1772a",
+      "blockNumber": 44013450,
+      "status": 1,
+      "gasUsed": "57765",
+      "amount": "500000"
+    }
+  ],
+  "secretsRecorded": false
+}

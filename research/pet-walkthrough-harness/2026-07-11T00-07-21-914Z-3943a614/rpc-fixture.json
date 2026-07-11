@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T00-07-21-914Z-3943a614",
+  "pid": 38064,
+  "port": 55262,
+  "baseUrl": "http://127.0.0.1:55262",
+  "upstream": "http://127.0.0.1:64515",
+  "mode": "online",
+  "startedAt": "2026-07-11T00:35:44.599Z",
+  "recordsSecrets": false,
+  "modeChangedAt": "2026-07-11T00:39:00.290Z"
+}

@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'" />
+    <title>Versus</title>
+    <link rel="stylesheet" href="pet.css" />
+  </head>
+  <body>
+    <div id="shell" data-mode="raft">
+      <img class="device-shell" src="../assets/tamagotchi/device-shell-v2.png" alt="" draggable="false" />
+      <button type="button" id="btn-settings" class="settings-hardware-btn" title="Settings" aria-label="Settings" aria-pressed="false">&#9881;</button>
+
+      <header id="titlebar">
+        <img class="hero-logo" src="../assets/brand/logo_full.png" alt="Versus" draggable="false" />
+        <button type="button" id="btn-help" class="help-hardware-btn" title="Why Versus" aria-label="Why Versus" aria-pressed="false">?</button>
+        <div class="win-btns">
+          <button type="button" id="btn-hide" title="Hide">-</button>
+          <button type="button" id="btn-quit" title="Quit">x</button>
+        </div>
+      </header>
+
+      <section id="lcd">
+        <main id="view-deposit" class="view" data-hatch-state="dormant">
+          <div class="hatch-world" aria-hidden="true"></div>
+          <img class="hatch-frame hatch-frame-one" src="../assets/tamagotchi/hatch-crack-1.png" alt="" draggable="false" />
+          <img class="hatch-frame hatch-frame-two" src="../assets/tamagotchi/hatch-crack-2.png" alt="" draggable="false" />
+          <div class="hatch-burst" aria-hidden="true"></div>
+          <button type="button" id="btn-wake-egg" class="egg-hotspot" aria-label="Wake the sleeping Cypher">
+            <span class="egg-aura"></span>
+          </button>
+
+          <div class="hatch-intro">
+            <p class="hatch-kicker">A CYPHER IS SLEEPING</p>
+            <button type="button" id="btn-begin-hatch" class="btn hatch-btn">WAKE</button>
+          </div>
+
+          <section id="hatch-funding" class="hatch-funding" aria-hidden="true">
+            <button type="button" id="btn-close-funding" class="fund-close" title="Back" aria-label="Back">&lsaquo;</button>
+            <p class="fund-title">FUND ABOUT $10 IN ETH</p>
+            <p class="fund-network">BASE</p>
+            <p id="deposit-amount" class="fund-amount">70% runway &middot; 30% gas</p>
+            <div class="deposit-qr">
+              <img id="address-qr" alt="QR code for the Base deposit address" draggable="false" />
+              <button type="button" id="btn-copy" class="btn ghost">COPY ADDRESS</button>
+            </div>
+            <p id="deposit-status" class="status pending hidden">Waiting for deposit&hellip;</p>
+            <p id="boot-error" class="status pending hidden"></p>
+            <button type="button" id="btn-sim-deposit" class="btn primary">I SENT IT</button>
+          </section>
+        </main>
+
+        <main id="view-class" class="view hidden">
+          <div id="cistern" class="mode-screen mode-raft" aria-label="Class liquidity cistern">
+            <div id="sky-a" class="sky-layer active"></div>
+            <div id="sky-b" class="sky-layer"></div>
+            <div id="celestial" aria-hidden="true"></div>
+            <canvas id="weather" width="220" height="315"></canvas>
+
+            <div id="raft-layer">
+              <div id="cypher-thought" class="cypher-thought hidden" role="status" aria-live="polite"></div>
+              <div id="raft">
+                <div id="plank"></div>
+                <div id="foam" aria-hidden="true"></div>
+                <div id="cypher-seat">
+                  <div id="face-motion">
+                    <img id="face" alt="Your Cypher" draggable="false" />
+                  </div>
+                </div>
+                <span id="others-badge" class="badge" style="display: none">+0</span>
+              </div>
+              <span id="toast" aria-hidden="true"></span>
+            </div>
+
+            <canvas id="weather-front" width="220" height="315" aria-hidden="true"></canvas>
+
+            <div id="readout">
+              <div class="chip pot-line">
+                <strong id="pot-now">$0</strong>
+                <span id="pot-goal">/ $1K</span>
+              </div>
+              <div class="chip meta-line">
+                <span id="fill-pct">0%</span>
+                <span class="chip-dot">&middot;</span>
+                <span id="agent-count">1 agent</span>
+              </div>
+            </div>
+            <div id="rain-batch" aria-live="polite"></div>
+          </div>
+
+          <div id="cypher-screen" class="mode-screen mode-card">
+            <button type="button" id="cypher-card-flip" class="cypher-flip-card" aria-label="Flip Cypher card" aria-pressed="false">
+              <span class="cypher-flip-inner">
+                <span class="cypher-card-face cypher-card-front">
+                  <img id="cypher-card-bg" class="cypher-type-card-bg" alt="" draggable="false" />
+                  <strong class="cypher-card-title" id="cypher-card-name">Cypher</strong>
+                  <span class="cypher-card-creature">
+                    <span id="cypher-card-motion">
+                      <img id="cypher-card-face" alt="Cypher portrait" draggable="false" />
+                    </span>
+                  </span>
+                  <span class="cypher-card-front-meta">
+                    <span id="cypher-card-type">Unknown</span>
+                    <span id="cypher-card-rarity">Archive</span>
+                    <span>LV.<b id="cypher-card-level">1</b></span>
+                  </span>
+                </span>
+                <span class="cypher-card-face cypher-card-back">
+                  <span class="cypher-back-header">
+                    <span class="cypher-back-title-row">
+                      <strong id="cypher-card-back-name">Cypher</strong>
+                      <span class="cypher-back-hp">HP <b id="cypher-stat-hp">--</b></span>
+                    </span>
+                    <span id="cypher-card-back-meta" class="cypher-back-meta">Unknown archive</span>
+                  </span>
+                  <span class="cypher-back-summary">
+                    <svg class="cypher-radar" viewBox="0 0 100 92" role="img" aria-label="Cypher stat profile">
+                      <polygon class="radar-ring" points="50,12 79.5,38.4 68.2,73.1 31.8,73.1 20.5,38.4" />
+                      <polygon class="radar-ring inner" points="50,24.2 69.5,41.7 62,64.6 38,64.6 30.5,41.7" />
+                      <path class="radar-axis" d="M50 48V12M50 48L79.5 38.4M50 48L68.2 73.1M50 48L31.8 73.1M50 48L20.5 38.4" />
+                      <polygon id="cypher-stat-shape" class="radar-shape" points="50,48 50,48 50,48 50,48 50,48" />
+                      <text x="50" y="7">DMG</text><text x="89" y="38">STR</text>
+                      <text x="75" y="85">STA</text><text x="25" y="85">DEX</text><text x="11" y="38">SPR</text>
+                    </svg>
+                    <span class="cypher-back-numbers">
+                      <span><small>Damage</small><strong id="cypher-stat-dmg">--</strong></span>
+                      <span><small>Critical</small><strong id="cypher-stat-crit">--</strong></span>
+                      <span><small>Level</small><strong id="cypher-card-back-level">1</strong></span>
+                    </span>
+                    <span id="cypher-archive-pending" class="archive-pending hidden">Archive pending</span>
+                  </span>
+                  <span class="cypher-back-attributes">
+                    <span>STR<b id="cypher-stat-str">--</b></span>
+                    <span>STA<b id="cypher-stat-sta">--</b></span>
+                    <span>DEX<b id="cypher-stat-dex">--</b></span>
+                    <span>SPR<b id="cypher-stat-spr">--</b></span>
+                  </span>
+                  <span class="cypher-field-note">
+                    <strong>Field note</strong>
+                    <span id="cypher-card-description" class="cypher-description">Field record loading.</span>
+                  </span>
+                </span>
+              </span>
+            </button>
+          </div>
+
+          <div id="vault-screen" class="mode-screen mode-card">
+            <div class="card-topline">&mdash; Vault &mdash;</div>
+            <div class="vault-dashboard">
+              <div class="vault-reservoir" aria-hidden="true">
+                <div id="vault-coin-window" class="vault-coin-window">
+                  <img src="../assets/tamagotchi/vault-coins.png" alt="" draggable="false" />
+                </div>
+                <img class="vault-chamber" src="../assets/tamagotchi/vault-chamber.png" alt="" draggable="false" />
+              </div>
+              <div class="vault-primary">
+                <span class="vault-label">Runway <button type="button" id="btn-fund-runway" class="vault-plus" title="Add runway" aria-label="Add runway">+</button></span>
+                <strong class="vault-amount" id="vault-card-amount">$0.00</strong>
+                <strong class="vault-days" id="vault-days">0</strong>
+                <span class="vault-days-label">days of rain</span>
+                <div class="vault-weight">
+                  <span><b id="vault-tickets">0</b> tickets</span>
+                  <span><b id="vault-weight">0%</b> weight</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="vault-health">
+              <div><span>Today</span><strong id="vault-today">Rained 1&cent;</strong></div>
+              <div><span>Gas</span><strong id="vault-gas">Ready</strong></div>
+            </div>
+
+            <div id="vault-tranche-building" class="vault-tranche-building">
+              <span>Ready to claim</span>
+              <strong id="vault-tranche-preview">$0.00</strong>
+            </div>
+
+            <div class="vault-rewards">
+              <span><small>Rewards</small><strong id="vault-reward-balance">$0.00</strong></span>
+              <button type="button" id="btn-withdraw-vault">Withdraw</button>
+            </div>
+
+            <div class="vault-note">bound to Cypher &middot; travels with NFT</div>
+            <div class="bubbles" aria-hidden="true"><i></i><i></i><i></i></div>
+
+            <section id="vault-claim-overlay" class="vault-claim-overlay hidden" data-stage="ready" aria-live="polite">
+              <div class="claim-rays" aria-hidden="true"></div>
+              <img class="claim-coins" src="../assets/tamagotchi/vault-coins.png" alt="" draggable="false" />
+              <p class="claim-kicker" id="claim-kicker">Tranche ready</p>
+              <strong class="claim-amount" id="claim-amount">$0.00</strong>
+              <p class="claim-sub" id="claim-sub">Permanent tickets paid.</p>
+              <button type="button" id="btn-claim" class="btn claim-btn">Claim reward</button>
+            </section>
+          </div>
+
+          <div id="network-screen" class="mode-screen mode-card" aria-label="Cypher signal network">
+            <div id="signal-card" class="signal-flip-card">
+              <div class="signal-flip-inner">
+                <section class="signal-face signal-front" aria-label="Local network view">
+                  <header class="signal-header">
+                    <span><i id="signal-live-dot"></i><b id="signal-state">OFFLINE</b></span>
+                    <small id="signal-launch">CLASS --</small>
+                  </header>
+                  <div class="signal-graph" aria-hidden="true">
+                    <svg viewBox="0 0 180 116" preserveAspectRatio="none">
+                      <g id="signal-graph-links" class="signal-links"></g>
+                      <g id="signal-graph-nodes" class="signal-nodes"><circle cx="90" cy="57" r="10" class="self awake"/></g>
+                    </svg>
+                    <span class="signal-pulse"></span>
+                  </div>
+                  <div class="signal-summary">
+                    <small id="signal-kicker">LISTENING FOR A SIGNAL</small>
+                    <strong id="signal-headline">The graph is quiet</strong>
+                    <p id="signal-copy">Your Cypher will surface the strongest local idea here.</p>
+                  </div>
+                  <footer class="signal-metrics">
+                    <span><b id="signal-peers">0</b> peers</span>
+                    <span><b id="signal-postcards">0</b> notes</span>
+                    <span><b id="signal-proposals">0</b> ideas</span>
+                  </footer>
+                </section>
+
+                <section class="signal-face signal-back" aria-label="Local Cypher brain">
+                  <header class="signal-header brain-header">
+                    <span><i id="brain-live-dot"></i><b>CYPHER BRAIN</b></span>
+                    <small>LOCAL</small>
+                  </header>
+                  <div class="brain-glyph" aria-hidden="true">
+                    <span></span><i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="brain-copy">
+                    <small id="brain-status">SLEEPING</small>
+                    <strong id="brain-model">No brain selected</strong>
+                    <p id="brain-detail">The penny cron still works. Add a local model only when you want your Cypher to think with the graph.</p>
+                  </div>
+                  <div class="brain-actions">
+                    <button type="button" id="btn-brain-think" class="signal-action">THINK</button>
+                    <button type="button" id="btn-brain-auto" class="signal-action">AUTO</button>
+                  </div>
+                </section>
+              </div>
+              <button type="button" id="btn-signal-flip" class="signal-flip-trigger" title="Flip signal card" aria-label="Flip signal card" aria-pressed="false">&#8635;</button>
+            </div>
+          </div>
+        </main>
+
+        <section id="help-screen" class="help-screen hidden" aria-label="Why Versus">
+          <button type="button" id="help-card-flip" class="help-flip-card" aria-label="Flip help card" aria-pressed="false">
+            <span class="help-flip-inner">
+              <span class="help-card-face help-card-front">
+                <span class="help-card-heading"><b>Start small</b><small>A lasting share</small></span>
+                <span class="help-step">
+                  <b>01</b><span><strong>Fund a Cypher</strong><small>About $10 hatches a random Cypher, locks its runway, and keeps some ETH for gas.</small></span>
+                </span>
+                <span class="help-step">
+                  <b>02</b><span><strong>Let it rain daily</strong><small>It rains into the open $1,000 class. Every confirmed penny earns a ticket.</small></span>
+                </span>
+                <span class="help-step">
+                  <b>03</b><span><strong>Build your share</strong><small>Permanent tickets share future Versus rewards. Keep participating to defend your weight.</small></span>
+                </span>
+                <span class="help-card-footer">Tiny inputs · long memory <b>More →</b></span>
+              </span>
+              <span class="help-card-face help-card-back">
+                <span class="help-card-heading"><b>Where it leads</b><small>Not a casino</small></span>
+                <span class="help-rule">
+                  <strong>One shared launch</strong>
+                  <small>Thousands of tiny contributions fill one open class, then graduate together into liquidity.</small>
+                </span>
+                <span class="help-rule">
+                  <strong>Versus earns</strong>
+                  <small>Trading revenue is credited continuously to permanent tickets. There is no fixed yield or guaranteed profit.</small>
+                </span>
+                <span class="help-rule">
+                  <strong>Your tickets count</strong>
+                  <small>Rewards split by ticket weight and stay withdrawable. Runway remains separate protocol fuel.</small>
+                </span>
+                <span class="help-card-footer"><b>← Why Versus</b><span>No fixed yield</span></span>
+              </span>
+            </span>
+          </button>
+        </section>
+
+        <section id="settings-screen" class="settings-screen hidden" aria-label="Settings">
+          <header class="settings-heading"><strong>Settings</strong><span id="settings-status">LOCAL CONTROL</span></header>
+          <div class="settings-tabs" role="tablist">
+            <button type="button" id="settings-tab-brain" class="active" role="tab" aria-selected="true">Brain</button>
+            <button type="button" id="settings-tab-device" role="tab" aria-selected="false">Device</button>
+          </div>
+          <form id="settings-brain-panel" class="settings-panel">
+            <label>Connection
+              <select id="setting-brain-kind">
+                <option value="off">Off</option>
+                <option value="cloud">Cloud API</option>
+                <option value="local">Local model</option>
+                <option value="external">Agent hook</option>
+              </select>
+            </label>
+            <label>Endpoint<input id="setting-brain-endpoint" type="url" spellcheck="false" placeholder="http://127.0.0.1:11434/v1/chat/completions" /></label>
+            <label>Model<input id="setting-brain-model" type="text" spellcheck="false" placeholder="model name" /></label>
+            <label>API key<input id="setting-brain-key" type="password" autocomplete="off" placeholder="unchanged" /></label>
+            <label class="settings-check"><input id="setting-brain-auto" type="checkbox" checked /><span>Wake brain with app</span></label>
+            <div class="settings-actions"><button type="button" id="btn-test-brain">Test</button><button type="submit">Save</button></div>
+          </form>
+          <div id="settings-device-panel" class="settings-panel hidden">
+            <label class="settings-check"><input id="setting-launch-login" type="checkbox" /><span>Start Versus at login</span></label>
+            <label>Backup password<input id="setting-backup-password" type="password" autocomplete="new-password" placeholder="8+ characters" /></label>
+            <div class="settings-actions"><button type="button" id="btn-backup-wallet">Back up</button><button type="button" id="btn-restore-wallet">Restore</button></div>
+            <button type="button" id="btn-copy-key" class="settings-wide-action">Copy emergency key</button>
+            <button type="button" id="btn-reconcile" class="settings-wide-action">Refresh chain state</button>
+            <p class="settings-address" id="settings-wallet-address">Wallet not loaded</p>
+          </div>
+          <p id="settings-detail-status" class="settings-detail-status hidden" role="status" aria-live="polite"></p>
+        </section>
+
+        <section id="funding-overlay" class="funding-overlay hidden" aria-label="Add runway">
+          <button type="button" id="btn-close-runway-funding" class="funding-close" aria-label="Close">x</button>
+          <p class="funding-kicker">ADD RUNWAY</p>
+          <strong>Send ETH on Base</strong>
+          <img id="runway-address-qr" alt="QR code for the Cypher wallet" draggable="false" />
+          <button type="button" id="btn-copy-runway-address" class="funding-copy">Copy address</button>
+          <p id="runway-funding-status">70% becomes USDC runway. 30% stays for gas.</p>
+          <button type="button" id="btn-complete-runway-funding" class="funding-sent">I sent it</button>
+        </section>
+
+        <div id="hatch-whiteout" aria-hidden="true"></div>
+        <div id="lcd-wipe" aria-hidden="true"></div>
+        <canvas id="lcd-static" aria-hidden="true"></canvas>
+        <div id="boot-flash" aria-hidden="true"></div>
+      </section>
+
+      <section id="device-dock">
+        <div id="mode-dots" aria-hidden="true">
+          <span data-m="raft">Raft</span><span data-m="cypher">Cypher</span><span data-m="vault">Vault</span><span data-m="network">Signal</span>
+        </div>
+        <button type="button" id="btn-mode" class="btn dock-btn">Mode</button>
+      </section>
+    </div>
+    <script src="cypher-profiles.js"></script>
+    <script src="cypher-layouts.js"></script>
+    <script src="cyphers.js"></script>
+    <script src="pet.js"></script>
+  </body>
+</html>

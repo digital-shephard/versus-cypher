@@ -1,0 +1,148 @@
+{
+  "network": "baseSepolia",
+  "chainId": 84532,
+  "deployer": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+  "ownerless": true,
+  "economics": {
+    "graduationFloorUSDC": "1.00",
+    "graduationFloorRaw": "1000000",
+    "protocolTrancheBps": 1000,
+    "protocolRecipient": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "seedFund": false,
+    "classPenniesAreTheFund": true,
+    "taxBps": 100
+  },
+  "usedMockUsdc": true,
+  "usedMockRouter": true,
+  "transactions": [
+    {
+      "label": "deploy MockUSDC",
+      "hash": "0xb51e1e6fa4335ca990cfe7984c62712f89760ac2fec7f41cb04ad6104115c640",
+      "blockNumber": 44012823,
+      "status": 1,
+      "gasUsed": "475961",
+      "contractAddress": "0xAdf2fF5c590193FF6cbB12eaE804DFF9EEAf16E7"
+    },
+    {
+      "label": "mint MockUSDC to deployer",
+      "hash": "0x9554dfbf6be948151d76bc7f6554f0ed83b50296873c8cf98aa66c01ca8101b0",
+      "blockNumber": 44012824,
+      "status": 1,
+      "gasUsed": "68105",
+      "contractAddress": null
+    },
+    {
+      "label": "deploy MockUniswapV2Factory",
+      "hash": "0x1fec14ac60b446c11a7afd593a6204779c5c2972af255542f04bbb4ebc1460ac",
+      "blockNumber": 44012824,
+      "status": 1,
+      "gasUsed": "1613425",
+      "contractAddress": "0xc042B029e776502Ab5864B033B94032dcae978c7"
+    },
+    {
+      "label": "deploy MockUniswapV2Router",
+      "hash": "0x1ae78ff940b827895ef003a9548931a221692b44fb521b027b80245cfa01b975",
+      "blockNumber": 44012825,
+      "status": 1,
+      "gasUsed": "726305",
+      "contractAddress": "0x1cfd6555AB452Bf5ab7B84777227A7734b6b3dd3"
+    },
+    {
+      "label": "deploy AgentNFT",
+      "hash": "0xa8dc6626aa743282338b8499e7c2fc1ef798f14ec87dfaf99800791af7f47095",
+      "blockNumber": 44012825,
+      "status": 1,
+      "gasUsed": "1489946",
+      "contractAddress": "0x80e9d94B2f26169Fd302d0d9993b49dB907896a8"
+    },
+    {
+      "label": "deploy SyndicateEngine",
+      "hash": "0xacab31124f15028389b394d5c7a430f5ed5241143ae7d619ab278bfc4131d551",
+      "blockNumber": 44012825,
+      "status": 1,
+      "gasUsed": "888602",
+      "contractAddress": "0x224cA195072A35e3d2eA70eFd3a8f63D631f1602"
+    },
+    {
+      "label": "deploy TrancheTreasury",
+      "hash": "0x2543187beab229e3d9a5042735c51e00379a3d9ca7df3df9d72ad619e0f4cf7c",
+      "blockNumber": 44012826,
+      "status": 1,
+      "gasUsed": "967104",
+      "contractAddress": "0x525e5DC18759707F74e95950276023AbDCED78C8"
+    },
+    {
+      "label": "deploy MissionEscrow",
+      "hash": "0xca8cc8d1abeb618fe70b2676dd358b14949a843a02d063d73cd55b63c157cc2f",
+      "blockNumber": 44012826,
+      "status": 1,
+      "gasUsed": "623698",
+      "contractAddress": "0xE71F6Db47eB7Fc5b4bD5eAc8175B1d2de765FbC9"
+    },
+    {
+      "label": "deploy Arena",
+      "hash": "0x8a0d778988762aafd6842cc5c706f25895e5d535ba8b1fa7af8dea6bc2b8face",
+      "blockNumber": 44012826,
+      "status": 1,
+      "gasUsed": "1157203",
+      "contractAddress": "0x2Fda960356acCB1C6ad56c6A796C31fDac64eEb0"
+    },
+    {
+      "label": "deploy GraduationModule",
+      "hash": "0x62ea015f9fa636b8da89f72431a8d23d65d6acc81b89c7f7e42137beab5e21d6",
+      "blockNumber": 44012827,
+      "status": 1,
+      "gasUsed": "2183312",
+      "contractAddress": "0x605c744E9d02624a308c385e52bF577eD44e2fAd"
+    },
+    {
+      "label": "bootstrap AgentNFT",
+      "hash": "0x283f7e2d4673646d29b5ccc6670c3e7f256cd2e939c4f7463e55eea77c586e42",
+      "blockNumber": 44012827,
+      "status": 1,
+      "gasUsed": "90868",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap SyndicateEngine",
+      "hash": "0x64235bcb2dc849c5674c8313f4aa7119c7ebf3ba05b8f4138540c06df96e6b8b",
+      "blockNumber": 44012827,
+      "status": 1,
+      "gasUsed": "68293",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap TrancheTreasury",
+      "hash": "0xa8f62b7f12435dcb2cf4cd8570cbfb98390727e8b6842510c561ee37b886fe51",
+      "blockNumber": 44012828,
+      "status": 1,
+      "gasUsed": "95574",
+      "contractAddress": null
+    }
+  ],
+  "contracts": {
+    "usdc": "0xAdf2fF5c590193FF6cbB12eaE804DFF9EEAf16E7",
+    "v2Factory": "0xc042B029e776502Ab5864B033B94032dcae978c7",
+    "v2Router": "0x1cfd6555AB452Bf5ab7B84777227A7734b6b3dd3",
+    "agents": "0x80e9d94B2f26169Fd302d0d9993b49dB907896a8",
+    "arena": "0x2Fda960356acCB1C6ad56c6A796C31fDac64eEb0",
+    "syndicate": "0x224cA195072A35e3d2eA70eFd3a8f63D631f1602",
+    "treasury": "0x525e5DC18759707F74e95950276023AbDCED78C8",
+    "missionEscrow": "0xE71F6Db47eB7Fc5b4bD5eAc8175B1d2de765FbC9",
+    "graduation": "0x605c744E9d02624a308c385e52bF577eD44e2fAd",
+    "router": "0x1cfd6555AB452Bf5ab7B84777227A7734b6b3dd3",
+    "protocolRecipient": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "graduationFloor": "1000000"
+  },
+  "checklist": {
+    "protocolRecipientImmutable": true,
+    "noOwnable": true,
+    "noPause": true,
+    "noSeedFund": true,
+    "missionEscrowOwnerless": true,
+    "paidSignalBatches": true,
+    "permanentDailyVoiceCredentials": true,
+    "publicGraduateHarvestFinalizeClaim": true
+  },
+  "deployedAt": "2026-07-11T15:19:03.145Z"
+}

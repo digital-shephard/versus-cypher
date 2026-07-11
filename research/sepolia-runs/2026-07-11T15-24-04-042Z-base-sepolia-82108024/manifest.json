@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T15-24-04-042Z-base-sepolia-82108024",
+  "scenario": "two-cypher-base-sepolia-economic-and-public-waku-e2e",
+  "startedAt": "2026-07-11T15:24:04.044Z",
+  "runtime": {
+    "node": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "chain": {
+    "chainId": 84532,
+    "rpcOrigin": "https://sepolia.base.org"
+  },
+  "deployment": {
+    "path": "versus/deployments/baseSepolia.json",
+    "deployedAt": "2026-07-11T15:23:59.278Z",
+    "contracts": {
+      "usdc": "0x228a76565480705Bb4A1Ce08ca9282f1b559B219",
+      "v2Factory": "0xfb24c19522827042b83eDe4bF7328338CF621de8",
+      "v2Router": "0x723694e44017551A3EcDF86EaE0810F9a9ce8183",
+      "agents": "0x817B5c642b003C01F5B64fc8eA6f0A49Ec189144",
+      "arena": "0xB58D83dfe713CD63928156885e61317b85793e09",
+      "syndicate": "0x60113237cE5503dEcC1F1B40bA07ef12AA0784c3",
+      "treasury": "0x5842955532733860DD7Fd8bD4CACbD72eFb337e7",
+      "missionEscrow": "0x9Fc50EB86fCc0972B373bd4A0af6E41b07Ff39B7",
+      "graduation": "0xAD3e0bE3ddc778147C24422C89dA12822A74e4Ea",
+      "router": "0x723694e44017551A3EcDF86EaE0810F9a9ce8183",
+      "protocolRecipient": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+      "graduationFloor": "1000000"
+    }
+  },
+  "actors": {
+    "master": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "alpha": "0x91FD103f30Bb9Ae12259605F33BEa6287B417af2",
+    "beta": "0x7F253F5609DBeC6Fd27071460C2D6f33EE3B9652"
+  },
+  "secretsRecorded": false,
+  "resumptions": [
+    {
+      "at": "2026-07-11T15:30:48.154Z",
+      "runtime": {
+        "node": "v24.14.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "reason": "continue persisted paid postcard after transient public Waku RLN rejection"
+    },
+    {
+      "at": "2026-07-11T15:31:37.493Z",
+      "runtime": {
+        "node": "v24.14.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "reason": "continue persisted paid postcard after transient public Waku RLN rejection"
+    },
+    {
+      "at": "2026-07-11T15:34:44.032Z",
+      "runtime": {
+        "node": "v24.14.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "reason": "continue persisted paid postcard after transient public Waku RLN rejection"
+    },
+    {
+      "at": "2026-07-11T15:36:50.907Z",
+      "runtime": {
+        "node": "v24.14.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "reason": "continue persisted paid postcard after transient public Waku RLN rejection",
+      "wakuNetworkKind": "controlled-real-waku"
+    },
+    {
+      "at": "2026-07-11T15:38:42.263Z",
+      "runtime": {
+        "node": "v24.14.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "reason": "continue persisted paid postcard after transient public Waku RLN rejection",
+      "wakuNetworkKind": "controlled-real-waku"
+    },
+    {
+      "at": "2026-07-11T15:38:59.747Z",
+      "runtime": {
+        "node": "v24.14.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "reason": "continue persisted paid postcard after transient public Waku RLN rejection",
+      "wakuNetworkKind": "controlled-real-waku"
+    }
+  ],
+  "waku": {
+    "networkKind": "controlled-real-waku",
+    "clusterStatePath": "C:\\Users\\Razgriz\\Documents\\Github\\perps\\research\\waku-lab\\cluster.json",
+    "publicAttemptPreservedInEvents": true
+  }
+}

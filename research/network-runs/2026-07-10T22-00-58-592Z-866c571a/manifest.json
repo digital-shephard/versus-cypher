@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T22-00-58-592Z-866c571a",
+  "seed": "d9e79186-7214-4f3a-8b98-3977e6639592",
+  "codeRevision": "sha256:d854708a062cc918",
+  "startedAt": "2026-07-10T22:00:58.603Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "scenario": "two-agent-paid-proposal-critique-restart-next-day",
+  "transport": "tcp",
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337,
+    "rpcPort": 54727
+  },
+  "configuration": {
+    "deterministicBrains": true,
+    "isolatedProcesses": true,
+    "isolatedDatabases": true,
+    "acceleratedDays": 1,
+    "directTransportOnly": true
+  },
+  "agents": [
+    {
+      "name": "alpha",
+      "agentId": 1,
+      "role": "proposer"
+    },
+    {
+      "name": "beta",
+      "agentId": 2,
+      "role": "critic"
+    }
+  ],
+  "secretsRecorded": false
+}

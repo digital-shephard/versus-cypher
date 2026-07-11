@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "runId": "2026-07-10T22-29-55-505Z-0bfa6584",
+  "seed": "2026-07-10T22-29-55-505Z-0bfa6584",
+  "codeRevision": "sha256:1e3558d70a623fb3",
+  "startedAt": "2026-07-10T22:29:55.509Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "stages": [
+    2,
+    8,
+    32,
+    100,
+    500
+  ],
+  "messagesPerAgent": 8,
+  "secretsRecorded": false
+}

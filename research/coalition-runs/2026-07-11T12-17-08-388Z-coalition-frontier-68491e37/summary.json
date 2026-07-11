@@ -1,0 +1,370 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T12-17-08-388Z-coalition-frontier-68491e37",
+  "passed": false,
+  "mode": "frontier-model-cohort",
+  "durationMs": 24441,
+  "assertions": {
+    "eightIndependentProcesses": true,
+    "eightInstrumentedContexts": true,
+    "eightInstrumentedDecisions": true,
+    "exactHistories": true,
+    "deterministicInProcess": true,
+    "exactRestartViews": true,
+    "divergentLocalViews": true,
+    "chainExact": true,
+    "noRejectedDecisions": false,
+    "noBrainErrors": false,
+    "minimumUsefulActions": false,
+    "multipleActionTypes": true,
+    "usageRecorded": true
+  },
+  "proposalIds": {
+    "verified": "0x29e50e29238dc1396c277c1394c2649438cf8b4fe6f5e9e62b898bb9f3791b1e",
+    "mystery": "0x3d0a899b7df0aa2c650383f2fd3c2d9764c9fb6aa5e446c9ca3ed4372f954b03"
+  },
+  "conversation": {
+    "published": 2,
+    "silences": 1,
+    "rejected": 4,
+    "brainErrors": 1,
+    "actionTypes": [
+      "endorsement",
+      "proposal"
+    ],
+    "expectedHistoryCount": 4
+  },
+  "localViews": [
+    {
+      "worker": "cypher-1",
+      "strategy": "mystery-curator",
+      "bias": "mystery",
+      "model": "openai/gpt-5.6-luna",
+      "signature": "0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:a5c61e6ef451665e729c4be1ef00736255dad78bc492c4ce34b3dc5270b6f97e",
+      "hashAfterRestart": "sha256:a5c61e6ef451665e729c4be1ef00736255dad78bc492c4ce34b3dc5270b6f97e"
+    },
+    {
+      "worker": "cypher-2",
+      "strategy": "verification-curator",
+      "bias": "verified",
+      "model": "anthropic/claude-sonnet-5",
+      "signature": "verified|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:305f2a6364d9e88762e7d0f4ea82dd27d4343317cdca38076a56dd9fdc27462a",
+      "hashAfterRestart": "sha256:305f2a6364d9e88762e7d0f4ea82dd27d4343317cdca38076a56dd9fdc27462a"
+    },
+    {
+      "worker": "cypher-3",
+      "strategy": "risk-auditor",
+      "bias": "verified",
+      "model": "openai/gpt-5.6-terra",
+      "signature": "verified|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:c7e202e0b0d6700bf2c99baae22d6e8935774a27165d64b0c06d2808b2eb52fe",
+      "hashAfterRestart": "sha256:c7e202e0b0d6700bf2c99baae22d6e8935774a27165d64b0c06d2808b2eb52fe"
+    },
+    {
+      "worker": "cypher-4",
+      "strategy": "originality-auditor",
+      "bias": "mystery",
+      "model": "openai/gpt-5.6-sol",
+      "signature": "0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:c1c3787419bfa5362ee090c11b01b43cc9ef17f5af4c56e08c12b865decd134d",
+      "hashAfterRestart": "sha256:c1c3787419bfa5362ee090c11b01b43cc9ef17f5af4c56e08c12b865decd134d"
+    },
+    {
+      "worker": "cypher-5",
+      "strategy": "verification-questioner",
+      "bias": "neutral",
+      "model": "openai/gpt-5.6-luna",
+      "signature": "verified|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:cd0a3c393d7f0c752154f987587f59c2d709b9f6779485388a3e9c621776eaf3",
+      "hashAfterRestart": "sha256:cd0a3c393d7f0c752154f987587f59c2d709b9f6779485388a3e9c621776eaf3"
+    },
+    {
+      "worker": "cypher-6",
+      "strategy": "mystery-builder",
+      "bias": "mystery",
+      "model": "anthropic/claude-sonnet-5",
+      "signature": "0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:4cc2f538ae41227cadac205a1edcc0aa67ac2f38e8ab6d546cd21711293fd747",
+      "hashAfterRestart": "sha256:4cc2f538ae41227cadac205a1edcc0aa67ac2f38e8ab6d546cd21711293fd747"
+    },
+    {
+      "worker": "cypher-7",
+      "strategy": "bridge-builder",
+      "bias": "verified",
+      "model": "openai/gpt-5.6-terra",
+      "signature": "verified|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:1e0350c89582d50d234ceee0ebcbacae64189a87ab8404a11b47ddb3d8be3620",
+      "hashAfterRestart": "sha256:1e0350c89582d50d234ceee0ebcbacae64189a87ab8404a11b47ddb3d8be3620"
+    },
+    {
+      "worker": "cypher-8",
+      "strategy": "quiet-observer",
+      "bias": "critical",
+      "model": "openai/gpt-5.6-sol",
+      "signature": "verified|0x1ea32569bcfc80c958c5705acb785ce39efd20d9bc66b5b1e382c811d606410b:emerging:0:0|mystery:emerging:0:0|verified:emerging:1:0",
+      "hashBefore": "sha256:ab55a5f1402b27aff32ee78ac6be78bf35300c6f02a7eb9c6ac721b55d0e2dec",
+      "hashAfterRestart": "sha256:ab55a5f1402b27aff32ee78ac6be78bf35300c6f02a7eb9c6ac721b55d0e2dec"
+    }
+  ],
+  "uniqueOutcomeSignatures": 2,
+  "chain": {
+    "classPotMicros": "180000",
+    "participantCount": 8,
+    "totalTickets": "18",
+    "tickets": [
+      "4",
+      "1",
+      "1",
+      "1",
+      "4",
+      "1",
+      "2",
+      "4"
+    ],
+    "runway": [
+      "6960000",
+      "6990000",
+      "6990000",
+      "6990000",
+      "6960000",
+      "6990000",
+      "6980000",
+      "6960000"
+    ],
+    "expectedInkPennies": 18
+  },
+  "modelCost": {
+    "promptTokens": 18549,
+    "completionTokens": 805,
+    "exactUsd": 0.0716115,
+    "catalogEstimatedUsd": 0.062377
+  },
+  "resources": [
+    {
+      "pid": 34828,
+      "memory": {
+        "rss": 160702464,
+        "heapTotal": 99360768,
+        "heapUsed": 45767096,
+        "external": 5569842,
+        "arrayBuffers": 449507
+      },
+      "cpu": {
+        "userCPUTime": 859000,
+        "systemCPUTime": 515000,
+        "maxRSS": 162996,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 68481,
+        "swappedOut": 0,
+        "fsRead": 2496,
+        "fsWrite": 242,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 29488,
+      "memory": {
+        "rss": 160317440,
+        "heapTotal": 99098624,
+        "heapUsed": 38727104,
+        "external": 5360303,
+        "arrayBuffers": 239968
+      },
+      "cpu": {
+        "userCPUTime": 687000,
+        "systemCPUTime": 546000,
+        "maxRSS": 163588,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 69389,
+        "swappedOut": 0,
+        "fsRead": 2496,
+        "fsWrite": 238,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 33572,
+      "memory": {
+        "rss": 159756288,
+        "heapTotal": 98574336,
+        "heapUsed": 38643872,
+        "external": 5359610,
+        "arrayBuffers": 239275
+      },
+      "cpu": {
+        "userCPUTime": 921000,
+        "systemCPUTime": 562000,
+        "maxRSS": 162876,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 68423,
+        "swappedOut": 0,
+        "fsRead": 2496,
+        "fsWrite": 238,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 30256,
+      "memory": {
+        "rss": 160354304,
+        "heapTotal": 98574336,
+        "heapUsed": 41399416,
+        "external": 5442245,
+        "arrayBuffers": 321910
+      },
+      "cpu": {
+        "userCPUTime": 843000,
+        "systemCPUTime": 515000,
+        "maxRSS": 164324,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 68809,
+        "swappedOut": 0,
+        "fsRead": 2496,
+        "fsWrite": 238,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 28728,
+      "memory": {
+        "rss": 160862208,
+        "heapTotal": 98836480,
+        "heapUsed": 45733832,
+        "external": 5570271,
+        "arrayBuffers": 449936
+      },
+      "cpu": {
+        "userCPUTime": 968000,
+        "systemCPUTime": 515000,
+        "maxRSS": 166796,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 69361,
+        "swappedOut": 0,
+        "fsRead": 2499,
+        "fsWrite": 229,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 31336,
+      "memory": {
+        "rss": 162660352,
+        "heapTotal": 101195776,
+        "heapUsed": 38836928,
+        "external": 5359595,
+        "arrayBuffers": 239260
+      },
+      "cpu": {
+        "userCPUTime": 875000,
+        "systemCPUTime": 546000,
+        "maxRSS": 165508,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 69569,
+        "swappedOut": 0,
+        "fsRead": 2496,
+        "fsWrite": 237,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 31984,
+      "memory": {
+        "rss": 162680832,
+        "heapTotal": 100933632,
+        "heapUsed": 45885912,
+        "external": 5571293,
+        "arrayBuffers": 450958
+      },
+      "cpu": {
+        "userCPUTime": 937000,
+        "systemCPUTime": 468000,
+        "maxRSS": 164388,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 69255,
+        "swappedOut": 0,
+        "fsRead": 2496,
+        "fsWrite": 242,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 32856,
+      "memory": {
+        "rss": 161419264,
+        "heapTotal": 99622912,
+        "heapUsed": 45758488,
+        "external": 5570263,
+        "arrayBuffers": 449928
+      },
+      "cpu": {
+        "userCPUTime": 1031000,
+        "systemCPUTime": 406000,
+        "maxRSS": 167896,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 69654,
+        "swappedOut": 0,
+        "fsRead": 2499,
+        "fsWrite": 239,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    }
+  ]
+}

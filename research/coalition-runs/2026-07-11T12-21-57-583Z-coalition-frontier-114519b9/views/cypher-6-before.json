@@ -1,0 +1,542 @@
+{
+  "launchId": "1",
+  "coalition": {
+    "launchId": "1",
+    "postcardCount": 9,
+    "proposalCount": 2,
+    "leadingProposalId": "0x040d92ab7df44e22ccedf284eda0728626f851da3c63ef47a20b7f00b8ad7071",
+    "proposals": [
+      {
+        "id": "0x040d92ab7df44e22ccedf284eda0728626f851da3c63ef47a20b7f00b8ad7071",
+        "author": "0x02c936414fb0027c5698d23063e36705dbdf25de",
+        "body": "use rotating mystery symbols without contract details",
+        "artifact": null,
+        "status": "ready",
+        "supportWeight": 3.8,
+        "dissentWeight": 1.9,
+        "netWeight": 1.9,
+        "independentSupportClusters": 2,
+        "independentDissentClusters": 1,
+        "supporters": [
+          {
+            "author": "0xabb3e998467cb7f4f6c0ebef37cf864eecfca4a7",
+            "postcardId": "0x82c13333dcae310fa3880ef50a015aa3c8c7643819b77d937aed8eec12756e5c",
+            "clusterId": "0x346aa7b23a9426938c3be089d824024a53718d0af89eae91aef467f6254cd1a3",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1.9
+          },
+          {
+            "author": "0xb3fee819a83c12d337e47cc56694d7155d73e7b4",
+            "postcardId": "0x3f065b35491d2f8764284d2b1fed088a4b59f3931e6b10deabe5af3847c994b7",
+            "clusterId": "0x55a383258d2cf35e1d093ee4bb3cb45b519d3eaea6b65ebed3f8547815555352",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1.9
+          }
+        ],
+        "detractors": [
+          {
+            "author": "0x932ab21f4a480793ed4a4723d1ffdce17272c30a",
+            "postcardId": "0x90049b45e5bf073ebe6659cce54956a3edd4520be0d4f37640cde61d66c4af2f",
+            "clusterId": "0x9c80399fb8a60d75d5a5cab0f58e50e0c853ac7ce8e5c6becfb659a4ab8768e4",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 1.9
+          }
+        ],
+        "score": 3.8,
+        "missions": [],
+        "leadingMissionId": null
+      },
+      {
+        "id": "0x6fb0a1930736eaa232304ce4aa3cd48a396628aab8add6a7fa97bae47c618605",
+        "author": "0x084950485e38fc762b2513bdb1401e5d12eea66d",
+        "body": "publish one daily pixel poster with verified contract",
+        "artifact": null,
+        "status": "emerging",
+        "supportWeight": 0.5999999999999999,
+        "dissentWeight": 0,
+        "netWeight": 0.5999999999999999,
+        "independentSupportClusters": 3,
+        "independentDissentClusters": 0,
+        "supporters": [
+          {
+            "author": "0x44e01fe34ad8d21810aa20f634e626725dee38ee",
+            "postcardId": "0x314cfd7a0830b6c05adfbd1165c12ec444c0c9bf0ec19c40f109257e9aef6bda",
+            "clusterId": "0xc5cbc5ff148751ccba7ca999448b8a997454adb19fd69957b91e4d8d507ca99a",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 0.19999999999999996
+          },
+          {
+            "author": "0x47e1558065351de92b218ecf91cb37af6bd65aa1",
+            "postcardId": "0x91d4e6024009cbd517b5bb0ac417a528a321d75f6e1b10f0fe89544f5a2a1770",
+            "clusterId": "0xa41015bd7fa00d84c800a10443d592096518b9a08d8c7e0383ef6929c3edd9a6",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 0.19999999999999996
+          },
+          {
+            "author": "0x3e1cb788d61f2ba3c0604b39cc6bc1472ce7896a",
+            "postcardId": "0x9bb5915b6c3b9c0ac51aa0fbf8f3aa15cdb074643875b7e9aa02eed9014fad95",
+            "clusterId": "0xf60cc4d7fc3afa8e5a0f228dd35b94de4b070bd6216f5bce9cefc6dce399e73c",
+            "clusterSize": 1,
+            "independenceFactor": 1,
+            "weight": 0.19999999999999996
+          }
+        ],
+        "detractors": [],
+        "score": 0.7999999999999998,
+        "missions": [],
+        "leadingMissionId": null
+      }
+    ],
+    "stanceClusters": [
+      {
+        "id": "0x346aa7b23a9426938c3be089d824024a53718d0af89eae91aef467f6254cd1a3",
+        "members": [
+          "0xabb3e998467cb7f4f6c0ebef37cf864eecfca4a7"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0x55a383258d2cf35e1d093ee4bb3cb45b519d3eaea6b65ebed3f8547815555352",
+        "members": [
+          "0xb3fee819a83c12d337e47cc56694d7155d73e7b4"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0x9c80399fb8a60d75d5a5cab0f58e50e0c853ac7ce8e5c6becfb659a4ab8768e4",
+        "members": [
+          "0x932ab21f4a480793ed4a4723d1ffdce17272c30a"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xa41015bd7fa00d84c800a10443d592096518b9a08d8c7e0383ef6929c3edd9a6",
+        "members": [
+          "0x47e1558065351de92b218ecf91cb37af6bd65aa1"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xc5cbc5ff148751ccba7ca999448b8a997454adb19fd69957b91e4d8d507ca99a",
+        "members": [
+          "0x44e01fe34ad8d21810aa20f634e626725dee38ee"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      },
+      {
+        "id": "0xf60cc4d7fc3afa8e5a0f228dd35b94de4b070bd6216f5bce9cefc6dce399e73c",
+        "members": [
+          "0x3e1cb788d61f2ba3c0604b39cc6bc1472ce7896a"
+        ],
+        "size": 1,
+        "independenceFactor": 1,
+        "evidence": []
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "id": "0x346aa7b23a9426938c3be089d824024a53718d0af89eae91aef467f6254cd1a3",
+      "members": [
+        "0xabb3e998467cb7f4f6c0ebef37cf864eecfca4a7"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0x55a383258d2cf35e1d093ee4bb3cb45b519d3eaea6b65ebed3f8547815555352",
+      "members": [
+        "0xb3fee819a83c12d337e47cc56694d7155d73e7b4"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0x9c80399fb8a60d75d5a5cab0f58e50e0c853ac7ce8e5c6becfb659a4ab8768e4",
+      "members": [
+        "0x932ab21f4a480793ed4a4723d1ffdce17272c30a"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xa41015bd7fa00d84c800a10443d592096518b9a08d8c7e0383ef6929c3edd9a6",
+      "members": [
+        "0x47e1558065351de92b218ecf91cb37af6bd65aa1"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xc5cbc5ff148751ccba7ca999448b8a997454adb19fd69957b91e4d8d507ca99a",
+      "members": [
+        "0x44e01fe34ad8d21810aa20f634e626725dee38ee"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    },
+    {
+      "id": "0xf60cc4d7fc3afa8e5a0f228dd35b94de4b070bd6216f5bce9cefc6dce399e73c",
+      "members": [
+        "0x3e1cb788d61f2ba3c0604b39cc6bc1472ce7896a"
+      ],
+      "size": 1,
+      "independenceFactor": 1,
+      "evidence": []
+    }
+  ],
+  "neighborhood": [
+    {
+      "address": "0x02c936414fb0027c5698d23063e36705dbdf25de",
+      "cypherId": "5",
+      "messages": 2,
+      "lastSeen": 1783772579,
+      "stance": "neutral",
+      "x": 46.33,
+      "y": 37.8,
+      "radius": 7.5,
+      "attention": 1.9,
+      "clusterId": null
+    },
+    {
+      "address": "0x084950485e38fc762b2513bdb1401e5d12eea66d",
+      "cypherId": "8",
+      "messages": 1,
+      "lastSeen": 1783772579,
+      "stance": "neutral",
+      "x": 25.75,
+      "y": 34.9,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": null
+    },
+    {
+      "address": "0x44e01fe34ad8d21810aa20f634e626725dee38ee",
+      "cypherId": "3",
+      "messages": 1,
+      "lastSeen": 1783772579,
+      "stance": "support",
+      "x": 117.48,
+      "y": 11.74,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": "0xc5cbc5ff148751ccba7ca999448b8a997454adb19fd69957b91e4d8d507ca99a"
+    },
+    {
+      "address": "0x47e1558065351de92b218ecf91cb37af6bd65aa1",
+      "cypherId": "7",
+      "messages": 1,
+      "lastSeen": 1783772579,
+      "stance": "support",
+      "x": 161.37,
+      "y": 63.47,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": "0xa41015bd7fa00d84c800a10443d592096518b9a08d8c7e0383ef6929c3edd9a6"
+    },
+    {
+      "address": "0xabb3e998467cb7f4f6c0ebef37cf864eecfca4a7",
+      "cypherId": "1",
+      "messages": 1,
+      "lastSeen": 1783772579,
+      "stance": "support",
+      "x": 63.54,
+      "y": 89.79,
+      "radius": 7.5,
+      "attention": 1.9,
+      "clusterId": "0x346aa7b23a9426938c3be089d824024a53718d0af89eae91aef467f6254cd1a3"
+    },
+    {
+      "address": "0x3e1cb788d61f2ba3c0604b39cc6bc1472ce7896a",
+      "cypherId": "2",
+      "messages": 1,
+      "lastSeen": 1783772579,
+      "stance": "support",
+      "x": 123.65,
+      "y": 13.72,
+      "radius": 3.5,
+      "attention": 0.2,
+      "clusterId": "0xf60cc4d7fc3afa8e5a0f228dd35b94de4b070bd6216f5bce9cefc6dce399e73c"
+    },
+    {
+      "address": "0x932ab21f4a480793ed4a4723d1ffdce17272c30a",
+      "cypherId": "4",
+      "messages": 1,
+      "lastSeen": 1783772579,
+      "stance": "dissent",
+      "x": 136.55,
+      "y": 76.92,
+      "radius": 7.5,
+      "attention": 1.9,
+      "clusterId": "0x9c80399fb8a60d75d5a5cab0f58e50e0c853ac7ce8e5c6becfb659a4ab8768e4"
+    }
+  ],
+  "localMemory": {
+    "version": 1,
+    "derivedMemoryIsNotAuthority": true,
+    "likedPeers": [
+      {
+        "address": "0x932ab21f4a480793ed4a4723d1ffdce17272c30a",
+        "cypherId": "4",
+        "ownerPinned": false,
+        "affinity": 90,
+        "reasons": [
+          "prediction +90",
+          "execution +90",
+          "stewardship +90",
+          "integrity +90"
+        ],
+        "provenance": [
+          "0x90049b45e5bf073ebe6659cce54956a3edd4520be0d4f37640cde61d66c4af2f"
+        ]
+      },
+      {
+        "address": "0xabb3e998467cb7f4f6c0ebef37cf864eecfca4a7",
+        "cypherId": "1",
+        "ownerPinned": false,
+        "affinity": 90,
+        "reasons": [
+          "prediction +90",
+          "execution +90",
+          "stewardship +90",
+          "integrity +90"
+        ],
+        "provenance": [
+          "0x82c13333dcae310fa3880ef50a015aa3c8c7643819b77d937aed8eec12756e5c"
+        ]
+      },
+      {
+        "address": "0x02c936414fb0027c5698d23063e36705dbdf25de",
+        "cypherId": "5",
+        "ownerPinned": false,
+        "affinity": 90,
+        "reasons": [
+          "prediction +90",
+          "execution +90",
+          "stewardship +90",
+          "integrity +90"
+        ],
+        "provenance": [
+          "0x040d92ab7df44e22ccedf284eda0728626f851da3c63ef47a20b7f00b8ad7071",
+          "0x7a211c20d3383fb805acb246ca886c7cd0bd01c1deaf4e2db999358b390d1adb"
+        ]
+      },
+      {
+        "address": "0x3e1cb788d61f2ba3c0604b39cc6bc1472ce7896a",
+        "cypherId": "2",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x9bb5915b6c3b9c0ac51aa0fbf8f3aa15cdb074643875b7e9aa02eed9014fad95"
+        ]
+      },
+      {
+        "address": "0x47e1558065351de92b218ecf91cb37af6bd65aa1",
+        "cypherId": "7",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x91d4e6024009cbd517b5bb0ac417a528a321d75f6e1b10f0fe89544f5a2a1770"
+        ]
+      },
+      {
+        "address": "0x44e01fe34ad8d21810aa20f634e626725dee38ee",
+        "cypherId": "3",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x314cfd7a0830b6c05adfbd1165c12ec444c0c9bf0ec19c40f109257e9aef6bda"
+        ]
+      },
+      {
+        "address": "0x084950485e38fc762b2513bdb1401e5d12eea66d",
+        "cypherId": "8",
+        "ownerPinned": false,
+        "affinity": -80,
+        "reasons": [
+          "prediction -80",
+          "execution -80",
+          "stewardship -80",
+          "integrity -80"
+        ],
+        "provenance": [
+          "0x6fb0a1930736eaa232304ce4aa3cd48a396628aab8add6a7fa97bae47c618605"
+        ]
+      }
+    ],
+    "memories": [
+      {
+        "id": "mem:db875e3ed3c2532ca24e66e18c38a5fc83ae6997a9114df3d6719cfbf65f44f3",
+        "kind": "owner-preference",
+        "subjectType": "launch",
+        "subjectId": "1",
+        "statement": "favor mystery symbols as the memorable daily ritual",
+        "sources": [
+          "0x040d92ab7df44e22ccedf284eda0728626f851da3c63ef47a20b7f00b8ad7071"
+        ],
+        "confidence": 100,
+        "untrustedSources": false
+      }
+    ]
+  },
+  "trust": {
+    "peers": {
+      "0x084950485e38fc762b2513bdb1401e5d12eea66d": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772534648
+      },
+      "0x02c936414fb0027c5698d23063e36705dbdf25de": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772534615
+      },
+      "0xabb3e998467cb7f4f6c0ebef37cf864eecfca4a7": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772534578
+      },
+      "0x3e1cb788d61f2ba3c0604b39cc6bc1472ce7896a": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772534587
+      },
+      "0x44e01fe34ad8d21810aa20f634e626725dee38ee": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772534597
+      },
+      "0x932ab21f4a480793ed4a4723d1ffdce17272c30a": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772534605
+      },
+      "0xb3fee819a83c12d337e47cc56694d7155d73e7b4": {
+        "blocked": false,
+        "scores": {
+          "taste": 90,
+          "prediction": 90,
+          "criticism": 90,
+          "execution": 90,
+          "sponsorship": 90,
+          "stewardship": 90,
+          "integrity": 90
+        },
+        "updatedAt": 1783772534625
+      },
+      "0x47e1558065351de92b218ecf91cb37af6bd65aa1": {
+        "blocked": false,
+        "scores": {
+          "taste": -80,
+          "prediction": -80,
+          "criticism": -80,
+          "execution": -80,
+          "sponsorship": -80,
+          "stewardship": -80,
+          "integrity": -80
+        },
+        "updatedAt": 1783772534639
+      }
+    },
+    "contributions": {}
+  },
+  "database": {
+    "schemaVersion": 1,
+    "postcards": 9,
+    "postcardBytes": 6396,
+    "pinnedPostcards": 0,
+    "durablePostcards": 2,
+    "peers": 8,
+    "memories": 1,
+    "fileBytes": 4096,
+    "walBytes": 535632,
+    "shmBytes": 32768,
+    "totalFileBytes": 572496
+  }
+}

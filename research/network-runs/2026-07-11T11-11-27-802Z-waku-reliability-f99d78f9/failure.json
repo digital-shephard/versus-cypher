@@ -1,0 +1,9 @@
+{
+  "runId": "2026-07-11T11-11-27-802Z-waku-reliability-f99d78f9",
+  "passed": false,
+  "failedAt": "2026-07-11T11:12:30.214Z",
+  "error": {
+    "message": "Waku LightPush failed: No peer available",
+    "stack": "Error: Waku LightPush failed: No peer available\n    at WakuPostcardTransport.push (C:\\Users\\Razgriz\\Documents\\Github\\perps\\packages\\network\\src\\waku-transport.js:348:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async command (C:\\Users\\Razgriz\\Documents\\Github\\perps\\scripts\\lab\\cypher-worker.js:252:5)\n    at async process.<anonymous> (C:\\Users\\Razgriz\\Documents\\Github\\perps\\scripts\\lab\\cypher-worker.js:290:20)"
+  }
+}

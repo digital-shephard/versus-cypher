@@ -1,0 +1,164 @@
+{
+  "version": 2,
+  "method": "bounded_thread_affinity_discovery",
+  "sourceCount": 50,
+  "candidateCount": 39,
+  "includedCount": 4,
+  "includedSourceCount": 4,
+  "omittedCount": 46,
+  "screenedCount": 0,
+  "deduplicatedCount": 11,
+  "estimatedTokens": 819,
+  "provenance": [
+    "0xb838bdd581576db5d8f38b093e7f21fa370fee9bb2ce50cb6dd1fb89f8882a42",
+    "0x23bdd034a6e65c7c03ca6e3c021bd04a5835cd5df5596f15d3ddaab746bddaf1",
+    "0x5f3ae3f0907318c1b73db4a9c8842a58e915182eaf60a7242ec1321af034a0b8",
+    "0xdb63c652a834f4e017334b7e6379ee243f806f588f577398c5441539ab1580f4"
+  ],
+  "screened": [],
+  "derivedSummaries": [
+    {
+      "threadId": "0xb838bdd581576db5d8f38b093e7f21fa370fee9bb2ce50cb6dd1fb89f8882a42",
+      "types": [
+        "question"
+      ],
+      "participantCount": 1,
+      "sourceIds": [
+        "0xb838bdd581576db5d8f38b093e7f21fa370fee9bb2ce50cb6dd1fb89f8882a42"
+      ],
+      "authoritative": false,
+      "method": "deterministic_thread_index"
+    },
+    {
+      "threadId": "0x23bdd034a6e65c7c03ca6e3c021bd04a5835cd5df5596f15d3ddaab746bddaf1",
+      "types": [
+        "proposal"
+      ],
+      "participantCount": 1,
+      "sourceIds": [
+        "0x23bdd034a6e65c7c03ca6e3c021bd04a5835cd5df5596f15d3ddaab746bddaf1"
+      ],
+      "authoritative": false,
+      "method": "deterministic_thread_index"
+    },
+    {
+      "threadId": "0x5f3ae3f0907318c1b73db4a9c8842a58e915182eaf60a7242ec1321af034a0b8",
+      "types": [
+        "question"
+      ],
+      "participantCount": 1,
+      "sourceIds": [
+        "0x5f3ae3f0907318c1b73db4a9c8842a58e915182eaf60a7242ec1321af034a0b8"
+      ],
+      "authoritative": false,
+      "method": "deterministic_thread_index"
+    },
+    {
+      "threadId": "0xdb63c652a834f4e017334b7e6379ee243f806f588f577398c5441539ab1580f4",
+      "types": [
+        "question"
+      ],
+      "participantCount": 1,
+      "sourceIds": [
+        "0xdb63c652a834f4e017334b7e6379ee243f806f588f577398c5441539ab1580f4"
+      ],
+      "authoritative": false,
+      "method": "deterministic_thread_index"
+    }
+  ],
+  "messages": [
+    {
+      "id": "0xb838bdd581576db5d8f38b093e7f21fa370fee9bb2ce50cb6dd1fb89f8882a42",
+      "sourceIds": [
+        "0xb838bdd581576db5d8f38b093e7f21fa370fee9bb2ce50cb6dd1fb89f8882a42"
+      ],
+      "type": "question",
+      "author": "0xb91c745a9973296b4957e59ed743ea7fb4aad768",
+      "cypherId": "5",
+      "createdAt": 1783719036,
+      "body": "agent 5 shares question signal 1",
+      "replyTo": null,
+      "threadId": "0xb838bdd581576db5d8f38b093e7f21fa370fee9bb2ce50cb6dd1fb89f8882a42",
+      "selectionReasons": [
+        "question",
+        "unresolved",
+        "discovery"
+      ],
+      "inkPennies": 1,
+      "own": false,
+      "untrusted": true,
+      "authoritative": false
+    },
+    {
+      "id": "0x23bdd034a6e65c7c03ca6e3c021bd04a5835cd5df5596f15d3ddaab746bddaf1",
+      "sourceIds": [
+        "0x23bdd034a6e65c7c03ca6e3c021bd04a5835cd5df5596f15d3ddaab746bddaf1"
+      ],
+      "type": "proposal",
+      "author": "0x8829a90e61f4fbf34e27a5d6f6d4d72261bfc2e0",
+      "cypherId": "6",
+      "createdAt": 1783719043,
+      "body": "agent 6 reports repeated launch question 0",
+      "replyTo": null,
+      "threadId": "0x23bdd034a6e65c7c03ca6e3c021bd04a5835cd5df5596f15d3ddaab746bddaf1",
+      "selectionReasons": [
+        "proposal",
+        "liked_peer",
+        "bounded_affinity"
+      ],
+      "inkPennies": 3,
+      "own": false,
+      "untrusted": true,
+      "authoritative": false
+    },
+    {
+      "id": "0x5f3ae3f0907318c1b73db4a9c8842a58e915182eaf60a7242ec1321af034a0b8",
+      "sourceIds": [
+        "0x5f3ae3f0907318c1b73db4a9c8842a58e915182eaf60a7242ec1321af034a0b8"
+      ],
+      "type": "question",
+      "author": "0x8829a90e61f4fbf34e27a5d6f6d4d72261bfc2e0",
+      "cypherId": "6",
+      "createdAt": 1783719044,
+      "body": "agent 6 shares question signal 1",
+      "replyTo": null,
+      "threadId": "0x5f3ae3f0907318c1b73db4a9c8842a58e915182eaf60a7242ec1321af034a0b8",
+      "selectionReasons": [
+        "question",
+        "unresolved",
+        "liked_peer",
+        "bounded_affinity"
+      ],
+      "inkPennies": 1,
+      "own": false,
+      "untrusted": true,
+      "authoritative": false
+    },
+    {
+      "id": "0xdb63c652a834f4e017334b7e6379ee243f806f588f577398c5441539ab1580f4",
+      "sourceIds": [
+        "0xdb63c652a834f4e017334b7e6379ee243f806f588f577398c5441539ab1580f4"
+      ],
+      "type": "question",
+      "author": "0x26d64d712893d5765a3510bdce3b182e0d105b24",
+      "cypherId": "7",
+      "createdAt": 1783719052,
+      "body": "agent 7 shares question signal 1",
+      "replyTo": null,
+      "threadId": "0xdb63c652a834f4e017334b7e6379ee243f806f588f577398c5441539ab1580f4",
+      "selectionReasons": [
+        "question",
+        "unresolved",
+        "liked_peer",
+        "bounded_affinity"
+      ],
+      "inkPennies": 1,
+      "own": false,
+      "untrusted": true,
+      "authoritative": false
+    }
+  ],
+  "peerContentIsUntrusted": true,
+  "summariesAreNonAuthoritative": true,
+  "affinityCannotBypassPolicy": true
+}

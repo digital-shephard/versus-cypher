@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "count": 100,
+  "stagePassed": true,
+  "topicScope": "cap-c9b76109dda6",
+  "connectDurationMs": 12655,
+  "publishDurationMs": 19804,
+  "convergenceDurationMs": 259,
+  "expectedAccepted": 10000,
+  "actualAccepted": 10000,
+  "deliveryRatio": 1,
+  "missingAccepted": 0,
+  "minRecords": 100,
+  "maxRecords": 100,
+  "publishErrors": 0,
+  "latencyMs": {
+    "count": 9900,
+    "p50": 1082,
+    "p95": 2111,
+    "max": 2606
+  },
+  "peakRssBytes": 360517632,
+  "cpuUserMicros": 19282000,
+  "cpuSystemMicros": 3484000,
+  "durationMs": 33134
+}

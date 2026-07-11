@@ -1,0 +1,9 @@
+{
+  "runId": "2026-07-11T11-15-40-486Z-waku-reliability-7d96d1cf",
+  "passed": false,
+  "failedAt": "2026-07-11T11:17:11.672Z",
+  "error": {
+    "message": "server response 503 Service Unavailable (request={  }, response={  }, error=null, info={ \"requestUrl\": \"http://127.0.0.1:51220\", \"responseBody\": \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":2,\\\"error\\\":{\\\"code\\\":-32098,\\\"message\\\":\\\"controlled rpc offline\\\"}}\", \"responseStatus\": \"503 Service Unavailable\" }, code=SERVER_ERROR, version=6.17.0)",
+    "stack": "Error: server response 503 Service Unavailable (request={  }, response={  }, error=null, info={ \"requestUrl\": \"http://127.0.0.1:51220\", \"responseBody\": \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":2,\\\"error\\\":{\\\"code\\\":-32098,\\\"message\\\":\\\"controlled rpc offline\\\"}}\", \"responseStatus\": \"503 Service Unavailable\" }, code=SERVER_ERROR, version=6.17.0)\n    at makeError (C:\\Users\\Razgriz\\Documents\\Github\\perps\\apps\\pet\\node_modules\\ethers\\lib.commonjs\\utils\\errors.js:137:21)\n    at assert (C:\\Users\\Razgriz\\Documents\\Github\\perps\\apps\\pet\\node_modules\\ethers\\lib.commonjs\\utils\\errors.js:157:15)\n    at FetchResponse.assertOk (C:\\Users\\Razgriz\\Documents\\Github\\perps\\apps\\pet\\node_modules\\ethers\\lib.commonjs\\utils\\fetch.js:838:32)\n    at JsonRpcProvider._send (C:\\Users\\Razgriz\\Documents\\Github\\perps\\apps\\pet\\node_modules\\ethers\\lib.commonjs\\providers\\provider-jsonrpc.js:917:18)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async C:\\Users\\Razgriz\\Documents\\Github\\perps\\apps\\pet\\node_modules\\ethers\\lib.commonjs\\providers\\provider-jsonrpc.js:281:40"
+  }
+}

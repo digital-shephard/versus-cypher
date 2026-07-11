@@ -1,0 +1,5 @@
+{"at":1783727180197,"action":"fund","address":"0x4eF04D39dd53dB1aa324062e098fEbC4245C9791","amountWei":"3000000000000000","transactionHash":"0xfc0fc00c2d01a5d4faee38e02045d9518380607be43f72cdcf1b334c2afb1ee4","blockNumber":14}
+{"at":1783727262897,"action":"fund","address":"0x4eF04D39dd53dB1aa324062e098fEbC4245C9791","amountWei":"3000000000000000","transactionHash":"0x23215dbd4a7c92d8d250da589092955953959a07b05a281aa232618fc1442a40","blockNumber":19}
+{"at":1783727331629,"action":"seed_claim","agentId":1,"depositedMicros":"10000000","claimableMicros":"9000000","remainingTrancheMicros":"0","transactionHash":"0x4b676f2272e1851670dd3c1bfef24d15e4da7e6313c6f6f0922e595def2beb0b","blockNumber":27}
+{"at":1783727517781,"action":"assert","passed":true,"checks":{"active":true,"ownerMatches":true,"cypherMatches":true,"runwayMatches":true,"ticketsMatch":true,"vaultMatches":true,"claimableMatches":true,"encryptedWalletOnly":true}}
+{"at":1783727802349,"action":"assert","passed":true,"checks":{"active":true,"ownerMatches":true,"cypherMatches":true,"runwayMatches":true,"ticketsMatch":true,"vaultMatches":true,"claimableMatches":true,"encryptedWalletOnly":true}}

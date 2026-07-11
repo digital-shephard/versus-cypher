@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-22-26-465Z-waku-controlled-862bc25c",
+  "seed": "069d5395-242a-4279-b531-e528c6f2adbe",
+  "codeRevision": "sha256:27d370c6ce6b00d8",
+  "startedAt": "2026-07-11T11:22:26.476Z",
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "scenario": "two-agent-paid-controlled-waku-round-trip",
+  "transport": "controlled-waku-only",
+  "controlledCluster": {
+    "image": "wakuorg/nwaku:v0.38.1",
+    "clusterId": 66,
+    "numShardsInCluster": 8,
+    "shard": 0,
+    "nodes": [
+      {
+        "name": "node1",
+        "peerId": "16Uiu2HAm3cuhhRL2msUuLF62KRSfneFDx94RsuouyW25Ho42cFMq",
+        "websocketMultiaddr": "/ip4/127.0.0.1/tcp/18000/ws/p2p/16Uiu2HAm3cuhhRL2msUuLF62KRSfneFDx94RsuouyW25Ho42cFMq"
+      },
+      {
+        "name": "node2",
+        "peerId": "16Uiu2HAm8kegYGp6XeybmZAuNcnLosyjsRwZ44yLgfEuqLqYL9zt",
+        "websocketMultiaddr": "/ip4/127.0.0.1/tcp/18001/ws/p2p/16Uiu2HAm8kegYGp6XeybmZAuNcnLosyjsRwZ44yLgfEuqLqYL9zt"
+      },
+      {
+        "name": "node3",
+        "peerId": "16Uiu2HAmCCQRbp36trRMKRjqhRv1GAD7i1Epty3q2LiutAYCJ1oN",
+        "websocketMultiaddr": "/ip4/127.0.0.1/tcp/18002/ws/p2p/16Uiu2HAmCCQRbp36trRMKRjqhRv1GAD7i1Epty3q2LiutAYCJ1oN"
+      }
+    ]
+  },
+  "topicScope": "run-6d0d3654831c",
+  "targetPostcards": 20,
+  "maxApplicationAttempts": 4,
+  "expectStoreExpiry": true,
+  "storeExpiryWaitMs": 10000,
+  "chain": {
+    "kind": "hardhat",
+    "chainId": 31337,
+    "rpcPort": 56001
+  },
+  "secretsRecorded": false
+}

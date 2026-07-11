@@ -1,0 +1,6 @@
+{"at":1783769357630,"type":"stage_started","detail":{"count":2,"topicScope":"cap-8dfdd0be7a30"}}
+{"at":1783769359404,"type":"client_ready","detail":{"index":0,"peerCount":1,"protocolCounts":{"lightPush":1,"filter":1,"store":1,"relay":1}}}
+{"at":1783769359447,"type":"client_ready","detail":{"index":1,"peerCount":1,"protocolCounts":{"lightPush":1,"filter":1,"store":1,"relay":1}}}
+{"at":1783769359514,"type":"postcard_published","detail":{"index":0,"postcardId":"0xc45b65804c0d9b2cdcc75fd023167ea3ffda8c57753cc15b44e2bc4dd669b442","attempt":1}}
+{"at":1783769359517,"type":"postcard_published","detail":{"index":1,"postcardId":"0x767ea98e5236c279f36443728a55e065d49aac94413467d82c5ccb0723653374","attempt":1}}
+{"at":1783769359781,"type":"stage_completed","detail":{"version":1,"count":2,"stagePassed":true,"topicScope":"cap-8dfdd0be7a30","connectDurationMs":1784,"publishDurationMs":64,"convergenceDurationMs":264,"expectedAccepted":4,"actualAccepted":4,"deliveryRatio":1,"missingAccepted":0,"minRecords":2,"maxRecords":2,"publishErrors":0,"latencyMs":{"count":2,"p50":61,"p95":67,"max":67},"peakRssBytes":125796352,"cpuUserMicros":562000,"cpuSystemMicros":391000,"durationMs":2151}}

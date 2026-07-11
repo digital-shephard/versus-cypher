@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-24-25-017Z-waku-controlled-ec489d40",
+  "passed": true,
+  "durationMs": 53852,
+  "topicScope": "run-d61c71a0d7ac",
+  "wakuOnly": true,
+  "usableProtocols": true,
+  "deliveries": [
+    {
+      "postcardId": "0x9029891e9fea0df9e9f8050e581ae0ab740527f198c1c17bcc5aca0bf1eea6ed",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 151
+    },
+    {
+      "postcardId": "0x0976a4967985923d0bb065419c44d46afd8e3dbf93bdbf5b1029adcef9fb0a5d",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 76
+    },
+    {
+      "postcardId": "0xfcd9c5797b1b6f8b850c6a5ca849571d05c22452a62d9c1bd89a1aad9a7f0bff",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 75
+    },
+    {
+      "postcardId": "0x296065ad8ebab3bbf23970fb96f460dd0ce0eb746de93bc5c8a3bda540eef2b3",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 73
+    },
+    {
+      "postcardId": "0x049e9b5ae4201b00bf320a0cfb5d50abeacae2bec17725e95a0db44fe5f8dcd8",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 78
+    },
+    {
+      "postcardId": "0x9f8934e55c66b2f381a70c474d8e3d7894ced7363c2254e25b23ae4d085e3211",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 85
+    },
+    {
+      "postcardId": "0x86ffa4f9b42983c1fb56d25a0e97fc4b08b7070312536e6556b552869d024825",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 76
+    },
+    {
+      "postcardId": "0x53f3e456854e4fbd6065453b76274b344f92f872645846db4bc79c0b876d43d1",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 82
+    },
+    {
+      "postcardId": "0x0e5b8a2f2c071a20748fc853d0ac40c7996f0e3e35be88320e0e0f01fb562677",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 75
+    },
+    {
+      "postcardId": "0x3dcc6d3100f503890e92cb94cafe1608cf5dcede488a5114a6bf2e83994503ce",
+      "sender": "alpha",
+      "receiver": "beta",
+      "attempts": 1,
+      "latencyMs": 77
+    },
+    {
+      "postcardId": "0x1264e736173b611d00ff57dd3245f9f67ed45b995f0fecc4b975eb14b6ba3cff",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 80
+    },
+    {
+      "postcardId": "0xb184e5404ea655e701e508b9b816d1e902b80a1472956a18357e66372fdebc60",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 79
+    },
+    {
+      "postcardId": "0x31fd82f9de3218d7ecec7bf60849ccc885761618aab3127186b6aa5103aadb55",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 77
+    },
+    {
+      "postcardId": "0x64600731bc57919dd4b87d3ec2acce688f6aedccc32b12cd0d91a3e38f70cbc9",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 79
+    },
+    {
+      "postcardId": "0x84f1f3e49e94702d6df3f7602d8806e434a65f05291f04d0d2a6fe4ecc3d3629",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 76
+    },
+    {
+      "postcardId": "0x02548697ba72cab284350cb4fa3c2bb7cbb198f5715a5fb71a2ef4477de48f29",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 73
+    },
+    {
+      "postcardId": "0x2c50002a31d0d8e3ec087578a2ea6ab4e56955b703a7940f7dd893bccaa47003",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 84
+    },
+    {
+      "postcardId": "0x4b108bb797fb91421f5bf6e03bdaffe3a6dc05c0c9426cc9e128654ce820d2d0",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 82
+    },
+    {
+      "postcardId": "0x665ab25ca7bba7ff2d8df64df29512a3a7309957058e4c5b9afaeaa5767b862a",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 83
+    },
+    {
+      "postcardId": "0x6e1bde707cd64629d55c621e79bb8d5507b29605d3cbbaa9517193fa593bed71",
+      "sender": "beta",
+      "receiver": "alpha",
+      "attempts": 1,
+      "latencyMs": 85
+    }
+  ],
+  "latencyMs": {
+    "count": 20,
+    "p50": 78,
+    "p95": 85,
+    "max": 151
+  },
+  "retryCount": 0,
+  "acceptedHistoryCounts": [
+    20,
+    20
+  ],
+  "duplicateAcceptedRecords": [
+    0,
+    0
+  ],
+  "invalidProbe": {
+    "postcardId": "0xa77903a6309d2c7382be8ae08a8ddb755aeeab969b98a0721e4d9233c8bc4353",
+    "rejected": true,
+    "reachedBrain": false
+  },
+  "storeRecovery": {
+    "result": {
+      "attempted": true,
+      "received": 0
+    },
+    "acceptedCount": 0
+  },
+  "cypherHistoryRecovery": {
+    "recoveredCount": 20,
+    "recoveredIds": [
+      "0x9029891e9fea0df9e9f8050e581ae0ab740527f198c1c17bcc5aca0bf1eea6ed",
+      "0x1264e736173b611d00ff57dd3245f9f67ed45b995f0fecc4b975eb14b6ba3cff",
+      "0x0976a4967985923d0bb065419c44d46afd8e3dbf93bdbf5b1029adcef9fb0a5d",
+      "0xb184e5404ea655e701e508b9b816d1e902b80a1472956a18357e66372fdebc60",
+      "0xfcd9c5797b1b6f8b850c6a5ca849571d05c22452a62d9c1bd89a1aad9a7f0bff",
+      "0x31fd82f9de3218d7ecec7bf60849ccc885761618aab3127186b6aa5103aadb55",
+      "0x296065ad8ebab3bbf23970fb96f460dd0ce0eb746de93bc5c8a3bda540eef2b3",
+      "0x64600731bc57919dd4b87d3ec2acce688f6aedccc32b12cd0d91a3e38f70cbc9",
+      "0x049e9b5ae4201b00bf320a0cfb5d50abeacae2bec17725e95a0db44fe5f8dcd8",
+      "0x84f1f3e49e94702d6df3f7602d8806e434a65f05291f04d0d2a6fe4ecc3d3629",
+      "0x9f8934e55c66b2f381a70c474d8e3d7894ced7363c2254e25b23ae4d085e3211",
+      "0x02548697ba72cab284350cb4fa3c2bb7cbb198f5715a5fb71a2ef4477de48f29",
+      "0x86ffa4f9b42983c1fb56d25a0e97fc4b08b7070312536e6556b552869d024825",
+      "0x2c50002a31d0d8e3ec087578a2ea6ab4e56955b703a7940f7dd893bccaa47003",
+      "0x53f3e456854e4fbd6065453b76274b344f92f872645846db4bc79c0b876d43d1",
+      "0x4b108bb797fb91421f5bf6e03bdaffe3a6dc05c0c9426cc9e128654ce820d2d0",
+      "0x0e5b8a2f2c071a20748fc853d0ac40c7996f0e3e35be88320e0e0f01fb562677",
+      "0x665ab25ca7bba7ff2d8df64df29512a3a7309957058e4c5b9afaeaa5767b862a",
+      "0x3dcc6d3100f503890e92cb94cafe1608cf5dcede488a5114a6bf2e83994503ce",
+      "0x6e1bde707cd64629d55c621e79bb8d5507b29605d3cbbaa9517193fa593bed71"
+    ],
+    "transport": "authenticated-tcp-cypher-history-sync"
+  },
+  "chain": {
+    "classPotMicros": "220000",
+    "participantCount": 2,
+    "alphaRunway": "6890000",
+    "betaRunway": "6890000",
+    "alphaTickets": "11",
+    "betaTickets": "11",
+    "totalTickets": "22"
+  }
+}

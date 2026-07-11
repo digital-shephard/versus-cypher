@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "batches": [
+    {
+      "batch": {
+        "protocol": "versus-signal-batch",
+        "version": 2,
+        "chainId": "31337",
+        "arena": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
+        "launchId": "1",
+        "agentId": "2",
+        "author": "0xec60575471a0305523a1468e9c6c0d7b07987d6a",
+        "signals": [
+          {
+            "id": "0x1adc7b1a4670d024947e31994161c1d0a45f33590b8e39892b45c196f354e54c",
+            "type": "observation",
+            "inkPennies": 1
+          }
+        ],
+        "root": "0x7990391107c1f817036b9dffd28fd76d9d4b8c3a9f347c92f10be517db4d955d",
+        "signalCount": 1,
+        "inkPennies": 1,
+        "amountMicros": "10000"
+      },
+      "postcards": [
+        {
+          "protocol": "versus-postcard",
+          "version": 4,
+          "type": "observation",
+          "launchId": "1",
+          "author": "0xec60575471a0305523a1468e9c6c0d7b07987d6a",
+          "cypherId": "2",
+          "sequence": 0,
+          "voiceDay": 20645,
+          "epoch": 2972946,
+          "slot": 0,
+          "rateNullifier": "0x28443d126584bbf1856ac550b0c083bc9b9eed51d0c8a16a6f26d7f4b8c5baf5",
+          "createdAt": 1783768004,
+          "expiresAt": 1783854404,
+          "body": "filter failover signal",
+          "replyTo": null,
+          "artifact": null,
+          "amountMicros": null,
+          "signature": "0x72ab0f33aec31d4f4bce7579ed5154a3aa38bec1f8b25f92a88787b98b55575f11c1f2c385787ace7cd456d9d9a881301b53a4c6336b71f2fdf6a8979c0aa0031b",
+          "id": "0x1adc7b1a4670d024947e31994161c1d0a45f33590b8e39892b45c196f354e54c"
+        }
+      ],
+      "status": "confirmed",
+      "preparedAt": 1783767995021,
+      "transactionHash": "0xb6ce5bd61c23e68b9859b7385dce9ba3884fdcc442a8ec3176b14c6df1e9d8dd",
+      "publishedIds": [],
+      "submittedAt": 1783767995099,
+      "blockNumber": "36",
+      "confirmedAt": 1783767995128
+    }
+  ]
+}

@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "runId": "2026-07-11T11-53-14-630Z-coalition-control-11b48b89",
+  "passed": true,
+  "mode": "deterministic-reproducibility-control",
+  "durationMs": 20401,
+  "assertions": {
+    "eightIndependentProcesses": true,
+    "eightInstrumentedContexts": true,
+    "eightInstrumentedDecisions": true,
+    "exactHistories": true,
+    "deterministicInProcess": true,
+    "exactRestartViews": true,
+    "divergentLocalViews": true,
+    "chainExact": true,
+    "noRejectedDecisions": true,
+    "noBrainErrors": true,
+    "expectedControlActions": true,
+    "expectedControlTypes": true,
+    "expectedControlEconomics": true
+  },
+  "proposalIds": {
+    "verified": "0xcc384d684664b3d5705ef740761c91d5173813e6ad9ff0fba810c816de0fb896",
+    "mystery": "0x44bf5293fe9dd007834b62c916bd8f0e8681d536e1544742e6fb66913902438b"
+  },
+  "conversation": {
+    "published": 7,
+    "silences": 1,
+    "rejected": 0,
+    "brainErrors": 0,
+    "actionTypes": [
+      "critique",
+      "endorsement",
+      "question"
+    ],
+    "expectedHistoryCount": 9
+  },
+  "localViews": [
+    {
+      "worker": "cypher-1",
+      "strategy": "mystery-curator",
+      "bias": "mystery",
+      "model": "deterministic-memory-guided",
+      "signature": "mystery|mystery:ready:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:c98b1a2afb3166124ac135af960b9b9c5afcb3de7747393c1356d2a249820034",
+      "hashAfterRestart": "sha256:c98b1a2afb3166124ac135af960b9b9c5afcb3de7747393c1356d2a249820034"
+    },
+    {
+      "worker": "cypher-2",
+      "strategy": "verification-curator",
+      "bias": "verified",
+      "model": "deterministic-memory-guided",
+      "signature": "verified|mystery:contested:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:eca05936951971b59043ec728d61a93b23d4458f149bdb2ab1f4e8ff2282671a",
+      "hashAfterRestart": "sha256:eca05936951971b59043ec728d61a93b23d4458f149bdb2ab1f4e8ff2282671a"
+    },
+    {
+      "worker": "cypher-3",
+      "strategy": "risk-auditor",
+      "bias": "verified",
+      "model": "deterministic-risk-auditor",
+      "signature": "verified|mystery:contested:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:70971de328ad0e3f91812bf0d48ef9d72812710a76a1ec3fdc65eb3a021fbae3",
+      "hashAfterRestart": "sha256:70971de328ad0e3f91812bf0d48ef9d72812710a76a1ec3fdc65eb3a021fbae3"
+    },
+    {
+      "worker": "cypher-4",
+      "strategy": "originality-auditor",
+      "bias": "mystery",
+      "model": "deterministic-originality-auditor",
+      "signature": "mystery|mystery:ready:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:47e3e833aa1a57ea91e24cd0e3db8016d21f576674d495df6003e8b2b6e39abf",
+      "hashAfterRestart": "sha256:47e3e833aa1a57ea91e24cd0e3db8016d21f576674d495df6003e8b2b6e39abf"
+    },
+    {
+      "worker": "cypher-5",
+      "strategy": "verification-questioner",
+      "bias": "neutral",
+      "model": "deterministic-verification-questioner",
+      "signature": "mystery|mystery:ready:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:caf54cfde75bd6dd69e26bf534e3c2e78ffb4eb382bfa503b491b4f5e966d2d5",
+      "hashAfterRestart": "sha256:caf54cfde75bd6dd69e26bf534e3c2e78ffb4eb382bfa503b491b4f5e966d2d5"
+    },
+    {
+      "worker": "cypher-6",
+      "strategy": "mystery-builder",
+      "bias": "mystery",
+      "model": "deterministic-memory-guided",
+      "signature": "mystery|mystery:ready:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:f44e69ebc8bb7b2234997b2f6b898a73b857b580b2a3de7cf04c710dfa8d5607",
+      "hashAfterRestart": "sha256:f44e69ebc8bb7b2234997b2f6b898a73b857b580b2a3de7cf04c710dfa8d5607"
+    },
+    {
+      "worker": "cypher-7",
+      "strategy": "bridge-builder",
+      "bias": "verified",
+      "model": "deterministic-bridge-builder",
+      "signature": "verified|mystery:contested:2:1|verified:ready:2:1",
+      "hashBefore": "sha256:8d48c62ff2db90cd86af858660b86819bc2bd24983dceee477e16c827851d13c",
+      "hashAfterRestart": "sha256:8d48c62ff2db90cd86af858660b86819bc2bd24983dceee477e16c827851d13c"
+    },
+    {
+      "worker": "cypher-8",
+      "strategy": "quiet-observer",
+      "bias": "critical",
+      "model": "deterministic-quiet-observer",
+      "signature": "mystery|mystery:contested:2:1|verified:contested:2:1",
+      "hashBefore": "sha256:9c40506afb8e8f781d24388777afb12d1ce29b364dd233bb70c579660cd4e4a3",
+      "hashAfterRestart": "sha256:9c40506afb8e8f781d24388777afb12d1ce29b364dd233bb70c579660cd4e4a3"
+    }
+  ],
+  "uniqueOutcomeSignatures": 4,
+  "chain": {
+    "classPotMicros": "210000",
+    "participantCount": 8,
+    "totalTickets": "21",
+    "tickets": [
+      "2",
+      "2",
+      "2",
+      "2",
+      "5",
+      "2",
+      "2",
+      "4"
+    ],
+    "runway": [
+      "6980000",
+      "6980000",
+      "6980000",
+      "6980000",
+      "6950000",
+      "6980000",
+      "6980000",
+      "6960000"
+    ],
+    "expectedInkPennies": 21
+  },
+  "modelCost": {
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "exactUsd": 0,
+    "catalogEstimatedUsd": 0
+  },
+  "resources": [
+    {
+      "pid": 33000,
+      "memory": {
+        "rss": 159129600,
+        "heapTotal": 99721216,
+        "heapUsed": 48890624,
+        "external": 5464820,
+        "arrayBuffers": 488035
+      },
+      "cpu": {
+        "userCPUTime": 765000,
+        "systemCPUTime": 703000,
+        "maxRSS": 156344,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 60184,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 370,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 33824,
+      "memory": {
+        "rss": 157294592,
+        "heapTotal": 98410496,
+        "heapUsed": 48796320,
+        "external": 5472934,
+        "arrayBuffers": 496149
+      },
+      "cpu": {
+        "userCPUTime": 890000,
+        "systemCPUTime": 468000,
+        "maxRSS": 154160,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 58275,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 370,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 28800,
+      "memory": {
+        "rss": 161816576,
+        "heapTotal": 103653376,
+        "heapUsed": 43805568,
+        "external": 5310000,
+        "arrayBuffers": 333215
+      },
+      "cpu": {
+        "userCPUTime": 890000,
+        "systemCPUTime": 468000,
+        "maxRSS": 159620,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 61388,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 370,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 33076,
+      "memory": {
+        "rss": 162549760,
+        "heapTotal": 103653376,
+        "heapUsed": 43796640,
+        "external": 5309976,
+        "arrayBuffers": 333191
+      },
+      "cpu": {
+        "userCPUTime": 1093000,
+        "systemCPUTime": 453000,
+        "maxRSS": 160140,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 60883,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 370,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 35496,
+      "memory": {
+        "rss": 160735232,
+        "heapTotal": 100769792,
+        "heapUsed": 53971488,
+        "external": 5633770,
+        "arrayBuffers": 656985
+      },
+      "cpu": {
+        "userCPUTime": 906000,
+        "systemCPUTime": 640000,
+        "maxRSS": 157796,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 59473,
+        "swappedOut": 0,
+        "fsRead": 2511,
+        "fsWrite": 351,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 35816,
+      "memory": {
+        "rss": 158953472,
+        "heapTotal": 99721216,
+        "heapUsed": 48926368,
+        "external": 5456575,
+        "arrayBuffers": 479790
+      },
+      "cpu": {
+        "userCPUTime": 937000,
+        "systemCPUTime": 515000,
+        "maxRSS": 157500,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 60931,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 370,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 31440,
+      "memory": {
+        "rss": 163323904,
+        "heapTotal": 104701952,
+        "heapUsed": 43856056,
+        "external": 5294365,
+        "arrayBuffers": 317580
+      },
+      "cpu": {
+        "userCPUTime": 953000,
+        "systemCPUTime": 500000,
+        "maxRSS": 160972,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 61357,
+        "swappedOut": 0,
+        "fsRead": 2508,
+        "fsWrite": 370,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    },
+    {
+      "pid": 1500,
+      "memory": {
+        "rss": 156553216,
+        "heapTotal": 97624064,
+        "heapUsed": 48751432,
+        "external": 5472262,
+        "arrayBuffers": 495477
+      },
+      "cpu": {
+        "userCPUTime": 875000,
+        "systemCPUTime": 515000,
+        "maxRSS": 155040,
+        "sharedMemorySize": 0,
+        "unsharedDataSize": 0,
+        "unsharedStackSize": 0,
+        "minorPageFault": 0,
+        "majorPageFault": 59888,
+        "swappedOut": 0,
+        "fsRead": 2511,
+        "fsWrite": 367,
+        "ipcSent": 0,
+        "ipcReceived": 0,
+        "signalsCount": 0,
+        "voluntaryContextSwitches": 0,
+        "involuntaryContextSwitches": 0
+      }
+    }
+  ]
+}

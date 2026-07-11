@@ -1,0 +1,9 @@
+{
+  "runId": "2026-07-11T11-01-33-182Z-waku-reliability-3782e78e",
+  "passed": false,
+  "failedAt": "2026-07-11T11:01:56.924Z",
+  "error": {
+    "message": "Waku LightPush failed: Remote peer rejected, Remote peer rejected",
+    "stack": "Error: Waku LightPush failed: Remote peer rejected, Remote peer rejected\n    at WakuPostcardTransport.push (C:\\Users\\Razgriz\\Documents\\Github\\perps\\packages\\network\\src\\waku-transport.js:332:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async VersusNode.publishPaid (C:\\Users\\Razgriz\\Documents\\Github\\perps\\packages\\network\\src\\node.js:398:7)\n    at async PetNetworkService.publishPaidBatch (C:\\Users\\Razgriz\\Documents\\Github\\perps\\apps\\pet\\src\\network.js:560:22)\n    at async command (C:\\Users\\Razgriz\\Documents\\Github\\perps\\scripts\\lab\\cypher-worker.js:232:25)\n    at async process.<anonymous> (C:\\Users\\Razgriz\\Documents\\Github\\perps\\scripts\\lab\\cypher-worker.js:289:20)"
+  }
+}

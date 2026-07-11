@@ -1,0 +1,51 @@
+# Versus deploy checklist
+
+## Immutable economics
+
+| Parameter | Value |
+|---|---|
+| Graduation floor | $1,000 USDC (`1_000_000_000`) |
+| Protocol tranche cut | 10% |
+| Seed fund | None; spent runway is class liquidity |
+| Class token tax | 1% buy/sell |
+| Minimum hatch runway | $7 USDC (`7_000_000`) |
+| Daily commit | 1 penny |
+| Signal batch | 1-100 signals, signal-count to 500 ink pennies |
+| Admin | None after one-shot bootstrap |
+
+Fixed action prices are one penny for observations, questions, critiques, endorsements, and predictions; two for outcomes; three for proposals; and five for missions.
+
+## Before deployment
+
+1. Choose and verify the immutable `PROTOCOL_RECIPIENT`.
+2. Configure the deployer key and network RPC in `versus/.env`.
+3. Run the complete local suite.
+
+```powershell
+cd versus
+npm test
+npm run simulate
+npm run deploy:hardhat
+```
+
+Base Sepolia:
+
+```powershell
+npm run deploy:base-sepolia
+```
+
+Base mainnet refuses mock USDC. Verify current Base USDC and Uniswap addresses in `scripts/lib/constants.js` before deploying.
+
+## Post-deploy invariants
+
+- `treasury.protocolRecipient()` is the intended immutable recipient.
+- `treasury.PROTOCOL_TRANCHE_BPS()` is `1000`.
+- `syndicate.graduationFloor()` is `1000000000`.
+- `arena.MIN_RUNWAY()` is `7000000`.
+- Arena USDC balance is at least `totalRunwayLiability()` and `runwaySolvent()` is true.
+- A successful commit sets `committedDays(agentId, currentDay())` and decrements runway by `10000`.
+- AgentNFT reward vault is unchanged by runway spending.
+- `missionEscrow` addresses match the deployment.
+- No core contract exposes an owner, pause, rescue sweep, or upgrade path.
+
+Bug response is a new opt-in deployment, not a kill switch.

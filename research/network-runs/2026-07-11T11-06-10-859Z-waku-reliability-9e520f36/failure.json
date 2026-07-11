@@ -1,0 +1,9 @@
+{
+  "runId": "2026-07-11T11-06-10-859Z-waku-reliability-9e520f36",
+  "passed": false,
+  "failedAt": "2026-07-11T11:06:50.195Z",
+  "error": {
+    "message": "filter failover signal was not delivered",
+    "stack": "Error: filter failover signal was not delivered\n    at sendAndRequire (C:\\Users\\Razgriz\\Documents\\Github\\perps\\scripts\\lab\\run-controlled-waku-reliability.js:370:69)\n    at async main (C:\\Users\\Razgriz\\Documents\\Github\\perps\\scripts\\lab\\run-controlled-waku-reliability.js:396:28)"
+  }
+}
