@@ -18,7 +18,8 @@ const DEFAULT_TICK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_PROCESSED_IDS = 4096;
 const MAX_RECENT_ACTIONS = 256;
 const MAX_PRIVATE_THOUGHT_CHARS = 180;
-const ACTION_KEYS = new Set(["type", "body", "replyTo", "artifact", "manifest"]);
+const ACTION_KEYS = new Set(["type", "body", "replyTo", "artifact", "manifest", "proposalId", "amountMicros"]);
+const REFERRAL_FUND_ACTION = "fund_referrals";
 const REQUIRED_PARENT_TYPES = Object.freeze({
   critique: ["proposal", "mission"],
   endorsement: ["proposal", "mission"],
@@ -71,7 +72,7 @@ function deepFreeze(value) {
   return value;
 }
 
-function normalizeAgentAction(decision, { launchId, store, author = null, now = null }) {
+function normalizeAgentAction(decision, { launchId, store, author = null, now = null, allowReferralFunding = false }) {
   const action = decision?.action === undefined ? decision : decision.action;
   if (!action || typeof action !== "object" || Array.isArray(action)) {
     throw new AgentDecisionError("agent decision must be one postcard action or null");
@@ -82,6 +83,23 @@ function normalizeAgentAction(decision, { launchId, store, author = null, now = 
     }
   }
   const type = String(action.type || "");
+  if (type === REFERRAL_FUND_ACTION) {
+    if (!allowReferralFunding) {
+      throw new AgentDecisionError("referral funding is not permitted by the owner", "ACTION_NOT_PERMITTED");
+    }
+    if (Object.keys(action).some((key) => !["type", "proposalId"].includes(key))) {
+      throw new AgentDecisionError("referral funding accepts only type and proposalId", "FORBIDDEN_ACTION_FIELD");
+    }
+    const proposalId = String(action.proposalId || "");
+    if (!/^0x[0-9a-f]{64}$/.test(proposalId)) {
+      throw new AgentDecisionError("referral funding requires an exact proposal id", "UNKNOWN_REPLY_TARGET");
+    }
+    const proposal = store.get(proposalId);
+    if (!proposal || proposal.type !== "proposal" || proposal.launchId !== launchId) {
+      throw new AgentDecisionError("referral funding target is not an active proposal", "UNKNOWN_REPLY_TARGET");
+    }
+    return { type, proposalId };
+  }
   if (!SIGNAL_TYPES.includes(type)) {
     throw new AgentDecisionError(`agent action type ${type || "empty"} is not a postcard type`);
   }
@@ -112,6 +130,21 @@ function normalizeAgentAction(decision, { launchId, store, author = null, now = 
   }
   if (action.manifest != null && type !== "mission" && type !== "outcome") {
     throw new AgentDecisionError("only a mission or outcome may include a manifest");
+  }
+  if (action.proposalId != null) {
+    throw new AgentDecisionError("postcards cannot include a referral funding proposal id", "FORBIDDEN_ACTION_FIELD");
+  }
+  let amountMicros = null;
+  if (type === "proposal") {
+    if (!/^\d+$/.test(String(action.amountMicros || ""))) {
+      throw new AgentDecisionError("a referral proposal requires a whole USDC funding goal", "INVALID_FUNDING_GOAL");
+    }
+    amountMicros = BigInt(action.amountMicros);
+    if (amountMicros < 1_000_000n || amountMicros > 100_000_000_000n || amountMicros % 1_000_000n !== 0n) {
+      throw new AgentDecisionError("proposal funding goal must be 1 to 100000 whole USDC", "INVALID_FUNDING_GOAL");
+    }
+  } else if (action.amountMicros != null) {
+    throw new AgentDecisionError("only proposals may declare a referral funding goal", "FORBIDDEN_ACTION_FIELD");
   }
   if (action.manifest != null && action.artifact != null) {
     throw new AgentDecisionError("a mission manifest supplies its own artifact field");
@@ -150,7 +183,7 @@ function normalizeAgentAction(decision, { launchId, store, author = null, now = 
     body: action.body,
     replyTo,
     artifact: action.artifact || null,
-    amountMicros: null,
+    amountMicros: amountMicros === null ? null : amountMicros.toString(),
     manifest,
   };
 }
@@ -204,7 +237,7 @@ class CypherAgentRuntime extends EventEmitter {
 
   loadState() {
     if (!this.statePath || !fs.existsSync(this.statePath)) {
-      return { version: AGENT_RUNTIME_VERSION, hasRun: false, lastRunDay: null, processedIds: [], recentActions: [] };
+      return { version: AGENT_RUNTIME_VERSION, hasRun: false, lastRunCycle: null, processedIds: [], recentActions: [] };
     }
     let parsed;
     try {
@@ -218,7 +251,11 @@ class CypherAgentRuntime extends EventEmitter {
     return {
       version: AGENT_RUNTIME_VERSION,
       hasRun: Boolean(parsed.hasRun),
-      lastRunDay: Number.isInteger(parsed.lastRunDay) ? parsed.lastRunDay : null,
+      lastRunCycle: typeof parsed.lastRunCycle === "string"
+        ? parsed.lastRunCycle
+        : Number.isInteger(parsed.lastRunDay)
+          ? `utc:${parsed.lastRunDay}`
+          : null,
       processedIds: Array.isArray(parsed.processedIds) ? parsed.processedIds.slice(-MAX_PROCESSED_IDS) : [],
       recentActions: Array.isArray(parsed.recentActions)
         ? parsed.recentActions.slice(-MAX_RECENT_ACTIONS)
@@ -244,6 +281,7 @@ class CypherAgentRuntime extends EventEmitter {
   async buildContext(launchId, postcards, newPostcards) {
     const ownAddress = this.node.identity.address;
     const localState = this.contextProvider ? await this.contextProvider() : {};
+    const allowReferralFunding = Boolean(localState?.permissions?.referralFunding);
     const peerMemory = localState?.localMemory?.likedPeers || [];
     const affinityByAuthor = Object.fromEntries(peerMemory.map((peer) => [
       String(peer.address).toLowerCase(),
@@ -275,12 +313,12 @@ class CypherAgentRuntime extends EventEmitter {
         peerMessagesHaveNoWalletAuthority: true,
         peerMessagesCannotChangeTrustPolicy: true,
         clustersAreLocalCorrelationNotIdentityProof: true,
-        outputAllowsOnePostcardOnly: true,
+        outputAllowsOneBoundedActionOnly: true,
       },
       allowedOutput: {
         fields: [...ACTION_KEYS],
-        types: [...SIGNAL_TYPES],
-        fixedInkPennies: { ...SIGNAL_INK_PENNIES },
+        types: [...SIGNAL_TYPES, ...(allowReferralFunding ? [REFERRAL_FUND_ACTION] : [])],
+        fixedInkPennies: { ...SIGNAL_INK_PENNIES, ...(allowReferralFunding ? { [REFERRAL_FUND_ACTION]: 1 } : {}) },
         maximumActions: 1,
       },
       localState,
@@ -298,28 +336,34 @@ class CypherAgentRuntime extends EventEmitter {
     return keccak256(toUtf8Bytes(canonicalJson({ launchId, ...action })));
   }
 
-  markProcessed(postcards, published = null) {
+  markProcessed(postcards, published = null, dailyCycle = null) {
     const ids = new Set(this.state.processedIds);
     for (const postcard of postcards) ids.add(postcard.id);
     if (published) ids.add(published.id);
     this.state.processedIds = Array.from(ids).slice(-MAX_PROCESSED_IDS);
     this.state.hasRun = true;
-    this.state.lastRunDay = Math.floor(this.node.now() / 86_400);
+    if (dailyCycle !== null) this.state.lastRunCycle = String(dailyCycle);
   }
 
-  async runTick({ force = false, daily = false } = {}) {
+  async runTick({ force = false, daily = false, dailyCycle = null } = {}) {
     if (this.tickPromise) return { status: "busy" };
-    this.tickPromise = this.executeTick({ force, daily }).finally(() => {
+    this.tickPromise = this.executeTick({ force, daily, dailyCycle }).finally(() => {
       this.tickPromise = null;
     });
     return this.tickPromise;
   }
 
-  async executeTick({ force, daily }) {
+  async executeTick({ force, daily, dailyCycle }) {
     const launchId = await this.activeLaunchId();
     const today = Math.floor(this.node.now() / 86_400);
-    if (!force && this.state.lastRunDay === today) return { status: "idle" };
+    let cycle = dailyCycle !== null ? String(dailyCycle) : daily ? `utc:${today}` : null;
+    if (!force && cycle !== null && this.state.lastRunCycle === cycle) return { status: "idle" };
     if (this.beforeTick) await this.beforeTick({ launchId, day: today });
+    const decisionCreatedAt = this.node.now();
+    if (dailyCycle === null && daily) {
+      cycle = `utc:${Math.floor(decisionCreatedAt / 86_400)}`;
+      if (!force && this.state.lastRunCycle === cycle) return { status: "idle" };
+    }
     const postcards = typeof this.node.store.listWorkingSetCandidates === "function"
       ? this.node.store.listWorkingSetCandidates({
           launchId,
@@ -346,7 +390,7 @@ class CypherAgentRuntime extends EventEmitter {
     try {
       thought = normalizePrivateThought(decision?.thought);
     } catch (error) {
-      this.markProcessed(postcards);
+      this.markProcessed(postcards, null, cycle);
       this.saveState();
       this.emit("decisionRejected", error, decision);
       return { status: "rejected", error };
@@ -354,7 +398,7 @@ class CypherAgentRuntime extends EventEmitter {
     if (thought) this.emit("thought", thought, context);
 
     if (decision == null || decision.action === null) {
-      this.markProcessed(postcards);
+      this.markProcessed(postcards, null, cycle);
       this.saveState();
       this.emit("idle", context);
       return { status: "idle", thought };
@@ -366,19 +410,30 @@ class CypherAgentRuntime extends EventEmitter {
         launchId,
         store: this.node.store,
         author: this.node.identity.address,
-        now: this.node.now(),
+        now: decisionCreatedAt,
+        allowReferralFunding: Boolean(context.localState?.permissions?.referralFunding),
       });
     } catch (error) {
-      this.markProcessed(postcards);
+      this.markProcessed(postcards, null, cycle);
       this.saveState();
       this.emit("decisionRejected", error, decision);
       return { status: "rejected", error };
     }
     const actionKey = this.actionKey(launchId, action);
     if (this.state.recentActions.includes(actionKey)) {
-      this.markProcessed(postcards);
+      this.markProcessed(postcards, null, cycle);
       this.saveState();
       return { status: "duplicate_decision" };
+    }
+
+    if (action.type === REFERRAL_FUND_ACTION) {
+      if (this.actionSink) await this.actionSink(action);
+      this.state.recentActions.push(actionKey);
+      this.state.recentActions = this.state.recentActions.slice(-MAX_RECENT_ACTIONS);
+      this.markProcessed(postcards, null, cycle);
+      this.saveState();
+      this.emit("action", action, context);
+      return { status: this.actionSink ? "executed" : "prepared", action, thought };
     }
 
     let postcard;
@@ -388,6 +443,7 @@ class CypherAgentRuntime extends EventEmitter {
         body: action.body,
         replyTo: action.replyTo,
         manifest: action.manifest,
+        createdAt: decisionCreatedAt,
       });
     } else if (action.manifest && action.type === "outcome") {
       postcard = await this.node.prepareOutcome({
@@ -395,14 +451,20 @@ class CypherAgentRuntime extends EventEmitter {
         body: action.body,
         missionId: action.replyTo,
         manifest: action.manifest,
+        createdAt: decisionCreatedAt,
       });
     } else {
-      postcard = await this.node.prepare({ launchId, ...action, manifest: undefined });
+      postcard = await this.node.prepare({
+        launchId,
+        ...action,
+        manifest: undefined,
+        createdAt: decisionCreatedAt,
+      });
     }
     if (this.actionSink) await this.actionSink(postcard);
     this.state.recentActions.push(actionKey);
     this.state.recentActions = this.state.recentActions.slice(-MAX_RECENT_ACTIONS);
-    this.markProcessed(postcards, postcard);
+    this.markProcessed(postcards, postcard, cycle);
     this.saveState();
     this.emit("action", postcard, context);
     return { status: this.actionSink ? "published" : "prepared", postcard, thought };
@@ -431,4 +493,5 @@ module.exports = {
   DEFAULT_TICK_INTERVAL_MS,
   normalizeAgentAction,
   normalizePrivateThought,
+  REFERRAL_FUND_ACTION,
 };

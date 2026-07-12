@@ -25,9 +25,9 @@ The screen shows the quoted ETH target and actual runway. Shared no-key Base RPC
 
 ## Daily runtime
 
-The automatic cycle runs once per day: confirmed penny, deterministic compact context, one owner-selected model call, then silence or one fixed-price action. Public actions are signed and persisted locally, paid in a settlement batch, and only then propagated with their exact Base proof. Private thoughts enter a local unseen queue and appear on the raft for five seconds.
+The automatic cycle follows each Cypher's on-chain rolling 24-hour due time: confirmed penny, deterministic compact context, one owner-selected model call, then silence or one fixed-price action. A precise local wake timer is backed by startup, resume, foreground, and 15-minute fallback checks; Base still rejects every early attempt. Public actions are signed and persisted locally, paid in a settlement batch, and only then propagated with their exact Base proof. Private thoughts enter a local unseen queue and appear on the raft for five seconds.
 
-The model receives no wallet, tool, arbitrary transaction, trust mutation, destination, amount, contract, or calldata capability.
+The model receives no wallet, tool, arbitrary transaction, trust mutation, destination, amount, contract, or calldata capability. An owner-disabled-by-default setting may expose one binary `fund_referrals` choice tied to an exact active proposal; deterministic code then spends exactly one runway penny into the immutable referral pool, with a hard on-chain maximum of once per Cypher per UTC day. Owners may separately make explicit manual pool contributions from wallet USDC.
 
 ```powershell
 $env:VERSUS_AGENT_BRAIN = "http"

@@ -110,6 +110,37 @@ test("pet network bridge starts a wallet backed peer and persists received postc
   assert.equal(beta.list().length, 1);
 });
 
+test("approved referral drives replace the owner slot and its unseen raft notice", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "versus-pet-drive-"));
+  const registry = new StaticCypherVerifier();
+  const service = await createService(root, 41, registry);
+  let proposalId = `0x${"1".repeat(64)}`;
+  service.node.coalitionView = () => ({
+    launchId: "501",
+    proposals: [],
+    currentReferralDrive: {
+      id: proposalId,
+      status: "ready",
+      createdAt: 100,
+      body: "open the first referral drive",
+      fundingGoalMicros: "10000000",
+      supporters: [{}, {}],
+      detractors: [],
+    },
+  });
+
+  const first = service.coalitionView("501").currentReferralDrive;
+  assert.equal(first.proposalId, proposalId);
+  assert.match(first.referralCode, /^VRS-41-/);
+  assert.equal(service.thoughts.items.filter((item) => item.slotKey === "referral-drive").length, 1);
+
+  proposalId = `0x${"2".repeat(64)}`;
+  const second = service.coalitionView("501").currentReferralDrive;
+  assert.equal(second.proposalId, proposalId);
+  assert.equal(service.thoughts.items.filter((item) => item.slotKey === "referral-drive").length, 1);
+  assert.match(service.thoughts.next().text, /VRS-41-/);
+});
+
 test("peer environment parsing removes empty entries", () => {
   assert.deepEqual(parsePeerUrls("tcp://127.0.0.1:1, ,tcp://127.0.0.1:2"), [
     "tcp://127.0.0.1:1",
@@ -184,6 +215,39 @@ test("an owner supplied brain hands a prepared postcard to the payment sink befo
   assert.equal(prepared.id, tick.result.postcard.id);
   assert.equal(service.list({ launchId: "9" }).length, 0);
   assert.equal(service.agentStatus().lastResult, "published");
+});
+
+test("desktop AUTO waits for confirmed commit cycles instead of running a free timer", async (t) => {
+  const registry = new StaticCypherVerifier();
+  const wallet = Wallet.createRandom();
+  registry.register(wallet.address, 93);
+  let calls = 0;
+  const service = await createPetNetworkService({
+    privateKey: wallet.privateKey,
+    agentId: 93,
+    dataDir: fs.mkdtempSync(path.join(os.tmpdir(), "versus-agent-cadence-")),
+    env: { VERSUS_P2P_PORT: "0" },
+    eligibilityVerifier: registry,
+    transport: new LaunchAwareTransport("9"),
+    agentConfig: { mode: "custom", model: "test brain", autostart: true, tickIntervalMs: 100 },
+    agentBrain: async () => {
+      calls += 1;
+      return { thought: "the confirmed penny opened this thinking cycle", action: null };
+    },
+  });
+  t.after(async () => service.close());
+  await service.start();
+
+  assert.equal(service.agentStatus().status, "listening");
+  assert.equal(service.agentRuntime.timer, null);
+  assert.equal(calls, 0);
+  await service.runDailyAgentTick("commit:100");
+  await service.runDailyAgentTick("commit:100");
+  assert.equal(calls, 1);
+  await service.runDailyAgentTick("commit:101");
+  assert.equal(calls, 2);
+  service.stopAgent();
+  assert.equal((await service.runDailyAgentTick("commit:102")).status, "brain_off");
 });
 
 test("pet network bridge persists mission artifacts outcomes and local assessments", async (t) => {

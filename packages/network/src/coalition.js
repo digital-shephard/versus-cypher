@@ -143,6 +143,7 @@ class CoalitionEngine {
         id: mission.id,
         proposalId: parentProposalId,
         author: mission.author,
+        createdAt: mission.createdAt,
         body: mission.body,
         artifact: mission.artifact,
         declaredAmountMicros: mission.amountMicros,
@@ -165,8 +166,10 @@ class CoalitionEngine {
       return {
         id: proposal.id,
         author: proposal.author,
+        createdAt: proposal.createdAt,
         body: proposal.body,
         artifact: proposal.artifact,
+        fundingGoalMicros: proposal.amountMicros,
         ...evaluation,
         score:
           this.trust.domainWeight(proposal.author, ["taste", "prediction", "integrity"]) +
@@ -177,11 +180,15 @@ class CoalitionEngine {
     });
 
     proposalViews.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    const currentReferralDrive = proposalViews
+      .filter((proposal) => proposal.status === "ready")
+      .sort((a, b) => b.createdAt - a.createdAt || b.id.localeCompare(a.id))[0] || null;
     return {
       launchId,
       postcardCount: postcards.length,
       proposalCount: proposalViews.length,
       leadingProposalId: proposalViews[0]?.id || null,
+      currentReferralDrive,
       proposals: proposalViews,
       stanceClusters: clusters.view(),
     };

@@ -41,6 +41,7 @@ async function main() {
   let usedMockRouter = false;
   let protocolRecipient;
   let graduationFloor = CONSTANTS.GRADUATION_FLOOR;
+  let referralReward = CONSTANTS.REFERRAL_REWARD;
   let safePolicy = null;
   const transactions = [];
 
@@ -61,6 +62,14 @@ async function main() {
   if (network === "base" && process.env.GRADUATION_FLOOR_USDC) {
     throw new Error("GRADUATION_FLOOR_USDC cannot override the immutable $1,000 Base mainnet floor");
   }
+  if (network === "base" && process.env.REFERRAL_REWARD_USDC) {
+    throw new Error("REFERRAL_REWARD_USDC cannot override the immutable $1 Base mainnet referral reward");
+  }
+  if (process.env.REFERRAL_REWARD_USDC) {
+    const dollars = Number(process.env.REFERRAL_REWARD_USDC);
+    if (!Number.isFinite(dollars) || dollars <= 0) throw new Error("REFERRAL_REWARD_USDC invalid");
+    referralReward = BigInt(Math.round(dollars * 1e6));
+  }
   if (process.env.GRADUATION_FLOOR_USDC) {
     const dollars = Number(process.env.GRADUATION_FLOOR_USDC);
     if (!Number.isFinite(dollars) || dollars <= 0) throw new Error("GRADUATION_FLOOR_USDC invalid");
@@ -72,10 +81,12 @@ async function main() {
     console.log("Local stack: MockUSDC + Mock Uniswap V2");
     console.log("protocolRecipient:", protocolRecipient);
     console.log("graduationFloor:", graduationFloor.toString(), `($${(Number(graduationFloor) / 1e6).toFixed(2)})`);
+    console.log("referralReward:", referralReward.toString(), `($${(Number(referralReward) / 1e6).toFixed(2)})`);
 
     const stack = await deployLocalStack(hre.ethers, {
       protocolRecipient,
       graduationFloor,
+      referralReward,
     });
     await (await stack.usdc.mint(deployer.address, hre.ethers.parseUnits("1000000", 6))).wait();
 
@@ -93,6 +104,7 @@ async function main() {
       deployer: deployer.address,
       protocolRecipient,
       graduationFloor,
+      referralReward,
       usedMockUsdc,
       usedMockRouter,
       contracts: {
@@ -111,6 +123,7 @@ async function main() {
   protocolRecipient = requireAddress("PROTOCOL_RECIPIENT");
   console.log("IMMUTABLE protocolRecipient (dev vault):", protocolRecipient);
   console.log("graduationFloor:", graduationFloor.toString(), `($${(Number(graduationFloor) / 1e6).toFixed(2)})`);
+  console.log("referralReward:", referralReward.toString(), `($${(Number(referralReward) / 1e6).toFixed(2)})`);
 
   const cfg = CONSTANTS[network];
   if (!cfg) throw new Error(`No constants for network ${network}`);
@@ -205,11 +218,15 @@ async function main() {
     routerAddress,
     protocolRecipient,
     graduationFloor,
+    referralReward,
   });
   transactions.push(...core.transactions);
 
   if (network === "base" && graduationFloor !== 1_000_000_000n) {
     throw new Error("Base mainnet graduation floor must equal exactly 1,000 USDC");
+  }
+  if (network === "base" && referralReward !== 1_000_000n) {
+    throw new Error("Base mainnet referral reward must equal exactly 1 USDC");
   }
   const { onChainRecipient, onChainFloor } = await verifyLiveDeployment({
     core,
@@ -218,6 +235,7 @@ async function main() {
     v2FactoryAddress,
     protocolRecipient,
     graduationFloor,
+    referralReward,
   });
 
   console.log("\n✔ Bootstrapped ownerless stack");
@@ -226,6 +244,7 @@ async function main() {
   console.log("  Syndicate ", core.addresses.syndicate);
   console.log("  Treasury  ", core.addresses.treasury);
   console.log("  Escrow    ", core.addresses.missionEscrow);
+  console.log("  Referrals ", core.addresses.referralPool);
   console.log("  Graduation", core.addresses.graduation);
   console.log("  Dev vault ", onChainRecipient);
   console.log("  Floor     ", onChainFloor.toString());
@@ -238,6 +257,7 @@ async function main() {
     deployer: deployer.address,
     protocolRecipient,
     graduationFloor,
+    referralReward,
     usedMockUsdc,
     usedMockRouter,
     contracts: {
@@ -251,7 +271,7 @@ async function main() {
   });
 }
 
-async function verifyLiveDeployment({ core, usdcAddress, routerAddress, v2FactoryAddress, protocolRecipient, graduationFloor }) {
+async function verifyLiveDeployment({ core, usdcAddress, routerAddress, v2FactoryAddress, protocolRecipient, graduationFloor, referralReward }) {
   const same = (actual, expected, label) => {
     if (String(actual).toLowerCase() !== String(expected).toLowerCase()) {
       throw new Error(`${label} mismatch after deploy: expected ${expected}, received ${actual}`);
@@ -265,38 +285,45 @@ async function verifyLiveDeployment({ core, usdcAddress, routerAddress, v2Factor
     onChainRecipient,
     onChainFloor,
     recipientCode,
-    agentArena, agentTreasury, agentEscrow, agentUsdc, agentBootstrapped,
+    agentArena, agentTreasury, agentEscrow, agentReferralPool, agentUsdc, agentBootstrapped,
     syndicateArena, syndicateGraduation, syndicateUsdc, syndicateBootstrapped,
     treasuryArena, treasuryAgents, treasuryUsdc, treasuryBootstrapped,
-    arenaUsdc, arenaAgents, arenaSyndicate, arenaTreasury,
+    arenaUsdc, arenaAgents, arenaSyndicate, arenaTreasury, arenaReferralPool,
     graduationUsdc, graduationRouter, graduationFactory, graduationSyndicate, graduationTreasury,
     escrowUsdc, escrowAgents,
+    referralUsdc, referralAgents, referralArena, referralRewardOnChain, referralBootstrapped,
     penny, minRunway, protocolBps, bps,
   ] = await Promise.all([
     core.treasury.protocolRecipient(), core.syndicate.graduationFloor(), hre.ethers.provider.getCode(protocolRecipient),
-    core.agents.arena(), core.agents.treasury(), core.agents.missionEscrow(), core.agents.usdc(), core.agents.bootstrapped(),
+    core.agents.arena(), core.agents.treasury(), core.agents.missionEscrow(), core.agents.referralPool(), core.agents.usdc(), core.agents.bootstrapped(),
     core.syndicate.arena(), core.syndicate.graduation(), core.syndicate.usdc(), core.syndicate.bootstrapped(),
     core.treasury.arena(), core.treasury.agents(), core.treasury.usdc(), core.treasury.bootstrapped(),
-    core.arena.usdc(), core.arena.agents(), core.arena.syndicate(), core.arena.treasury(),
+    core.arena.usdc(), core.arena.agents(), core.arena.syndicate(), core.arena.treasury(), core.arena.referralPool(),
     core.graduation.usdc(), core.graduation.router(), core.graduation.factory(), core.graduation.syndicate(), core.graduation.treasury(),
     core.missionEscrow.usdc(), core.missionEscrow.agents(),
+    core.referralPool.usdc(), core.referralPool.agents(), core.referralPool.arena(), core.referralPool.rewardPerReferral(), core.referralPool.bootstrapped(),
     core.arena.PENNY(), core.arena.MIN_RUNWAY(), core.treasury.PROTOCOL_TRANCHE_BPS(), core.treasury.BPS(),
   ]);
   if (recipientCode === "0x") throw new Error("PROTOCOL_RECIPIENT must contain contract bytecode on live deployments");
   same(onChainRecipient, protocolRecipient, "treasury protocol recipient");
   if (onChainFloor !== graduationFloor) throw new Error("graduation floor mismatch after deploy");
   same(agentArena, a.arena, "agents arena"); same(agentTreasury, a.treasury, "agents treasury");
-  same(agentEscrow, a.missionEscrow, "agents mission escrow"); same(agentUsdc, usdcAddress, "agents USDC"); truthy(agentBootstrapped, "agents");
+  same(agentEscrow, a.missionEscrow, "agents mission escrow"); same(agentReferralPool, a.referralPool, "agents referral pool");
+  same(agentUsdc, usdcAddress, "agents USDC"); truthy(agentBootstrapped, "agents");
   same(syndicateArena, a.arena, "syndicate arena"); same(syndicateGraduation, a.graduation, "syndicate graduation");
   same(syndicateUsdc, usdcAddress, "syndicate USDC"); truthy(syndicateBootstrapped, "syndicate");
   same(treasuryArena, a.arena, "treasury arena"); same(treasuryAgents, a.agents, "treasury agents");
   same(treasuryUsdc, usdcAddress, "treasury USDC"); truthy(treasuryBootstrapped, "treasury");
   same(arenaUsdc, usdcAddress, "arena USDC"); same(arenaAgents, a.agents, "arena agents");
   same(arenaSyndicate, a.syndicate, "arena syndicate"); same(arenaTreasury, a.treasury, "arena treasury");
+  same(arenaReferralPool, a.referralPool, "arena referral pool");
   same(graduationUsdc, usdcAddress, "graduation USDC"); same(graduationRouter, routerAddress, "graduation router");
   same(graduationFactory, v2FactoryAddress, "graduation factory"); same(graduationSyndicate, a.syndicate, "graduation syndicate");
   same(graduationTreasury, a.treasury, "graduation treasury"); same(escrowUsdc, usdcAddress, "escrow USDC");
   same(escrowAgents, a.agents, "escrow agents");
+  same(referralUsdc, usdcAddress, "referral pool USDC"); same(referralAgents, a.agents, "referral pool agents");
+  same(referralArena, a.arena, "referral pool arena"); truthy(referralBootstrapped, "referral pool");
+  if (referralRewardOnChain !== referralReward) throw new Error("referral reward mismatch after deploy");
   if (penny !== 10_000n || minRunway !== 7_000_000n || protocolBps !== 1_000n || bps !== 10_000n) {
     throw new Error("economic constants mismatch after deploy");
   }
@@ -314,7 +341,7 @@ function receiptRecord(label, receipt) {
   };
 }
 
-function writeOut({ network, releaseStage, source, projectRoot, deployer, protocolRecipient, graduationFloor, usedMockUsdc, usedMockRouter, contracts, transactions = [], safePolicy = null }) {
+function writeOut({ network, releaseStage, source, projectRoot, deployer, protocolRecipient, graduationFloor, referralReward, usedMockUsdc, usedMockRouter, contracts, transactions = [], safePolicy = null }) {
   const rainAttestors = String(process.env.VERSUS_RAIN_ATTESTORS || "")
     .split(",")
     .map((value) => value.trim())
@@ -333,6 +360,8 @@ function writeOut({ network, releaseStage, source, projectRoot, deployer, protoc
     economics: {
       graduationFloorUSDC: (Number(graduationFloor) / 1e6).toFixed(2),
       graduationFloorRaw: graduationFloor.toString(),
+      referralRewardUSDC: (Number(referralReward) / 1e6).toFixed(2),
+      referralRewardRaw: referralReward.toString(),
       protocolTrancheBps: 1000,
       protocolRecipient,
       seedFund: false,
@@ -348,13 +377,14 @@ function writeOut({ network, releaseStage, source, projectRoot, deployer, protoc
       uniswapV2Factory: contracts.v2Factory,
       uniswapV2Router: contracts.v2Router,
     },
-    constructorArguments: constructorArguments(contracts, graduationFloor, protocolRecipient),
+    constructorArguments: constructorArguments(contracts, graduationFloor, protocolRecipient, referralReward),
     checklist: {
       protocolRecipientImmutable: true,
       noOwnable: true,
       noPause: true,
       noSeedFund: true,
       missionEscrowOwnerless: true,
+      continuousReferralPoolOwnerless: true,
       paidSignalBatches: true,
       permanentDailyVoiceCredentials: true,
       publicGraduateSwapBackContinuousClaim: true,

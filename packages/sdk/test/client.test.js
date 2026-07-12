@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createVersusClient } from "../src/index.js";
+import { createVersusClient, parseReferralCode, referralCodeFor } from "../src/index.js";
 
 const addresses = {
   usdc: "0x0000000000000000000000000000000000000001",
@@ -9,6 +9,7 @@ const addresses = {
   treasury: "0x0000000000000000000000000000000000000004",
   syndicate: "0x0000000000000000000000000000000000000005",
   missionEscrow: "0x0000000000000000000000000000000000000006",
+  referralPool: "0x0000000000000000000000000000000000000008",
 };
 
 function clients() {
@@ -58,12 +59,53 @@ test("sdk submits durable signal batches to the Arena", async () => {
   assert.deepEqual(writes[0].args, [11n, 7n, `0x${"2".repeat(64)}`, [1, 0, 2, 0, 0, 0, 0, 0]]);
 });
 
-test("sdk hatch submits runway only and cannot select a species", async () => {
+test("sdk hatch submits runway and an optional referrer but cannot select a species", async () => {
   const { publicClient, walletClient, writes } = clients();
   const client = createVersusClient({ publicClient, walletClient, addresses });
-  await client.hatch(7_000_000n);
+  await client.hatch(7_000_000n, 42n);
   assert.equal(writes[0].functionName, "hatch");
-  assert.deepEqual(writes[0].args, [7_000_000n]);
+  assert.deepEqual(writes[0].args, [7_000_000n, 42n]);
+});
+
+test("sdk referral codes detect typos and expose bounded funding methods", async () => {
+  const { publicClient, walletClient, writes } = clients();
+  const originalRead = publicClient.readContract;
+  publicClient.readContract = async (input) => {
+    if (input.functionName === "rewardPerReferral") return 1_000_000n;
+    if (input.functionName === "availableRewards") return 12n;
+    if (input.functionName === "referredBy") return 7n;
+    return originalRead(input);
+  };
+  const client = createVersusClient({ publicClient, walletClient, addresses });
+  const code = referralCodeFor(42n);
+  assert.equal(parseReferralCode(code), 42n);
+  assert.throws(() => parseReferralCode(`${code.slice(0, -1)}Z`), /checksum/);
+
+  const proposalId = `0x${"3".repeat(64)}`;
+  await client.fundReferralPoolFromRunway(11, proposalId);
+  await client.fundReferralPool({ sponsorAgentId: 11, proposalId, amount: 5_000_000n });
+  const state = await client.getReferralPool(12);
+  assert.equal(writes[0].functionName, "fundReferralPoolFromRunway");
+  assert.equal(writes[1].functionName, "fund");
+  assert.deepEqual(state, { rewardPerReferral: 1_000_000n, availableRewards: 12n, referredBy: 7n });
+});
+
+test("sdk exposes each Cypher's on-chain rolling commit time", async () => {
+  const { walletClient } = clients();
+  const publicClient = {
+    async readContract({ functionName }) {
+      if (functionName === "getAgent") {
+        return [3n, 7n, 4n, 22_222n, 0n, walletClient.account.address];
+      }
+      if (functionName === "runway") return 6_990_000n;
+      if (functionName === "nextCommitAt") return 2_000_086_400n;
+      throw new Error(`unexpected read ${functionName}`);
+    },
+  };
+  const client = createVersusClient({ publicClient, walletClient, addresses });
+  const agent = await client.getAgent(11);
+  assert.equal(agent.nextCommitAt, 2_000_086_400n);
+  assert.equal(agent.runway, 6_990_000n);
 });
 
 test("sdk sponsors releases refunds and reads ownerless mission escrows", async () => {

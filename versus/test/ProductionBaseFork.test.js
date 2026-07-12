@@ -10,6 +10,7 @@ const WETH = "0x4200000000000000000000000000000000000006";
 const SAFE = "0x93645ce5BCF0009026D8100aea5901cDd52217bF";
 const FLOOR = 1_000_000_000n;
 const MIN_RUNWAY = 7_000_000n;
+const REFERRAL_REWARD = 1_000_000n;
 
 describe("Versus Base mainnet fork rehearsal", function () {
   before(function () {
@@ -21,8 +22,9 @@ describe("Versus Base mainnet fork rehearsal", function () {
     const [deployer] = await ethers.getSigners();
     const alice = ethers.Wallet.createRandom().connect(ethers.provider);
     const bob = ethers.Wallet.createRandom().connect(ethers.provider);
+    const carol = ethers.Wallet.createRandom().connect(ethers.provider);
     const buyer = ethers.Wallet.createRandom().connect(ethers.provider);
-    for (const wallet of [alice, bob, buyer]) {
+    for (const wallet of [alice, bob, carol, buyer]) {
       await (await deployer.sendTransaction({ to: wallet.address, value: ethers.parseEther("10") })).wait();
       expect(await ethers.provider.getCode(wallet.address)).to.equal("0x");
     }
@@ -43,8 +45,9 @@ describe("Versus Base mainnet fork rehearsal", function () {
       routerAddress: CONSTANTS.base.uniswapV2Router,
       protocolRecipient: SAFE,
       graduationFloor: FLOOR,
+      referralReward: REFERRAL_REWARD,
     });
-    const { agents, arena, syndicate, treasury, graduation } = stack;
+    const { agents, arena, syndicate, treasury, referralPool, graduation } = stack;
 
     const deployedContracts = {
       usdc: CONSTANTS.base.usdc,
@@ -55,6 +58,7 @@ describe("Versus Base mainnet fork rehearsal", function () {
       syndicate: await syndicate.getAddress(),
       treasury: await treasury.getAddress(),
       missionEscrow: await stack.missionEscrow.getAddress(),
+      referralPool: await referralPool.getAddress(),
       graduation: await graduation.getAddress(),
     };
     const runtimeBytecode = {};
@@ -70,17 +74,23 @@ describe("Versus Base mainnet fork rehearsal", function () {
       releaseStage: RELEASE_STAGES.CLOSED_COHORT,
       source: { commit: "a".repeat(40), clean: true, treeSha256: "b".repeat(64) },
       contracts: deployedContracts,
-      constructorArguments: constructorArguments(deployedContracts, FLOOR, SAFE),
-      economics: { protocolRecipient: SAFE, graduationFloorRaw: FLOOR.toString() },
+      constructorArguments: constructorArguments(deployedContracts, FLOOR, SAFE, REFERRAL_REWARD),
+      economics: {
+        protocolRecipient: SAFE,
+        graduationFloorRaw: FLOOR.toString(),
+        referralRewardRaw: REFERRAL_REWARD.toString(),
+      },
       runtimeBytecode,
     });
     expect(deploymentAudit.passed).to.equal(true);
     expect(deploymentAudit.safePolicy.passed).to.equal(true);
 
     await (await usdc.connect(funder).transfer(alice.address, MIN_RUNWAY)).wait();
-    await (await usdc.connect(funder).transfer(bob.address, 1_000_000n)).wait();
+    await (await usdc.connect(funder).transfer(bob.address, MIN_RUNWAY + 1_000_000n)).wait();
+    await (await usdc.connect(funder).transfer(carol.address, MIN_RUNWAY)).wait();
+    await (await usdc.connect(funder).transfer(alice.address, REFERRAL_REWARD)).wait();
     await (await usdc.connect(funder).transfer(buyer.address, 10_000_000n)).wait();
-    expect(await usdc.balanceOf(alice.address)).to.equal(MIN_RUNWAY);
+    expect(await usdc.balanceOf(alice.address)).to.equal(MIN_RUNWAY + REFERRAL_REWARD);
     await (await usdc.connect(alice).approve(await arena.getAddress(), MIN_RUNWAY)).wait();
     expect(await usdc.allowance(alice.address, await arena.getAddress())).to.equal(MIN_RUNWAY);
     await (await arena.connect(alice).hatch(MIN_RUNWAY)).wait();
@@ -90,9 +100,23 @@ describe("Versus Base mainnet fork rehearsal", function () {
     expect(hatchedTokenUri).to.equal(
       `ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/${hatchedAgent.cypherId}.json`
     );
-    await (await arena.connect(alice).commit(1)).wait();
+    await (await usdc.connect(alice).approve(await referralPool.getAddress(), REFERRAL_REWARD)).wait();
+    await (await referralPool.connect(alice).fund(1, ethers.id("base fork referral refill"), REFERRAL_REWARD)).wait();
+    await (await usdc.connect(bob).approve(await arena.getAddress(), MIN_RUNWAY + 1_000_000n)).wait();
+    await (await arena.connect(bob)["hatch(uint256,uint256)"](MIN_RUNWAY, 1)).wait();
+    expect(await referralPool.referredBy(2)).to.equal(1n);
+    expect((await agents.getAgent(1)).vault).to.equal(REFERRAL_REWARD);
+    await (await usdc.connect(carol).approve(await arena.getAddress(), MIN_RUNWAY)).wait();
+    await expect(arena.connect(carol)["hatch(uint256,uint256)"](MIN_RUNWAY, 1))
+      .to.emit(referralPool, "ReferralRewardSkipped")
+      .withArgs(3, 1, carol.address, 0);
+    expect(await agents.ownerOf(3)).to.equal(carol.address);
+    expect(await referralPool.referredBy(3)).to.equal(1n);
+    const firstCommit = await (await arena.connect(alice).commit(1)).wait();
+    const firstCommitBlock = await ethers.provider.getBlock(firstCommit.blockNumber);
+    const firstNextCommitAt = await arena.nextCommitAt(1);
+    expect(firstNextCommitAt).to.equal(BigInt(firstCommitBlock.timestamp + 86_400));
     await (await arena.connect(alice).rainFromRunway(1, 100)).wait();
-    await (await usdc.connect(bob).approve(await arena.getAddress(), 1_000_000n)).wait();
     await (await arena.connect(bob).replenishRunway(1, 1_000_000n)).wait();
     const classId = await syndicate.currentClassId();
     const signalRoot = ethers.id("base fork signal batch");
@@ -169,6 +193,8 @@ describe("Versus Base mainnet fork rehearsal", function () {
           arena: await arena.getAddress(),
           syndicate: await syndicate.getAddress(),
           treasury: await treasury.getAddress(),
+          missionEscrow: await stack.missionEscrow.getAddress(),
+          referralPool: await referralPool.getAddress(),
           graduation: await graduation.getAddress(),
           token: tokenAddress,
           pair: pairAddress,
@@ -178,6 +204,12 @@ describe("Versus Base mainnet fork rehearsal", function () {
           safePublicReady: deploymentAudit.safePolicy.publicReady,
           selectedCypherId: hatchedAgent.cypherId.toString(),
           tokenURI: hatchedTokenUri,
+          referralRewardMicros: (await referralPool.rewardPerReferral()).toString(),
+          referredByAgent2: (await referralPool.referredBy(2)).toString(),
+          underfundedReferralAgent3Hatched: (await agents.ownerOf(3)) === carol.address,
+          referredByAgent3WithoutReward: (await referralPool.referredBy(3)).toString(),
+          referralPoolBalanceMicros: (await usdc.balanceOf(await referralPool.getAddress())).toString(),
+          firstNextCommitAt: firstNextCommitAt.toString(),
           exactFloorUSDC: seeded.toString(),
           signalSettled: await arena.settledSignalBatches(1, signalRoot),
           nextClassId: (await syndicate.currentClassId()).toString(),

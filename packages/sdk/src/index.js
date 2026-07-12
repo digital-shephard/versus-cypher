@@ -12,6 +12,16 @@ export const arenaAbi = [
   },
   {
     type: "function",
+    name: "hatch",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "runwayAmount", type: "uint256" },
+      { name: "referrerAgentId", type: "uint256" },
+    ],
+    outputs: [{ name: "agentId", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "commit",
     stateMutability: "nonpayable",
     inputs: [{ name: "agentId", type: "uint256" }],
@@ -51,10 +61,27 @@ export const arenaAbi = [
   },
   {
     type: "function",
+    name: "fundReferralPoolFromRunway",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "proposalId", type: "bytes32" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
     name: "runway",
     stateMutability: "view",
     inputs: [{ name: "agentId", type: "uint256" }],
     outputs: [{ name: "", type: "uint128" }],
+  },
+  {
+    type: "function",
+    name: "nextCommitAt",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint64" }],
   },
   {
     type: "function",
@@ -270,8 +297,61 @@ export const missionEscrowAbi = [
   },
 ];
 
+export const referralPoolAbi = [
+  {
+    type: "function",
+    name: "fund",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "sponsorAgentId", type: "uint256" },
+      { name: "proposalId", type: "bytes32" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "rewardPerReferral",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "availableRewards",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "referredBy",
+    stateMutability: "view",
+    inputs: [{ name: "referredAgentId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+];
+
 export const PENNY = 10_000n;
 export const MIN_RUNWAY = 7_000_000n;
+
+function referralChecksum(agentId) {
+  return ((BigInt(agentId) * 97n + 23n) % 1296n).toString(36).padStart(2, "0").toUpperCase();
+}
+
+export function referralCodeFor(agentId) {
+  const id = BigInt(agentId);
+  if (id < 1n) throw new RangeError("referral agent id must be positive");
+  return `VRS-${id}-${referralChecksum(id)}`;
+}
+
+export function parseReferralCode(value) {
+  const match = /^VRS-([1-9][0-9]*)-([0-9A-Z]{2})$/.exec(String(value || "").trim().toUpperCase());
+  if (!match) throw new TypeError("referral code is invalid");
+  const agentId = BigInt(match[1]);
+  if (match[2] !== referralChecksum(agentId)) throw new TypeError("referral code checksum is invalid");
+  return agentId;
+}
 
 export const CYPHERS = [
   { id: 0, name: "CalFire", element: "fire" },
@@ -303,15 +383,17 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
   }
 
   return {
-    async hatch(runwayAmount = MIN_RUNWAY) {
+    async hatch(runwayAmount = MIN_RUNWAY, referrerAgentId = 0n) {
       runwayAmount = BigInt(runwayAmount);
+      referrerAgentId = BigInt(referrerAgentId);
       if (runwayAmount < MIN_RUNWAY) throw new RangeError("hatch runway must be at least $7 USDC");
+      if (referrerAgentId < 0n) throw new RangeError("referrer agent id cannot be negative");
       await ensureAllowance(addresses.arena, runwayAmount);
       const hash = await walletClient.writeContract({
         address: addresses.arena,
         abi: arenaAbi,
         functionName: "hatch",
-        args: [runwayAmount],
+        args: [runwayAmount, referrerAgentId],
       });
       return publicClient.waitForTransactionReceipt({ hash });
     },
@@ -362,6 +444,58 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
         args: [BigInt(agentId), BigInt(batch.launchId), batch.root, batch.typeCounts],
       });
       return publicClient.waitForTransactionReceipt({ hash });
+    },
+
+    async fundReferralPoolFromRunway(agentId, proposalId) {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(proposalId)) throw new TypeError("proposal id is invalid");
+      const hash = await walletClient.writeContract({
+        address: addresses.arena,
+        abi: arenaAbi,
+        functionName: "fundReferralPoolFromRunway",
+        args: [BigInt(agentId), proposalId],
+      });
+      return publicClient.waitForTransactionReceipt({ hash });
+    },
+
+    async fundReferralPool({ sponsorAgentId, proposalId = `0x${"0".repeat(64)}`, amount }) {
+      if (!addresses.referralPool) throw new Error("referral pool address is not configured");
+      amount = BigInt(amount);
+      if (amount < 1n) throw new RangeError("referral pool funding must be positive");
+      if (!/^0x[0-9a-fA-F]{64}$/.test(proposalId)) throw new TypeError("proposal id is invalid");
+      await ensureAllowance(addresses.referralPool, amount);
+      const hash = await walletClient.writeContract({
+        address: addresses.referralPool,
+        abi: referralPoolAbi,
+        functionName: "fund",
+        args: [BigInt(sponsorAgentId), proposalId, amount],
+      });
+      return publicClient.waitForTransactionReceipt({ hash });
+    },
+
+    async getReferralPool(referredAgentId = 0n) {
+      if (!addresses.referralPool) throw new Error("referral pool address is not configured");
+      const reads = [
+        publicClient.readContract({
+          address: addresses.referralPool,
+          abi: referralPoolAbi,
+          functionName: "rewardPerReferral",
+        }),
+        publicClient.readContract({
+          address: addresses.referralPool,
+          abi: referralPoolAbi,
+          functionName: "availableRewards",
+        }),
+      ];
+      if (BigInt(referredAgentId) > 0n) {
+        reads.push(publicClient.readContract({
+          address: addresses.referralPool,
+          abi: referralPoolAbi,
+          functionName: "referredBy",
+          args: [BigInt(referredAgentId)],
+        }));
+      }
+      const [rewardPerReferral, availableRewards, referredBy = 0n] = await Promise.all(reads);
+      return { rewardPerReferral, availableRewards, referredBy };
     },
 
     async sponsorMission({ missionId, launchId, sponsorAgentId, recipientAgentId, amount, deadline }) {
@@ -430,7 +564,7 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
 
     async getAgent(agentId) {
       const args = [BigInt(agentId)];
-      const [agent, runway] = await Promise.all([
+      const [agent, runway, nextCommitAt] = await Promise.all([
         publicClient.readContract({
           address: addresses.agents,
           abi: agentNftAbi,
@@ -443,9 +577,15 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
           functionName: "runway",
           args,
         }),
+        publicClient.readContract({
+          address: addresses.arena,
+          abi: arenaAbi,
+          functionName: "nextCommitAt",
+          args,
+        }),
       ]);
       const [cypherId, level, streak, lastCommitDay, vault, owner] = agent;
-      return { cypherId, level, streak, lastCommitDay, runway, rewardVault: vault, vault, owner };
+      return { cypherId, level, streak, lastCommitDay, nextCommitAt, runway, rewardVault: vault, vault, owner };
     },
 
     async getVaultEconomy(agentId) {

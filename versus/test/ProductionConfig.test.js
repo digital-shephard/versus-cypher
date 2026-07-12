@@ -6,12 +6,14 @@ const CONSTANTS = require("../scripts/lib/constants");
 const FLOOR = 1_000_000_000n;
 const MIN_RUNWAY = 7_000_000n;
 const PENNY = 10_000n;
+const REFERRAL_REWARD = 1_000_000n;
 
 describe("Versus frozen production configuration rehearsal", function () {
   it("binds the reviewed Base dependencies and immutable economics", async function () {
     expect(CONSTANTS.GRADUATION_FLOOR).to.equal(FLOOR);
     expect(CONSTANTS.PROTOCOL_TRANCHE_BPS).to.equal(1000);
     expect(CONSTANTS.PENNY).to.equal(PENNY);
+    expect(CONSTANTS.REFERRAL_REWARD).to.equal(REFERRAL_REWARD);
     expect(CONSTANTS.base.chainId).to.equal(8453);
     expect(CONSTANTS.base.usdc).to.equal("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
     expect(CONSTANTS.base.uniswapV2Factory).to.equal("0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6");
@@ -29,11 +31,18 @@ describe("Versus frozen production configuration rehearsal", function () {
     expect(await agents.bootstrapped()).to.equal(true);
     expect(await syndicate.bootstrapped()).to.equal(true);
     expect(await treasury.bootstrapped()).to.equal(true);
+    expect(await stack.referralPool.bootstrapped()).to.equal(true);
     expect(await syndicate.graduationFloor()).to.equal(FLOOR);
     expect(await arena.MIN_RUNWAY()).to.equal(MIN_RUNWAY);
     expect(await treasury.PROTOCOL_TRANCHE_BPS()).to.equal(1000n);
+    expect(await stack.referralPool.rewardPerReferral()).to.equal(REFERRAL_REWARD);
     await expect(
-      agents.bootstrap(await arena.getAddress(), await treasury.getAddress(), await stack.missionEscrow.getAddress())
+      agents.bootstrap(
+        await arena.getAddress(),
+        await treasury.getAddress(),
+        await stack.missionEscrow.getAddress(),
+        await stack.referralPool.getAddress()
+      )
     ).to.be.revertedWithCustomError(agents, "AlreadyBootstrapped");
     await expect(
       syndicate.bootstrap(await arena.getAddress(), await graduation.getAddress())
@@ -45,7 +54,9 @@ describe("Versus frozen production configuration rehearsal", function () {
     await usdc.mint(alice.address, MIN_RUNWAY);
     await usdc.connect(alice).approve(await arena.getAddress(), MIN_RUNWAY);
     await arena.connect(alice).hatch(MIN_RUNWAY);
-    await arena.connect(alice).commit(1);
+    const firstCommit = await (await arena.connect(alice).commit(1)).wait();
+    const firstCommitBlock = await ethers.provider.getBlock(firstCommit.blockNumber);
+    expect(await arena.nextCommitAt(1)).to.equal(BigInt(firstCommitBlock.timestamp + 86_400));
     await arena.connect(alice).rainFromRunway(1, 100);
 
     const replenishment = 1_000_000n;

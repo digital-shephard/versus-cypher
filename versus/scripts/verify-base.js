@@ -19,6 +19,7 @@ async function main() {
     ["SyndicateEngine", "syndicate"],
     ["TrancheTreasury", "treasury"],
     ["MissionEscrow", "missionEscrow"],
+    ["ReferralPool", "referralPool"],
     ["Arena", "arena"],
     ["GraduationModule", "graduation"],
   ];

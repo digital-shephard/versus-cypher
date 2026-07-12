@@ -1,0 +1,43 @@
+{
+  "kind": "versus-base-mainnet-fork-rehearsal",
+  "passed": true,
+  "forkBlock": 48552393,
+  "chainId": 8453,
+  "dependencies": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "protocolRecipient": "0x93645ce5BCF0009026D8100aea5901cDd52217bF"
+  },
+  "contracts": {
+    "agents": "0x50B6B75c738eA601F1627651DA78Fcc4E633f78E",
+    "arena": "0xFccB33B366cBA5622db875eaEa7CfAFd9a8eebB9",
+    "syndicate": "0xf81a05ac210C6A242D8D61cCa7D5009E6980A458",
+    "treasury": "0x631696ceAcF121fD7fEfde497aef637d05aF242a",
+    "missionEscrow": "0x5ef499BEb887FA628d2f6722868eC56cD9b5a3E9",
+    "referralPool": "0x390Bc0A517D5c97A6d1746cf22541025183A2111",
+    "graduation": "0xbB2F7c000897431038AA134BD5b15E80065c0a76",
+    "token": "0xD980B5a3C865ef1C3a021b81273603C364f2A27a",
+    "pair": "0xE81eF0ECCA38b3b1BEf87a140155bA25D3894B22"
+  },
+  "assertions": {
+    "independentDeploymentAuditChecks": 52,
+    "safePublicReady": false,
+    "selectedCypherId": "24",
+    "tokenURI": "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/24.json",
+    "referralRewardMicros": "1000000",
+    "referredByAgent2": "1",
+    "underfundedReferralAgent3Hatched": true,
+    "referredByAgent3WithoutReward": "1",
+    "referralPoolBalanceMicros": "0",
+    "firstNextCommitAt": "1783980544",
+    "exactFloorUSDC": "1000000000",
+    "signalSettled": true,
+    "nextClassId": "2",
+    "claimedVaultRewardMicros": "1135061",
+    "finalAgentVaultMicros": "0",
+    "nftOwner": "0x688f7406A619B333a32f4C2331faD1c049D4B2E7"
+  },
+  "completedAt": "2026-07-12T22:09:08.341Z"
+}

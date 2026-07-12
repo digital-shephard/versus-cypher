@@ -1,0 +1,56 @@
+{
+  "runId": "2026-07-12T20-40-08-439Z",
+  "passed": true,
+  "startedAt": "2026-07-12T20:40:07.704Z",
+  "finishedAt": "2026-07-12T20:40:08.439Z",
+  "durationMs": 735,
+  "runtime": {
+    "node": "v25.2.1",
+    "platform": "win32",
+    "architecture": "x64"
+  },
+  "source": {
+    "cypher": {
+      "head": "c26341d605c932101dd5582f55fb6f5d603fab01",
+      "dirty": true
+    },
+    "relay": {
+      "head": "3c575a50563658cd790ee1630659f3f8c80834d3",
+      "dirty": true
+    },
+    "keeperSha256": "73f00771a3e2c0816635630b69ea0c135b91df3f94894ac846b307a5a8f21676",
+    "rpcSha256": "07b3785324deb9e8565a3db0972a592b3a080d9614265edac1a71f8b48941a0e",
+    "harnessSha256": "a42c45e2ada79d671be613d29ee6f8466fecad89024404b2061ef6ecda86b344"
+  },
+  "chainId": 31337,
+  "arena": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+  "syndicate": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+  "graduation": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+  "keeper": "0xf21B45fCB845C76B9f16D45f870B8EB41C7679C4",
+  "classBefore": "1",
+  "classAfter": "2",
+  "floorMicros": "10000",
+  "seededMicros": "10000",
+  "transactionHash": "0x43a25406d38eeb47941219ea47db78d1771b8468b1b848bf577f47e074860293",
+  "receiptBlock": 17,
+  "receiptStatus": 1,
+  "gasUsed": "2474738",
+  "gasPriceWei": "1093791315",
+  "transactionFeeWei": "2706846931300470",
+  "token": "0x94099942864EA81cCF197E9D71ac53310b1468D8",
+  "pair": "0xCafac3dD18aC6c6e92c921884f9E4176737C052c",
+  "journalCompletedTransactions": 1,
+  "nextPoll": "not_ready",
+  "assertions": [
+    "confirmed class met exact floor",
+    "keeper discovered Arena-derived canonical wiring",
+    "signed transaction journaled before receipt reconciliation",
+    "graduateClass pinned Class 1",
+    "Graduated caller equaled independent keeper EOA",
+    "Token 0 and canonical pair were created",
+    "exact class penny seeded liquidity",
+    "current class advanced from 1 to 2",
+    "receipt closed exactly one journal entry",
+    "next poll remained not_ready for Class 2"
+  ]
+}

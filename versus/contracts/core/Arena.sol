@@ -3,12 +3,13 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 interface IAgentNFT {
     function mint(address to, uint8 cypherId) external returns (uint256 agentId);
     function nextId() external view returns (uint256);
     function CYPHER_COUNT() external view returns (uint8);
-    function recordCommit(uint256 agentId, uint32 day) external;
+    function recordCommit(uint256 agentId, uint32 day, bool streakContinues) external;
     function ownerOf(uint256 tokenId) external view returns (address);
     function agents(uint256 agentId)
         external
@@ -27,9 +28,16 @@ interface ITrancheTreasury {
     function awardTickets(uint256 agentId, uint256 amount) external;
 }
 
+interface IReferralPool {
+    function recordReferral(uint256 referredAgentId, uint256 referrerAgentId, address referredOwner)
+        external
+        returns (uint256 rewardPaid);
+    function recordRunwayFunding(uint256 sponsorAgentId, bytes32 proposalId, uint256 amount) external;
+}
+
 /// @title Versus Arena (ownerless)
 /// @notice Immutable entrypoint. No admin. No pause.
-contract Arena {
+contract Arena is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public constant PENNY = 10_000;
@@ -43,9 +51,12 @@ contract Arena {
     IAgentNFT public immutable agents;
     ISyndicateEngine public immutable syndicate;
     ITrancheTreasury public immutable treasury;
+    IReferralPool public immutable referralPool;
     mapping(uint256 => mapping(uint32 => bool)) public committedDays;
     mapping(uint256 => mapping(bytes32 => bool)) public settledSignalBatches;
+    mapping(uint256 => mapping(uint32 => bool)) public referralFundedDays;
     mapping(uint256 => uint128) public runway;
+    mapping(uint256 => uint64) public nextCommitAt;
     uint256 public totalRunwayLiability;
 
     event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount);
@@ -77,6 +88,13 @@ contract Arena {
         uint256 classTotal,
         bytes32 typeCountsHash
     );
+    event ReferralPoolFunded(uint256 indexed agentId, bytes32 indexed proposalId, uint32 indexed day, uint256 amount);
+    event ReferralAttempted(
+        uint256 indexed referredAgentId,
+        uint256 indexed referrerAgentId,
+        bool recorded,
+        uint256 rewardPaid
+    );
 
     error NotAgentOwner();
     error AlreadyCommitted();
@@ -85,21 +103,35 @@ contract Arena {
     error InvalidRainAmount();
     error InvalidSignalBatch();
     error SignalBatchAlreadySettled();
+    error ReferralAlreadyFunded();
     error WrongClass();
     error ZeroAddress();
 
-    constructor(address usdc_, address agents_, address syndicate_, address treasury_) {
-        if (usdc_ == address(0) || agents_ == address(0) || syndicate_ == address(0) || treasury_ == address(0)) {
+    constructor(address usdc_, address agents_, address syndicate_, address treasury_, address referralPool_) {
+        if (
+            usdc_ == address(0) || agents_ == address(0) || syndicate_ == address(0) || treasury_ == address(0)
+                || referralPool_ == address(0)
+        ) {
             revert ZeroAddress();
         }
         usdc = IERC20(usdc_);
         agents = IAgentNFT(agents_);
         syndicate = ISyndicateEngine(syndicate_);
         treasury = ITrancheTreasury(treasury_);
+        referralPool = IReferralPool(referralPool_);
     }
 
     /// @notice Hatches a Cypher with nonwithdrawable protocol fuel held by the Arena.
-    function hatch(uint256 runwayAmount) external returns (uint256 agentId) {
+    function hatch(uint256 runwayAmount) external nonReentrant returns (uint256 agentId) {
+        return _hatch(runwayAmount, 0);
+    }
+
+    /// @notice Hatches a Cypher and makes a best-effort referral record and payout from the permanent pool.
+    function hatch(uint256 runwayAmount, uint256 referrerAgentId) external nonReentrant returns (uint256 agentId) {
+        return _hatch(runwayAmount, referrerAgentId);
+    }
+
+    function _hatch(uint256 runwayAmount, uint256 referrerAgentId) internal returns (uint256 agentId) {
         if (runwayAmount < MIN_RUNWAY || runwayAmount > type(uint128).max) revert RunwayBelowMinimum();
         usdc.safeTransferFrom(msg.sender, address(this), runwayAmount);
         uint8 cypherId = uint8(
@@ -118,12 +150,20 @@ contract Arena {
         );
         agentId = agents.mint(msg.sender, cypherId);
         runway[agentId] = uint128(runwayAmount);
+        nextCommitAt[agentId] = uint64(block.timestamp);
         totalRunwayLiability += runwayAmount;
+        if (referrerAgentId != 0) {
+            try referralPool.recordReferral(agentId, referrerAgentId, msg.sender) returns (uint256 rewardPaid) {
+                emit ReferralAttempted(agentId, referrerAgentId, true, rewardPaid);
+            } catch {
+                emit ReferralAttempted(agentId, referrerAgentId, false, 0);
+            }
+        }
         emit Hatched(agentId, msg.sender, cypherId, runwayAmount);
     }
 
     /// @notice Adds protocol fuel to an existing Cypher. Anyone may sponsor a Cypher.
-    function replenishRunway(uint256 agentId, uint256 amount) external {
+    function replenishRunway(uint256 agentId, uint256 amount) external nonReentrant {
         agents.ownerOf(agentId);
         if (amount == 0 || amount > type(uint128).max) revert InvalidRainAmount();
         uint256 next = uint256(runway[agentId]) + amount;
@@ -134,13 +174,13 @@ contract Arena {
         emit RunwayReplenished(agentId, msg.sender, amount);
     }
 
-    function commit(uint256 agentId) external {
+    function commit(uint256 agentId) external nonReentrant {
         _commit(agentId);
     }
 
     /// @notice Sends a capped batch of pennies from the Cypher vault into the open class.
     ///         Each confirmed penny creates one permanent tranche ticket.
-    function rainFromRunway(uint256 agentId, uint256 pennies) external {
+    function rainFromRunway(uint256 agentId, uint256 pennies) external nonReentrant {
         if (agents.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
         if (pennies == 0 || pennies > MAX_RAIN_PENNIES) revert InvalidRainAmount();
 
@@ -163,7 +203,7 @@ contract Arena {
         uint256 classId,
         bytes32 batchRoot,
         uint16[8] calldata typeCounts
-    ) external {
+    ) external nonReentrant {
         if (agents.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
         (uint256 signalCount, uint256 inkPennies) = _signalTotals(typeCounts);
         if (batchRoot == bytes32(0) || signalCount == 0 || signalCount > MAX_SIGNAL_BATCH) {
@@ -184,6 +224,19 @@ contract Arena {
         );
     }
 
+    /// @notice Spends exactly one runway penny into the permanent referral pool, at most once per UTC day.
+    function fundReferralPoolFromRunway(uint256 agentId, bytes32 proposalId) external nonReentrant {
+        if (agents.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
+        uint32 day = currentDay();
+        if (referralFundedDays[agentId][day]) revert ReferralAlreadyFunded();
+        referralFundedDays[agentId][day] = true;
+
+        _deductRunway(agentId, PENNY);
+        usdc.safeTransfer(address(referralPool), PENNY);
+        referralPool.recordRunwayFunding(agentId, proposalId, PENNY);
+        emit ReferralPoolFunded(agentId, proposalId, day, PENNY);
+    }
+
     function _signalTotals(uint16[8] calldata counts) internal pure returns (uint256 total, uint256 ink) {
         uint8[8] memory prices = [1, 1, 3, 1, 1, 1, 5, 2];
         for (uint256 i; i < counts.length; ++i) {
@@ -200,14 +253,16 @@ contract Arena {
     function _commit(uint256 agentId) internal {
         if (agents.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
 
-        uint32 day = uint32(block.timestamp / DAY);
-        (, , , uint32 lastDay, ) = agents.agents(agentId);
-        if (lastDay == day) revert AlreadyCommitted();
+        uint64 dueAt = nextCommitAt[agentId];
+        if (dueAt == 0 || block.timestamp < dueAt) revert AlreadyCommitted();
+        bool streakContinues = block.timestamp < uint256(dueAt) + DAY;
+        nextCommitAt[agentId] = uint64(block.timestamp + DAY);
 
         _spendRunway(agentId, PENNY);
 
+        uint32 day = uint32(block.timestamp / DAY);
         uint256 classId = syndicate.currentClassId();
-        agents.recordCommit(agentId, day);
+        agents.recordCommit(agentId, day, streakContinues);
         committedDays[agentId][day] = true;
         uint256 classTotal = syndicate.receiveCommit(agentId, day, PENNY);
         treasury.awardCommitTicket(agentId);
@@ -224,12 +279,16 @@ contract Arena {
     }
 
     function _spendRunway(uint256 agentId, uint256 amount) internal {
+        _deductRunway(agentId, amount);
+        usdc.safeTransfer(address(syndicate), amount);
+    }
+
+    function _deductRunway(uint256 agentId, uint256 amount) internal {
         uint128 available = runway[agentId];
         if (available < amount) revert InsufficientRunway();
         unchecked {
             runway[agentId] = available - uint128(amount);
             totalRunwayLiability -= amount;
         }
-        usdc.safeTransfer(address(syndicate), amount);
     }
 }

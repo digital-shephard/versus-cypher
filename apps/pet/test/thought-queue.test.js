@@ -22,3 +22,14 @@ test("thought bubbles reject links wallet addresses and oversized prose", () => 
   assert.throws(() => normalizeThought(`send to 0x${"1".repeat(40)}`), /addresses/);
   assert.throws(() => normalizeThought("x".repeat(181)), RangeError);
 });
+
+test("single-slot notices replace stale unseen bubbles instead of stacking", () => {
+  const queue = new ThoughtQueue({ now: (() => { let now = 0; return () => ++now; })() });
+  queue.enqueue("the first referral drive is ready", { slotKey: "referral-drive" });
+  const latest = queue.enqueue("a newer referral drive replaced it", { slotKey: "referral-drive" });
+  assert.equal(queue.items.length, 1);
+  assert.equal(queue.next().id, latest.id);
+  assert.equal(queue.next().text, "a newer referral drive replaced it");
+  assert.equal(queue.clearSlot("referral-drive"), 1);
+  assert.equal(queue.next(), null);
+});

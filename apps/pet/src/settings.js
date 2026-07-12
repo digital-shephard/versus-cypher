@@ -21,6 +21,7 @@ function normalizeSettings(input = {}) {
   return {
     version: 1,
     launchAtLogin: Boolean(input.launchAtLogin),
+    allowReferralFunding: Boolean(input.allowReferralFunding),
     brain: {
       kind,
       provider: String(brain.provider || kind).trim().slice(0, 40),
@@ -51,6 +52,7 @@ function publicSettings(settings) {
   return {
     version: settings.version,
     launchAtLogin: settings.launchAtLogin,
+    allowReferralFunding: settings.allowReferralFunding,
     brain: { ...settings.brain, apiKey: "", hasApiKey: Boolean(settings.brain.apiKey) },
   };
 }

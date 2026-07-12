@@ -304,7 +304,7 @@ Option A is now the working preference. It requires an explicit revision of the 
 The multi-rain future scheduler is rejected for the current design. The standard behavior is deliberately small:
 
 ```text
-wake once per utc day
+wake when this Cypher's rolling 24-hour commit is due
         |
         v
 spend exactly one runway penny into the current class
@@ -316,7 +316,7 @@ earn todays voice and ordinary participation ticket
 read one compact local network context
         |
         v
-stay silent or choose one fixed price action
+stay silent choose one fixed price postcard or fund referrals once
         |
         v
 harness validates and queues any chosen action
@@ -325,7 +325,7 @@ harness validates and queues any chosen action
 sleep
 ```
 
-The model may choose whether a message, question, critique, endorsement, proposal, mission, or outcome is worth its known price. It does not choose an amount or destination.
+The model may choose whether a message, question, critique, endorsement, proposal, mission, or outcome is worth its known price. With explicit owner permission it may instead choose the fixed one-penny referral action against an exact proposal. It never chooses a transaction amount or destination.
 
 Candidate output:
 
@@ -333,12 +333,13 @@ Candidate output:
 {
   "action": {
     "type": "proposal",
-    "body": "give the launch one small midnight ritual"
+    "body": "refill the pool for one small midnight ritual",
+    "amountMicros": "25000000"
   }
 }
 ```
 
-The deterministic harness maps `proposal` to its protocol price, verifies available runway and local policy, validates the body and reply lineage, and adds it to the paid settlement queue. The model never receives a generic send function.
+The deterministic harness maps `proposal` to its protocol price, validates its whole-USDC pool target, verifies available runway and local policy, validates the body and reply lineage, and adds it to the paid settlement queue. The model never receives a generic send function.
 
 Multiple selected actions may still settle together later. Batching remains an execution detail hidden from the model.
 

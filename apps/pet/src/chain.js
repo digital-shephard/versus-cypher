@@ -1,6 +1,7 @@
 const fs = require("fs");
 const { AbiCoder, Contract, JsonRpcProvider, MaxUint256, NonceManager, Wallet, keccak256 } = require("ethers");
 const { normalizeSignalBatch } = require("@versus/network");
+const { parseReferralCode, referralCodeFor } = require("./referrals");
 const {
   BASE_UNISWAP_SWAP_ROUTER_02,
   BASE_USDC,
@@ -18,12 +19,17 @@ const CHAIN_STATE_SYNC_TIMEOUT_MS = 30_000;
 
 const arenaAbi = [
   "function hatch(uint256 runwayAmount) returns (uint256 agentId)",
+  "function hatch(uint256 runwayAmount, uint256 referrerAgentId) returns (uint256 agentId)",
   "function replenishRunway(uint256 agentId, uint256 amount)",
   "function commit(uint256 agentId)",
   "function rainFromRunway(uint256 agentId, uint256 pennies)",
   "function settleSignalBatchFromRunway(uint256 agentId, uint256 classId, bytes32 batchRoot, uint16[8] typeCounts)",
+  "function fundReferralPoolFromRunway(uint256 agentId, bytes32 proposalId)",
   "function settledSignalBatches(uint256 agentId, bytes32 batchRoot) view returns (bool)",
   "function runway(uint256 agentId) view returns (uint128)",
+  "function nextCommitAt(uint256 agentId) view returns (uint64)",
+  "function currentDay() view returns (uint32)",
+  "function referralFundedDays(uint256 agentId, uint32 day) view returns (bool)",
   "event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount)",
   "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, uint256 classTotal, bytes32 typeCountsHash)",
 ];
@@ -65,6 +71,14 @@ const missionEscrowAbi = [
   "event MissionSponsored(uint256 indexed escrowId, bytes32 indexed missionId, uint256 indexed launchId, uint256 sponsorAgentId, uint256 recipientAgentId, address sponsor, uint256 amount, uint256 deadline)",
   "event MissionReleased(uint256 indexed escrowId, bytes32 indexed missionId, uint256 recipientAgentId, uint256 amount)",
   "event MissionRefunded(uint256 indexed escrowId, bytes32 indexed missionId, address sponsor, uint256 amount)",
+];
+const referralPoolAbi = [
+  "function fund(uint256 sponsorAgentId, bytes32 proposalId, uint256 amount)",
+  "function rewardPerReferral() view returns (uint256)",
+  "function availableRewards() view returns (uint256)",
+  "function referredBy(uint256 referredAgentId) view returns (uint256)",
+  "event ReferralPoolFunded(uint256 indexed sponsorAgentId, bytes32 indexed proposalId, address indexed funder, uint256 amount, uint256 balance)",
+  "event ReferralRewardPaid(uint256 indexed referredAgentId, uint256 indexed referrerAgentId, address indexed referredOwner, uint256 amount)",
 ];
 
 function findEvent(contract, receipt, name) {
@@ -150,8 +164,8 @@ function loadChainConfig(env = process.env) {
   const deploymentPath = env.VERSUS_DEPLOYMENT;
   if (!deploymentPath) return null;
   const deployment = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
-  const { arena, agents, treasury, syndicate } = deployment.contracts || {};
-  if (!arena || !agents || !treasury || !syndicate || !deployment.chainId) {
+  const { arena, agents, treasury, syndicate, referralPool } = deployment.contracts || {};
+  if (!arena || !agents || !treasury || !syndicate || !referralPool || !deployment.chainId) {
     throw new Error("Versus deployment file is missing chainId or core contract addresses");
   }
   if (Number(deployment.chainId) !== 8453 && !rpcUrl) {
@@ -229,18 +243,61 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         : quoteDepositPlan(provider, depositWei);
     },
 
+    async referralStatus({ referredAgentId = 0 } = {}) {
+      const pool = new Contract(addresses.referralPool, referralPoolAbi, provider);
+      const reads = [pool.rewardPerReferral(), pool.availableRewards()];
+      if (BigInt(referredAgentId) > 0n) reads.push(pool.referredBy(BigInt(referredAgentId)));
+      const [rewardPerReferral, availableRewards, referredBy = 0n] = await Promise.all(reads);
+      return {
+        rewardPerReferral,
+        availableRewards,
+        referredBy,
+        funded: availableRewards > 0n,
+      };
+    },
+
+    async validateReferralCode({ code, hatchOwner }) {
+      const referrerAgentId = parseReferralCode(code);
+      const agents = new Contract(addresses.agents, agentAbi, provider);
+      const pool = new Contract(addresses.referralPool, referralPoolAbi, provider);
+      const [referrer, status] = await Promise.all([
+        agents.getAgent(referrerAgentId),
+        Promise.all([pool.rewardPerReferral(), pool.availableRewards()]).then(
+          ([rewardPerReferral, availableRewards]) => ({
+            rewardPerReferral,
+            availableRewards,
+            funded: availableRewards > 0n,
+          })
+        ),
+      ]);
+      if (!status.funded) throw new Error("the referral pool is currently empty");
+      if (String(referrer.owner).toLowerCase() === String(hatchOwner).toLowerCase()) {
+        throw new Error("a Cypher cannot refer another hatch from the same wallet");
+      }
+      return {
+        code: referralCodeFor(referrerAgentId),
+        referrerAgentId,
+        referrerCypherId: referrer.cypherId,
+        rewardPerReferral: status.rewardPerReferral,
+        availableRewards: status.availableRewards,
+      };
+    },
+
     async readState({ address, agentId }) {
       const agents = new Contract(addresses.agents, agentAbi, provider);
       const arena = new Contract(addresses.arena, arenaAbi, provider);
       const treasury = new Contract(addresses.treasury, treasuryAbi, provider);
       const syndicate = new Contract(addresses.syndicate, syndicateAbi, provider);
+      const referralPool = new Contract(addresses.referralPool, referralPoolAbi, provider);
       const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, provider);
       const classId = await syndicate.currentClassId();
-      const [ethBalance, usdcBalance, agent, runway, tickets, totalTickets, claimable, tranchePot, currentClass, genesis, graduationFloor] = await Promise.all([
+      const chainDay = await arena.currentDay();
+      const [ethBalance, usdcBalance, agent, runway, nextCommitAt, tickets, totalTickets, claimable, tranchePot, currentClass, genesis, graduationFloor, referralRewardMicros, referralRewardsAvailable, referredBy, referralFundedToday] = await Promise.all([
         provider.getBalance(address),
         token.balanceOf(address),
         agents.getAgent(BigInt(agentId)),
         arena.runway(BigInt(agentId)),
+        arena.nextCommitAt(BigInt(agentId)),
         treasury.tickets(BigInt(agentId)),
         treasury.totalTickets(),
         treasury.claimable(BigInt(agentId)),
@@ -248,6 +305,10 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         syndicate.getClass(classId),
         syndicate.isGenesisAgent(BigInt(agentId)),
         syndicate.graduationFloor(),
+        referralPool.rewardPerReferral(),
+        referralPool.availableRewards(),
+        referralPool.referredBy(BigInt(agentId)),
+        arena.referralFundedDays(BigInt(agentId), chainDay),
       ]);
       return {
         address,
@@ -257,6 +318,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         level: agent.level,
         streak: agent.streak,
         lastCommitDay: agent.lastCommitDay,
+        nextCommitAt,
         vault: agent.vault,
         runway,
         ethBalance,
@@ -273,10 +335,14 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         classGraduated: currentClass.graduated,
         graduationFloorMicros: graduationFloor,
         genesis,
+        referralRewardMicros,
+        referralRewardsAvailable,
+        referredBy,
+        referralFundedToday,
       };
     },
 
-    async hatchWithEth({ privateKey, depositWei, onPhase = null }) {
+    async hatchWithEth({ privateKey, depositWei, referrerAgentId = 0n, onPhase = null }) {
       const wallet = new Wallet(privateKey, provider);
       const signer = new NonceManager(wallet);
       const owner = wallet.address;
@@ -319,7 +385,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       const hatchReceipt = await confirmed(
-        await arena.hatch(runwayAmount),
+        await arena["hatch(uint256,uint256)"](runwayAmount, BigInt(referrerAgentId)),
         "Cypher hatch"
       );
       const event = validateHatchReceipt(arena, hatchReceipt, owner, runwayAmount);
@@ -333,7 +399,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       };
     },
 
-    async hatchWithRunway({ privateKey, runwayAmount }) {
+    async hatchWithRunway({ privateKey, runwayAmount, referrerAgentId = 0n }) {
       runwayAmount = BigInt(runwayAmount);
       if (runwayAmount <= 0n) throw new RangeError("runway amount must be positive");
       const signer = new NonceManager(new Wallet(privateKey, provider));
@@ -348,7 +414,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       const receipt = await confirmed(
-        await arena.hatch(runwayAmount),
+        await arena["hatch(uint256,uint256)"](runwayAmount, BigInt(referrerAgentId)),
         "Cypher hatch"
       );
       const event = validateHatchReceipt(arena, receipt, owner, runwayAmount);
@@ -367,6 +433,36 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const signer = new Wallet(privateKey, provider);
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       return confirmed(await arena.commit(BigInt(agentId)), "daily rain");
+    },
+
+    async fundReferralPoolFromRunway({ privateKey, agentId, proposalId, onSubmitted = null }) {
+      const signer = new Wallet(privateKey, provider);
+      const arena = new Contract(addresses.arena, arenaAbi, signer);
+      const receipt = await confirmed(
+        await arena.fundReferralPoolFromRunway(BigInt(agentId), proposalId),
+        "referral pool penny",
+        onSubmitted
+      );
+      return { hash: receipt.hash, blockNumber: receipt.blockNumber };
+    },
+
+    async fundReferralPool({ privateKey, sponsorAgentId, proposalId, amount, onSubmitted = null }) {
+      amount = BigInt(amount);
+      if (amount <= 0n) throw new RangeError("referral pool funding must be positive");
+      const signer = new NonceManager(new Wallet(privateKey, provider));
+      const owner = await signer.getAddress();
+      const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, signer);
+      if (await token.allowance(owner, addresses.referralPool) < amount) {
+        await confirmed(await token.approve(addresses.referralPool, MaxUint256), "referral pool approval");
+        await waitForAllowance(token, owner, addresses.referralPool, amount);
+      }
+      const pool = new Contract(addresses.referralPool, referralPoolAbi, signer);
+      const receipt = await confirmed(
+        await pool.fund(BigInt(sponsorAgentId), proposalId, amount),
+        "referral pool funding",
+        onSubmitted
+      );
+      return { hash: receipt.hash, blockNumber: receipt.blockNumber, amount };
     },
 
     async replenishWithEth({ privateKey, agentId, depositWei }) {

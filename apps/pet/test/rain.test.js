@@ -84,6 +84,7 @@ describe("chain rain configuration", () => {
         syndicate: "0x0000000000000000000000000000000000000004",
         usdc: "0x0000000000000000000000000000000000000005",
         missionEscrow: "0x0000000000000000000000000000000000000006",
+        referralPool: "0x0000000000000000000000000000000000000007",
       },
     }));
     try {
@@ -102,6 +103,8 @@ describe("chain rain configuration", () => {
       assert.equal(typeof service.replenishRunway, "function");
       assert.equal(typeof service.claimTranche, "function");
       assert.equal(typeof service.withdrawVault, "function");
+      assert.equal(typeof service.referralStatus, "function");
+      assert.equal(typeof service.fundReferralPoolFromRunway, "function");
     } finally {
       fs.unlinkSync(file);
     }
@@ -141,6 +144,7 @@ describe("chain rain configuration", () => {
         agents: "0x0000000000000000000000000000000000000002",
         treasury: "0x0000000000000000000000000000000000000003",
         syndicate: "0x0000000000000000000000000000000000000004",
+        referralPool: "0x0000000000000000000000000000000000000005",
       },
     }));
     try {

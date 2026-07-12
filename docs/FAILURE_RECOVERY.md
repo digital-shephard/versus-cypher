@@ -21,11 +21,11 @@ The side settings control shows an amber or red service lamp while an issue is a
 
 ## Restart and transaction safety
 
-`economic-operations.json` is a local append-only bounded journal for manual rain, tranche claims, mission sponsorship, mission release, and mission refund. An intent is persisted before the chain call. The transaction hash is persisted immediately after RPC submission and before receipt waiting. A process restart checks the original hash and marks it confirmed, reverted, or uncertain. Prepared or uncertain actions remain blocked rather than being sent again.
+`economic-operations.json` is a local append-only bounded journal for manual rain, tranche claims, mission sponsorship, mission release, mission refund, manual referral-pool funding, and the fixed autonomous referral penny. An intent is persisted before the chain call. The transaction hash is persisted immediately after RPC submission and before receipt waiting. A process restart checks the original hash and marks it confirmed, reverted, or uncertain. Prepared or uncertain actions remain blocked rather than being sent again.
 
 Other idempotency layers remain specialized:
 
-- Daily rain reconciles `lastCommitDay` before sending, and `Arena.commit` permits only one commit per UTC day.
+- Daily rain reconciles `Arena.nextCommitAt(agentId)` before sending, and `Arena.commit` rejects every call made before that Cypher's rolling 24-hour due time. `lastCommitDay` remains the confirmed UTC voice label rather than the scheduler.
 - Paid Signal batches persist their deterministic root before broadcast; the Arena root nullifier prevents replay per Cypher.
 - Confirmed but unpublished postcards remain in the persistent signal queue and reuse the same postcard IDs during rebroadcast.
 - Tranche claims are additionally idempotent in cumulative reward-debt accounting.

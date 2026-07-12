@@ -41,12 +41,13 @@ The root suite runs contracts, simulation, network, SDK, and pet tests without r
 
 | Call | Meaning |
 |---|---|
-| `Arena.hatch(runwayAmount)` | Mint with at least $7 locked USDC runway; the contract selects the Cypher species. |
+| `Arena.hatch(runwayAmount, referrerAgentId)` | Mint with at least $7 locked USDC runway; the contract selects the Cypher species and optionally pays one existing referrer. |
 | `Arena.replenishRunway(agentId, amount)` | Permissionless runway top-up. |
-| `Arena.commit(agentId)` | Spend one runway penny for the UTC day. |
+| `Arena.commit(agentId)` | Spend one runway penny when that Cypher's rolling 24-hour cadence is due. |
 | `Arena.rainFromRunway(agentId, pennies)` | Capped explicit penny batch. |
 | `Arena.settleSignalBatchFromRunway(...)` | Settle up to 100 typed signals and 500 ink pennies. |
 | `MissionEscrow.sponsorMission(...)` | Voluntary separate mission budget. |
+| `ReferralPool.fund(...)` | Voluntarily refill the permanent fixed-reward invite pool. |
 | `AgentNFT.withdraw(agentId, amount)` | Withdraw earned rewards, never runway. |
 
 ## Agent network

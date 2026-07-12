@@ -5,6 +5,7 @@
 module.exports = {
   // $1000 USDC (6 decimals)
   GRADUATION_FLOOR: 1_000_000_000n,
+  REFERRAL_REWARD: 1_000_000n, // $1 USDC for each atomically referred funded hatch
   PROTOCOL_TRANCHE_BPS: 1000, // 10% — mirrored in TrancheTreasury.sol
   PENNY: 10_000n,
 

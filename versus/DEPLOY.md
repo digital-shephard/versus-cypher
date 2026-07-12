@@ -78,10 +78,11 @@ Publish together:
 - `treasury.PROTOCOL_TRANCHE_BPS()` is `1000`.
 - `syndicate.graduationFloor()` is `1000000000`.
 - `arena.MIN_RUNWAY()` is `7000000`.
+- `referralPool.rewardPerReferral()` is `1000000` and its one-shot Arena bootstrap is sealed.
 - Arena USDC balance is at least `totalRunwayLiability()` and `runwaySolvent()` is true.
-- A successful commit sets `committedDays(agentId, currentDay())` and decrements runway by `10000`.
+- A successful commit sets `committedDays(agentId, currentDay())`, schedules `nextCommitAt(agentId)` for 24 hours after the confirmed block, and decrements runway by `10000`.
 - AgentNFT reward vault is unchanged by runway spending.
-- Every Arena, AgentNFT, Syndicate, Treasury, Graduation, and MissionEscrow link matches the deployment; all one-shot bootstrap flags are true.
+- Every Arena, AgentNFT, Syndicate, Treasury, Graduation, MissionEscrow, and ReferralPool link matches the deployment; all one-shot bootstrap flags are true.
 - Graduation router/factory wiring and `PENNY`, `MIN_RUNWAY`, tranche BPS, and total BPS match the frozen values.
 - No core contract exposes an owner, pause, rescue sweep, or upgrade path.
 

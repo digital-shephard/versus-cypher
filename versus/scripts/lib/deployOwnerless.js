@@ -6,12 +6,16 @@
  * - Permanent daily-penny voice credentials for postcard verification
  * - 10% of tranche → immutable protocolRecipient
  */
-async function deployOwnerlessVersus(ethers, { usdcAddress, routerAddress, protocolRecipient, graduationFloor }) {
+async function deployOwnerlessVersus(
+  ethers,
+  { usdcAddress, routerAddress, protocolRecipient, graduationFloor, referralReward }
+) {
   if (!usdcAddress || !routerAddress || !protocolRecipient) {
     throw new Error("usdc + router + protocolRecipient required");
   }
 
   const floor = graduationFloor ?? 1_000_000_000n; // $1000 USDC (6 decimals)
+  const reward = referralReward ?? 1_000_000n; // $1 USDC (6 decimals)
   const transactions = [];
 
   async function recordDeployment(label, contract) {
@@ -48,13 +52,23 @@ async function deployOwnerlessVersus(ethers, { usdcAddress, routerAddress, proto
     await (await ethers.getContractFactory("MissionEscrow")).deploy(usdcAddress, await agents.getAddress())
   );
 
+  const referralPool = await recordDeployment(
+    "deploy ReferralPool",
+    await (await ethers.getContractFactory("ReferralPool")).deploy(
+      usdcAddress,
+      await agents.getAddress(),
+      reward
+    )
+  );
+
   const arena = await recordDeployment(
     "deploy Arena",
     await (await ethers.getContractFactory("Arena")).deploy(
       usdcAddress,
       await agents.getAddress(),
       await syndicate.getAddress(),
-      await treasury.getAddress()
+      await treasury.getAddress(),
+      await referralPool.getAddress()
     )
   );
 
@@ -73,9 +87,11 @@ async function deployOwnerlessVersus(ethers, { usdcAddress, routerAddress, proto
     agents.bootstrap(
       await arena.getAddress(),
       await treasury.getAddress(),
-      await missionEscrow.getAddress()
+      await missionEscrow.getAddress(),
+      await referralPool.getAddress()
     )
   );
+  await recordCall("bootstrap ReferralPool", referralPool.bootstrap(await arena.getAddress()));
   await recordCall(
     "bootstrap SyndicateEngine",
     syndicate.bootstrap(await arena.getAddress(), await graduation.getAddress())
@@ -91,6 +107,7 @@ async function deployOwnerlessVersus(ethers, { usdcAddress, routerAddress, proto
     syndicate,
     treasury,
     missionEscrow,
+    referralPool,
     graduation,
     transactions,
     addresses: {
@@ -99,11 +116,13 @@ async function deployOwnerlessVersus(ethers, { usdcAddress, routerAddress, proto
       syndicate: await syndicate.getAddress(),
       treasury: await treasury.getAddress(),
       missionEscrow: await missionEscrow.getAddress(),
+      referralPool: await referralPool.getAddress(),
       graduation: await graduation.getAddress(),
       usdc: usdcAddress,
       router: routerAddress,
       protocolRecipient,
       graduationFloor: floor.toString(),
+      referralReward: reward.toString(),
     },
   };
 }
@@ -137,6 +156,7 @@ async function deployLocalStack(ethers, opts = {}) {
     routerAddress: await v2Router.getAddress(),
     protocolRecipient: opts.protocolRecipient || deployer.address,
     graduationFloor: opts.graduationFloor, // tests pass small floor
+    referralReward: opts.referralReward,
   });
 
   return { usdc, v2Factory, v2Router, ...core };

@@ -32,6 +32,7 @@
     "lab:pet-brain-fixture": "node scripts/lab/pet-brain-fixture.js",
     "lab:pet-rpc-fixture": "node scripts/lab/pet-rpc-fixture.js",
     "lab:pet-waku-publish": "node scripts/lab/publish-walkthrough-waku.js",
+    "lab:graduation-keeper": "node scripts/lab/run-graduation-keeper-e2e.js",
     "lab:visual-audit": "python scripts/lab/audit-visual-baseline.py",
     "lab:validation-audit": "node scripts/lab/audit-validation-plan.js",
     "security:secrets": "node scripts/security/scan-secrets.js",

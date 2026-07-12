@@ -37,11 +37,12 @@ describe("production deployment tooling", function () {
     const address = () => ethers.Wallet.createRandom().address;
     const contracts = {
       usdc: address(), v2Router: address(), v2Factory: address(), agents: address(), syndicate: address(),
-      treasury: address(), missionEscrow: address(), arena: address(), graduation: address(),
+      treasury: address(), missionEscrow: address(), referralPool: address(), arena: address(), graduation: address(),
     };
     const recipient = address();
     const args = constructorArguments(contracts, 1_000_000_000n, recipient);
     expect(args.treasury).to.deep.equal([contracts.usdc, recipient]);
+    expect(args.referralPool).to.deep.equal([contracts.usdc, contracts.agents, "1000000"]);
   });
 
   it("independently audits a locally deployed ownerless stack", async function () {
@@ -72,6 +73,7 @@ describe("production deployment tooling", function () {
       economics: {
         protocolRecipient: deployer.address,
         graduationFloorRaw: "1000000000",
+        referralRewardRaw: "1000000",
       },
       runtimeBytecode,
     };

@@ -55,6 +55,7 @@ async function runOnboardPipeline(cypherCount = 29, pick) {
   state.level = 1;
   state.streak = 1;
   state.lastCommitDay = Math.floor(Date.now() / 86_400_000);
+  state.nextCommitAt = Math.floor(Date.now() / 1000) + 86_400;
   state.vault = 0;
   state.classPotMicros = 10_000;
   state.classAgents = 1;

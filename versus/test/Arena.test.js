@@ -51,6 +51,23 @@ describe("Versus Arena (ownerless)", function () {
     );
   });
 
+  it("blocks safe-mint callbacks from corrupting runway accounting", async function () {
+    const { usdc, agents, arena } = await deployVersus();
+    const ReentrantHatcher = await ethers.getContractFactory("ReentrantHatcher");
+    const receiver = await ReentrantHatcher.deploy(await usdc.getAddress(), await arena.getAddress());
+    const replenishAmount = 1_000_000n;
+    await usdc.mint(await receiver.getAddress(), MIN_RUNWAY + replenishAmount);
+
+    await receiver.hatch(MIN_RUNWAY, replenishAmount);
+
+    expect(await receiver.reentryBlocked()).to.equal(true);
+    expect(await agents.ownerOf(1)).to.equal(await receiver.getAddress());
+    expect(await arena.runway(1)).to.equal(MIN_RUNWAY);
+    expect(await arena.totalRunwayLiability()).to.equal(MIN_RUNWAY);
+    expect(await usdc.balanceOf(await arena.getAddress())).to.equal(MIN_RUNWAY);
+    expect(await arena.runwaySolvent()).to.equal(true);
+  });
+
   it("selects species on-chain and always maps the result to immutable metadata", async function () {
     const { alice, usdc, agents, arena } = await deployVersus();
     await usdc.mint(alice.address, ethers.parseUnits("200", 6));
@@ -67,10 +84,12 @@ describe("Versus Arena (ownerless)", function () {
     }
   });
 
-  it("commits once per day and auto-awards a ticket", async function () {
+  it("commits no sooner than 24 hours after its previous penny", async function () {
     const { alice, arena, syndicate, treasury } = await deployVersus();
     await arena.connect(alice).hatch(MIN_RUNWAY);
-    await arena.connect(alice).commit(1);
+    const commit = await arena.connect(alice).commit(1);
+    const receipt = await commit.wait();
+    const block = await ethers.provider.getBlock(receipt.blockNumber);
 
     const classId = await syndicate.currentClassId();
     const cls = await syndicate.getClass(classId);
@@ -78,8 +97,29 @@ describe("Versus Arena (ownerless)", function () {
     expect(cls.participantCount).to.equal(1);
     expect(await treasury.tickets(1)).to.equal(1n);
     expect(await arena.committedDays(1, await arena.currentDay())).to.equal(true);
+    expect(await arena.nextCommitAt(1)).to.equal(BigInt(block.timestamp + 86400));
 
     await expect(arena.connect(alice).commit(1)).to.be.revertedWithCustomError(arena, "AlreadyCommitted");
+    const dueAt = await arena.nextCommitAt(1);
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(dueAt) - 1]);
+    await expect(arena.connect(alice).commit(1)).to.be.revertedWithCustomError(arena, "AlreadyCommitted");
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(dueAt)]);
+    await expect(arena.connect(alice).commit(1)).to.emit(arena, "Committed");
+  });
+
+  it("staggered hatches retain staggered rolling commit times", async function () {
+    const { alice, bob, arena } = await deployVersus();
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    await arena.connect(alice).commit(1);
+    const aliceDueAt = await arena.nextCommitAt(1);
+
+    await ethers.provider.send("evm_increaseTime", [6 * 60 * 60]);
+    await ethers.provider.send("evm_mine");
+    await arena.connect(bob).hatch(MIN_RUNWAY);
+    await arena.connect(bob).commit(2);
+    const bobDueAt = await arena.nextCommitAt(2);
+
+    expect(bobDueAt - aliceDueAt).to.be.closeTo(6n * 60n * 60n, 3n);
   });
 
   it("levels and streaks across days into the same open class", async function () {
@@ -97,6 +137,22 @@ describe("Versus Arena (ownerless)", function () {
 
     const classId = await syndicate.currentClassId();
     expect((await syndicate.getClass(classId)).totalCommitted).to.equal(PENNY * 2n);
+  });
+
+  it("skips offline backlog and resets the streak after a full missed cadence", async function () {
+    const { alice, agents, arena, treasury } = await deployVersus();
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    await arena.connect(alice).commit(1);
+    const dueAt = await arena.nextCommitAt(1);
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(dueAt) + 86400]);
+    await arena.connect(alice).commit(1);
+
+    const agent = await agents.getAgent(1);
+    expect(agent.level).to.equal(2n);
+    expect(agent.streak).to.equal(1n);
+    expect(await treasury.tickets(1)).to.equal(2n);
+    expect(await arena.nextCommitAt(1)).to.be.greaterThan(BigInt(Number(dueAt) + 86400));
   });
 
   it("daily commit spends one penny from runway and preserves reward vault", async function () {
@@ -324,11 +380,13 @@ describe("Versus Arena (ownerless)", function () {
   });
 
   it("has no Ownable owner and is bootstrapped", async function () {
-    const { agents, syndicate, treasury, arena, missionEscrow, graduation } = await deployVersus();
+    const { agents, syndicate, treasury, arena, missionEscrow, referralPool, graduation } = await deployVersus();
     expect(arena.owner).to.equal(undefined);
     expect(await agents.bootstrapped()).to.equal(true);
     expect(await agents.missionEscrow()).to.equal(await missionEscrow.getAddress());
     expect(missionEscrow.owner).to.equal(undefined);
+    expect(referralPool.owner).to.equal(undefined);
+    expect(await referralPool.bootstrapped()).to.equal(true);
     expect(await syndicate.graduationFloor()).to.equal(TEST_FLOOR);
     expect(await treasury.protocolRecipient()).to.be.properAddress;
     expect(graduation.owner).to.equal(undefined);

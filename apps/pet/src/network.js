@@ -17,6 +17,8 @@ const {
   WakuPostcardTransport,
 } = require("@versus/network");
 const { createAgentBrain, loadAgentBrainConfig, publicBrainConfig } = require("./brain");
+const { ReferralDriveSlot, referralDriveThought } = require("./referral-drive-slot");
+const { referralCodeFor } = require("./referrals");
 const { ThoughtQueue } = require("./thought-queue");
 const { BASE_CHAIN_ID, createBaseProvider } = require("./base-rpc");
 
@@ -117,10 +119,12 @@ class PetNetworkService {
       : null;
     this.economicVerifier = economicVerifier;
     this.thoughts = new ThoughtQueue({ filePath: path.join(dataDir, "thoughts.json") });
+    this.referralDrive = new ReferralDriveSlot({ filePath: path.join(dataDir, "referral-drive.json") });
     const resolvedAgentConfig = agentBrain
       ? agentConfig || { mode: "custom", model: "owner supplied", autostart: false, tickIntervalMs: 86_400_000 }
       : null;
     this.agentConfig = publicBrainConfig(resolvedAgentConfig);
+    this.agentAutomatic = Boolean(agentBrain && resolvedAgentConfig.autostart);
     this.agentState = {
       status: agentBrain ? "sleeping" : "off",
       lastResult: null,
@@ -314,14 +318,7 @@ class PetNetworkService {
       }, this.launchPollMs);
       this.launchTimer.unref?.();
     }
-    if (this.agentRuntime && this.agentConfig.autostart) {
-      try {
-        await this.startAgent();
-      } catch (error) {
-        this.agentState.status = "error";
-        this.agentState.lastError = error.message;
-      }
-    }
+    if (this.agentRuntime && this.agentAutomatic) this.agentState.status = "listening";
     this.runLocalMaintenance();
     this.maintenanceTimer = setInterval(() => {
       try { this.runLocalMaintenance(); } catch (error) { this.recordPeerError(error); }
@@ -365,7 +362,21 @@ class PetNetworkService {
   }
 
   coalitionView(launchId) {
-    return this.node.coalitionView(launchId);
+    const view = this.node.coalitionView(launchId);
+    const slot = this.referralDrive.sync(view.currentReferralDrive, {
+      referralCode: referralCodeFor(this.node.identity.cypherId),
+      launchId,
+    });
+    if (slot.changed && slot.current) {
+      this.thoughts.enqueue(referralDriveThought(slot.current), {
+        launchId,
+        actionType: "referral_drive",
+        slotKey: "referral-drive",
+      });
+    } else if (slot.changed) {
+      this.thoughts.clearSlot("referral-drive");
+    }
+    return { ...view, currentReferralDrive: slot.current };
   }
 
   clusterView() {
@@ -509,7 +520,7 @@ class PetNetworkService {
       const result = await this.agentRuntime.runTick({ force: true });
       this.agentState.lastResult = result.status;
       this.agentState.lastTickAt = Date.now();
-      this.agentState.status = this.agentRuntime.timer ? "listening" : "sleeping";
+      this.agentState.status = this.agentAutomatic ? "listening" : "sleeping";
       if (result.error) this.agentState.lastError = result.error.message;
       return { result, status: this.agentStatus() };
     } catch (error) {
@@ -519,15 +530,16 @@ class PetNetworkService {
     }
   }
 
-  async runDailyAgentTick() {
+  async runDailyAgentTick(dailyCycle) {
     if (!this.agentRuntime) return { status: "brain_off" };
+    if (!this.agentAutomatic) return { status: "brain_off" };
     this.agentState.status = "thinking";
     this.agentState.lastError = null;
     try {
-      const result = await this.agentRuntime.runTick({ daily: true });
+      const result = await this.agentRuntime.runTick({ daily: true, dailyCycle });
       this.agentState.lastResult = result.status;
       this.agentState.lastTickAt = Date.now();
-      this.agentState.status = this.agentRuntime.timer ? "listening" : "sleeping";
+      this.agentState.status = this.agentAutomatic ? "listening" : "sleeping";
       if (result.error) this.agentState.lastError = result.error.message;
       return result;
     } catch (error) {
@@ -539,12 +551,13 @@ class PetNetworkService {
 
   async startAgent() {
     if (!this.agentRuntime) throw new Error("no owner supplied Cypher brain is configured");
-    if (!this.agentRuntime.timer) await this.agentRuntime.start({ immediate: true });
+    this.agentAutomatic = true;
     this.agentState.status = "listening";
     return this.agentStatus();
   }
 
   stopAgent() {
+    this.agentAutomatic = false;
     this.agentRuntime?.stop();
     if (this.agentRuntime) this.agentState.status = "sleeping";
     return this.agentStatus();

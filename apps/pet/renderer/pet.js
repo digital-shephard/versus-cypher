@@ -619,6 +619,7 @@ function renderSettings(settings) {
     $("setting-brain-key").placeholder = brain.hasApiKey ? "saved key unchanged" : "optional for local";
   }
   if ($("setting-brain-auto")) $("setting-brain-auto").checked = brain.autostart !== false;
+  if ($("setting-referral-funding")) $("setting-referral-funding").checked = Boolean(settings?.allowReferralFunding);
   if ($("setting-launch-login")) $("setting-launch-login").checked = Boolean(settings?.launchAtLogin);
   if ($("settings-wallet-address")) $("settings-wallet-address").textContent = wallet?.address || "Wallet not loaded";
   updateBrainAdapterFields();
@@ -746,6 +747,7 @@ function updateBrainAdapterFields() {
 function settingsInput() {
   return {
     launchAtLogin: Boolean($("setting-launch-login")?.checked),
+    allowReferralFunding: Boolean($("setting-referral-funding")?.checked),
     brain: {
       kind: $("setting-brain-kind")?.value || "off",
       provider: $("setting-brain-kind")?.value || "off",
@@ -763,6 +765,11 @@ async function setSettingsOpen(open) {
   if (settingsOpen && helpOpen) setHelpOpen(false);
   $("settings-screen")?.classList.toggle("hidden", !settingsOpen);
   $("btn-settings")?.setAttribute("aria-pressed", settingsOpen ? "true" : "false");
+  if (settingsOpen && $("btn-copy-referral")) {
+    const code = await window.versus.getReferralCode();
+    $("btn-copy-referral").textContent = code || "No Cypher yet";
+    $("btn-copy-referral").dataset.code = code || "";
+  }
   $("shell")?.setAttribute("data-settings", settingsOpen ? "true" : "false");
   flashLcd(true);
   if (settingsOpen) {
@@ -905,12 +912,19 @@ function renderNetworkScreen() {
   if (launch) launch.textContent = status.launchId ? `CLASS ${status.launchId}` : "CLASS --";
 
   const proposals = coalition?.proposals || [];
+  const drive = coalition?.currentReferralDrive || null;
   const leading = proposals[0] || null;
   const mission = leading?.missions?.[0] || null;
   const headline = $("signal-headline");
   const copy = $("signal-copy");
   const kicker = $("signal-kicker");
-  if (mission) {
+  const copyCode = $("btn-signal-copy-code");
+  copyCode?.classList.toggle("hidden", !drive);
+  if (drive) {
+    kicker.textContent = "REFERRAL DRIVE";
+    headline.textContent = signalSentence(drive.body, "A new invite drive is ready", 48);
+    copy.textContent = `${formatUsdcDollars(drive.fundingGoalMicros)} target · ${Number(drive.supporters || 0)} support · ${drive.referralCode}`;
+  } else if (mission) {
     kicker.textContent = `${String(mission.status || "emerging").toUpperCase()} MISSION`;
     headline.textContent = signalSentence(mission.body, "A mission is forming", 44);
     copy.textContent = `${mission.supporters?.length || 0} support · ${mission.detractors?.length || 0} dissent · tap to inspect brain`;
@@ -942,7 +956,7 @@ function renderNetworkScreen() {
 
   const peers = active ? Number(status.peerCount || 0) : 0;
   const notes = Number(status.postcardCount || 0);
-  const proposalCount = Number(coalition?.proposalCount || 0);
+  const proposalCount = drive ? 1 : 0;
   $("signal-peers").textContent = formatCompact(peers);
   $("signal-postcards").textContent = formatCompact(notes);
   $("signal-proposals").textContent = formatCompact(proposalCount);
@@ -993,6 +1007,19 @@ async function refreshNetworkScreen() {
     networkRefreshLock = false;
     renderNetworkScreen();
   }
+}
+
+function updateNextRainCountdown() {
+  const label = $("vault-today");
+  if (!label || !bond) return;
+  const remaining = Math.ceil(Number(bond.nextCommitAt || 0) - Date.now() / 1000);
+  if (remaining <= 0) {
+    label.textContent = "Ready";
+    return;
+  }
+  const hours = Math.floor(remaining / 3600);
+  const minutes = Math.ceil((remaining % 3600) / 60);
+  label.textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
 function updateModeScreen() {
@@ -1089,15 +1116,7 @@ function updateModeScreen() {
     coinWindow.style.setProperty("--vault-fill", `${fill.toFixed(1)}%`);
   }
 
-  const today = $("vault-today");
-  if (today) {
-    const day = Math.floor(Date.now() / 86_400_000);
-    const committedToday = Number(bond.lastCommitDay) === day ? 1 : 0;
-    const rainPennies = Number(bond.todayRainDay) === day
-      ? Number(bond.rainPenniesToday || 0)
-      : committedToday;
-    today.textContent = rainPennies > 0 ? `Rained ${formatCompact(rainPennies)}¢` : "Not yet";
-  }
+  updateNextRainCountdown();
 
   const gas = $("vault-gas");
   if (gas) {
@@ -2519,6 +2538,7 @@ async function showNextThought() {
 }
 
 setInterval(() => {
+  if (bond?.phase === "active" && activeMode === "vault") updateNextRainCountdown();
   if (saveDirty && bond && !graduationRunning) {
     saveDirty = false;
     window.versus?.saveBond?.(bond);
@@ -2563,6 +2583,10 @@ async function boot() {
       show("view-deposit");
       $("address-qr").src = await window.versus.getAddressQr();
       startSceneClock();
+    } else if (bond.phase === "awaiting_referral") {
+      show("view-deposit");
+      setHatchState("referral");
+      startSceneClock();
     } else {
       show("view-deposit");
       startSceneClock();
@@ -2601,6 +2625,7 @@ function setHatchState(state) {
   const view = $("view-deposit");
   view.dataset.hatchState = state;
   $("hatch-funding").setAttribute("aria-hidden", state === "funding" ? "false" : "true");
+  $("hatch-referral").setAttribute("aria-hidden", state === "referral" ? "false" : "true");
 }
 
 async function refreshHatchQuote() {
@@ -2640,7 +2665,22 @@ async function runHatchRitual(simulateDeposit = true) {
   if (confirm) confirm.disabled = true;
 
   try {
-    if (simulateDeposit) await window.versus.simulateDeposit();
+    if (simulateDeposit) {
+      await window.versus.simulateDeposit();
+      const referral = await window.versus.getReferralStatus();
+      if (referral.funded) {
+        bond = await window.versus.loadBond();
+        $("referral-reward").textContent = `$${(Number(referral.rewardPerReferral) / 1e6).toFixed(2)} goes to the Cypher that invited you.`;
+        $("referral-code").value = "";
+        $("referral-status").classList.add("hidden");
+        setHatchState("referral");
+        hatchLock = false;
+        if (confirm) confirm.disabled = false;
+        setTimeout(() => $("referral-code").focus(), 80);
+        return;
+      }
+      await window.versus.setReferralCode(null);
+    }
 
     setHatchState("crack-one");
     const pipeline = window.versus.runOnboardPipeline(CYPHERS.length);
@@ -2667,14 +2707,37 @@ async function runHatchRitual(simulateDeposit = true) {
     console.error(err);
     hatchLock = false;
     if (confirm) confirm.disabled = false;
-    setHatchState("funding");
-    const status = $("deposit-status");
-    status.textContent = "Hatch failed. Try again.";
+    const referralPending = Boolean((await window.versus.loadBond())?.pendingReferrerAgentId);
+    setHatchState(referralPending ? "referral" : "funding");
+    const status = referralPending ? $("referral-status") : $("deposit-status");
+    status.textContent = referralPending ? "Referral changed or the pool emptied. Check the code or choose no one." : "Hatch failed. Try again.";
     status.classList.remove("hidden");
   }
 }
 
 $("btn-sim-deposit").onclick = () => runHatchRitual(true);
+
+$("btn-referral-skip").onclick = async () => {
+  await window.versus.setReferralCode(null);
+  runHatchRitual(false);
+};
+
+$("btn-referral-hatch").onclick = async () => {
+  const button = $("btn-referral-hatch");
+  const status = $("referral-status");
+  button.disabled = true;
+  try {
+    const referral = await window.versus.setReferralCode($("referral-code").value);
+    status.textContent = `Cypher #${referral.referrerAgentId} confirmed.`;
+    status.classList.remove("hidden");
+    await runHatchRitual(false);
+  } catch (error) {
+    status.textContent = signalSentence(error?.message, "That invite code is not valid", 58);
+    status.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
+  }
+};
 
 $("btn-claim").onclick = async () => {
   const overlay = $("vault-claim-overlay");
@@ -2846,6 +2909,45 @@ $("setting-launch-login")?.addEventListener("change", async () => {
   }
 });
 
+$("setting-referral-funding")?.addEventListener("change", async () => {
+  setSettingsStatus("SAVING");
+  try {
+    currentSettings = await window.versus.saveSettings(settingsInput());
+    renderSettings(currentSettings);
+    setSettingsStatus("SAVED");
+  } catch (error) {
+    setSettingsStatus(settingsErrorMessage(error), true);
+  }
+});
+
+$("btn-copy-referral")?.addEventListener("click", async () => {
+  try {
+    const code = await window.versus.copyReferralCode();
+    $("btn-copy-referral").textContent = `${code} COPIED`;
+    setTimeout(() => { $("btn-copy-referral").textContent = code; }, 1200);
+  } catch (error) {
+    setSettingsStatus(settingsErrorMessage(error), true);
+  }
+});
+
+$("btn-fund-referrals")?.addEventListener("click", async () => {
+  const dollars = Number($("setting-referral-amount")?.value || 0);
+  if (!Number.isFinite(dollars) || dollars <= 0) {
+    setSettingsStatus("ENTER AN AMOUNT", true);
+    return;
+  }
+  const amountMicros = Math.round(dollars * 1e6);
+  setSettingsStatus("FUNDING");
+  try {
+    await window.versus.fundReferralPool(String(amountMicros));
+    bond = await window.versus.reconcile() || bond;
+    $("setting-referral-amount").value = "";
+    setSettingsStatus("POOL FUNDED");
+  } catch (error) {
+    setSettingsStatus(deviceErrorMessage(error), true);
+  }
+});
+
 $("btn-test-brain")?.addEventListener("click", async () => {
   setSettingsStatus("TESTING");
   try {
@@ -2946,6 +3048,17 @@ $("cypher-card-flip")?.addEventListener("click", () => {
 $("btn-signal-flip")?.addEventListener("click", () => {
   if (activeMode !== "network") return;
   setSignalFlipped(!signalFlipped);
+});
+
+$("btn-signal-copy-code")?.addEventListener("click", async () => {
+  const button = $("btn-signal-copy-code");
+  try {
+    await window.versus.copyReferralCode();
+    button.textContent = "COPIED";
+    setTimeout(() => { button.textContent = "COPY CODE"; }, 1200);
+  } catch (error) {
+    toast(signalSentence(error.message, "code unavailable", 32));
+  }
 });
 
 $("btn-brain-think")?.addEventListener("click", async () => {

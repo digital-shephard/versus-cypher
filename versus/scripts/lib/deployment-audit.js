@@ -18,35 +18,42 @@ async function auditDeployment(provider, manifest) {
   check("chain id", Number(network.chainId), Number(manifest.chainId));
   const c = manifest.contracts;
   const abis = {
-    agents: ["function usdc() view returns(address)", "function arena() view returns(address)", "function treasury() view returns(address)", "function missionEscrow() view returns(address)", "function bootstrapped() view returns(bool)", "function CYPHER_COUNT() view returns(uint8)", "function METADATA_BASE_URI() view returns(string)"],
+    agents: ["function usdc() view returns(address)", "function arena() view returns(address)", "function treasury() view returns(address)", "function missionEscrow() view returns(address)", "function referralPool() view returns(address)", "function bootstrapped() view returns(bool)", "function CYPHER_COUNT() view returns(uint8)", "function METADATA_BASE_URI() view returns(string)"],
     syndicate: ["function usdc() view returns(address)", "function arena() view returns(address)", "function graduation() view returns(address)", "function graduationFloor() view returns(uint256)", "function bootstrapped() view returns(bool)"],
     treasury: ["function usdc() view returns(address)", "function arena() view returns(address)", "function agents() view returns(address)", "function protocolRecipient() view returns(address)", "function PROTOCOL_TRANCHE_BPS() view returns(uint256)", "function BPS() view returns(uint256)", "function bootstrapped() view returns(bool)"],
-    arena: ["function usdc() view returns(address)", "function agents() view returns(address)", "function syndicate() view returns(address)", "function treasury() view returns(address)", "function PENNY() view returns(uint256)", "function MIN_RUNWAY() view returns(uint256)"],
+    arena: ["function usdc() view returns(address)", "function agents() view returns(address)", "function syndicate() view returns(address)", "function treasury() view returns(address)", "function referralPool() view returns(address)", "function PENNY() view returns(uint256)", "function MIN_RUNWAY() view returns(uint256)"],
     graduation: ["function usdc() view returns(address)", "function router() view returns(address)", "function factory() view returns(address)", "function syndicate() view returns(address)", "function treasury() view returns(address)"],
     missionEscrow: ["function usdc() view returns(address)", "function agents() view returns(address)"],
+    referralPool: ["function usdc() view returns(address)", "function agents() view returns(address)", "function arena() view returns(address)", "function rewardPerReferral() view returns(uint256)", "function bootstrapped() view returns(bool)"],
   };
   const x = Object.fromEntries(Object.entries(abis).map(([key, abi]) => [key, new Contract(c[key], abi, provider)]));
   const expectedBindings = [
     ["agents.usdc", await x.agents.usdc(), c.usdc], ["agents.arena", await x.agents.arena(), c.arena],
     ["agents.treasury", await x.agents.treasury(), c.treasury], ["agents.missionEscrow", await x.agents.missionEscrow(), c.missionEscrow],
+    ["agents.referralPool", await x.agents.referralPool(), c.referralPool],
     ["syndicate.usdc", await x.syndicate.usdc(), c.usdc], ["syndicate.arena", await x.syndicate.arena(), c.arena],
     ["syndicate.graduation", await x.syndicate.graduation(), c.graduation],
     ["treasury.usdc", await x.treasury.usdc(), c.usdc], ["treasury.arena", await x.treasury.arena(), c.arena],
     ["treasury.agents", await x.treasury.agents(), c.agents], ["treasury.protocolRecipient", await x.treasury.protocolRecipient(), manifest.economics.protocolRecipient],
     ["arena.usdc", await x.arena.usdc(), c.usdc], ["arena.agents", await x.arena.agents(), c.agents],
     ["arena.syndicate", await x.arena.syndicate(), c.syndicate], ["arena.treasury", await x.arena.treasury(), c.treasury],
+    ["arena.referralPool", await x.arena.referralPool(), c.referralPool],
     ["graduation.usdc", await x.graduation.usdc(), c.usdc], ["graduation.router", await x.graduation.router(), c.v2Router],
     ["graduation.factory", await x.graduation.factory(), c.v2Factory], ["graduation.syndicate", await x.graduation.syndicate(), c.syndicate],
     ["graduation.treasury", await x.graduation.treasury(), c.treasury], ["missionEscrow.usdc", await x.missionEscrow.usdc(), c.usdc],
     ["missionEscrow.agents", await x.missionEscrow.agents(), c.agents],
+    ["referralPool.usdc", await x.referralPool.usdc(), c.usdc], ["referralPool.agents", await x.referralPool.agents(), c.agents],
+    ["referralPool.arena", await x.referralPool.arena(), c.arena],
   ];
   expectedBindings.forEach(([name, actual, expected]) => check(name, actual, expected));
   check("agents bootstrapped", await x.agents.bootstrapped(), true);
   check("syndicate bootstrapped", await x.syndicate.bootstrapped(), true);
   check("treasury bootstrapped", await x.treasury.bootstrapped(), true);
+  check("referral pool bootstrapped", await x.referralPool.bootstrapped(), true);
   check("graduation floor", await x.syndicate.graduationFloor(), manifest.economics.graduationFloorRaw);
   check("penny", await x.arena.PENNY(), 10000);
   check("minimum runway", await x.arena.MIN_RUNWAY(), 7000000);
+  check("referral reward", await x.referralPool.rewardPerReferral(), manifest.economics.referralRewardRaw);
   check("protocol tranche bps", await x.treasury.PROTOCOL_TRANCHE_BPS(), 1000);
   check("basis points", await x.treasury.BPS(), 10000);
   check("cypher species count", await x.agents.CYPHER_COUNT(), 29);

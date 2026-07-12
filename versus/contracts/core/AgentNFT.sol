@@ -22,6 +22,7 @@ contract AgentNFT is ERC721 {
     address public arena;
     address public treasury;
     address public missionEscrow;
+    address public referralPool;
     bool public bootstrapped;
 
     struct Agent {
@@ -35,7 +36,7 @@ contract AgentNFT is ERC721 {
     uint256 public nextId = 1;
     mapping(uint256 => Agent) public agents;
 
-    event Bootstrapped(address arena, address treasury, address missionEscrow);
+    event Bootstrapped(address arena, address treasury, address missionEscrow, address referralPool);
     event VaultDeposited(uint256 indexed agentId, address indexed from, uint256 amount);
     event VaultWithdrawn(uint256 indexed agentId, address indexed to, uint256 amount);
     event ProfitReceived(uint256 indexed agentId, uint256 amount);
@@ -56,7 +57,9 @@ contract AgentNFT is ERC721 {
     }
 
     modifier onlyProfitSource() {
-        if (msg.sender != arena && msg.sender != treasury && msg.sender != missionEscrow) revert NotAuthorized();
+        if (msg.sender != arena && msg.sender != treasury && msg.sender != missionEscrow && msg.sender != referralPool) {
+            revert NotAuthorized();
+        }
         _;
     }
 
@@ -67,15 +70,18 @@ contract AgentNFT is ERC721 {
     }
 
     /// @notice One-shot wire from VersusFactory. No further admin.
-    function bootstrap(address arena_, address treasury_, address missionEscrow_) external {
+    function bootstrap(address arena_, address treasury_, address missionEscrow_, address referralPool_) external {
         if (msg.sender != deployer) revert NotAuthorized();
         if (bootstrapped) revert AlreadyBootstrapped();
-        if (arena_ == address(0) || treasury_ == address(0) || missionEscrow_ == address(0)) revert ZeroAddress();
+        if (arena_ == address(0) || treasury_ == address(0) || missionEscrow_ == address(0) || referralPool_ == address(0)) {
+            revert ZeroAddress();
+        }
         arena = arena_;
         treasury = treasury_;
         missionEscrow = missionEscrow_;
+        referralPool = referralPool_;
         bootstrapped = true;
-        emit Bootstrapped(arena_, treasury_, missionEscrow_);
+        emit Bootstrapped(arena_, treasury_, missionEscrow_, referralPool_);
     }
 
     function mint(address to, uint8 cypherId) external onlyArena returns (uint256 agentId) {
@@ -85,12 +91,12 @@ contract AgentNFT is ERC721 {
         _safeMint(to, agentId);
     }
 
-    function recordCommit(uint256 agentId, uint32 day) external onlyArena {
+    function recordCommit(uint256 agentId, uint32 day, bool streakContinues) external onlyArena {
         Agent storage a = agents[agentId];
         if (!_exists(agentId)) revert InvalidAgent();
         if (a.lastCommitDay == day) return;
 
-        if (a.lastCommitDay + 1 == day) {
+        if (streakContinues) {
             unchecked {
                 a.streak += 1;
             }

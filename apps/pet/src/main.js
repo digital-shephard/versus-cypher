@@ -5,6 +5,7 @@ const { Wallet } = require("ethers");
 const QRCode = require("qrcode");
 const { chooseRandomCypher } = require("./random");
 const { normalizeRainPennies, applyConfirmedRain } = require("./rain");
+const { availableReferralRewards, parseReferralCode, referralCodeFor } = require("./referrals");
 const { loadChainConfig, createChainRainService } = require("./chain");
 const { createPetNetworkService } = require("./network");
 const { createAgentBrain, detectAgentAdapters, loadAgentBrainConfig } = require("./brain");
@@ -15,7 +16,13 @@ const {
   openCypherArchive,
   openWalletBackup,
 } = require("./wallet-backup");
-const { DailyLifecycleScheduler } = require("./daily-lifecycle");
+const {
+  DAY_SECONDS,
+  DailyLifecycleScheduler,
+  commitIsDue,
+  nextCadenceStreak,
+  nextCommitAtFor,
+} = require("./daily-lifecycle");
 const { ServiceActivityBus } = require("./activity-bus");
 const { createUpdateService } = require("./update-service");
 const { createDiagnosticsReport } = require("./diagnostics");
@@ -542,6 +549,7 @@ function saveSettings(input) {
   saveJson(SETTINGS_PATH, {
     version: merged.version,
     launchAtLogin: merged.launchAtLogin,
+    allowReferralFunding: merged.allowReferralFunding,
     brain,
     encryptedApiKey: apiKey ? safeStorage.encryptString(apiKey).toString("base64") : null,
   });
@@ -557,6 +565,7 @@ function applyChainState(state, chain) {
   state.level = Number(chain.level);
   state.streak = Number(chain.streak);
   state.lastCommitDay = Number(chain.lastCommitDay);
+  state.nextCommitAt = Number(chain.nextCommitAt);
   state.vault = Number(chain.vault);
   state.runway = Number(chain.runway);
   state.ethGasReserveWei = chain.ethBalance.toString();
@@ -570,6 +579,10 @@ function applyChainState(state, chain) {
   state.classPotMicros = Number(chain.classPotMicros);
   state.classAgents = Number(chain.classAgents);
   state.graduationFloorMicros = Number(chain.graduationFloorMicros || 1_000_000_000);
+  state.referralRewardMicros = Number(chain.referralRewardMicros || 0);
+  state.referralRewardsAvailable = Number(chain.referralRewardsAvailable || 0);
+  state.referredBy = Number(chain.referredBy || 0);
+  state.referralFundedToday = Boolean(chain.referralFundedToday);
   state.genesis = Boolean(chain.genesis);
   state.chainSyncedAt = Date.now();
   return state;
@@ -623,7 +636,7 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
         agentId: state.agentId,
         dataDir: NETWORK_DATA_DIR,
         beforeAgentTick: ensureDailyRainForAgent,
-        onAgentAction: (postcard, service) => queueSignalSettlement(service, postcard.launchId, 100, [postcard]),
+        onAgentAction: (action, service) => handleAgentAction(action, service),
         agentContextProvider: () => {
           const current = loadState() || {};
           return {
@@ -632,6 +645,16 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
             gasReserveWei: String(current.ethGasReserveWei || "0"),
             tickets: Number(current.tickets || 0),
             rainedToday: Number(current.lastCommitDay) === Math.floor(Date.now() / 86_400_000),
+            referralPool: {
+              rewardMicros: Number(current.referralRewardMicros || 0),
+              availableRewards: Number(current.referralRewardsAvailable || 0),
+            },
+            permissions: {
+              referralFunding:
+                loadSettings().allowReferralFunding === true &&
+                !current.referralFundedToday &&
+                Number(current.runway || 0) >= 10_000,
+            },
           };
         },
         env: {
@@ -771,6 +794,57 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
   }
 }
 
+async function handleAgentAction(action, service) {
+  if (action?.type !== "fund_referrals") {
+    return queueSignalSettlement(service, action.launchId, 100, [action]);
+  }
+  const settings = loadSettings();
+  if (!settings.allowReferralFunding) throw new Error("referral funding is disabled by the owner");
+  const state = loadState() || {};
+  if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
+  if (Number(state.runway || 0) < 10_000) throw new Error("Cypher runway is empty");
+  const day = Math.floor(Date.now() / 86_400_000);
+  if (state.referralFundedToday && Number(state.referralFundedDay) === day) {
+    throw new Error("the Cypher already funded referrals today");
+  }
+
+  if (chainRainService) {
+    const wallet = ensureWallet();
+    await runJournaledOperation(
+      {
+        key: `referral-fund:${state.agentId}:${day}`,
+        kind: "referral_fund",
+        agentId: state.agentId,
+        proposalId: action.proposalId,
+      },
+      (onSubmitted) => chainRainService.fundReferralPoolFromRunway({
+        privateKey: wallet.privateKey,
+        agentId: state.agentId,
+        proposalId: action.proposalId,
+        onSubmitted,
+      })
+    );
+    await reconcileChainState();
+  } else {
+    state.runway = Number(state.runway) - 10_000;
+    const rewardMicros = BigInt(state.referralRewardMicros || 1_000_000);
+    const completeRewards = BigInt(Math.max(0, Math.floor(Number(state.referralRewardsAvailable || 0))));
+    const priorBalance = BigInt(state.referralPoolBalanceMicros || 0) || completeRewards * rewardMicros;
+    state.referralPoolBalanceMicros = Number(priorBalance + 10_000n);
+    state.referralRewardsAvailable = Number(
+      availableReferralRewards(state.referralPoolBalanceMicros, rewardMicros)
+    );
+    state.referralFundedToday = true;
+    saveState(state);
+  }
+  const updated = loadState() || state;
+  updated.referralFundedToday = true;
+  updated.referralFundedDay = day;
+  updated.lastReferralProposalId = action.proposalId;
+  saveState(updated);
+  return { status: "funded", proposalId: action.proposalId, amountMicros: 10_000 };
+}
+
 async function performDailyRainForAgent() {
   if (chainConfigError) throw chainConfigError;
   faultInjector.throwIf("gas");
@@ -787,8 +861,10 @@ async function performDailyRainForAgent() {
     error.code = "OWNERSHIP_LOST";
     throw error;
   }
-  const day = Math.floor(Date.now() / 86_400_000);
-  if (Number(state.lastCommitDay) === day) return { status: "already_rained", day, state };
+  const now = Date.now();
+  const day = Math.floor(now / 86_400_000);
+  const dueAt = nextCommitAtFor(state, now);
+  if (!commitIsDue(state, now)) return { status: "not_due", day, nextCommitAt: dueAt, state };
   if (Number(state.runway || 0) < 10_000) {
     const error = new Error("Cypher runway is empty");
     error.code = "EMPTY_RUNWAY";
@@ -804,12 +880,14 @@ async function performDailyRainForAgent() {
     });
     hash = receipt.hash;
     state = await reconcileChainState();
-    if (Number(state.lastCommitDay) !== day) throw new Error("daily rain receipt did not reconcile onchain");
+    if (commitIsDue(state, Date.now())) throw new Error("daily rain receipt did not reconcile onchain");
   } else {
+    const committedAt = Math.floor(Date.now() / 1000);
     state.runway = Number(state.runway) - 10_000;
     state.lastCommitDay = day;
     state.level = Number(state.level || 0) + 1;
-    state.streak = Number(state.streak || 0) + 1;
+    state.streak = nextCadenceStreak(dueAt, state.streak, committedAt);
+    state.nextCommitAt = committedAt + DAY_SECONDS;
     state.tickets = Number(state.tickets || 0) + 1;
     state.totalTickets = Number(state.totalTickets || 0) + 1;
     state.classPotMicros = Number(state.classPotMicros || 0) + 10_000;
@@ -845,7 +923,9 @@ function startDailyLifecycle() {
     },
     think: async () => {
       const service = await ensureNetworkService();
-      return service ? service.runDailyAgentTick() : { status: "brain_off" };
+      const state = loadState() || {};
+      const lastCommitAt = Math.max(0, nextCommitAtFor(state) - DAY_SECONDS);
+      return service ? service.runDailyAgentTick(`commit:${lastCommitAt}`) : { status: "brain_off" };
     },
   });
   dailyLifecycleScheduler.on("errorState", ({ error, nextRetryAt }) => {
@@ -1801,6 +1881,112 @@ registerIpcHandle("wallet:simulateDeposit", async () => {
   });
 });
 
+registerIpcHandle("wallet:getReferralStatus", async () => {
+  const state = loadState() || {};
+  if (!chainRainService) {
+    if (state.phase !== "active") {
+      state.phase = "awaiting_referral";
+      saveState(state);
+    }
+    return { funded: true, rewardPerReferral: 1_000_000, availableRewards: 12, demo: true };
+  }
+  const status = await chainRainService.referralStatus();
+  if (status.funded && state.phase !== "active") {
+    state.phase = "awaiting_referral";
+    saveState(state);
+  }
+  return {
+    funded: status.funded,
+    rewardPerReferral: Number(status.rewardPerReferral),
+    availableRewards: Number(status.availableRewards),
+    demo: false,
+  };
+});
+
+registerIpcHandle("wallet:setReferralCode", async (_e, { code } = {}) => {
+  const state = loadState() || {};
+  if (!code) {
+    delete state.pendingReferralCode;
+    delete state.pendingReferrerAgentId;
+    if (state.phase === "awaiting_referral") state.phase = "swapping";
+    saveState(state);
+    return { skipped: true };
+  }
+  const wallet = ensureWallet();
+  let result;
+  if (chainRainService) {
+    result = await chainRainService.validateReferralCode({ code, hatchOwner: wallet.address });
+  } else {
+    const referrerAgentId = parseReferralCode(code);
+    result = {
+      code: referralCodeFor(referrerAgentId),
+      referrerAgentId,
+      referrerCypherId: 0n,
+      rewardPerReferral: 1_000_000n,
+      availableRewards: 12n,
+    };
+  }
+  state.pendingReferralCode = result.code;
+  state.pendingReferrerAgentId = Number(result.referrerAgentId);
+  state.phase = "swapping";
+  saveState(state);
+  return Object.fromEntries(Object.entries(result).map(([key, value]) => [
+    key,
+    typeof value === "bigint" ? Number(value) : value,
+  ]));
+});
+
+registerIpcHandle("wallet:getReferralCode", () => {
+  const state = loadState() || {};
+  if (state.phase !== "active" || !state.agentId) return null;
+  return referralCodeFor(state.agentId);
+});
+
+registerIpcHandle("wallet:copyReferralCode", () => {
+  const state = loadState() || {};
+  if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
+  const code = referralCodeFor(state.agentId);
+  clipboard.writeText(code);
+  return code;
+});
+
+registerIpcHandle("wallet:fundReferralPool", async (_e, { amountMicros } = {}) => {
+  const state = loadState() || {};
+  if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
+  amountMicros = BigInt(amountMicros || 0);
+  if (amountMicros <= 0n) throw new Error("referral funding must be positive");
+  const proposalId = `0x${"0".repeat(64)}`;
+  if (!chainRainService) {
+    if (BigInt(state.walletUsdcMicros || 0) < amountMicros) throw new Error("wallet USDC is too low");
+    state.walletUsdcMicros = Number(BigInt(state.walletUsdcMicros || 0) - amountMicros);
+    state.referralPoolBalanceMicros = Number(BigInt(state.referralPoolBalanceMicros || 0) + amountMicros);
+    state.referralRewardsAvailable = Number(
+      availableReferralRewards(state.referralPoolBalanceMicros, state.referralRewardMicros || 1_000_000)
+    );
+    saveState(state);
+    return { amount: Number(amountMicros), demo: true };
+  }
+  const wallet = ensureWallet();
+  const operationId = Date.now();
+  const result = await runJournaledOperation(
+    {
+      key: `referral-manual:${state.agentId}:${operationId}`,
+      kind: "referral_manual_fund",
+      agentId: state.agentId,
+      amountMicros: amountMicros.toString(),
+    },
+    (onSubmitted) => chainRainService.fundReferralPool({
+      privateKey: wallet.privateKey,
+      sponsorAgentId: state.agentId,
+      proposalId,
+      amount: amountMicros,
+      onSubmitted,
+    })
+  );
+  await reconcileChainState();
+  return { amount: Number(amountMicros), hash: result.hash, demo: false };
+});
+
 registerIpcHandle("wallet:claimTranche", async () => {
   const state = loadState() || {};
   if (chainRainService) {
@@ -1896,6 +2082,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
 }, async () => {
   const w = ensureWallet();
   const state = loadState() || {};
+  const referrerAgentId = BigInt(state.pendingReferrerAgentId || 0);
   let cypherId = Number.isInteger(state.cypherId) ? state.cypherId : null;
   if (!chainRainService && cypherId === null) cypherId = chooseRandomCypher(cypherCount);
 
@@ -1906,6 +2093,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
     const result = await chainRainService.hatchWithEth({
       privateKey: w.privateKey,
       depositWei: state.depositWei,
+      referrerAgentId,
       onPhase: async (phase, details) => {
         state.phase = phase;
         state.hatchQuote = Object.fromEntries(Object.entries(details).map(
@@ -1923,6 +2111,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
     state.ethGasReserveWei = state.hatchQuote.gasReserveWei;
     state.swapTxHash = result.swapHash;
     state.hatchTxHash = result.hatchHash;
+    state.referredBy = Number(referrerAgentId);
   } else {
     await sleep(900);
 
@@ -1933,6 +2122,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
     await sleep(900);
     state.agentId = state.agentId || 1;
     state.runway = 6_990_000;
+    state.referredBy = Number(referrerAgentId);
   }
 
   state.phase = "active";
@@ -1940,6 +2130,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
   state.level = 1;
   state.streak = 1;
   state.lastCommitDay = Math.floor(Date.now() / 86_400_000);
+  state.nextCommitAt = Math.floor(Date.now() / 1000) + DAY_SECONDS;
   state.vault = 0;
   state.tickets = 1;
   state.totalTickets = 1;
@@ -1953,6 +2144,8 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
   state.inCurrentClass = true;
   state.walletAddress = w.address;
   state.onboardedAt = Date.now();
+  delete state.pendingReferralCode;
+  delete state.pendingReferrerAgentId;
   saveState(state);
 
   ensureNetworkService().catch((error) => {

@@ -47,6 +47,8 @@ class ThoughtQueue {
   }
 
   enqueue(text, meta = {}) {
+    const slotKey = meta.slotKey == null ? null : String(meta.slotKey);
+    if (slotKey) this.items = this.items.filter((candidate) => candidate.slotKey !== slotKey);
     const item = {
       id: `${this.now()}-${Math.random().toString(36).slice(2, 9)}`,
       text: normalizeThought(text),
@@ -54,11 +56,19 @@ class ThoughtQueue {
       createdAt: this.now(),
       launchId: meta.launchId == null ? null : String(meta.launchId),
       actionType: meta.actionType || null,
+      slotKey,
     };
     this.items.push(item);
     this.items = this.items.slice(-this.maxItems);
     this.save();
     return { ...item };
+  }
+
+  clearSlot(slotKey) {
+    const before = this.items.length;
+    this.items = this.items.filter((candidate) => candidate.slotKey !== String(slotKey));
+    if (this.items.length !== before) this.save();
+    return before - this.items.length;
   }
 
   next() {

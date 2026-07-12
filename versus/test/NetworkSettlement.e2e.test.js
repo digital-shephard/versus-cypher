@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { EventEmitter } = require("events");
 const { createChainRainService } = require("../../apps/pet/src/chain");
+const { referralCodeFor } = require("../../apps/pet/src/referrals");
 const {
   CypherIdentity,
   ContractEconomicVerifier,
@@ -21,6 +22,58 @@ class MemoryTransport extends EventEmitter {
 }
 
 describe("Versus network economic settlement E2E", function () {
+  it("validates a code and completes manual funding referred hatch payout and one-penny agent funding", async function () {
+    const [deployer] = await ethers.getSigners();
+    const stack = await deployLocalStack(ethers, {
+      protocolRecipient: deployer.address,
+      graduationFloor: 1_000_000n,
+    });
+    const referrer = ethers.Wallet.createRandom().connect(ethers.provider);
+    const newcomer = ethers.Wallet.createRandom().connect(ethers.provider);
+    for (const wallet of [referrer, newcomer]) {
+      await deployer.sendTransaction({ to: wallet.address, value: ethers.parseEther("1") });
+    }
+    await stack.usdc.mint(referrer.address, MIN_RUNWAY + 1_000_000n);
+    await stack.usdc.mint(newcomer.address, MIN_RUNWAY);
+    await stack.usdc.connect(referrer).approve(await stack.arena.getAddress(), ethers.MaxUint256);
+    await stack.arena.connect(referrer).hatch(MIN_RUNWAY);
+
+    const network = await ethers.provider.getNetwork();
+    const service = createChainRainService(
+      { rpcUrl: "injected", deployment: { chainId: Number(network.chainId), contracts: stack.addresses } },
+      { provider: ethers.provider }
+    );
+    await service.fundReferralPool({
+      privateKey: referrer.privateKey,
+      sponsorAgentId: 1,
+      proposalId: ethers.id("desktop referral funding drive"),
+      amount: 1_000_000n,
+    });
+    const validated = await service.validateReferralCode({
+      code: referralCodeFor(1),
+      hatchOwner: newcomer.address,
+    });
+    expect(validated.referrerAgentId).to.equal(1n);
+
+    const hatch = await service.hatchWithRunway({
+      privateKey: newcomer.privateKey,
+      runwayAmount: MIN_RUNWAY,
+      referrerAgentId: validated.referrerAgentId,
+    });
+    expect(hatch.agentId).to.equal(2n);
+    expect(await stack.referralPool.referredBy(2)).to.equal(1n);
+    expect((await stack.agents.getAgent(1)).vault).to.equal(1_000_000n);
+
+    await service.fundReferralPoolFromRunway({
+      privateKey: referrer.privateKey,
+      agentId: 1,
+      proposalId: ethers.id("desktop referral funding drive"),
+    });
+    const state = await service.readState({ address: referrer.address, agentId: 1 });
+    expect(state.referralFundedToday).to.equal(true);
+    expect(await stack.usdc.balanceOf(await stack.referralPool.getAddress())).to.equal(10_000n);
+  });
+
   it("runs the packaged ETH hatch and replenish path against the local mock deployment", async function () {
     const [deployer] = await ethers.getSigners();
     const stack = await deployLocalStack(ethers, {

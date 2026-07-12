@@ -377,8 +377,9 @@ class VersusNode extends EventEmitter {
     artifact = null,
     amountMicros = null,
     lifetimeSeconds = 24 * 60 * 60,
+    createdAt = null,
   }) {
-    const createdAt = this.now();
+    createdAt = createdAt ?? this.now();
     return this.identity.signPostcard({
       type,
       launchId,
@@ -424,7 +425,7 @@ class VersusNode extends EventEmitter {
     return prepared;
   }
 
-  async prepareMission({ launchId, body, replyTo, manifest, lifetimeSeconds = 24 * 60 * 60 }) {
+  async prepareMission({ launchId, body, replyTo, manifest, lifetimeSeconds = 24 * 60 * 60, createdAt = null }) {
     const parent = this.store.get(replyTo);
     if (!parent || parent.type !== "proposal" || parent.launchId !== String(launchId)) {
       throw new NetworkPolicyError(
@@ -432,7 +433,7 @@ class VersusNode extends EventEmitter {
         "BAD_MISSION_PARENT"
       );
     }
-    const createdAt = this.now();
+    createdAt = createdAt ?? this.now();
     const normalized = normalizeMissionManifest({
       ...manifest,
       kind: "versus-mission",
@@ -451,6 +452,7 @@ class VersusNode extends EventEmitter {
       artifact: reference,
       amountMicros: normalized.budgetMicros === "0" ? null : normalized.budgetMicros,
       lifetimeSeconds,
+      createdAt,
     });
   }
 
@@ -463,7 +465,7 @@ class VersusNode extends EventEmitter {
     return prepared;
   }
 
-  async prepareOutcome({ launchId, body, missionId, manifest, lifetimeSeconds = 24 * 60 * 60 }) {
+  async prepareOutcome({ launchId, body, missionId, manifest, lifetimeSeconds = 24 * 60 * 60, createdAt = null }) {
     const mission = this.store.get(missionId);
     if (!mission || mission.type !== "mission" || mission.launchId !== String(launchId)) {
       throw new NetworkPolicyError(
@@ -471,7 +473,7 @@ class VersusNode extends EventEmitter {
         "BAD_OUTCOME_MISSION"
       );
     }
-    const completedAt = this.now();
+    const completedAt = createdAt ?? this.now();
     const normalized = normalizeOutcomeManifest({
       ...manifest,
       kind: "versus-outcome",
@@ -489,6 +491,7 @@ class VersusNode extends EventEmitter {
       replyTo: mission.id,
       artifact: reference,
       lifetimeSeconds,
+      createdAt: completedAt,
     });
   }
 

@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const MANIFEST_VERSION = 1;
+const MANIFEST_VERSION = 2;
 const RELEASE_STAGES = Object.freeze({
   TEST: "test",
   CLOSED_COHORT: "closed-cohort",
@@ -88,13 +88,14 @@ function collectSourceHashes(projectRoot) {
   return { treeSha256, files };
 }
 
-function constructorArguments(contracts, graduationFloor, protocolRecipient) {
+function constructorArguments(contracts, graduationFloor, protocolRecipient, referralReward = "1000000") {
   return {
     agents: [contracts.usdc],
     syndicate: [contracts.usdc, graduationFloor.toString()],
     treasury: [contracts.usdc, protocolRecipient],
     missionEscrow: [contracts.usdc, contracts.agents],
-    arena: [contracts.usdc, contracts.agents, contracts.syndicate, contracts.treasury],
+    referralPool: [contracts.usdc, contracts.agents, referralReward.toString()],
+    arena: [contracts.usdc, contracts.agents, contracts.syndicate, contracts.treasury, contracts.referralPool],
     graduation: [contracts.usdc, contracts.v2Router, contracts.syndicate, contracts.treasury],
   };
 }
@@ -109,13 +110,13 @@ function validateManifest(manifest) {
   if (!Object.values(RELEASE_STAGES).includes(manifest?.releaseStage)) errors.push("releaseStage is invalid");
   if (!/^[a-fA-F0-9]{40}$/.test(manifest?.source?.commit || "")) errors.push("source.commit must be full length");
   if (!hashPattern.test(manifest?.source?.treeSha256 || "")) errors.push("source.treeSha256 is invalid");
-  const contractKeys = ["usdc", "v2Factory", "v2Router", "agents", "arena", "syndicate", "treasury", "missionEscrow", "graduation"];
+  const contractKeys = ["usdc", "v2Factory", "v2Router", "agents", "arena", "syndicate", "treasury", "missionEscrow", "referralPool", "graduation"];
   for (const key of contractKeys) {
     if (!addressPattern.test(manifest?.contracts?.[key] || "")) errors.push(`contracts.${key} is invalid`);
     if (!addressPattern.test(manifest?.runtimeBytecode?.[key]?.address || "")) errors.push(`runtimeBytecode.${key} is missing`);
     if (!hashPattern.test(manifest?.runtimeBytecode?.[key]?.keccak256 || "")) errors.push(`runtimeBytecode.${key}.keccak256 is invalid`);
   }
-  for (const key of ["agents", "syndicate", "treasury", "missionEscrow", "arena", "graduation"]) {
+  for (const key of ["agents", "syndicate", "treasury", "missionEscrow", "referralPool", "arena", "graduation"]) {
     if (!Array.isArray(manifest?.constructorArguments?.[key])) errors.push(`constructorArguments.${key} is required`);
   }
   if (manifest?.network === "base") {
@@ -123,6 +124,7 @@ function validateManifest(manifest) {
     if (manifest.releaseStage === RELEASE_STAGES.TEST) errors.push("Base releaseStage cannot be test");
     if (manifest?.source?.clean !== true) errors.push("Base source must be clean");
     if (manifest?.economics?.graduationFloorRaw !== "1000000000") errors.push("Base graduation floor must equal 1000000000");
+    if (manifest?.economics?.referralRewardRaw !== "1000000") errors.push("Base referral reward must equal 1000000");
   }
   return { valid: errors.length === 0, errors };
 }

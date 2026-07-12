@@ -7,6 +7,7 @@ const {
   invokeClaude,
   invokeCodex,
   loadAgentBrainConfig,
+  NARROWBAND_DECISION_SCHEMA,
   publicBrainConfig,
 } = require("../src/brain");
 
@@ -59,6 +60,20 @@ test("brain settings preserve runtime timeout overrides", () => {
   });
   const env = brainEnvironment(settings, { VERSUS_AGENT_TIMEOUT_MS: "1200" });
   assert.equal(loadAgentBrainConfig(env).timeoutMs, 1200);
+});
+
+test("referral funding permission is explicit and disabled by default", () => {
+  assert.equal(normalizeSettings({}).allowReferralFunding, false);
+  assert.equal(normalizeSettings({ allowReferralFunding: true }).allowReferralFunding, true);
+});
+
+test("structured brain output can express proposal goals and the bounded referral action", () => {
+  const variants = NARROWBAND_DECISION_SCHEMA.properties.action.anyOf;
+  const postcard = variants.find((variant) => variant.properties?.body);
+  const referral = variants.find((variant) => variant.properties?.proposalId);
+  assert.equal(postcard.properties.amountMicros.pattern, "^[0-9]+$");
+  assert.deepEqual(referral.properties.type.enum, ["fund_referrals"]);
+  assert.equal(referral.properties.proposalId.pattern, "^0x[0-9a-f]{64}$");
 });
 
 test("CLI settings select account adapters without forwarding endpoint credentials", () => {

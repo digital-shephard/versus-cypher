@@ -27,7 +27,9 @@ Superseded candidate (do not use): `0x3281F83eb931fe5b35Aa7385Fd91b261fC1Bf767` 
 | Seed fund | None |
 | Class token tax | 1% buy/sell |
 | Minimum hatch runway | $7 USDC (`7_000_000`) |
-| Daily commit | 1 penny (`10_000`) |
+| Rolling 24-hour commit | 1 penny (`10_000`) |
+| Referral reward | $1 USDC (`1_000_000`) per valid referred hatch while funded |
+| Autonomous referral funding | Exactly 1 penny per Cypher per UTC day, owner-disabled by default |
 | Signal ink prices | 1 / 2 / 3 / 5 pennies by type |
 | Admin after bootstrap | None |
 | NFT metadata root | `ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/` |

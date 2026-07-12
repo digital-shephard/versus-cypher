@@ -24,6 +24,7 @@ const ACTIVE_BOND = {
   level: 12,
   streak: 34,
   lastCommitDay: Math.floor(Date.now() / 86_400_000),
+  nextCommitAt: Math.floor(Date.now() / 1000) + 19 * 60 * 60 + 42 * 60,
   vault: 12_340_000, // $12.34
   runway: 6_990_000,
   classPotMicros: 471_300_000, // $471.30 → ~47%
@@ -51,6 +52,7 @@ let agentState = {
   lastResult: "published",
   lastError: null,
 };
+let networkLaunchId = "42";
 
 const HEALTH_FIXTURE = {
   version: 1,
@@ -128,6 +130,13 @@ function stubIpc() {
     demo: true,
   }));
   ipcMain.handle("wallet:simulateDeposit", () => ({ ok: true }));
+  ipcMain.handle("wallet:getReferralStatus", () => ({ funded: true, rewardPerReferral: 1_000_000, availableRewards: 12, demo: true }));
+  ipcMain.handle("wallet:setReferralCode", (_event, { code }) => code
+    ? { code: String(code).toUpperCase(), referrerAgentId: 1042, rewardPerReferral: 1_000_000, availableRewards: 12 }
+    : { skipped: true });
+  ipcMain.handle("wallet:getReferralCode", () => "VRS-1-3C");
+  ipcMain.handle("wallet:copyReferralCode", () => "VRS-1-3C");
+  ipcMain.handle("wallet:fundReferralPool", () => ({ amount: 1_000_000, demo: true }));
   ipcMain.handle("wallet:claimTranche", () => {
     const amount = claimState.trancheClaimableMicros;
     claimState = {
@@ -142,7 +151,7 @@ function stubIpc() {
   ipcMain.handle("rain:next", () => ({ drop: null, pending: 0, nextAt: null }));
   ipcMain.handle("network:status", () => ({
     active: true,
-    launchId: "42",
+    launchId: networkLaunchId,
     peerCount: 6,
     postcardCount: 28,
     agent: agentState,
@@ -155,9 +164,20 @@ function stubIpc() {
     ],
   }));
   ipcMain.handle("network:coalitionView", () => ({
-    launchId: "42",
+    launchId: networkLaunchId,
     postcardCount: 28,
     proposalCount: 3,
+    currentReferralDrive: {
+      proposalId: `0x${"3".repeat(64)}`,
+      launchId: networkLaunchId,
+      createdAt: Date.now(),
+      approvedAt: Date.now(),
+      body: "turn the daily launch into a midnight signal garden",
+      fundingGoalMicros: "25000000",
+      supporters: 3,
+      detractors: 1,
+      referralCode: "VRS-1-3C",
+    },
     proposals: [{
       status: "ready",
       body: "turn the daily launch into a midnight signal garden",
@@ -181,6 +201,7 @@ function stubIpc() {
   ipcMain.handle("settings:get", () => ({
     version: 1,
     launchAtLogin: true,
+    allowReferralFunding: false,
     brain: {
       kind: "local",
       provider: "local",
@@ -438,6 +459,10 @@ async function main() {
   await sleep(350);
   await shoot(win, "01b-deposit-qr");
 
+  await exec(win, `document.getElementById("view-deposit").dataset.hatchState = "referral";`);
+  await sleep(350);
+  await shoot(win, "01c-deposit-referral");
+
   for (const [state, name, delay] of [
     ["crack-one", "02-hatch-crack-one", 300],
     ["crack-two", "03-hatch-crack-two", 420],
@@ -514,6 +539,18 @@ async function main() {
   await exec(win, `__pet.setBond(${JSON.stringify(ACTIVE_BOND)}); __pet.setMode("network");`);
   await sleep(700);
   await shoot(win, "10b-mode-signal");
+
+  networkLaunchId = "43";
+  await exec(win, `return refreshNetworkScreen();`);
+  await sleep(150);
+  const signalClassLabel = await win.webContents.executeJavaScript(
+    `document.getElementById("signal-launch")?.textContent`,
+    true,
+  );
+  if (signalClassLabel !== "CLASS 43") {
+    throw new Error(`Signal class did not follow rollover: ${signalClassLabel}`);
+  }
+  await shoot(win, "10bb-mode-signal-class-rollover");
 
   await exec(win, `document.getElementById("btn-signal-flip").click();`);
   await sleep(650);

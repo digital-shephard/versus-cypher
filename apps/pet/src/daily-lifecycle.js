@@ -1,12 +1,36 @@
 const { EventEmitter } = require("node:events");
 
 const DAY_MS = 86_400_000;
+const DAY_SECONDS = 86_400;
 const DEFAULT_CHECK_INTERVAL_MS = 15 * 60_000;
 const DEFAULT_RETRY_BASE_MS = 60_000;
 const DEFAULT_RETRY_MAX_MS = 15 * 60_000;
 
 function utcDay(now = Date.now()) {
   return Math.floor(Number(now) / DAY_MS);
+}
+
+function nextCommitAtFor(state, now = Date.now()) {
+  const explicit = Number(state?.nextCommitAt);
+  if (Number.isFinite(explicit) && explicit > 0) return Math.floor(explicit);
+  const referenceMs = Number(state?.lastRainAt || state?.onboardedAt);
+  if (Number.isFinite(referenceMs) && referenceMs > 0) {
+    return Math.floor(referenceMs / 1000) + DAY_SECONDS;
+  }
+  const lastCommitDay = Number(state?.lastCommitDay);
+  if (Number.isInteger(lastCommitDay) && lastCommitDay > 0) return (lastCommitDay + 1) * DAY_SECONDS;
+  return 0;
+}
+
+function commitIsDue(state, now = Date.now()) {
+  const dueAt = nextCommitAtFor(state, now);
+  return dueAt === 0 || Math.floor(Number(now) / 1000) >= dueAt;
+}
+
+function nextCadenceStreak(dueAt, currentStreak, committedAt) {
+  return Number(dueAt) > 0 && Number(committedAt) < Number(dueAt) + DAY_SECONDS
+    ? Number(currentStreak || 0) + 1
+    : 1;
 }
 
 function errorCode(error) {
@@ -49,6 +73,8 @@ class DailyLifecycleScheduler extends EventEmitter {
     retryMaxMs = DEFAULT_RETRY_MAX_MS,
     setIntervalImpl = setInterval,
     clearIntervalImpl = clearInterval,
+    setTimeoutImpl = setTimeout,
+    clearTimeoutImpl = clearTimeout,
   }) {
     super();
     if (typeof loadState !== "function" || typeof saveState !== "function") {
@@ -74,7 +100,10 @@ class DailyLifecycleScheduler extends EventEmitter {
     this.retryMaxMs = retryMaxMs;
     this.setIntervalImpl = setIntervalImpl;
     this.clearIntervalImpl = clearIntervalImpl;
+    this.setTimeoutImpl = setTimeoutImpl;
+    this.clearTimeoutImpl = clearTimeoutImpl;
     this.timer = null;
+    this.dueTimer = null;
     this.running = null;
   }
 
@@ -104,7 +133,7 @@ class DailyLifecycleScheduler extends EventEmitter {
 
   async execute(reason, { ignoreBackoff = false } = {}) {
     const now = this.now();
-    const day = utcDay(now);
+    let day = utcDay(now);
     let state = this.loadState() || {};
     if (state.phase !== "active" || !state.agentId) return { status: "inactive", day };
 
@@ -132,18 +161,29 @@ class DailyLifecycleScheduler extends EventEmitter {
         throw error;
       }
 
-      if (Number(state.lastCommitDay) !== day) {
+      if (commitIsDue(state, now)) {
         lifecycle.status = "raining";
         lifecycle.rainStatus = "submitting";
         this.persist(state, lifecycle);
         const result = await this.rain({ day, reason });
         state = result?.state || this.loadState() || state;
+        day = utcDay(this.now());
         lifecycle = lifecycleForDay(state.dailyLifecycle || lifecycle, day);
         if (result?.hash) lifecycle.rainTxHash = result.hash;
       }
 
-      if (Number(state.lastCommitDay) !== day) {
+      if (commitIsDue(state, this.now())) {
         throw new Error("daily rain did not reconcile as confirmed");
+      }
+
+      if (Number(state.lastCommitDay) !== day) {
+        lifecycle.status = "waiting";
+        lifecycle.rainStatus = "waiting";
+        lifecycle.thoughtStatus = "waiting";
+        lifecycle.nextCommitAt = nextCommitAtFor(state, this.now());
+        lifecycle.nextRetryAt = 0;
+        this.persist(state, lifecycle);
+        return { status: "waiting", day, nextCommitAt: lifecycle.nextCommitAt };
       }
 
       lifecycle.rainStatus = "confirmed";
@@ -186,8 +226,24 @@ class DailyLifecycleScheduler extends EventEmitter {
     if (this.running) return this.running;
     this.running = this.execute(reason, options).finally(() => {
       this.running = null;
+      this.scheduleDueWake();
     });
     return this.running;
+  }
+
+  scheduleDueWake() {
+    if (this.dueTimer) this.clearTimeoutImpl(this.dueTimer);
+    this.dueTimer = null;
+    const state = this.loadState() || {};
+    if (state.phase !== "active" || !state.agentId) return;
+    const dueAt = nextCommitAtFor(state, this.now());
+    const delay = dueAt * 1000 - this.now();
+    if (dueAt <= 0 || delay <= 0) return;
+    this.dueTimer = this.setTimeoutImpl(() => {
+      this.dueTimer = null;
+      this.wake("due", { ignoreBackoff: true }).catch((error) => this.emit("fatal", error));
+    }, Math.max(100, Math.min(delay, 2_147_000_000)));
+    this.dueTimer.unref?.();
   }
 
   start({ immediate = true } = {}) {
@@ -197,19 +253,26 @@ class DailyLifecycleScheduler extends EventEmitter {
     }, this.checkIntervalMs);
     this.timer.unref?.();
     if (immediate) this.wake("startup", { ignoreBackoff: true }).catch((error) => this.emit("fatal", error));
+    else this.scheduleDueWake();
   }
 
   stop() {
     if (this.timer) this.clearIntervalImpl(this.timer);
+    if (this.dueTimer) this.clearTimeoutImpl(this.dueTimer);
     this.timer = null;
+    this.dueTimer = null;
   }
 }
 
 module.exports = {
   DAY_MS,
+  DAY_SECONDS,
   DEFAULT_CHECK_INTERVAL_MS,
   DailyLifecycleScheduler,
+  commitIsDue,
   errorCode,
   lifecycleForDay,
+  nextCadenceStreak,
+  nextCommitAtFor,
   utcDay,
 };

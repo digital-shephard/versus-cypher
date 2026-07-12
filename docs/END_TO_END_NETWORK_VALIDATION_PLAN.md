@@ -144,11 +144,11 @@ Daily rain must not depend on the model runtime.
 
 Implementation requirements:
 
-- one idempotent scheduler keyed to the Base UTC day;
+- one idempotent scheduler keyed to the on-chain per-Cypher `nextCommitAt` timestamp;
 - run on app startup, login startup, timer wake, and resume from sleep;
 - reconcile chain state before deciding whether to send;
 - retry temporary RPC, gas, and network errors with bounded backoff;
-- never send two daily commits for one Cypher and UTC day;
+- never send a second daily commit before that Cypher's rolling 24-hour due time;
 - report empty runway, insufficient gas, and permanent reverts visibly;
 - persist attempt, transaction, confirmation, and retry state;
 - continue operating when the brain is off.
@@ -167,7 +167,7 @@ Tasks:
 - [x] Deploy mock USDC, mock Uniswap, and every Versus contract once per run.
 - [x] Create isolated wallets and data directories for every headless Cypher.
 - [x] Fund, hatch, and commit every Cypher through production adapters.
-- [x] Advance UTC days through controlled chain time rather than real waiting.
+- [x] Advance each Cypher's rolling due timestamp through controlled chain time rather than real waiting.
 - [x] Run deterministic scripted brains with known actions and silence decisions.
 - [x] Settle paid postcards and verify exact runway, tickets, class pot, and receipts.
 - [x] Restart processes and prove state reconciliation and nonreplay.
@@ -343,6 +343,8 @@ The walkthrough uses Windows computer control against a fresh test profile and s
 Computer vision is not responsible for proving rain-particle correctness, balances, ticket arithmetic, signatures, or delivery semantics. Those remain deterministic assertions in the underlying harness.
 
 Verified-rain evidence: `research/rain-node-runs/2026-07-12T13-52-18-463-04-00/summary.json` binds the class-aware Arena event schema and canonical post-event class total, durable Base cursor, signed Waku window, attestor rejection, duplicate suppression, restart/archive recovery, provider-credit ceiling, and renderer behavior. The real local path converted one confirmed `Committed` penny plus one five-penny `Rained` batch into exactly six durable drops. The Electron proof rendered three current-class pennies, suppressed one delayed closed-class penny, captured eight frames, and retained no decorative precipitation path.
+
+Permissionless graduation-keeper evidence: `research/graduation-keeper-runs/2026-07-12T20-40-08-439Z/report.json` records source revisions and hashes, runtime, canonical Arena-derived wiring, exact floor and liquidity seed, signer, transaction receipt, gas, token and pair, journal closure, and post-graduation idle behavior. A fresh independent EOA with no protocol role graduated Class 1 through the production keeper path, created Token 0 plus its pair, advanced the canonical counter to Class 2, reconciled exactly one receipt, and returned `not_ready` on the empty next class.
 
 Evidence: `research/computer-use-runs/2026-07-10T22-36-41-198Z` contains the packaged walkthrough manifest, a redacted report, the full green repository test log, and 27 deterministic stable-state screenshots. The remaining unchecked rows are intentionally not inferred from those screenshots.
 

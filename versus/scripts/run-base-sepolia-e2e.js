@@ -293,7 +293,7 @@ async function main() {
     const deploymentReceipts = await Promise.all(
       deployment.transactions.map((transaction) => provider.getTransactionReceipt(transaction.hash))
     );
-    const contractKeys = ["usdc", "v2Factory", "v2Router", "agents", "arena", "syndicate", "treasury", "missionEscrow", "graduation"];
+    const contractKeys = ["usdc", "v2Factory", "v2Router", "agents", "arena", "syndicate", "treasury", "missionEscrow", "referralPool", "graduation"];
     const codeChecks = Object.fromEntries(await Promise.all(contractKeys.map(async (key) => [key, (await provider.getCode(addresses[key])).length > 2])));
     assert(deploymentReceipts.every((receipt) => receipt && Number(receipt.status) === 1), "a deployment receipt is missing or failed");
     assert(Object.values(codeChecks).every(Boolean), "a deployed contract has no bytecode");

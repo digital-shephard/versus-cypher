@@ -69,6 +69,18 @@
             <p id="boot-error" class="status pending hidden"></p>
             <button type="button" id="btn-sim-deposit" class="btn primary">I SENT IT</button>
           </section>
+
+          <section id="hatch-referral" class="hatch-referral" aria-hidden="true">
+            <p class="fund-title">DID SOMEONE SEND YOU?</p>
+            <p id="referral-reward" class="fund-amount">Their Cypher receives the referral reward.</p>
+            <label class="referral-label" for="referral-code">INVITE CODE</label>
+            <input id="referral-code" class="referral-input" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="VRS-1042-K7" />
+            <p id="referral-status" class="status pending hidden"></p>
+            <div class="referral-actions">
+              <button type="button" id="btn-referral-skip" class="btn ghost">NO ONE</button>
+              <button type="button" id="btn-referral-hatch" class="btn primary">HATCH</button>
+            </div>
+          </section>
         </main>
 
         <main id="view-class" class="view hidden">
@@ -207,7 +219,7 @@
             </div>
 
             <div class="vault-health">
-              <div><span>Today</span><strong id="vault-today">Rained 1&cent;</strong></div>
+              <div><span>Next rain</span><strong id="vault-today">Ready</strong></div>
               <div><span>Gas</span><strong id="vault-gas">Ready</strong></div>
             </div>
 
@@ -253,11 +265,12 @@
                     <small id="signal-kicker">LISTENING FOR A SIGNAL</small>
                     <strong id="signal-headline">The graph is quiet</strong>
                     <p id="signal-copy">Your Cypher will surface the strongest local idea here.</p>
+                    <button type="button" id="btn-signal-copy-code" class="signal-copy-code hidden">COPY CODE</button>
                   </div>
                   <footer class="signal-metrics">
                     <span><b id="signal-peers">0</b> peers</span>
                     <span><b id="signal-postcards">0</b> notes</span>
-                    <span><b id="signal-proposals">0</b> ideas</span>
+                    <span><b id="signal-proposals">0</b> drive</span>
                   </footer>
                 </section>
 
@@ -344,10 +357,15 @@
             <label id="brain-model-field">Model<input id="setting-brain-model" type="text" spellcheck="false" placeholder="model name" /></label>
             <label id="brain-key-field">API key<input id="setting-brain-key" type="password" autocomplete="off" placeholder="unchanged" /></label>
             <label class="settings-check"><input id="setting-brain-auto" type="checkbox" checked /><span>Wake brain with app</span></label>
+            <label class="settings-check"><input id="setting-referral-funding" type="checkbox" /><span>Allow one referral penny per day</span></label>
             <div class="settings-actions"><button type="button" id="btn-test-brain">Test</button><button type="submit">Save</button></div>
           </form>
           <div id="settings-device-panel" class="settings-panel hidden">
             <label class="settings-check"><input id="setting-launch-login" type="checkbox" /><span>Start Versus at login</span></label>
+            <p class="settings-update-status">YOUR INVITE CODE</p>
+            <button type="button" id="btn-copy-referral" class="settings-wide-action">No Cypher yet</button>
+            <label>Referral pool USDC<input id="setting-referral-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="1.00" /></label>
+            <button type="button" id="btn-fund-referrals" class="settings-wide-action">Fund referral pool</button>
             <label>Backup password<input id="setting-backup-password" type="password" autocomplete="new-password" placeholder="8+ characters" /></label>
             <div class="settings-actions"><button type="button" id="btn-backup-wallet">Back up</button><button type="button" id="btn-restore-wallet">Restore</button></div>
             <button type="button" id="btn-copy-key" class="settings-wide-action">Copy emergency key</button>

@@ -1252,7 +1252,8 @@ body { display: grid; place-items: center; }
   font-size: 0.66rem;
 }
 
-.hatch-funding {
+.hatch-funding,
+.hatch-referral {
   position: absolute;
   left: 8px;
   right: 8px;
@@ -1270,6 +1271,42 @@ body { display: grid; place-items: center; }
   pointer-events: none;
   transform: translateY(calc(100% + 10px));
   transition: opacity 180ms ease, transform 300ms var(--ease-settle);
+}
+
+.hatch-referral {
+  bottom: 14px;
+  gap: 7px;
+  padding: 12px 10px 10px;
+}
+
+.referral-label {
+  color: #bed8b3;
+  font-size: 0.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.referral-input {
+  width: 100%;
+  height: 28px;
+  border: 1px solid #729178;
+  border-radius: 3px;
+  outline: 0;
+  background: #dce8bd;
+  color: #173b31;
+  font-family: inherit;
+  font-size: 0.64rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.referral-input:focus { box-shadow: 0 0 0 2px rgba(255, 241, 174, 0.32); }
+
+.referral-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .fund-title { color: #fff1ae; font-size: 0.68rem; font-weight: 800; text-align: center; }
@@ -1346,6 +1383,16 @@ body { display: grid; place-items: center; }
 }
 
 #view-deposit[data-hatch-state="funding"] .hatch-funding {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+#view-deposit[data-hatch-state="referral"]::after {
+  background: linear-gradient(180deg, rgba(2, 12, 11, 0.16) 0 35%, rgba(2, 12, 11, 0.82) 72%, rgba(2, 12, 11, 0.94) 100%);
+}
+
+#view-deposit[data-hatch-state="referral"] .hatch-referral {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -3235,6 +3282,20 @@ body { display: grid; place-items: center; }
   font-weight: 700;
   line-height: 1.25;
 }
+.signal-copy-code {
+  align-self: center;
+  min-width: 82px;
+  height: 21px;
+  margin-top: 5px;
+  padding: 0 8px;
+  border: 1px solid rgba(202, 241, 203, 0.58);
+  border-radius: 3px;
+  background: #163d32;
+  color: var(--ink-hi);
+  cursor: pointer;
+  font: 900 0.49rem/19px inherit;
+}
+.signal-copy-code:active { transform: translateY(1px); background: #265744; }
 .signal-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -113,7 +113,7 @@ test("a private thought is emitted locally but never becomes a postcard", async 
   assert.equal(node.transport.sent.length, 0);
 });
 
-test("a daily cycle calls a solitary brain once per UTC day without peer traffic", async (t) => {
+test("a confirmed commit cycle calls a solitary brain exactly once without peer traffic", async (t) => {
   const registry = new StaticCypherVerifier();
   let now = 900 * 86_400;
   const transport = new MemoryTransport();
@@ -131,12 +131,34 @@ test("a daily cycle calls a solitary brain once per UTC day without peer traffic
     },
   });
 
-  assert.equal((await runtime.runTick({ daily: true })).status, "idle");
-  assert.equal((await runtime.runTick({ daily: true })).status, "idle");
+  assert.equal((await runtime.runTick({ daily: true, dailyCycle: "commit:100" })).status, "idle");
+  assert.equal((await runtime.runTick({ daily: true, dailyCycle: "commit:100" })).status, "idle");
   assert.equal(calls, 1);
-  now += 86_400;
-  assert.equal((await runtime.runTick({ daily: true })).status, "idle");
+  assert.equal((await runtime.runTick({ daily: true, dailyCycle: "commit:101" })).status, "idle");
   assert.equal(calls, 2);
+});
+
+test("slow inference keeps the confirmed commit voice day across UTC midnight", async (t) => {
+  const registry = new StaticCypherVerifier();
+  let now = 901 * 86_400 - 1;
+  const transport = new MemoryTransport();
+  const identity = CypherIdentity.createRandom(97);
+  registry.register(identity.address, 97);
+  const node = new VersusNode({ identity, eligibilityVerifier: registry, transport, now: () => now });
+  t.after(async () => node.close());
+  const runtime = new CypherAgentRuntime({
+    node,
+    launchIdResolver: () => "700",
+    brain: async () => {
+      now += 2;
+      return { action: { type: "observation", body: "the confirmed voice survives slow inference" } };
+    },
+  });
+
+  const result = await runtime.runTick({ daily: true, dailyCycle: "commit:midnight" });
+  assert.equal(result.status, "prepared");
+  assert.equal(result.postcard.createdAt, 901 * 86_400 - 1);
+  assert.equal(result.postcard.voiceDay, 900);
 });
 
 test("runtime state prevents a restart from answering the same inbox twice", async (t) => {
@@ -198,6 +220,83 @@ test("a brain cannot smuggle tools trust changes or arbitrary spending into an a
   assert.equal(node.transport.sent.length, 0);
   assert.equal(node.trust.isBlocked(remote.address), false);
   assert.equal(node.trust.score(remote.address, "integrity"), 0);
+});
+
+test("owner permission exposes only a one-penny referral funding decision bound to a proposal", async (t) => {
+  const registry = new StaticCypherVerifier();
+  const node = createRegisteredNode(registry, 113);
+  const remote = CypherIdentity.createRandom(114);
+  registry.register(remote.address, 114);
+  t.after(async () => node.close());
+  const proposal = await signed(remote, {
+    type: "proposal",
+    body: "refill the shared referral pool",
+  });
+  await node.accept(proposal);
+  let executed = null;
+  let observedContext = null;
+  const runtime = new CypherAgentRuntime({
+    node,
+    launchIdResolver: () => "700",
+    contextProvider: async () => ({ permissions: { referralFunding: true } }),
+    actionSink: async (action) => { executed = action; },
+    brain: async (context) => {
+      observedContext = context;
+      return { action: { type: "fund_referrals", proposalId: proposal.id } };
+    },
+  });
+
+  const result = await runtime.runTick();
+  assert.equal(result.status, "executed");
+  assert.deepEqual(executed, { type: "fund_referrals", proposalId: proposal.id });
+  assert.equal(observedContext.allowedOutput.fixedInkPennies.fund_referrals, 1);
+  assert.equal(node.store.size, 1);
+  assert.equal(node.transport.sent.length, 0);
+
+  const disabled = new CypherAgentRuntime({
+    node,
+    launchIdResolver: () => "700",
+    contextProvider: async () => ({ permissions: { referralFunding: false } }),
+    brain: async () => ({ action: { type: "fund_referrals", proposalId: proposal.id } }),
+  });
+  const rejected = await disabled.runTick({ force: true });
+  assert.equal(rejected.status, "rejected");
+  assert.equal(rejected.error.code, "ACTION_NOT_PERMITTED");
+});
+
+test("agent proposals carry a bounded whole USDC target for the permanent referral pool", async (t) => {
+  const registry = new StaticCypherVerifier();
+  const node = createRegisteredNode(registry, 115);
+  t.after(async () => node.close());
+  const valid = new CypherAgentRuntime({
+    node,
+    launchIdResolver: () => "700",
+    brain: async () => ({
+      action: {
+        type: "proposal",
+        body: "refill the referral pool for the next wave",
+        amountMicros: "25000000",
+      },
+    }),
+  });
+  const prepared = await valid.runTick({ daily: true, dailyCycle: "proposal:1" });
+  assert.equal(prepared.status, "prepared");
+  assert.equal(prepared.postcard.amountMicros, "25000000");
+
+  const invalid = new CypherAgentRuntime({
+    node,
+    launchIdResolver: () => "700",
+    brain: async () => ({
+      action: {
+        type: "proposal",
+        body: "use an ambiguous fractional funding target",
+        amountMicros: "1500000",
+      },
+    }),
+  });
+  const rejected = await invalid.runTick({ force: true });
+  assert.equal(rejected.status, "rejected");
+  assert.equal(rejected.error.code, "INVALID_FUNDING_GOAL");
 });
 
 test("a local brain can prepare a schema bound content addressed mission", async (t) => {

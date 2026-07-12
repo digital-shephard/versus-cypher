@@ -82,7 +82,9 @@ Mission manifests bind structured title, objective, steps, success conditions, e
 
 Direct authenticated peers request a missing artifact only after accepting a signed postcard that references it. On Waku, a sender publishes the signed postcard before its artifact envelope. Ordered Store replay therefore marks the hash as wanted before the bytes arrive. Unreferenced artifact envelopes are ignored, which prevents public relays from filling local disk with unsolicited objects.
 
-The Arena permanently records each successful daily commit in `committedDays`. Postcard `voiceDay` must equal the UTC day derived from `createdAt`, so old Store messages remain independently verifiable after the NFT's latest-commit field advances. The signed epoch slot prevents the same Cypher allowance from being replayed under another wallet after an NFT transfer, and used nullifiers survive local restarts through postcard history. This is transparent membership and rate accounting, not anonymous RLN: it does not hide the Cypher or prove membership in zero knowledge.
+The Arena schedules spending through each Cypher's rolling `nextCommitAt` timestamp and permanently records the confirmed commit's UTC receipt day in `committedDays`. Postcard `voiceDay` must equal the UTC day derived from `createdAt`, so old Store messages remain independently verifiable after the NFT's latest-commit field advances. The signed epoch slot prevents the same Cypher allowance from being replayed under another wallet after an NFT transfer, and used nullifiers survive local restarts through postcard history. This is transparent membership and rate accounting, not anonymous RLN: it does not hide the Cypher or prove membership in zero knowledge.
+
+For the automatic brain cycle, `createdAt` is captured after the Base commit confirms and before inference starts. A slow owner model may finish after UTC midnight, but its resulting postcard remains bound to the paid commit's original voice day. Manual messages continue to use their actual preparation timestamp.
 
 ## Body dialect
 
@@ -197,6 +199,14 @@ The Arena requires current NFT ownership, the currently open class, a nonzero un
 Queue state retains the full signed drafts and reserves their IDs across restarts. A batch becomes confirmed only after the Electron chain service finds an exact `SignalBatchSettled` event matching root, Cypher, class, count, derived ink pennies, amount, and typed-count hash. Failed pre-submission batches release their IDs. On restart, submitted hashes are checked directly: pending transactions remain reserved, mined reverts fail, and exact successful receipts confirm.
 
 After confirmation, each transport envelope carries the signed postcard together with the normalized settlement proof. The batch manifest binds that exact postcard ID, type, author, Cypher, launch, fixed price, and total. A receiver checks current NFT ownership and daily voice, recomputes the manifest root, queries Arena, and verifies the exact receipt before the postcard may enter history, relay, model context, or coalition scoring. Missing, stale, invalid, or borrowed proofs are rejected without a pending social state. Accepted proof mappings persist locally so authenticated TCP history sync and Waku Store replay can resend the same verifiable envelope after restart. Pennies buy ink and tickets, not social influence.
+
+## Continuous referral funding
+
+Every new proposal is a themed funding drive for the one permanent referral pool and carries a bounded whole-USDC target in its signed `amountMicros` field. The target is coordination context, not authority over funds and not a separate campaign escrow. Multiple local coalitions may support different refill targets without selecting a global governance winner.
+
+The protocol retains every accepted signed proposal, but each client exposes only one current referral drive to its owner. It selects the newest proposal whose local coalition evaluation is `ready`; a newer ready proposal replaces the prior owner-facing slot. This is a local presentation rule, not global consensus and not destructive history pruning.
+
+`fund_referrals` is a local control action rather than a postcard. It is exposed only when the owner enables referral funding, references an exact proposal already present in the active launch, and deterministically spends one runway penny through Arena's fixed referral-pool route. Arena's UTC-day nullifier is authoritative, so model retries, process restarts, or duplicate decisions cannot spend a second autonomous penny that day.
 
 ## Mission sponsorship
 

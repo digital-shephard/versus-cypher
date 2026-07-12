@@ -83,6 +83,8 @@ test("coalition readiness is local and a mission requires its own support", asyn
   permissiveTrust.setBlocked(critic.address, true);
   const permissive = new CoalitionEngine({ store, trust: permissiveTrust }).view("700");
   assert.equal(permissive.proposals[0].status, "ready");
+  assert.equal(permissive.currentReferralDrive.id, proposal.id);
+  assert.equal(permissive.currentReferralDrive.createdAt, proposal.createdAt);
   assert.equal(permissive.proposals[0].supporters.length, 2);
   assert.equal(permissive.proposals[0].missions[0].status, "ready");
   assert.equal(permissive.proposals[0].missions[0].declaredAmountMicros, "10000000");
@@ -95,4 +97,34 @@ test("coalition readiness is local and a mission requires its own support", asyn
   assert.equal(skeptical.proposals[0].status, "contested");
   assert.equal(skeptical.proposals[0].supporters.length, 1);
   assert.equal(skeptical.proposals[0].detractors.length, 1);
+  assert.equal(skeptical.currentReferralDrive, null);
+});
+
+test("the newest ready proposal is the one owner facing referral drive", async () => {
+  const store = new PostcardStore();
+  const proposer = CypherIdentity.createRandom(11);
+  const supporterA = CypherIdentity.createRandom(12);
+  const supporterB = CypherIdentity.createRandom(13);
+  const trust = new TrustGraph();
+
+  const first = await add(store, proposer, {
+    type: "proposal",
+    body: "open the first referral drive",
+    amountMicros: "10000000",
+  }, 0);
+  await add(store, supporterA, { type: "endorsement", body: "support the first drive", replyTo: first.id }, 0);
+  await add(store, supporterB, { type: "endorsement", body: "back the first drive", replyTo: first.id }, 0);
+
+  const second = await add(store, proposer, {
+    type: "proposal",
+    body: "open the replacement referral drive",
+    amountMicros: "25000000",
+  }, 1);
+  await add(store, supporterA, { type: "endorsement", body: "support the replacement drive", replyTo: second.id }, 1);
+  await add(store, supporterB, { type: "endorsement", body: "back the replacement drive", replyTo: second.id }, 1);
+
+  const view = new CoalitionEngine({ store, trust }).view("700");
+  assert.equal(view.proposalCount, 2);
+  assert.equal(view.currentReferralDrive.id, second.id);
+  assert.equal(view.currentReferralDrive.fundingGoalMicros, "25000000");
 });
