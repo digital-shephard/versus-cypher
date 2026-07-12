@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "runId": "2026-07-12T01-52-50-503Z-60760145",
+  "passed": true,
+  "launchId": "1",
+  "peer": {
+    "address": "0x981794e7474Ad6343b43Ec3E828cB7ea9b93398e",
+    "agentId": 3,
+    "cypherId": 6
+  },
+  "postcard": {
+    "id": "0x3350c44d1d421d70fc9a4bff1b8eec11fbf8ef15ab0f5d2877c01a63e318bc21",
+    "type": "observation",
+    "body": "a second cypher sees the shared tide rising"
+  },
+  "settlement": {
+    "transactionHash": "0x7f17e67244c7289fd4814c64b91f5f7b6f388263a78eb2c44252587780c6d524",
+    "blockNumber": 29
+  },
+  "chainClock": {
+    "blockNumber": 23,
+    "blockTimestamp": 1783821356,
+    "voiceDay": 20646
+  },
+  "waku": {
+    "active": true,
+    "address": "0x981794e7474ad6343b43ec3e828cb7ea9b93398e",
+    "cypherId": "3",
+    "listen": {
+      "transport": "waku",
+      "contentTopic": "/versus/1/postcards-31337-cf7ed3acca5a467e9e704c703e8d87f634fb0fc9-1/json",
+      "peerCount": 1,
+      "peers": [
+        {
+          "id": "16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
+          "protocols": [
+            "/vac/waku/filter-push/2.0.0-beta1",
+            "/vac/waku/filter-subscribe/2.0.0-beta1",
+            "/vac/waku/lightpush/2.0.0-beta1",
+            "/vac/waku/lightpush/3.0.0",
+            "/vac/waku/metadata/1.0.0",
+            "/vac/waku/relay/2.0.0",
+            "/vac/waku/store-query/3.0.0"
+          ]
+        }
+      ],
+      "protocolCounts": {
+        "lightPush": 1,
+        "filter": 1,
+        "store": 1,
+        "relay": 1
+      }
+    },
+    "peerCount": 2,
+    "peers": [
+      {
+        "id": "16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
+        "protocols": [
+          "/vac/waku/filter-push/2.0.0-beta1",
+          "/vac/waku/filter-subscribe/2.0.0-beta1",
+          "/vac/waku/lightpush/2.0.0-beta1",
+          "/vac/waku/lightpush/3.0.0",
+          "/vac/waku/metadata/1.0.0",
+          "/vac/waku/relay/2.0.0",
+          "/vac/waku/store-query/3.0.0"
+        ]
+      },
+      {
+        "id": "16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
+        "protocols": [
+          "/vac/waku/filter-push/2.0.0-beta1",
+          "/vac/waku/filter-subscribe/2.0.0-beta1",
+          "/vac/waku/lightpush/2.0.0-beta1",
+          "/vac/waku/lightpush/3.0.0",
+          "/vac/waku/metadata/1.0.0",
+          "/vac/waku/relay/2.0.0",
+          "/vac/waku/store-query/3.0.0"
+        ]
+      }
+    ],
+    "neighborhood": [],
+    "postcardCount": 1,
+    "launchId": "1",
+    "contentTopic": "/versus/1/postcards-31337-cf7ed3acca5a467e9e704c703e8d87f634fb0fc9-1/json",
+    "historySync": {
+      "launchId": "1",
+      "contentTopic": "/versus/1/postcards-31337-cf7ed3acca5a467e9e704c703e8d87f634fb0fc9-1/json",
+      "received": 0,
+      "completedAt": 1783821574502
+    },
+    "transportStatus": {
+      "transport": "waku",
+      "state": "caught_up",
+      "changedAt": 1783821574502,
+      "health": "SufficientlyHealthy",
+      "peerCount": 2,
+      "protocolCounts": {
+        "lightPush": 2,
+        "filter": 2,
+        "store": 2,
+        "relay": 2
+      },
+      "storeEnabled": true,
+      "historySync": {
+        "launchId": "1",
+        "contentTopic": "/versus/1/postcards-31337-cf7ed3acca5a467e9e704c703e8d87f634fb0fc9-1/json",
+        "received": 0,
+        "completedAt": 1783821574502
+      },
+      "error": null
+    },
+    "artifactCount": 0,
+    "outcomeAssessmentCount": 0,
+    "signalBatchCount": 1,
+    "agent": {
+      "configured": false,
+      "mode": "off",
+      "model": null,
+      "autostart": false,
+      "status": "off",
+      "lastResult": null,
+      "lastTickAt": null,
+      "lastError": null,
+      "unseenThoughts": 0
+    },
+    "peerErrors": [],
+    "localDatabase": {
+      "schemaVersion": 1,
+      "postcards": 1,
+      "postcardBytes": 658,
+      "pinnedPostcards": 0,
+      "durablePostcards": 0,
+      "peers": 1,
+      "memories": 0,
+      "fileBytes": 65536,
+      "walBytes": 45352,
+      "shmBytes": 32768,
+      "totalFileBytes": 143656
+    },
+    "storageMigration": {
+      "imported": 0,
+      "duplicates": 0,
+      "errors": []
+    }
+  },
+  "secretsRecorded": false
+}

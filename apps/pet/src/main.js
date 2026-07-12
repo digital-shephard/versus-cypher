@@ -17,6 +17,17 @@ const {
 } = require("./wallet-backup");
 const { DailyLifecycleScheduler } = require("./daily-lifecycle");
 const { ServiceActivityBus } = require("./activity-bus");
+const { createUpdateService } = require("./update-service");
+const buildMetadata = require("../package.json");
+
+function configureStableIdentity() {
+  app.setName("Versus Cypher");
+  app.setAppUserModelId("network.versus.cypher");
+}
+
+configureStableIdentity();
+
+const { autoUpdater } = require("electron-updater");
 
 function applyPackagedWalkthroughProfile() {
   if (!app.isPackaged) return false;
@@ -82,6 +93,7 @@ let chainConfigError = null;
 let networkService = null;
 let networkStart = null;
 let networkUnavailableReason = null;
+let updateService = null;
 const activityBus = new ServiceActivityBus({ limit: 128 });
 const activityStates = new Map();
 
@@ -700,7 +712,8 @@ function createWindow() {
     skipTaskbar: false,
     hasShadow: false,
     backgroundColor: "#00000000",
-    title: WALKTHROUGH_PROFILE ? "Versus Walkthrough" : "Versus",
+    title: WALKTHROUGH_PROFILE ? "Versus Walkthrough" : "Versus Cypher",
+    icon: path.join(__dirname, "..", "assets", "brand", process.platform === "win32" ? "v_gem.ico" : "v_gem.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -796,11 +809,9 @@ function createWindow() {
 }
 
 function createTray() {
-  const img = nativeImage.createFromDataURL(
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAHElEQVQ4T2NkYGD4z0ABYBzVMKoBVAOGfgMAI/0BAf5qY6sAAAAASUVORK5CYII="
-  );
+  const img = nativeImage.createFromPath(path.join(__dirname, "..", "assets", "brand", "v_gem.png")).resize({ width: 32, height: 32 });
   tray = new Tray(img);
-  tray.setToolTip("Versus");
+  tray.setToolTip("Versus Cypher");
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
@@ -863,6 +874,24 @@ app.whenReady().then(() => {
   applyLaunchAtLogin(settings.launchAtLogin);
   createWindow();
   createTray();
+  updateService = createUpdateService({
+    app,
+    autoUpdater,
+    disabled:
+      WALKTHROUGH_PROFILE ||
+      process.env.VERSUS_DISABLE_UPDATES === "1" ||
+      buildMetadata.versusSignedUpdates !== true,
+    publish: (status) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("update:status", status);
+      activityBus.record({
+        channel: "system",
+        operation: "update_check",
+        destination: "github_releases",
+        status: status.status === "error" ? "error" : status.status,
+      });
+    },
+  });
+  updateService.start();
   reconcileChainState()
     .catch((error) => console.error("Versus initial chain reconciliation error:", error.message))
     .finally(async () => {
@@ -890,6 +919,7 @@ app.on("before-quit", () => {
   if (stateSyncTimer) clearInterval(stateSyncTimer);
   dailyLifecycleScheduler?.stop();
   networkService?.close().catch(() => {});
+  updateService?.stop();
 });
 
 ipcMain.handle("bond:load", async () => {
@@ -1061,6 +1091,12 @@ ipcMain.handle("cypher:restoreArchive", async (_e, { password } = {}) => {
 
 ipcMain.handle("settings:get", () => publicSettings(loadSettings()));
 ipcMain.handle("settings:brainCapabilities", () => detectAgentAdapters());
+ipcMain.handle("update:status", () => updateService?.getState() || {
+  status: "disabled", currentVersion: app.getVersion(), availableVersion: null, progress: null, error: null,
+});
+ipcMain.handle("update:check", () => updateService?.check());
+ipcMain.handle("update:download", () => updateService?.download());
+ipcMain.handle("update:install", () => updateService?.install());
 
 ipcMain.handle("settings:save", async (_e, input = {}) => {
   const previous = loadSettings();

@@ -122,19 +122,23 @@ describe("Versus Arena (ownerless)", function () {
     await arena.connect(alice).hatch(0, MIN_RUNWAY);
     const classId = await syndicate.currentClassId();
     const batchRoot = ethers.id("versus signal batch one");
+    const typeCounts = [1, 0, 2, 0, 0, 0, 0, 0];
+    const typeCountsHash = ethers.keccak256(
+      ethers.AbiCoder.defaultAbiCoder().encode(["uint16[8]"], [typeCounts])
+    );
 
-    await expect(arena.connect(alice).settleSignalBatchFromRunway(1, classId, batchRoot, 3, 7))
+    await expect(arena.connect(alice).settleSignalBatchFromRunway(1, classId, batchRoot, typeCounts))
       .to.emit(arena, "SignalBatchSettled")
-      .withArgs(1, classId, batchRoot, 3, 7, PENNY * 7n);
+      .withArgs(1, classId, batchRoot, 3, 7, PENNY * 7n, typeCountsHash);
 
-    expect(await arena.settledSignalBatches(batchRoot)).to.equal(true);
+    expect(await arena.settledSignalBatches(1, batchRoot)).to.equal(true);
     expect((await agents.getAgent(1)).vault).to.equal(0n);
     expect(await arena.runway(1)).to.equal(MIN_RUNWAY - PENNY * 7n);
     expect((await agents.getAgent(1)).level).to.equal(0n);
     expect(await syndicate.commitOf(classId, 1)).to.equal(PENNY * 7n);
     expect(await treasury.tickets(1)).to.equal(7n);
     await expect(
-      arena.connect(alice).settleSignalBatchFromRunway(1, classId, batchRoot, 3, 7)
+      arena.connect(alice).settleSignalBatchFromRunway(1, classId, batchRoot, typeCounts)
     ).to.be.revertedWithCustomError(arena, "SignalBatchAlreadySettled");
   });
 
@@ -145,23 +149,38 @@ describe("Versus Arena (ownerless)", function () {
     const root = ethers.id("versus signal batch invalid cases");
 
     await expect(
-      arena.connect(alice).settleSignalBatchFromRunway(1, classId, ethers.ZeroHash, 1, 1)
+      arena.connect(alice).settleSignalBatchFromRunway(1, classId, ethers.ZeroHash, [1, 0, 0, 0, 0, 0, 0, 0])
     ).to.be.revertedWithCustomError(arena, "InvalidSignalBatch");
     await expect(
-      arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, 0, 1)
+      arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, [0, 0, 0, 0, 0, 0, 0, 0])
     ).to.be.revertedWithCustomError(arena, "InvalidSignalBatch");
     await expect(
-      arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, 101, 101)
+      arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, [101, 0, 0, 0, 0, 0, 0, 0])
     ).to.be.revertedWithCustomError(arena, "InvalidSignalBatch");
     await expect(
-      arena.connect(alice).settleSignalBatchFromRunway(1, classId + 1n, root, 1, 1)
+      arena.connect(alice).settleSignalBatchFromRunway(1, classId + 1n, root, [1, 0, 0, 0, 0, 0, 0, 0])
     ).to.be.revertedWithCustomError(arena, "WrongClass");
     await expect(
-      arena.connect(bob).settleSignalBatchFromRunway(1, classId, root, 1, 1)
+      arena.connect(bob).settleSignalBatchFromRunway(1, classId, root, [1, 0, 0, 0, 0, 0, 0, 0])
     ).to.be.revertedWithCustomError(arena, "NotAgentOwner");
     await expect(
-      arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, 2, 1)
+      arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, [0, 0, 0, 0, 0, 0, 101, 0])
     ).to.be.revertedWithCustomError(arena, "InvalidSignalBatch");
+  });
+
+  it("scopes settled roots to each Cypher instead of globally burning copied roots", async function () {
+    const { alice, arena, syndicate } = await deployVersus();
+    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(1, MIN_RUNWAY);
+    const classId = await syndicate.currentClassId();
+    const root = ethers.id("same manifest commitment for distinct agents");
+    const counts = [1, 0, 0, 0, 0, 0, 0, 0];
+
+    await arena.connect(alice).settleSignalBatchFromRunway(1, classId, root, counts);
+    await arena.connect(alice).settleSignalBatchFromRunway(2, classId, root, counts);
+
+    expect(await arena.settledSignalBatches(1, root)).to.equal(true);
+    expect(await arena.settledSignalBatches(2, root)).to.equal(true);
   });
 
   it("transfers control of runway with the NFT while rewards stay separately withdrawable", async function () {
@@ -198,10 +217,11 @@ describe("Versus Arena (ownerless)", function () {
 
     expect(await treasury.claimable(1)).to.equal((oil - expectedCut) / 2n);
     expect(await treasury.claimable(2)).to.equal((oil - expectedCut) / 2n);
-    await treasury.claim(1);
+    await treasury.connect(bob).claim(1);
     await treasury.claim(2);
     expect((await agents.getAgent(1)).vault).to.be.gt(0n);
     expect((await agents.getAgent(2)).vault).to.be.gt(0n);
+    await expect(agents.connect(bob).withdraw(1, 1)).to.be.revertedWithCustomError(agents, "NotAgentOwner");
   });
 
   it("makes consecutive fee deposits claimable immediately without a closing transaction", async function () {

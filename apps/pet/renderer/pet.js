@@ -241,6 +241,7 @@ let helpOpen = false;
 let helpFlipped = false;
 let settingsOpen = false;
 let settingsTab = "brain";
+let updateStatus = null;
 let currentSettings = null;
 let brainCapabilities = null;
 let fundingOpen = false;
@@ -593,6 +594,35 @@ function renderSettings(settings) {
   updateBrainAdapterFields();
 }
 
+function renderUpdateStatus(status) {
+  updateStatus = status || { status: "disabled", currentVersion: "--" };
+  const button = $("btn-update");
+  const detail = $("settings-update-status");
+  if (!button || !detail) return;
+  const version = updateStatus.currentVersion || "--";
+  const next = updateStatus.availableVersion || "";
+  const labels = {
+    idle: "Check for updates",
+    checking: "Checking...",
+    current: "Check again",
+    available: `Download ${next}`,
+    downloading: `Downloading ${updateStatus.progress || 0}%`,
+    ready: "Restart to update",
+    error: "Try update again",
+    disabled: "Updates unavailable",
+  };
+  button.textContent = labels[updateStatus.status] || "Check for updates";
+  button.disabled = ["checking", "downloading", "disabled"].includes(updateStatus.status);
+  detail.textContent = updateStatus.status === "ready"
+    ? `Version ${next} downloaded and ready`
+    : updateStatus.status === "available"
+      ? `Version ${next} is available`
+      : updateStatus.status === "error"
+        ? signalSentence(updateStatus.error, "Update check failed", 64)
+        : `Version ${version}`;
+  detail.classList.toggle("error", updateStatus.status === "error");
+}
+
 function updateBrainAdapterFields() {
   const kind = $("setting-brain-kind")?.value || "off";
   const http = ["cloud", "local", "external"].includes(kind);
@@ -659,12 +689,14 @@ async function setSettingsOpen(open) {
     setSettingsTab(settingsTab);
     setSettingsStatus("LOADING");
     try {
-      const [settings, capabilities] = await Promise.all([
+      const [settings, capabilities, updater] = await Promise.all([
         window.versus.getSettings(),
         window.versus.getBrainCapabilities(),
+        window.versus.getUpdateStatus(),
       ]);
       brainCapabilities = capabilities;
       renderSettings(settings);
+      renderUpdateStatus(updater);
       setSettingsStatus("LOCAL CONTROL");
     } catch (error) {
       setSettingsStatus(settingsErrorMessage(error), true);
@@ -2529,6 +2561,16 @@ $("btn-reconcile")?.addEventListener("click", async () => {
   }
 });
 
+$("btn-update")?.addEventListener("click", async () => {
+  try {
+    if (updateStatus?.status === "available") await window.versus.downloadUpdate();
+    else if (updateStatus?.status === "ready") await window.versus.installUpdate();
+    else await window.versus.checkForUpdates();
+  } catch (error) {
+    setSettingsStatus(signalSentence(ipcErrorMessage(error), "Update failed", 96), true);
+  }
+});
+
 $("cypher-card-flip")?.addEventListener("click", () => {
   if (activeMode !== "cypher") return;
   setCypherFlipped(!cypherFlipped);
@@ -2592,6 +2634,8 @@ function sleep(ms) {
 }
 
 /* debug/test hooks (used by scripts/capture-views.js) */
+window.versus.onUpdateStatus(renderUpdateStatus);
+
 window.__pet = {
   show,
   showClass,

@@ -52,9 +52,10 @@ test("sdk submits durable signal batches to the Arena", async () => {
     root: `0x${"2".repeat(64)}`,
     signalCount: 3,
     inkPennies: 7,
+    typeCounts: [1, 0, 2, 0, 0, 0, 0, 0],
   });
   assert.equal(writes[0].functionName, "settleSignalBatchFromRunway");
-  assert.deepEqual(writes[0].args, [11n, 7n, `0x${"2".repeat(64)}`, 3n, 7n]);
+  assert.deepEqual(writes[0].args, [11n, 7n, `0x${"2".repeat(64)}`, [1, 0, 2, 0, 0, 0, 0, 0]]);
 });
 
 test("sdk sponsors releases refunds and reads ownerless mission escrows", async () => {

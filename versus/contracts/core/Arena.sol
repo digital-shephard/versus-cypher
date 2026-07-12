@@ -42,7 +42,7 @@ contract Arena {
     ISyndicateEngine public immutable syndicate;
     ITrancheTreasury public immutable treasury;
     mapping(uint256 => mapping(uint32 => bool)) public committedDays;
-    mapping(bytes32 => bool) public settledSignalBatches;
+    mapping(uint256 => mapping(bytes32 => bool)) public settledSignalBatches;
     mapping(uint256 => uint128) public runway;
     uint256 public totalRunwayLiability;
 
@@ -56,7 +56,8 @@ contract Arena {
         bytes32 indexed batchRoot,
         uint256 signalCount,
         uint256 inkPennies,
-        uint256 amount
+        uint256 amount,
+        bytes32 typeCountsHash
     );
 
     error NotAgentOwner();
@@ -128,27 +129,35 @@ contract Arena {
         uint256 agentId,
         uint256 classId,
         bytes32 batchRoot,
-        uint256 signalCount,
-        uint256 inkPennies
+        uint16[8] calldata typeCounts
     ) external {
         if (agents.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
-        if (
-            batchRoot == bytes32(0) || signalCount == 0 || signalCount > MAX_SIGNAL_BATCH
-                || inkPennies < signalCount || inkPennies > MAX_SIGNAL_INK_PENNIES
-        ) {
+        (uint256 signalCount, uint256 inkPennies) = _signalTotals(typeCounts);
+        if (batchRoot == bytes32(0) || signalCount == 0 || signalCount > MAX_SIGNAL_BATCH) {
             revert InvalidSignalBatch();
         }
-        if (settledSignalBatches[batchRoot]) revert SignalBatchAlreadySettled();
+        if (settledSignalBatches[agentId][batchRoot]) revert SignalBatchAlreadySettled();
         if (syndicate.currentClassId() != classId) revert WrongClass();
 
         uint256 amount = inkPennies * PENNY;
-        settledSignalBatches[batchRoot] = true;
+        settledSignalBatches[agentId][batchRoot] = true;
         _spendRunway(agentId, amount);
 
         uint32 day = uint32(block.timestamp / DAY);
         syndicate.receiveCommit(agentId, day, amount);
         treasury.awardTickets(agentId, inkPennies);
-        emit SignalBatchSettled(agentId, classId, batchRoot, signalCount, inkPennies, amount);
+        emit SignalBatchSettled(
+            agentId, classId, batchRoot, signalCount, inkPennies, amount, keccak256(abi.encode(typeCounts))
+        );
+    }
+
+    function _signalTotals(uint16[8] calldata counts) internal pure returns (uint256 total, uint256 ink) {
+        uint8[8] memory prices = [1, 1, 3, 1, 1, 1, 5, 2];
+        for (uint256 i; i < counts.length; ++i) {
+            total += counts[i];
+            ink += uint256(counts[i]) * prices[i];
+        }
+        if (ink > MAX_SIGNAL_INK_PENNIES) revert InvalidSignalBatch();
     }
 
     function currentDay() public view returns (uint32) {

@@ -17,7 +17,7 @@ Fixed action prices are one penny for observations, questions, critiques, endors
 
 ## Before deployment
 
-1. Choose and verify the immutable `PROTOCOL_RECIPIENT`.
+1. Choose and verify the immutable `PROTOCOL_RECIPIENT` contract (see `docs/PRODUCTION_FREEZE.md`). Live deployment fails if this address has no bytecode.
 2. Configure the deployer key and network RPC in `versus/.env`.
 3. Run the complete local suite.
 
@@ -34,7 +34,7 @@ Base Sepolia:
 npm run deploy:base-sepolia
 ```
 
-Base mainnet refuses mock USDC. Verify current Base USDC and Uniswap addresses in `scripts/lib/constants.js` before deploying.
+Base mainnet refuses mock USDC and any graduation-floor override; the deploy script asserts the exact `1_000_000_000` floor. Verify current Base USDC and Uniswap addresses in `scripts/lib/constants.js` before deploying.
 
 ## Post-deploy invariants
 
@@ -45,7 +45,8 @@ Base mainnet refuses mock USDC. Verify current Base USDC and Uniswap addresses i
 - Arena USDC balance is at least `totalRunwayLiability()` and `runwaySolvent()` is true.
 - A successful commit sets `committedDays(agentId, currentDay())` and decrements runway by `10000`.
 - AgentNFT reward vault is unchanged by runway spending.
-- `missionEscrow` addresses match the deployment.
+- Every Arena, AgentNFT, Syndicate, Treasury, Graduation, and MissionEscrow link matches the deployment; all one-shot bootstrap flags are true.
+- Graduation router/factory wiring and `PENNY`, `MIN_RUNWAY`, tranche BPS, and total BPS match the frozen values.
 - No core contract exposes an owner, pause, rescue sweep, or upgrade path.
 
 Bug response is a new opt-in deployment, not a kill switch.

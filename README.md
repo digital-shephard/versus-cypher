@@ -84,3 +84,15 @@ $env:VERSUS_AGENT_AUTOSTART = "1"
 ```
 
 Credentials and endpoint details remain in the main process. The renderer receives only narrow IPC methods.
+
+## Build and verify the desktop app
+
+The V-gem is the canonical application, installer, shortcut, tray, and taskbar icon. Public releases are built from a matching Git tag and published as a Windows NSIS installer, universal macOS DMG, and Linux AppImage.
+
+```powershell
+npm ci --prefix apps/pet
+npm test
+npm run dist:win --prefix apps/pet
+```
+
+Packaged builds can check GitHub Releases, but downloading and restarting for an update remain explicit owner actions. Development builds do not contact the update provider. Every public release is intended to include SHA-256 checksums and GitHub build-provenance attestations so a downloaded binary can be traced to its source commit. See [`docs/RELEASING.md`](./docs/RELEASING.md) for packaging, signing, and source-build instructions.

@@ -43,6 +43,9 @@ async function main() {
     return receipt;
   }
 
+  if (network === "base" && process.env.GRADUATION_FLOOR_USDC) {
+    throw new Error("GRADUATION_FLOOR_USDC cannot override the immutable $1,000 Base mainnet floor");
+  }
   if (process.env.GRADUATION_FLOOR_USDC) {
     const dollars = Number(process.env.GRADUATION_FLOOR_USDC);
     if (!Number.isFinite(dollars) || dollars <= 0) throw new Error("GRADUATION_FLOOR_USDC invalid");
@@ -171,15 +174,17 @@ async function main() {
   });
   transactions.push(...core.transactions);
 
-  // Verify immutables on-chain
-  const onChainRecipient = await core.treasury.protocolRecipient();
-  const onChainFloor = await core.syndicate.graduationFloor();
-  if (onChainRecipient.toLowerCase() !== protocolRecipient.toLowerCase()) {
-    throw new Error("protocolRecipient mismatch after deploy");
+  if (network === "base" && graduationFloor !== 1_000_000_000n) {
+    throw new Error("Base mainnet graduation floor must equal exactly 1,000 USDC");
   }
-  if (onChainFloor !== graduationFloor) {
-    throw new Error("graduationFloor mismatch after deploy");
-  }
+  const { onChainRecipient, onChainFloor } = await verifyLiveDeployment({
+    core,
+    usdcAddress,
+    routerAddress,
+    v2FactoryAddress,
+    protocolRecipient,
+    graduationFloor,
+  });
 
   console.log("\n✔ Bootstrapped ownerless stack");
   console.log("  Arena     ", core.addresses.arena);
@@ -206,6 +211,58 @@ async function main() {
     },
     transactions,
   });
+}
+
+async function verifyLiveDeployment({ core, usdcAddress, routerAddress, v2FactoryAddress, protocolRecipient, graduationFloor }) {
+  const same = (actual, expected, label) => {
+    if (String(actual).toLowerCase() !== String(expected).toLowerCase()) {
+      throw new Error(`${label} mismatch after deploy: expected ${expected}, received ${actual}`);
+    }
+  };
+  const truthy = (actual, label) => {
+    if (actual !== true) throw new Error(`${label} was not bootstrapped`);
+  };
+  const a = core.addresses;
+  const [
+    onChainRecipient,
+    onChainFloor,
+    recipientCode,
+    agentArena, agentTreasury, agentEscrow, agentUsdc, agentBootstrapped,
+    syndicateArena, syndicateGraduation, syndicateUsdc, syndicateBootstrapped,
+    treasuryArena, treasuryAgents, treasuryUsdc, treasuryBootstrapped,
+    arenaUsdc, arenaAgents, arenaSyndicate, arenaTreasury,
+    graduationUsdc, graduationRouter, graduationFactory, graduationSyndicate, graduationTreasury,
+    escrowUsdc, escrowAgents,
+    penny, minRunway, protocolBps, bps,
+  ] = await Promise.all([
+    core.treasury.protocolRecipient(), core.syndicate.graduationFloor(), hre.ethers.provider.getCode(protocolRecipient),
+    core.agents.arena(), core.agents.treasury(), core.agents.missionEscrow(), core.agents.usdc(), core.agents.bootstrapped(),
+    core.syndicate.arena(), core.syndicate.graduation(), core.syndicate.usdc(), core.syndicate.bootstrapped(),
+    core.treasury.arena(), core.treasury.agents(), core.treasury.usdc(), core.treasury.bootstrapped(),
+    core.arena.usdc(), core.arena.agents(), core.arena.syndicate(), core.arena.treasury(),
+    core.graduation.usdc(), core.graduation.router(), core.graduation.factory(), core.graduation.syndicate(), core.graduation.treasury(),
+    core.missionEscrow.usdc(), core.missionEscrow.agents(),
+    core.arena.PENNY(), core.arena.MIN_RUNWAY(), core.treasury.PROTOCOL_TRANCHE_BPS(), core.treasury.BPS(),
+  ]);
+  if (recipientCode === "0x") throw new Error("PROTOCOL_RECIPIENT must contain contract bytecode on live deployments");
+  same(onChainRecipient, protocolRecipient, "treasury protocol recipient");
+  if (onChainFloor !== graduationFloor) throw new Error("graduation floor mismatch after deploy");
+  same(agentArena, a.arena, "agents arena"); same(agentTreasury, a.treasury, "agents treasury");
+  same(agentEscrow, a.missionEscrow, "agents mission escrow"); same(agentUsdc, usdcAddress, "agents USDC"); truthy(agentBootstrapped, "agents");
+  same(syndicateArena, a.arena, "syndicate arena"); same(syndicateGraduation, a.graduation, "syndicate graduation");
+  same(syndicateUsdc, usdcAddress, "syndicate USDC"); truthy(syndicateBootstrapped, "syndicate");
+  same(treasuryArena, a.arena, "treasury arena"); same(treasuryAgents, a.agents, "treasury agents");
+  same(treasuryUsdc, usdcAddress, "treasury USDC"); truthy(treasuryBootstrapped, "treasury");
+  same(arenaUsdc, usdcAddress, "arena USDC"); same(arenaAgents, a.agents, "arena agents");
+  same(arenaSyndicate, a.syndicate, "arena syndicate"); same(arenaTreasury, a.treasury, "arena treasury");
+  same(graduationUsdc, usdcAddress, "graduation USDC"); same(graduationRouter, routerAddress, "graduation router");
+  same(graduationFactory, v2FactoryAddress, "graduation factory"); same(graduationSyndicate, a.syndicate, "graduation syndicate");
+  same(graduationTreasury, a.treasury, "graduation treasury"); same(escrowUsdc, usdcAddress, "escrow USDC");
+  same(escrowAgents, a.agents, "escrow agents");
+  if (penny !== 10_000n || minRunway !== 7_000_000n || protocolBps !== 1_000n || bps !== 10_000n) {
+    throw new Error("economic constants mismatch after deploy");
+  }
+  return { onChainRecipient, onChainFloor };
 }
 
 function receiptRecord(label, receipt) {

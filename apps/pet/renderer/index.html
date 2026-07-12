@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'" />
-    <title>Versus</title>
+  <title>Versus Cypher</title>
     <link rel="stylesheet" href="pet.css" />
   </head>
   <body>
@@ -26,8 +26,10 @@
         <span class="service-screw-socket" data-screw-socket-id="2"></span>
         <span class="service-screw-socket" data-screw-socket-id="3"></span>
       </div>
+      <div id="chassis-drag-region" aria-hidden="true"></div>
       <div id="faceplate-layer">
         <img class="device-shell" src="../assets/tamagotchi/device-shell-v2.png" alt="" draggable="false" />
+        <div id="faceplate-drag-region" aria-hidden="true"></div>
         <button type="button" id="btn-settings" class="settings-hardware-btn" title="Settings" aria-label="Settings" aria-pressed="false">&#9881;</button>
 
       <header id="titlebar">
@@ -329,6 +331,8 @@
             <div class="settings-actions"><button type="button" id="btn-backup-wallet">Back up</button><button type="button" id="btn-restore-wallet">Restore</button></div>
             <button type="button" id="btn-copy-key" class="settings-wide-action">Copy emergency key</button>
             <button type="button" id="btn-reconcile" class="settings-wide-action">Refresh chain state</button>
+            <button type="button" id="btn-update" class="settings-wide-action">Check for updates</button>
+            <p class="settings-update-status" id="settings-update-status">Version --</p>
             <p class="settings-address" id="settings-wallet-address">Wallet not loaded</p>
           </div>
           <p id="settings-detail-status" class="settings-detail-status hidden" role="status" aria-live="polite"></p>

@@ -178,7 +178,7 @@ describe("Versus network economic settlement E2E", function () {
       transactionHash: `0x${"11".repeat(32)}`,
     });
     expect(unknown.status).to.equal("pending");
-    expect(await stack.arena.settledSignalBatches(batch.root)).to.equal(true);
+    expect(await stack.arena.settledSignalBatches(1, batch.root)).to.equal(true);
     expect(await stack.treasury.tickets(1)).to.equal(3n);
     const verifier = new ContractEconomicVerifier({
       provider: ethers.provider,

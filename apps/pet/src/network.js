@@ -21,6 +21,10 @@ const { ThoughtQueue } = require("./thought-queue");
 const { BASE_CHAIN_ID, createBaseProvider } = require("./base-rpc");
 
 const CURRENT_CLASS_ABI = ["function currentClassId() view returns (uint256)"];
+const DEFAULT_WAKU_BOOTSTRAP_PEERS = [
+  "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
+  "/dns4/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
+];
 
 class NetworkEligibilityConfigurationError extends Error {
   constructor(message) {
@@ -762,7 +766,9 @@ async function createPetNetworkService({
         chainId: deployment.chainId,
         contractAddress: deployment.contracts.agents,
         launchId,
-        bootstrapPeers: parsePeerUrls(env.VERSUS_WAKU_BOOTSTRAP_PEERS),
+        bootstrapPeers: env.VERSUS_WAKU_BOOTSTRAP_PEERS === ""
+          ? []
+          : parsePeerUrls(env.VERSUS_WAKU_BOOTSTRAP_PEERS || DEFAULT_WAKU_BOOTSTRAP_PEERS.join(",")),
         peerTimeoutMs: Number(env.VERSUS_WAKU_TIMEOUT_MS || 20_000),
         minimumPeerCount: Number(env.VERSUS_WAKU_MINIMUM_PEERS || 1),
         enableStore: env.VERSUS_WAKU_STORE !== "0",
@@ -817,6 +823,7 @@ async function createPetNetworkService({
 }
 
 module.exports = {
+  DEFAULT_WAKU_BOOTSTRAP_PEERS,
   NetworkEligibilityConfigurationError,
   PetNetworkService,
   createContractEligibilityVerifier,

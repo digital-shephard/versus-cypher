@@ -150,7 +150,7 @@ async function start() {
   }
 
   const packageDir = path.resolve(process.env.VERSUS_WALKTHROUGH_PACKAGE || DEFAULT_PACKAGE);
-  const executablePath = path.join(packageDir, "Versus.exe");
+  const executablePath = path.join(packageDir, "Versus Cypher.exe");
   const resourcesPath = path.join(packageDir, "resources");
   if (!fs.existsSync(executablePath) || !fs.existsSync(path.join(resourcesPath, "app.asar"))) {
     throw new Error(`Build the unpacked walkthrough package first: ${executablePath}`);

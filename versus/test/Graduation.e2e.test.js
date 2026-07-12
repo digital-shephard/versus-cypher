@@ -79,14 +79,21 @@ describe("Versus Uniswap graduation E2E (ownerless)", function () {
     expect(taxSwaps[0].args.tokenTax).to.be.gt(accumulatedBuyTax);
     expect(taxSwaps[0].args.usdcOut).to.be.gt(0n);
 
+    // A failed quote or tax swap must never make the class token unsellable.
+    await v2Router.setFailQuotes(true);
+    await expect(classToken.connect(humanBuyer).transfer(pairAddr, humanTokens / 100n)).to.not.be.reverted;
+    expect(await classToken.balanceOf(await graduation.getAddress())).to.be.gt(0n);
+    await v2Router.setFailQuotes(false);
+
     await treasury.claim(1);
     await treasury.claim(2);
     expect((await agents.getAgent(1)).vault).to.be.gt(0n);
     expect((await agents.getAgent(2)).vault).to.be.gt(0n);
 
     // A microscopic sell whose tax quotes to zero must remain sellable; its dust banks for later.
+    const bankedTax = await classToken.balanceOf(await graduation.getAddress());
     await expect(classToken.connect(humanBuyer).transfer(pairAddr, 100n)).to.not.be.reverted;
-    expect(await classToken.balanceOf(await graduation.getAddress())).to.equal(1n);
+    expect(await classToken.balanceOf(await graduation.getAddress())).to.equal(bankedTax + 1n);
   });
 
   it("keeps permissionless harvest as a fallback when buys accumulate without a sell", async function () {

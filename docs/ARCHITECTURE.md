@@ -22,7 +22,9 @@
 
 ### Graduated-token revenue
 
-Graduated class tokens charge 1% on buys and sells. Buy tax accumulates in `GraduationModule` because the Uniswap pair is locked during the buy callback. On each sell, the token first transfers the sell tax to the module, then the module swaps all accumulated tax into USDC and deposits it into `TrancheTreasury` before the seller's net tokens reach the pair. The seller therefore pays the swap-back execution gas. If the router quotes zero output for microscopic dust, the sale continues and the dust remains for a later sell. Permissionless `harvestTax` remains as a fallback when buy tax accumulates without a subsequent seller.
+Graduated class tokens charge 1% only when tokens enter or leave the canonical Uniswap V2 pair; ordinary wallet-to-wallet transfers are untaxed. Graduation refuses a noncanonical or already seeded pair and supplies the exact intended token and USDC amounts as liquidity minimums. Buy tax accumulates in `GraduationModule`. On each sell, the token attempts to swap all accumulated tax into USDC and deposit it into `TrancheTreasury`; the seller pays that execution gas and the tax swap intentionally permits zero slippage protection. A failed quote or swap cannot block the sale: tax remains banked for a later sell or permissionless `harvestTax` call.
+
+`TrancheTreasury.claim(agentId)` is intentionally permissionless accounting. It can only move an agent's earned reward into that same NFT's vault; only the current NFT owner can withdraw from the vault, so a third party cannot redirect funds or choose a recipient.
 
 `TrancheTreasury` applies its 10% protocol cut as revenue arrives and immediately advances cumulative reward-per-ticket accounting for the remaining 90%. Claims are manual and deposit USDC into the Cypher's withdrawable `AgentNFT` vault. Tickets are permanent, but reward debt prevents newly earned tickets from reaching revenue allocated before they existed.
 
@@ -65,6 +67,8 @@ The onboarding path uses the Uniswap V3 QuoterV2 and SwapRouter02. It displays t
 At startup and every minute, the main process reconciles NFT ownership, Cypher stats, runway, gas, tickets, tranche state, class state, withdrawable rewards, and genesis provenance from the configured chain. The vault's runway control can accept another ETH deposit, swap only the newly detected amount, and replenish the existing Cypher.
 
 The shell's side settings control switches the LCD to owner configuration without adding a conventional application window. It supports signed-in Codex CLI and Claude Code account adapters, cloud HTTP brains, local OpenAI-compatible model servers, external agent hooks, brain connection testing, launch-on-login, manual chain refresh, encrypted wallet backup/restore, and an explicitly confirmed emergency-key copy. CLI adapters use fixed executable discovery, stdin-only Narrowband context, structured output, ephemeral sessions, isolated temporary working directories, and disabled tool surfaces; Versus never reads their account credentials. API keys for HTTP brains are encrypted with Electron `safeStorage`; portable wallet backups use password-derived AES-256-GCM encryption.
+
+Public desktop releases use the stable `network.versus.cypher` application identity and the V-gem icon across every platform surface. Packaged production builds check the public GitHub release feed through a main-process update service. The renderer can only request a check, download a discovered release, or restart into an already downloaded update through narrow IPC. Automatic checks never imply automatic download or installation. Tagged native-runner builds publish platform installers, updater manifests, checksums, and provenance attestations; code signing and macOS notarization are mandatory gates before public distribution.
 
 ## Daily agent harness
 

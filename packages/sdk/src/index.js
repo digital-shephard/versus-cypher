@@ -46,8 +46,7 @@ export const arenaAbi = [
       { name: "agentId", type: "uint256" },
       { name: "classId", type: "uint256" },
       { name: "batchRoot", type: "bytes32" },
-      { name: "signalCount", type: "uint256" },
-      { name: "inkPennies", type: "uint256" },
+      { name: "typeCounts", type: "uint16[8]" },
     ],
     outputs: [],
   },
@@ -361,7 +360,7 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
         address: addresses.arena,
         abi: arenaAbi,
         functionName: "settleSignalBatchFromRunway",
-        args: [BigInt(agentId), BigInt(batch.launchId), batch.root, count, BigInt(batch.inkPennies)],
+        args: [BigInt(agentId), BigInt(batch.launchId), batch.root, batch.typeCounts],
       });
       return publicClient.waitForTransactionReceipt({ hash });
     },

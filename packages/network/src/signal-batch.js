@@ -5,12 +5,19 @@ const { canonicalJson } = require("./artifact-store");
 const { SIGNAL_INK_PENNIES, SIGNAL_TYPES, verifyPostcard } = require("./protocol");
 
 const SIGNAL_BATCH_PROTOCOL = "versus-signal-batch";
-const SIGNAL_BATCH_VERSION = 2;
+const SIGNAL_BATCH_VERSION = 3;
 const SIGNAL_SETTLEMENT_KIND = "versus-signal-settlement";
 const SIGNAL_SETTLEMENT_VERSION = 1;
 const MAX_SIGNAL_BATCH = 100;
 const PENNY_MICROS = 10_000n;
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
+const SIGNAL_TYPE_INDEX = new Map(SIGNAL_TYPES.map((type, index) => [type, index]));
+
+function signalTypeCounts(signals) {
+  const counts = Array(SIGNAL_TYPES.length).fill(0);
+  for (const signal of signals) counts[SIGNAL_TYPE_INDEX.get(signal.type)] += 1;
+  return counts;
+}
 
 class SignalBatchError extends Error {
   constructor(message, code = "INVALID_SIGNAL_BATCH") {
@@ -28,7 +35,8 @@ function normalizeUintString(value, label, maxDigits = 78) {
   return BigInt(text).toString();
 }
 
-function signalBatchPayload({ chainId, arena, launchId, agentId, author, signals }) {
+function signalBatchPayload(input) {
+  const { chainId, arena, launchId, agentId, author, signals } = input;
   if (typeof arena !== "string" || !isAddress(arena)) {
     throw new SignalBatchError("signal Arena address is invalid");
   }
@@ -51,6 +59,13 @@ function signalBatchPayload({ chainId, arena, launchId, agentId, author, signals
   if (new Set(normalizedSignals.map((signal) => signal.id)).size !== normalizedSignals.length) {
     throw new SignalBatchError("signal batch postcard IDs must be unique lowercase hashes");
   }
+  const typeCounts = signalTypeCounts(normalizedSignals);
+  if (input.typeCounts !== undefined && (
+    !Array.isArray(input.typeCounts) || input.typeCounts.length !== typeCounts.length ||
+    input.typeCounts.some((count, index) => Number(count) !== typeCounts[index])
+  )) {
+    throw new SignalBatchError("signal batch typed counts do not match its entries");
+  }
   return {
     protocol: SIGNAL_BATCH_PROTOCOL,
     version: SIGNAL_BATCH_VERSION,
@@ -59,6 +74,7 @@ function signalBatchPayload({ chainId, arena, launchId, agentId, author, signals
     launchId: normalizeUintString(launchId, "signal launchId"),
     agentId: normalizeUintString(agentId, "signal agentId"),
     author: getAddress(author).toLowerCase(),
+    typeCounts,
     signals: normalizedSignals,
   };
 }
@@ -350,6 +366,7 @@ module.exports = {
   SIGNAL_BATCH_VERSION,
   SIGNAL_SETTLEMENT_KIND,
   SIGNAL_SETTLEMENT_VERSION,
+  signalTypeCounts,
   SignalBatchError,
   SignalSettlementQueue,
   buildSignalBatch,

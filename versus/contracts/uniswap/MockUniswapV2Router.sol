@@ -7,6 +7,7 @@ import "./MockUniswapV2Pair.sol";
 
 contract MockUniswapV2Router {
     address private immutable _factory;
+    bool public failQuotes;
 
     constructor(address factory_) {
         _factory = factory_;
@@ -20,17 +21,22 @@ contract MockUniswapV2Router {
         return address(0);
     }
 
+    function setFailQuotes(bool value) external {
+        failQuotes = value;
+    }
+
     function addLiquidity(
         address tokenA,
         address tokenB,
         uint256 amountADesired,
         uint256 amountBDesired,
-        uint256,
-        uint256,
+        uint256 amountAMin,
+        uint256 amountBMin,
         address to,
         uint256 deadline
     ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         require(block.timestamp <= deadline, "Expired");
+        require(amountADesired >= amountAMin && amountBDesired >= amountBMin, "Insufficient desired amount");
 
         address pair = _pairFor(tokenA, tokenB);
         if (pair == address(0)) {
@@ -96,6 +102,7 @@ contract MockUniswapV2Router {
     }
 
     function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts) {
+        require(!failQuotes, "Quote unavailable");
         require(path.length == 2, "Only 2-token path");
 
         address pair = _pairFor(path[0], path[1]);

@@ -8,6 +8,13 @@ import {ClassToken} from "./ClassToken.sol";
 
 interface IUniswapV2Factory {
     function createPair(address tokenA, address tokenB) external returns (address pair);
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+}
+
+interface IUniswapV2Pair {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 timestamp);
 }
 
 interface IUniswapV2Router02 {
@@ -93,6 +100,8 @@ contract GraduationModule {
     error AlreadyGraduated();
     error NoTax();
     error NotClassToken();
+    error InvalidCanonicalPair();
+    error PairAlreadySeeded();
 
     constructor(address usdc_, address router_, address syndicate_, address treasury_) {
         if (usdc_ == address(0) || router_ == address(0) || syndicate_ == address(0) || treasury_ == address(0)) {
@@ -143,14 +152,32 @@ contract GraduationModule {
         );
         token = address(classToken);
 
-        pair = factory.createPair(token, address(usdc));
+        pair = factory.getPair(token, address(usdc));
+        if (pair == address(0)) {
+            pair = factory.createPair(token, address(usdc));
+        } else {
+            address token0 = IUniswapV2Pair(pair).token0();
+            address token1 = IUniswapV2Pair(pair).token1();
+            if (!((token0 == token && token1 == address(usdc)) || (token1 == token && token0 == address(usdc)))) {
+                revert InvalidCanonicalPair();
+            }
+            (uint112 reserve0, uint112 reserve1,) = IUniswapV2Pair(pair).getReserves();
+            if (reserve0 != 0 || reserve1 != 0) revert PairAlreadySeeded();
+        }
         classToken.configure(pair);
 
         classToken.approve(address(router), TOKEN_FOR_LP);
         usdc.forceApprove(address(router), usdcAmount);
 
         (, , uint256 liquidity) = router.addLiquidity(
-            token, address(usdc), TOKEN_FOR_LP, usdcAmount, 0, 0, address(this), block.timestamp + 600
+            token,
+            address(usdc),
+            TOKEN_FOR_LP,
+            usdcAmount,
+            TOKEN_FOR_LP,
+            usdcAmount,
+            address(this),
+            block.timestamp + 600
         );
 
         uint256 leftover = classToken.balanceOf(address(this));

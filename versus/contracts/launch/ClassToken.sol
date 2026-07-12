@@ -25,6 +25,7 @@ contract ClassToken is ERC20 {
     event TradingEnabled();
     event TaxTaken(address indexed from, uint256 amount);
     event TaxSwapTriggered(uint256 tokenTax, uint256 usdcOut);
+    event TaxSwapDeferred(uint256 tokenTax);
 
     error TradingOff();
     error ZeroAddress();
@@ -88,8 +89,11 @@ contract ClassToken is ERC20 {
                 super._update(from, taxCollector, tax);
                 emit TaxTaken(from, tax);
                 if (isSell) {
-                    uint256 usdcOut = IClassTaxCollector(taxCollector).swapCollectedTax();
-                    emit TaxSwapTriggered(tax, usdcOut);
+                    try IClassTaxCollector(taxCollector).swapCollectedTax() returns (uint256 usdcOut) {
+                        emit TaxSwapTriggered(tax, usdcOut);
+                    } catch {
+                        emit TaxSwapDeferred(tax);
+                    }
                 }
             }
             super._update(from, to, send);

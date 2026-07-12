@@ -2,7 +2,7 @@ const { EventEmitter } = require("events");
 const { getAddress, isAddress } = require("ethers");
 
 const WAKU_TOPIC_VERSION = 1;
-const DEFAULT_WAKU_CLUSTER_ID = 1;
+const DEFAULT_WAKU_CLUSTER_ID = 66;
 const DEFAULT_WAKU_SHARD_COUNT = 8;
 const DEFAULT_WAKU_STORE_HISTORY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_WAKU_STORE_MESSAGE_LIMIT = 256;

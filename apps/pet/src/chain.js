@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { Contract, JsonRpcProvider, MaxUint256, NonceManager, Wallet } = require("ethers");
+const { AbiCoder, Contract, JsonRpcProvider, MaxUint256, NonceManager, Wallet, keccak256 } = require("ethers");
 const { normalizeSignalBatch } = require("@versus/network");
 const {
   BASE_UNISWAP_SWAP_ROUTER_02,
@@ -21,11 +21,11 @@ const arenaAbi = [
   "function replenishRunway(uint256 agentId, uint256 amount)",
   "function commit(uint256 agentId)",
   "function rainFromRunway(uint256 agentId, uint256 pennies)",
-  "function settleSignalBatchFromRunway(uint256 agentId, uint256 classId, bytes32 batchRoot, uint256 signalCount, uint256 inkPennies)",
-  "function settledSignalBatches(bytes32 batchRoot) view returns (bool)",
+  "function settleSignalBatchFromRunway(uint256 agentId, uint256 classId, bytes32 batchRoot, uint16[8] typeCounts)",
+  "function settledSignalBatches(uint256 agentId, bytes32 batchRoot) view returns (bool)",
   "function runway(uint256 agentId) view returns (uint128)",
   "event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount)",
-  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount)",
+  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, bytes32 typeCountsHash)",
 ];
 const agentAbi = [
   "function getAgent(uint256 agentId) view returns (uint8 cypherId, uint32 level, uint32 streak, uint32 lastCommitDay, uint128 vault, address owner)",
@@ -78,13 +78,17 @@ function findEvent(contract, receipt, name) {
 
 function validateSignalReceipt(arena, receipt, agentId, batch) {
   const event = findEvent(arena, receipt, "SignalBatchSettled");
+  const typeCountsHash = keccak256(
+    AbiCoder.defaultAbiCoder().encode(["uint16[8]"], [batch.typeCounts])
+  );
   if (
     event.args.agentId !== BigInt(agentId) ||
     event.args.classId !== BigInt(batch.launchId) ||
     event.args.batchRoot !== batch.root ||
     event.args.signalCount !== BigInt(batch.signalCount) ||
     event.args.inkPennies !== BigInt(batch.inkPennies) ||
-    event.args.amount !== BigInt(batch.amountMicros)
+    event.args.amount !== BigInt(batch.amountMicros) ||
+    event.args.typeCountsHash !== typeCountsHash
   ) {
     throw new Error("signal settlement event does not match the prepared batch");
   }
@@ -480,8 +484,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
           BigInt(agentId),
           BigInt(batch.launchId),
           batch.root,
-          BigInt(batch.signalCount),
-          BigInt(batch.inkPennies)
+          batch.typeCounts
         );
       } catch (error) {
         signer.reset();
@@ -491,7 +494,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const receipt = await confirmed(tx, "signal batch");
       const event = validateSignalReceipt(arena, receipt, agentId, batch);
       await waitForChainState(
-        () => arena.settledSignalBatches(batch.root),
+        () => arena.settledSignalBatches(BigInt(agentId), batch.root),
         Boolean,
         { label: "confirmed signal batch root" }
       );

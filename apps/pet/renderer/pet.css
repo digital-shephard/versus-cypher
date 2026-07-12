@@ -259,6 +259,34 @@ body { display: grid; place-items: center; }
   pointer-events: none;
 }
 
+#faceplate-drag-region,
+#chassis-drag-region {
+  position: absolute;
+  left: 18%;
+  top: 2%;
+  width: 64%;
+  height: 18%;
+  -webkit-app-region: drag;
+}
+
+#faceplate-drag-region {
+  z-index: 5;
+}
+
+#shell:not([data-service-stage="closed"]) #faceplate-drag-region {
+  display: none;
+}
+
+#chassis-drag-region {
+  z-index: 5;
+  display: none;
+}
+
+#shell[data-service-stage="open"] #chassis-drag-region,
+#shell[data-service-stage="awaiting-screws"] #chassis-drag-region {
+  display: block;
+}
+
 .service-screw-socket {
   position: absolute;
   width: 16px;
@@ -771,6 +799,15 @@ body { display: grid; place-items: center; }
 .settings-check input { width: 16px; height: 16px; padding: 0; }
 .settings-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .settings-wide-action { width: 100%; }
+.settings-update-status {
+  margin: 0;
+  color: #527066;
+  font-size: 0.44rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+}
+.settings-update-status.error { color: #7f332e; }
 .settings-address { overflow: hidden; color: #527066; font-size: 0.44rem; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
 .settings-detail-status {
   position: absolute;

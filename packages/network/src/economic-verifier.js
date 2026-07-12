@@ -1,10 +1,10 @@
-const { Contract, Interface, getAddress, isAddress } = require("ethers");
+const { AbiCoder, Contract, Interface, getAddress, isAddress, keccak256 } = require("ethers");
 const { normalizeSignalSettlement } = require("./signal-batch");
 const { normalizeMissionSponsorship } = require("./sponsorship");
 
 const ARENA_ABI = [
-  "function settledSignalBatches(bytes32 batchRoot) view returns (bool)",
-  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount)",
+  "function settledSignalBatches(uint256 agentId, bytes32 batchRoot) view returns (bool)",
+  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, bytes32 typeCountsHash)",
 ];
 const ESCROW_ABI = [
   "function escrows(uint256 escrowId) view returns (bytes32 missionId, uint256 launchId, uint256 sponsorAgentId, uint256 recipientAgentId, uint128 amount, uint64 deadline, uint8 state, address sponsor)",
@@ -86,18 +86,22 @@ class ContractEconomicVerifier {
     ) {
       throw new EconomicProofError("signal proof targets another deployment", "WRONG_ECONOMIC_DEPLOYMENT");
     }
-    if (!(await this.arena.settledSignalBatches(settlement.batch.root))) {
+    if (!(await this.arena.settledSignalBatches(BigInt(settlement.batch.agentId), settlement.batch.root))) {
       throw new EconomicProofError("signal batch root is not settled onchain", "UNSETTLED_SIGNAL_BATCH");
     }
     const receipt = await this.receipt(settlement.transactionHash, settlement.blockNumber);
     const event = matchingEvent(receipt, this.arenaAddress, ARENA_ABI, "SignalBatchSettled");
+    const typeCountsHash = keccak256(
+      AbiCoder.defaultAbiCoder().encode(["uint16[8]"], [settlement.batch.typeCounts])
+    );
     if (
       event.args.agentId !== BigInt(settlement.batch.agentId) ||
       event.args.classId !== BigInt(settlement.batch.launchId) ||
       event.args.batchRoot !== settlement.batch.root ||
       event.args.signalCount !== BigInt(settlement.batch.signalCount) ||
       event.args.inkPennies !== BigInt(settlement.batch.inkPennies) ||
-      event.args.amount !== BigInt(settlement.batch.amountMicros)
+      event.args.amount !== BigInt(settlement.batch.amountMicros) ||
+      event.args.typeCountsHash !== typeCountsHash
     ) {
       throw new EconomicProofError("signal settlement event does not match its artifact");
     }

@@ -1,10 +1,11 @@
 {
-  "name": "versus-pet",
+  "name": "versus-cypher",
   "version": "0.1.0",
-  "description": "Versus — desktop Cypher nest-egg pet",
+  "description": "Versus Cypher desktop agent",
   "main": "src/main.js",
-  "author": "Versus",
+  "author": "Digital Shephard",
   "license": "MIT",
+  "versusSignedUpdates": false,
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
@@ -12,13 +13,14 @@
     "shots": "electron scripts/capture-views.js",
     "waku:electron-smoke": "electron scripts/waku-electron-smoke.js",
     "pack:win": "electron-builder --win --dir",
-    "dist:win": "electron-builder --win nsis portable",
+    "dist:win": "electron-builder --win nsis",
+    "dist:win:portable": "electron-builder --win portable --config.artifactName=Versus-Cypher-Portable-${version}-${os}-${arch}.${ext}",
     "dist:mac": "electron-builder --mac dmg",
     "dist:linux": "electron-builder --linux AppImage"
   },
   "build": {
-    "appId": "fun.versus.pet",
-    "productName": "Versus",
+    "appId": "network.versus.cypher",
+    "productName": "Versus Cypher",
     "directories": {
       "output": "dist"
     },
@@ -30,24 +32,44 @@
     ],
     "win": {
       "target": [
-        "portable",
         "nsis"
       ],
-      "icon": "assets/brand/v_gem.png"
+      "icon": "assets/brand/v_gem.ico",
+      "artifactName": "Versus-Cypher-Setup-${version}-${os}-${arch}.${ext}",
+      "signtoolOptions": {
+        "publisherName": "Digital Shephard"
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Versus Cypher",
+      "uninstallDisplayName": "Versus Cypher"
     },
     "mac": {
       "target": [
         "dmg"
       ],
       "icon": "assets/brand/v_gem.png",
-      "category": "public.app-category.lifestyle"
+      "category": "public.app-category.lifestyle",
+      "artifactName": "Versus-Cypher-${version}-${os}-${arch}.${ext}",
+      "notarize": true
     },
     "linux": {
       "target": [
         "AppImage"
       ],
       "icon": "assets/brand/v_gem.png",
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "Versus-Cypher-${version}-${os}-${arch}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "digital-shephard",
+      "repo": "versus-cypher",
+      "releaseType": "release"
     }
   },
   "devDependencies": {
@@ -57,6 +79,7 @@
   "dependencies": {
     "@versus/network": "file:../../packages/network",
     "@waku/sdk": "0.0.36",
+    "electron-updater": "^6.8.9",
     "ethers": "^6.17.0",
     "qrcode": "^1.5.4"
   },

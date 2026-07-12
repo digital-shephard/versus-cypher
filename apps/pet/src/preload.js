@@ -69,6 +69,15 @@ contextBridge.exposeInMainWorld("versus", {
   getBrainCapabilities: () => ipcRenderer.invoke("settings:brainCapabilities"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   testBrain: (settings) => ipcRenderer.invoke("settings:testBrain", settings),
+  getUpdateStatus: () => ipcRenderer.invoke("update:status"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateStatus: (callback) => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on("update:status", listener);
+    return () => ipcRenderer.removeListener("update:status", listener);
+  },
   runOnboardPipeline: (cypherCount) =>
     ipcRenderer.invoke("wallet:runOnboardPipeline", { cypherCount }),
   hide: () => ipcRenderer.invoke("window:close"),
