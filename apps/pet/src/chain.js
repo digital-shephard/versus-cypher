@@ -95,7 +95,8 @@ function validateSignalReceipt(arena, receipt, agentId, batch) {
   return event;
 }
 
-async function confirmed(tx, label) {
+async function confirmed(tx, label, onSubmitted = null) {
+  if (onSubmitted) await onSubmitted(tx.hash);
   const receipt = await tx.wait();
   if (!receipt || receipt.status !== 1) throw new Error(`${label} transaction did not confirm`);
   return receipt;
@@ -187,6 +188,17 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
   }
 
   return {
+    async transactionStatus(transactionHash) {
+      if (!/^0x[a-f0-9]{64}$/i.test(String(transactionHash || ""))) throw new RangeError("transaction hash is invalid");
+      const receipt = await provider.getTransactionReceipt(transactionHash);
+      if (!receipt) return { status: "pending", transactionHash };
+      return {
+        status: receipt.status === 1 ? "confirmed" : "failed",
+        transactionHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    },
+
     async getEthBalance(address) {
       return provider.getBalance(address);
     },
@@ -406,12 +418,12 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       return { status: "continuous", hash: null };
     },
 
-    async claimTranche({ privateKey, agentId }) {
+    async claimTranche({ privateKey, agentId, onSubmitted = null }) {
       const signer = new Wallet(privateKey, provider);
       const treasury = new Contract(addresses.treasury, treasuryAbi, signer);
       const amount = await treasury.claimable(BigInt(agentId));
       if (amount === 0n) return { amount: 0n, hash: null };
-      const receipt = await confirmed(await treasury.claim(BigInt(agentId)), "tranche claim");
+      const receipt = await confirmed(await treasury.claim(BigInt(agentId)), "tranche claim", onSubmitted);
       const event = findEvent(treasury, receipt, "Claimed");
       const agents = new Contract(addresses.agents, agentAbi, provider);
       const agent = await agents.getAgent(BigInt(agentId));
@@ -430,10 +442,11 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       return { amount: event.args.amount, vault: after.vault, hash: receipt.hash };
     },
 
-    async rainFromRunway({ privateKey, agentId, pennies }) {
+    async rainFromRunway({ privateKey, agentId, pennies, onSubmitted = null }) {
       const signer = new Wallet(privateKey, provider);
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       const tx = await arena.rainFromRunway(BigInt(agentId), BigInt(pennies));
+      if (onSubmitted) await onSubmitted(tx.hash);
       const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) throw new Error("rain transaction did not confirm");
 
@@ -540,6 +553,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       recipientAgentId,
       amount,
       deadline,
+      onSubmitted = null,
     }) {
       if (!addresses.missionEscrow) throw new Error("mission escrow is not configured");
       const wallet = new Wallet(privateKey, provider);
@@ -561,7 +575,8 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
           amount,
           BigInt(deadline)
         ),
-        "mission sponsorship"
+        "mission sponsorship",
+        onSubmitted
       );
       const event = findEvent(escrow, receipt, "MissionSponsored");
       return {
@@ -580,18 +595,18 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       };
     },
 
-    async releaseMission({ privateKey, escrowId }) {
+    async releaseMission({ privateKey, escrowId, onSubmitted = null }) {
       if (!addresses.missionEscrow) throw new Error("mission escrow is not configured");
       const escrow = new Contract(addresses.missionEscrow, missionEscrowAbi, new Wallet(privateKey, provider));
-      const receipt = await confirmed(await escrow.release(BigInt(escrowId)), "mission release");
+      const receipt = await confirmed(await escrow.release(BigInt(escrowId)), "mission release", onSubmitted);
       const event = findEvent(escrow, receipt, "MissionReleased");
       return { hash: receipt.hash, blockNumber: receipt.blockNumber, amount: event.args.amount };
     },
 
-    async refundMission({ privateKey, escrowId }) {
+    async refundMission({ privateKey, escrowId, onSubmitted = null }) {
       if (!addresses.missionEscrow) throw new Error("mission escrow is not configured");
       const escrow = new Contract(addresses.missionEscrow, missionEscrowAbi, new Wallet(privateKey, provider));
-      const receipt = await confirmed(await escrow.refund(BigInt(escrowId)), "mission refund");
+      const receipt = await confirmed(await escrow.refund(BigInt(escrowId)), "mission refund", onSubmitted);
       const event = findEvent(escrow, receipt, "MissionRefunded");
       return { hash: receipt.hash, blockNumber: receipt.blockNumber, amount: event.args.amount };
     },

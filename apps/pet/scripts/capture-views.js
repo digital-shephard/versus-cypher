@@ -52,6 +52,35 @@ let agentState = {
   lastError: null,
 };
 
+const HEALTH_FIXTURE = {
+  version: 1,
+  status: "attention",
+  issues: [
+    {
+      code: "rpc_unavailable",
+      subsystem: "base",
+      severity: "error",
+      title: "Base is unreachable",
+      detail: "Chain activity is paused while public RPC service is unavailable.",
+      action: "Keep Versus open and use Refresh when the connection returns.",
+      firstSeenAt: Date.now() - 4000,
+      lastSeenAt: Date.now(),
+      occurrences: 2,
+    },
+    {
+      code: "store_history_unavailable",
+      subsystem: "waku",
+      severity: "warning",
+      title: "Recent Signal history is delayed",
+      detail: "Live messages may work while older Waku Store history is unavailable.",
+      action: "Leave Versus open. Bounded history recovery will retry automatically.",
+      firstSeenAt: Date.now() - 3000,
+      lastSeenAt: Date.now(),
+      occurrences: 1,
+    },
+  ],
+};
+
 function stubIpc() {
   const activityNow = Date.now();
   ipcMain.handle("service:activitySnapshot", () => ({
@@ -69,6 +98,8 @@ function stubIpc() {
       { id: 6, at: activityNow - 868, channel: "local", direction: "in", operation: "state_read", destination: "local_device", status: "ok", durationMs: 32, bytes: 284 },
     ],
   }));
+  ipcMain.handle("health:snapshot", () => HEALTH_FIXTURE);
+  ipcMain.handle("diagnostics:export", () => ({ canceled: false }));
   ipcMain.handle("bond:load", () => null); // start at deposit view
   ipcMain.handle("bond:save", () => true);
   ipcMain.handle("wallet:ensure", () => ({ address: STUB_ADDR, network: "base", chainId: 8453 }));
@@ -158,6 +189,13 @@ function stubIpc() {
       apiKey: "",
       hasApiKey: false,
     },
+  }));
+  ipcMain.handle("settings:brainCapabilities", () => ({
+    codex: { installed: true },
+    claude: { installed: true },
+  }));
+  ipcMain.handle("update:status", () => ({
+    status: "disabled", currentVersion: "0.1.0", availableVersion: null, progress: null, error: null,
   }));
   ipcMain.handle("settings:save", (_event, settings) => settings);
   ipcMain.handle("settings:testBrain", () => ({ ok: true, silent: false, model: "gemma-3-12b-it" }));
@@ -446,6 +484,27 @@ async function main() {
   await exec(win, `document.getElementById("settings-tab-device").click();`);
   await sleep(250);
   await shoot(win, "14-settings-device");
+
+  await exec(win, `document.getElementById("settings-tab-health").click();`);
+  await sleep(250);
+  const healthLayout = await win.webContents.executeJavaScript(`(() => {
+    const panel = document.getElementById("settings-health-panel");
+    const screen = document.getElementById("settings-screen");
+    const panelRect = panel.getBoundingClientRect();
+    const screenRect = screen.getBoundingClientRect();
+    const clipped = [...panel.querySelectorAll("strong,small,p,button")].filter((node) =>
+      node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1
+    ).map((node) => node.id || node.className || node.tagName);
+    return {
+      inside: panelRect.left >= screenRect.left && panelRect.right <= screenRect.right && panelRect.bottom <= screenRect.bottom,
+      clipped,
+      issueCount: panel.querySelectorAll(".health-issue").length,
+    };
+  })()`, true);
+  if (!healthLayout.inside || healthLayout.clipped.length || healthLayout.issueCount !== 2) {
+    throw new Error(`health layout failed: ${JSON.stringify(healthLayout)}`);
+  }
+  await shoot(win, "14b-settings-health");
 
   await exec(win, `document.getElementById("btn-settings").click(); __pet.setMode("vault");`);
   await sleep(250);

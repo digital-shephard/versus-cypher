@@ -2,10 +2,17 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("versus", {
   getServiceActivity: () => ipcRenderer.invoke("service:activitySnapshot"),
+  getHealth: () => ipcRenderer.invoke("health:snapshot"),
+  exportDiagnostics: () => ipcRenderer.invoke("diagnostics:export"),
   onServiceActivity: (callback) => {
     const listener = (_event, activity) => callback(activity);
     ipcRenderer.on("service:activity", listener);
     return () => ipcRenderer.removeListener("service:activity", listener);
+  },
+  onHealth: (callback) => {
+    const listener = (_event, health) => callback(health);
+    ipcRenderer.on("health:changed", listener);
+    return () => ipcRenderer.removeListener("health:changed", listener);
   },
   loadBond: () => ipcRenderer.invoke("bond:load"),
   saveBond: (state) => ipcRenderer.invoke("bond:save", state),

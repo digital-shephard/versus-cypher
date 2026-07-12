@@ -557,10 +557,10 @@ The launch language must keep three categories separate:
 
 ### Failure and recovery experience
 
-- [ ] Present clear bounded states for unavailable RPCs, unavailable Waku service, insufficient ETH gas, depleted runway, malformed brain output, interrupted transactions, missing Store history, and update-provider failure.
-- [ ] Prove restart reconciliation cannot duplicate rain, payment, publication, claim, or mission actions after process termination at each uncertain stage.
-- [ ] Add a human-readable diagnostics export that excludes private keys, API credentials, raw private thoughts, and unnecessary personal paths.
-- [ ] Document recovery from a damaged local database using the encrypted full Cypher archive without pretending unbacked-up local memories are recoverable.
+- [x] Present clear bounded states for unavailable RPCs, unavailable Waku service, insufficient ETH gas, depleted runway, malformed brain output, interrupted transactions, missing Store history, and update-provider failure. The fixed vocabulary, development-only fixture matrix, and Health LCD are documented in `docs/FAILURE_RECOVERY.md`.
+- [x] Prove restart reconciliation cannot duplicate rain, payment, publication, claim, or mission actions after process termination at each uncertain stage. Daily rain reconciles its contract day, signal payment/publication retain deterministic queues, and manual rain, claims, and mission transitions use a fail-closed persistent operation journal.
+- [x] Add a human-readable diagnostics export that excludes private keys, API credentials, raw private thoughts, and unnecessary personal paths. The report is built from an allowlist and rejected by a final credential/path invariant scan.
+- [x] Document recovery from a damaged local database using the encrypted full Cypher archive without pretending unbacked-up local memories are recoverable.
 
 ### Security and source-first trust
 

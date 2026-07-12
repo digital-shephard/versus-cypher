@@ -1,6 +1,6 @@
 const { EventEmitter } = require("events");
 
-const CHANNELS = new Set(["system", "local", "base", "waku", "brain", "disk"]);
+const CHANNELS = new Set(["system", "local", "base", "waku", "brain", "disk", "update"]);
 const DIRECTIONS = new Set(["local", "out", "in"]);
 const STATUSES = new Set(["pending", "ok", "ready", "idle", "off", "wait", "error"]);
 

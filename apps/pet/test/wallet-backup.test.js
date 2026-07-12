@@ -32,6 +32,11 @@ describe("full Cypher archive", () => {
         trust: { peers: {}, contributions: {} },
         thoughts: [],
       },
+      operationJournal: {
+        format: "versus-economic-operations",
+        version: 1,
+        records: [{ key: "rain:9", kind: "rain", status: "complete" }],
+      },
     };
     const record = createCypherArchive(source, "archive password");
     assert.equal(record.format, "versus-cypher-archive");

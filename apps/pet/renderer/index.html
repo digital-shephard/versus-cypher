@@ -306,6 +306,7 @@
           <div class="settings-tabs" role="tablist">
             <button type="button" id="settings-tab-brain" class="active" role="tab" aria-selected="true">Brain</button>
             <button type="button" id="settings-tab-device" role="tab" aria-selected="false">Device</button>
+            <button type="button" id="settings-tab-health" role="tab" aria-selected="false">Health</button>
           </div>
           <form id="settings-brain-panel" class="settings-panel">
             <label>Connection
@@ -334,6 +335,14 @@
             <button type="button" id="btn-update" class="settings-wide-action">Check for updates</button>
             <p class="settings-update-status" id="settings-update-status">Version --</p>
             <p class="settings-address" id="settings-wallet-address">Wallet not loaded</p>
+          </div>
+          <div id="settings-health-panel" class="settings-panel settings-health-panel hidden">
+            <div id="health-summary" class="health-summary" data-status="healthy">
+              <span aria-hidden="true"></span><strong>DEVICE HEALTHY</strong><small>All checked systems are ready.</small>
+            </div>
+            <div id="health-issues" class="health-issues" aria-live="polite"></div>
+            <p id="health-recovery" class="health-recovery">No recovery action is needed.</p>
+            <div class="settings-actions"><button type="button" id="btn-health-refresh">Recheck</button><button type="button" id="btn-export-diagnostics">Export report</button></div>
           </div>
           <p id="settings-detail-status" class="settings-detail-status hidden" role="status" aria-live="polite"></p>
         </section>

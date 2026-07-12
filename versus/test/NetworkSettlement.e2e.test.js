@@ -90,12 +90,28 @@ describe("Versus network economic settlement E2E", function () {
     });
     expect(replenished.runway).to.equal(MIN_RUNWAY - 10_000n + ethers.parseUnits("2", 6));
 
+    let rainSubmitted = null;
+    const rained = await service.rainFromRunway({
+      privateKey: wallet.privateKey,
+      agentId: 1,
+      pennies: 1,
+      onSubmitted: async (hash) => { rainSubmitted = hash; },
+    });
+    expect(rainSubmitted).to.equal(rained.hash);
+
     const fees = ethers.parseUnits("10", 6);
     await stack.usdc.mint(deployer.address, fees);
     await stack.usdc.approve(await stack.treasury.getAddress(), fees);
     await stack.treasury.depositFees(fees);
 
-    const claimed = await service.claimTranche({ privateKey: wallet.privateKey, agentId: 1 });
+    let claimSubmitted = null;
+    const claimed = await service.claimTranche({
+      privateKey: wallet.privateKey,
+      agentId: 1,
+      onSubmitted: async (hash) => { claimSubmitted = hash; },
+    });
+    expect(claimSubmitted).to.equal(claimed.hash);
+    expect((await service.transactionStatus(claimed.hash)).status).to.equal("confirmed");
     expect(claimed.amount).to.equal(ethers.parseUnits("9", 6));
     expect(claimed.vault).to.equal(claimed.amount);
     const afterClaim = await service.readState({ address: wallet.address, agentId: 1 });
@@ -215,6 +231,7 @@ describe("Versus network economic settlement E2E", function () {
     const block = await ethers.provider.getBlock("latest");
     const missionId = ethers.id("network mission postcard");
     const amount = ethers.parseUnits("3", 6);
+    let missionSubmitted = null;
     const sponsorship = await service.sponsorMission({
       privateKey: wallet.privateKey,
       missionId,
@@ -223,7 +240,9 @@ describe("Versus network economic settlement E2E", function () {
       recipientAgentId: 2,
       amount,
       deadline: block.timestamp + 7200,
+      onSubmitted: async (hash) => { missionSubmitted = hash; },
     });
+    expect(missionSubmitted).to.equal(sponsorship.hash);
     expect(sponsorship.escrowId).to.equal(1n);
     expect((await service.getMissionEscrow(1)).amount).to.equal(amount);
     const sponsorshipProof = {

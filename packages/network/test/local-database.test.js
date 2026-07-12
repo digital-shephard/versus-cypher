@@ -36,12 +36,21 @@ test("indexed local history persists queries sequences and peer observations", a
   assert.equal(db.peerProfile(identity.address).acceptedCount, 2);
   assert.deepEqual(db.peerProfile(identity.address).interactionCounts, { observation: 1, proposal: 1 });
   assert.equal(db.stats().durablePostcards, 1);
+  assert.deepEqual(db.integrityCheck(), { ok: true, results: ["ok"] });
+  assert.equal(db.stats().integrity, "ok");
   db.close();
 
   db = new CypherLocalDatabase({ filePath });
   assert.equal(db.size, 2);
   assert.equal(db.get(second.id).body, "build a public signal garden");
   db.close();
+});
+
+test("a damaged SQLite file fails closed instead of being replaced", () => {
+  const { filePath } = tempDatabase();
+  fs.writeFileSync(filePath, "this is not a sqlite database", "utf8");
+  assert.throws(() => new CypherLocalDatabase({ filePath }), /database|disk image|file is not/i);
+  assert.equal(fs.readFileSync(filePath, "utf8"), "this is not a sqlite database");
 });
 
 test("legacy NDJSON import preserves valid records and reports malformed lines", async () => {

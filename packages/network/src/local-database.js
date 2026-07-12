@@ -590,6 +590,7 @@ class CypherLocalDatabase {
     const shmPath = `${this.filePath}-shm`;
     const walBytes = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0;
     const shmBytes = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0;
+    const integrity = this.integrityCheck();
     return {
       schemaVersion: SCHEMA_VERSION,
       postcards: Number(postcard.count),
@@ -602,7 +603,18 @@ class CypherLocalDatabase {
       walBytes,
       shmBytes,
       totalFileBytes: fileBytes + walBytes + shmBytes,
+      integrity: integrity.ok ? "ok" : "failed",
     };
+  }
+
+  integrityCheck() {
+    try {
+      const rows = this.db.prepare("PRAGMA quick_check").all();
+      const results = rows.flatMap((row) => Object.values(row)).map(String);
+      return { ok: results.length > 0 && results.every((value) => value.toLowerCase() === "ok"), results: results.slice(0, 8) };
+    } catch (_) {
+      return { ok: false, results: ["failed"] };
+    }
   }
 }
 

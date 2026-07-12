@@ -242,6 +242,8 @@ let helpFlipped = false;
 let settingsOpen = false;
 let settingsTab = "brain";
 let updateStatus = null;
+let healthSnapshot = { version: 1, status: "healthy", issues: [] };
+let selectedHealthCode = null;
 let currentSettings = null;
 let brainCapabilities = null;
 let fundingOpen = false;
@@ -569,8 +571,8 @@ function setSettingsStatus(message, error = false) {
 }
 
 function setSettingsTab(tab) {
-  settingsTab = tab === "device" ? "device" : "brain";
-  for (const name of ["brain", "device"]) {
+  settingsTab = ["brain", "device", "health"].includes(tab) ? tab : "brain";
+  for (const name of ["brain", "device", "health"]) {
     const active = name === settingsTab;
     $(`settings-tab-${name}`)?.classList.toggle("active", active);
     $(`settings-tab-${name}`)?.setAttribute("aria-selected", active ? "true" : "false");
@@ -621,6 +623,57 @@ function renderUpdateStatus(status) {
         ? signalSentence(updateStatus.error, "Update check failed", 64)
         : `Version ${version}`;
   detail.classList.toggle("error", updateStatus.status === "error");
+}
+
+function renderHealth(health) {
+  healthSnapshot = health?.version === 1 ? health : { version: 1, status: "healthy", issues: [] };
+  const issues = Array.isArray(healthSnapshot.issues) ? healthSnapshot.issues : [];
+  if (!issues.some((issue) => issue.code === selectedHealthCode)) selectedHealthCode = issues[0]?.code || null;
+  const selected = issues.find((issue) => issue.code === selectedHealthCode) || null;
+  const summary = $("health-summary");
+  if (summary) {
+    summary.dataset.status = healthSnapshot.status;
+    const title = summary.querySelector("strong");
+    const detail = summary.querySelector("small");
+    if (title) title.textContent = healthSnapshot.status === "healthy"
+      ? "DEVICE HEALTHY"
+      : healthSnapshot.status === "limited" ? "RUNNING LIMITED" : healthSnapshot.status === "recovery" ? "RECOVERY NEEDED" : "OWNER ATTENTION";
+    if (detail) detail.textContent = issues.length
+      ? `${issues.length} checked ${issues.length === 1 ? "issue" : "issues"}. Your keys remain local.`
+      : "All checked systems are ready.";
+  }
+  const container = $("health-issues");
+  if (container) {
+    container.replaceChildren();
+    if (!issues.length) {
+      const empty = document.createElement("p");
+      empty.className = "health-empty";
+      empty.textContent = "NO ACTIVE ISSUES";
+      container.appendChild(empty);
+    }
+    for (const issue of issues) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `health-issue${issue.code === selectedHealthCode ? " active" : ""}`;
+      button.dataset.issueCode = issue.code;
+      const title = document.createElement("strong");
+      title.textContent = signalSentence(issue.title, "Device issue", 44);
+      const detail = document.createElement("small");
+      detail.textContent = signalSentence(issue.detail, "A subsystem needs attention.", 82);
+      button.append(title, detail);
+      button.addEventListener("click", () => {
+        selectedHealthCode = issue.code;
+        renderHealth(healthSnapshot);
+      });
+      container.appendChild(button);
+    }
+  }
+  if ($("health-recovery")) {
+    $("health-recovery").textContent = selected
+      ? signalSentence(selected.action, "Recheck the device before repeating the action.", 112)
+      : "No recovery action is needed.";
+  }
+  $("btn-settings")?.setAttribute("data-health", healthSnapshot.status);
 }
 
 function updateBrainAdapterFields() {
@@ -689,14 +742,16 @@ async function setSettingsOpen(open) {
     setSettingsTab(settingsTab);
     setSettingsStatus("LOADING");
     try {
-      const [settings, capabilities, updater] = await Promise.all([
+      const [settings, capabilities, updater, health] = await Promise.all([
         window.versus.getSettings(),
         window.versus.getBrainCapabilities(),
         window.versus.getUpdateStatus(),
+        window.versus.getHealth(),
       ]);
       brainCapabilities = capabilities;
       renderSettings(settings);
       renderUpdateStatus(updater);
+      renderHealth(health);
       setSettingsStatus("LOCAL CONTROL");
     } catch (error) {
       setSettingsStatus(settingsErrorMessage(error), true);
@@ -2474,6 +2529,7 @@ $("btn-mode").onclick = () => {
 
 $("settings-tab-brain")?.addEventListener("click", () => setSettingsTab("brain"));
 $("settings-tab-device")?.addEventListener("click", () => setSettingsTab("device"));
+$("settings-tab-health")?.addEventListener("click", () => setSettingsTab("health"));
 $("setting-brain-kind")?.addEventListener("change", updateBrainAdapterFields);
 
 $("settings-brain-panel")?.addEventListener("submit", async (event) => {
@@ -2571,6 +2627,26 @@ $("btn-update")?.addEventListener("click", async () => {
   }
 });
 
+$("btn-health-refresh")?.addEventListener("click", async () => {
+  setSettingsStatus("CHECKING");
+  try {
+    renderHealth(await window.versus.getHealth());
+    setSettingsStatus(healthSnapshot.status === "healthy" ? "HEALTHY" : "CHECK HEALTH");
+  } catch (error) {
+    setSettingsStatus(deviceErrorMessage(error), true);
+  }
+});
+
+$("btn-export-diagnostics")?.addEventListener("click", async () => {
+  setSettingsStatus("EXPORTING");
+  try {
+    const result = await window.versus.exportDiagnostics();
+    setSettingsStatus(result.canceled ? "CANCELED" : "REPORT SAVED");
+  } catch (error) {
+    setSettingsStatus(deviceErrorMessage(error), true);
+  }
+});
+
 $("cypher-card-flip")?.addEventListener("click", () => {
   if (activeMode !== "cypher") return;
   setCypherFlipped(!cypherFlipped);
@@ -2635,6 +2711,7 @@ function sleep(ms) {
 
 /* debug/test hooks (used by scripts/capture-views.js) */
 window.versus.onUpdateStatus(renderUpdateStatus);
+window.versus.onHealth(renderHealth);
 
 window.__pet = {
   show,

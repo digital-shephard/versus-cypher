@@ -18,6 +18,11 @@ const {
 const { DailyLifecycleScheduler } = require("./daily-lifecycle");
 const { ServiceActivityBus } = require("./activity-bus");
 const { createUpdateService } = require("./update-service");
+const { createDiagnosticsReport } = require("./diagnostics");
+const { FaultInjector } = require("./fault-injection");
+const { HealthMonitor } = require("./health");
+const { OperationJournal } = require("./operation-journal");
+const { quarantineDatabaseFiles } = require("./local-recovery");
 const buildMetadata = require("../package.json");
 
 function configureStableIdentity() {
@@ -45,6 +50,7 @@ function applyPackagedWalkthroughProfile() {
     "VERSUS_AGENT_TIMEOUT_MS",
     "VERSUS_WALKTHROUGH_EVIDENCE_DIR",
     "VERSUS_WALKTHROUGH_DEVICE_SCALE",
+    "VERSUS_FAULTS",
   ]);
   for (const [key, value] of Object.entries(config.environment || {})) {
     if (!allowedEnvironment.has(key) || typeof value !== "string" || !value.trim()) {
@@ -74,6 +80,8 @@ const WALKTHROUGH_PROFILE = applyPackagedWalkthroughProfile();
 const STATE_PATH = path.join(app.getPath("userData"), "bond.json");
 const WALLET_PATH = path.join(app.getPath("userData"), "wallet.json");
 const SETTINGS_PATH = path.join(app.getPath("userData"), "settings.json");
+const OPERATION_JOURNAL_PATH = path.join(app.getPath("userData"), "economic-operations.json");
+const NETWORK_DATA_DIR = path.join(app.getPath("userData"), "network");
 const WIN_W = 390;
 const WIN_H = 640;
 
@@ -96,6 +104,28 @@ let networkUnavailableReason = null;
 let updateService = null;
 const activityBus = new ServiceActivityBus({ limit: 128 });
 const activityStates = new Map();
+const healthMonitor = new HealthMonitor();
+const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE) ? process.env.VERSUS_FAULTS : "");
+const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
+
+function publishHealth(snapshot = healthMonitor.snapshot()) {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
+  mainWindow.webContents.send("health:changed", snapshot);
+}
+
+healthMonitor.on("changed", publishHealth);
+
+function resolveOperationHealth(event = {}) {
+  const channel = String(event.channel || "");
+  const operation = String(event.operation || "");
+  if (channel === "base" && operation === "state_sync") healthMonitor.resolve("rpc_unavailable");
+  if (channel === "waku" && operation === "mesh_start") healthMonitor.resolve("waku_unavailable");
+  if (channel === "brain") {
+    healthMonitor.resolve("brain_unavailable");
+    healthMonitor.resolve("brain_malformed");
+  }
+  if (operation === "update_check") healthMonitor.resolve("update_unavailable");
+}
 
 function recordActivityState(key, event) {
   const state = `${event.channel}:${event.operation}:${event.status}:${event.destination || ""}`;
@@ -109,9 +139,11 @@ async function observeActivity(event, task) {
   try {
     const result = await task();
     finish("ok");
+    resolveOperationHealth(event);
     return result;
   } catch (error) {
     finish("error");
+    healthMonitor.report(error, event);
     throw error;
   }
 }
@@ -145,8 +177,157 @@ function serviceActivitySnapshot() {
     chain: chainConfigError ? "error" : chainRainService ? "base" : "local_sim",
     waku: transport?.state || (networkUnavailableReason ? "off" : "not_configured"),
     brain: settings.brain.kind === "off" ? "off" : settings.brain.kind,
+    health: healthMonitor.snapshot(),
     events: activityBus.snapshot(),
   };
+}
+
+function refreshHealthSnapshot() {
+  const state = loadState() || {};
+  if (operationJournal.damaged) {
+    healthMonitor.report(Object.assign(new Error("Economic operation journal is damaged"), { code: "DATABASE_DAMAGED" }), {
+      channel: "disk", operation: "operation_journal",
+    });
+  }
+  if (operationJournal.pending().length) {
+    healthMonitor.report(Object.assign(new Error("Transaction confirmation is uncertain"), { code: "TRANSACTION_UNCERTAIN" }), {
+      channel: "base", operation: "operation_recovery",
+    });
+  } else {
+    healthMonitor.resolve("transaction_uncertain");
+  }
+  if (state.phase === "active") {
+    if (Number(state.runway || 0) < 10_000) {
+      healthMonitor.report(Object.assign(new Error("Cypher runway is empty"), { code: "EMPTY_RUNWAY" }), {
+        operation: "runway_check",
+      });
+    } else {
+      healthMonitor.resolve("runway_depleted");
+    }
+    if (/^\d+$/.test(String(state.ethGasReserveWei || "")) && BigInt(state.ethGasReserveWei || 0) === 0n) {
+      healthMonitor.report(Object.assign(new Error("Not enough ETH remains for gas"), { code: "INSUFFICIENT_GAS" }), {
+        operation: "gas_check",
+      });
+    } else {
+      healthMonitor.resolve("insufficient_gas");
+    }
+  }
+  try {
+    const status = networkService?.status?.();
+    const transportState = String(status?.transportStatus?.state || "").toLowerCase();
+    if (["offline", "error"].includes(transportState)) {
+      healthMonitor.report(Object.assign(new Error("Waku relay is unavailable"), { code: "WAKU_UNAVAILABLE" }), {
+        channel: "waku", operation: "mesh_state",
+      });
+    }
+    if (transportState === "degraded_store") {
+      healthMonitor.report(Object.assign(new Error("Waku Store history is unavailable"), { code: "WAKU_STORE_UNAVAILABLE" }), {
+        channel: "waku", operation: "store_sync", store: true,
+      });
+    }
+    if (status?.localDatabase?.integrity === "failed") {
+      healthMonitor.report(Object.assign(new Error("Local database integrity check failed"), { code: "DATABASE_DAMAGED" }), {
+        channel: "disk", operation: "database_check",
+      });
+    }
+  } catch (error) {
+    healthMonitor.report(error, { channel: "disk", operation: "database_check" });
+  }
+  return healthMonitor.snapshot();
+}
+
+async function exportDiagnostics() {
+  await reconcileOperationJournal();
+  const service = serviceActivitySnapshot();
+  let network = {};
+  try { network = networkService?.status?.() || {}; } catch (error) {
+    healthMonitor.report(error, { channel: "disk", operation: "database_check" });
+  }
+  const report = createDiagnosticsReport({
+    generatedAt: Date.now(),
+    application: {
+      version: app.getVersion(),
+      packaged: app.isPackaged,
+      platform: process.platform,
+      architecture: process.arch,
+    },
+    service,
+    health: refreshHealthSnapshot(),
+    state: loadState() || {},
+    network,
+    update: updateService?.getState?.() || {},
+    operations: operationJournal.summary(),
+    activity: service.events,
+  });
+  const stamp = new Date().toISOString().slice(0, 10);
+  const selected = await dialog.showSaveDialog(mainWindow, {
+    title: "Export Versus diagnostics",
+    defaultPath: backupDefaultPath(`versus-cypher-diagnostics-${stamp}.txt`),
+    filters: [{ name: "Versus diagnostics", extensions: ["txt"] }],
+  });
+  if (selected.canceled || !selected.filePath) return { canceled: true };
+  fs.writeFileSync(selected.filePath, report, { encoding: "utf8", mode: 0o600 });
+  activityBus.record({ channel: "disk", operation: "diagnostics_export", destination: "owner_file", status: "ok" });
+  return { canceled: false };
+}
+
+async function runJournaledOperation({ key, kind, agentId = null }, task) {
+  operationJournal.begin(key, kind, { agentId });
+  const onSubmitted = async (transactionHash) => operationJournal.submitted(key, transactionHash);
+  try {
+    const result = await task(onSubmitted);
+    operationJournal.complete(key, {
+      transactionHash: result?.hash || operationJournal.current(key)?.transactionHash || null,
+      blockNumber: result?.blockNumber ?? null,
+    });
+    if (operationJournal.pending().length === 0) healthMonitor.resolve("transaction_uncertain");
+    return result;
+  } catch (error) {
+    const current = operationJournal.current(key);
+    if (current?.status === "submitted" || error?.code === "TRANSACTION_UNCERTAIN") {
+      operationJournal.uncertain(key);
+      healthMonitor.report(Object.assign(new Error("Transaction confirmation is uncertain"), { code: "TRANSACTION_UNCERTAIN" }), {
+        channel: "base", operation: kind,
+      });
+    } else {
+      operationJournal.fail(key, "preflight_failed");
+    }
+    throw error;
+  }
+}
+
+async function reconcileOperationJournal() {
+  if (!chainRainService) return operationJournal.summary();
+  for (const record of operationJournal.pending()) {
+    if (!record.transactionHash) {
+      operationJournal.uncertain(record.key);
+      healthMonitor.report(Object.assign(new Error("Transaction confirmation is uncertain"), { code: "TRANSACTION_UNCERTAIN" }), {
+        channel: "base", operation: record.kind,
+      });
+      continue;
+    }
+    try {
+      const result = await chainRainService.transactionStatus(record.transactionHash);
+      if (result.status === "pending") {
+        operationJournal.uncertain(record.key);
+        healthMonitor.report(Object.assign(new Error("Transaction confirmation is uncertain"), { code: "TRANSACTION_UNCERTAIN" }), {
+          channel: "base", operation: record.kind,
+        });
+      } else if (result.status === "failed") {
+        operationJournal.fail(record.key, "transaction_reverted");
+      } else {
+        operationJournal.complete(record.key, result);
+        await reconcileChainState();
+      }
+    } catch (error) {
+      operationJournal.uncertain(record.key);
+      healthMonitor.report(Object.assign(new Error("Transaction confirmation is uncertain"), { code: "TRANSACTION_UNCERTAIN" }), {
+        channel: "base", operation: record.kind,
+      });
+    }
+  }
+  if (operationJournal.pending().length === 0) healthMonitor.resolve("transaction_uncertain");
+  return operationJournal.summary();
 }
 
 function loadJson(file, fallback = null) {
@@ -379,6 +560,7 @@ async function reconcileChainState() {
   const state = loadState() || {};
   if (!chainRainService || state.phase !== "active" || !state.agentId) return state;
   return observeActivity({ channel: "base", operation: "state_sync", destination: "base_rpc" }, async () => {
+    faultInjector.throwIf("rpc");
     const wallet = ensureWallet();
     const chain = await chainRainService.readState({ address: wallet.address, agentId: state.agentId });
     state.ownershipLost = chain.owner.toLowerCase() !== wallet.address.toLowerCase();
@@ -406,10 +588,11 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
     const wallet = ensureWallet();
     let service;
     try {
+      faultInjector.throwIf("database");
       service = await createPetNetworkService({
         privateKey: wallet.privateKey,
         agentId: state.agentId,
-        dataDir: path.join(app.getPath("userData"), "network"),
+        dataDir: NETWORK_DATA_DIR,
         beforeAgentTick: ensureDailyRainForAgent,
         onAgentAction: (postcard, service) => queueSignalSettlement(service, postcard.launchId, 100, [postcard]),
         agentContextProvider: () => {
@@ -456,6 +639,19 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
             ? "ready"
             : state === "offline" ? "off" : state === "error" ? "error" : "wait",
         });
+        if (["ready", "live", "caught_up"].includes(state)) healthMonitor.resolve("waku_unavailable");
+        if (state === "degraded_store") {
+          healthMonitor.report(Object.assign(new Error("Waku Store history is unavailable"), { code: "WAKU_STORE_UNAVAILABLE" }), {
+            channel: "waku", operation: "store_sync", store: true,
+          });
+        } else if (state === "caught_up") {
+          healthMonitor.resolve("store_history_unavailable");
+        }
+        if (["offline", "error"].includes(state)) {
+          healthMonitor.report(Object.assign(new Error("Waku relay is unavailable"), { code: "WAKU_UNAVAILABLE" }), {
+            channel: "waku", operation: "mesh_state",
+          });
+        }
       });
       service.agentRuntime?.on?.("thought", () => activityBus.record({
         channel: "brain", direction: "in", operation: "private_thought", destination: "local_device", status: "ok",
@@ -466,9 +662,12 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
       service.agentRuntime?.on?.("idle", () => activityBus.record({
         channel: "brain", direction: "in", operation: "silent_tick", destination: "local_device", status: "idle",
       }));
-      service.agentRuntime?.on?.("brainError", () => activityBus.record({
-        channel: "brain", direction: "in", operation: "inference", destination: "owner_brain", status: "error",
-      }));
+      service.agentRuntime?.on?.("brainError", (error) => {
+        activityBus.record({
+          channel: "brain", direction: "in", operation: "inference", destination: "owner_brain", status: "error",
+        });
+        healthMonitor.report(error || new Error("Brain inference failed"), { channel: "brain", operation: "inference" });
+      });
     } catch (error) {
       if (error?.code === "CYPHER_REGISTRY_NOT_CONFIGURED") {
         networkUnavailableReason = "base_cypher_registry_not_configured";
@@ -480,6 +679,10 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
         });
         return null;
       }
+      healthMonitor.report(error, {
+        channel: error?.code === "DATABASE_DAMAGED" || /sqlite|database/i.test(String(error?.message || "")) ? "disk" : "waku",
+        operation: "mesh_start",
+      });
       throw error;
     }
     const finishNetworkStart = activityBus.begin({
@@ -488,11 +691,19 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
       destination: "versus_mesh",
     });
     try {
+      faultInjector.throwIf("waku");
       await service.start();
+      try {
+        faultInjector.throwIf("store");
+      } catch (error) {
+        healthMonitor.report(error, { channel: "waku", operation: "store_sync", store: true });
+        activityBus.record({ channel: "waku", direction: "in", operation: "store_sync", destination: "versus_mesh", status: "wait" });
+      }
       await reconcileSubmittedSignalBatches(service);
       finishNetworkStart("ok");
     } catch (error) {
       finishNetworkStart("error");
+      healthMonitor.report(error, { channel: "waku", operation: "mesh_start" });
       await service.close().catch(() => {});
       throw error;
     }
@@ -510,6 +721,8 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
 
 async function performDailyRainForAgent() {
   if (chainConfigError) throw chainConfigError;
+  faultInjector.throwIf("gas");
+  faultInjector.throwIf("runway");
   let state = await reconcileChainState();
   state ||= loadState() || {};
   if (state.phase !== "active" || !state.agentId) {
@@ -585,6 +798,9 @@ function startDailyLifecycle() {
   });
   dailyLifecycleScheduler.on("errorState", ({ error, nextRetryAt }) => {
     console.error(`Versus daily lifecycle ${error.code}: ${error.message}; retry after ${new Date(nextRetryAt).toISOString()}`);
+    healthMonitor.report(Object.assign(new Error(error.message), { code: error.code }), {
+      channel: "base", operation: "daily_lifecycle",
+    });
   });
   dailyLifecycleScheduler.on("fatal", (error) => {
     console.error("Versus daily lifecycle fatal error:", error.message);
@@ -889,12 +1105,20 @@ app.whenReady().then(() => {
         destination: "github_releases",
         status: status.status === "error" ? "error" : status.status,
       });
+      if (status.status === "error") {
+        healthMonitor.report(Object.assign(new Error("Update provider is unavailable"), { code: "UPDATE_UNAVAILABLE" }), {
+          channel: "update", operation: "update_check",
+        });
+      } else if (["current", "available", "ready"].includes(status.status)) {
+        healthMonitor.resolve("update_unavailable");
+      }
     },
   });
   updateService.start();
   reconcileChainState()
     .catch((error) => console.error("Versus initial chain reconciliation error:", error.message))
     .finally(async () => {
+      await reconcileOperationJournal().catch((error) => console.error("Versus operation reconciliation error:", error.message));
       await ensureNetworkService().catch((error) => console.error("Versus network start error:", error.message));
       startDailyLifecycle();
     });
@@ -932,6 +1156,11 @@ ipcMain.handle("bond:load", async () => {
   }
 });
 ipcMain.handle("service:activitySnapshot", () => serviceActivitySnapshot());
+ipcMain.handle("health:snapshot", async () => {
+  await reconcileOperationJournal();
+  return refreshHealthSnapshot();
+});
+ipcMain.handle("diagnostics:export", () => exportDiagnostics());
 ipcMain.handle("bond:save", (_e, state) => {
   saveState(state);
   return true;
@@ -1031,6 +1260,7 @@ ipcMain.handle("cypher:createArchive", async (_e, { password } = {}) => {
     chainId: wallet.chainId,
     bond: loadState(),
     networkState: service.exportLocalArchive(),
+    operationJournal: operationJournal.exportArchive(),
   }, password);
   const selected = await dialog.showSaveDialog(mainWindow, {
     title: "Back up Versus Cypher and memories",
@@ -1066,11 +1296,15 @@ ipcMain.handle("cypher:restoreArchive", async (_e, { password } = {}) => {
     throw new Error("Cypher archive address does not match its private key");
   }
   if (!payload.bond?.agentId) throw new Error("Cypher archive has no registered agent state");
+  if (operationJournal.damaged && !payload.operationJournal) {
+    throw new Error("This older archive cannot recover the damaged economic operation journal");
+  }
 
   dailyLifecycleScheduler?.stop();
   await networkService?.close().catch(() => {});
   networkService = null;
   networkStart = null;
+  quarantineDatabaseFiles(NETWORK_DATA_DIR);
   saveWallet({
     address: recovered.address,
     privateKey: recovered.privateKey,
@@ -1079,6 +1313,7 @@ ipcMain.handle("cypher:restoreArchive", async (_e, { password } = {}) => {
     chainId: Number(payload.chainId || 8453),
   });
   saveState(payload.bond);
+  if (payload.operationJournal) operationJournal.importArchive(payload.operationJournal);
 
   const service = await ensureNetworkService({ suppressAutostart: true });
   if (!service) throw new Error("restored Cypher could not start its local network service");
@@ -1094,7 +1329,12 @@ ipcMain.handle("settings:brainCapabilities", () => detectAgentAdapters());
 ipcMain.handle("update:status", () => updateService?.getState() || {
   status: "disabled", currentVersion: app.getVersion(), availableVersion: null, progress: null, error: null,
 });
-ipcMain.handle("update:check", () => updateService?.check());
+ipcMain.handle("update:check", () => observeActivity({
+  channel: "update", operation: "update_check", destination: "github_releases",
+}, async () => {
+  faultInjector.throwIf("update");
+  return updateService?.check();
+}));
 ipcMain.handle("update:download", () => updateService?.download());
 ipcMain.handle("update:install", () => updateService?.install());
 
@@ -1137,12 +1377,16 @@ ipcMain.handle("settings:testBrain", async (_e, input = null) => {
     channel: "brain",
     operation: "connection_test",
     destination: settings.brain.kind === "local" ? "local_model" : "owner_endpoint",
-  }, () => brain({
+  }, () => {
+    faultInjector.throwIf("brain");
+    faultInjector.throwIf("brain_malformed");
+    return brain({
       version: 1,
       boundary: { peerMessagesAreUntrustedData: true, outputAllowsOnePostcardOnly: true },
       workingSet: { messages: [] },
       allowedOutput: { fields: ["type", "body", "replyTo"], types: ["observation"], maximumActions: 1 },
-    }));
+    });
+  });
   return { ok: true, silent: decision?.action == null, model: config.model };
 });
 
@@ -1344,7 +1588,11 @@ ipcMain.handle("network:sponsorMission", async (_e, { missionId, amount, deadlin
   if (!chainRainService) throw new Error("Base chain service is not configured");
   const mission = service.missionForSponsorship(missionId);
   const wallet = ensureWallet();
-  const receipt = await chainRainService.sponsorMission({
+  const receipt = await runJournaledOperation({
+    key: `mission:sponsor:${mission.missionId}`,
+    kind: "mission_sponsor",
+    agentId: service.node.identity.cypherId,
+  }, (onSubmitted) => chainRainService.sponsorMission({
     privateKey: wallet.privateKey,
     missionId: mission.missionId,
     launchId: mission.launchId,
@@ -1352,7 +1600,8 @@ ipcMain.handle("network:sponsorMission", async (_e, { missionId, amount, deadlin
     recipientAgentId: mission.recipientAgentId,
     amount,
     deadline,
-  });
+    onSubmitted,
+  }));
   let announcement = null;
   try {
     announcement = await service.publishMissionSponsorship({
@@ -1380,13 +1629,15 @@ ipcMain.handle("network:sponsorMission", async (_e, { missionId, amount, deadlin
 ipcMain.handle("network:releaseMission", async (_e, { escrowId } = {}) => {
   if (chainConfigError) throw chainConfigError;
   if (!chainRainService) throw new Error("Base chain service is not configured");
-  return chainRainService.releaseMission({ privateKey: ensureWallet().privateKey, escrowId });
+  return runJournaledOperation({ key: `mission:release:${escrowId}`, kind: "mission_release" },
+    (onSubmitted) => chainRainService.releaseMission({ privateKey: ensureWallet().privateKey, escrowId, onSubmitted }));
 });
 
 ipcMain.handle("network:refundMission", async (_e, { escrowId } = {}) => {
   if (chainConfigError) throw chainConfigError;
   if (!chainRainService) throw new Error("Base chain service is not configured");
-  return chainRainService.refundMission({ privateKey: ensureWallet().privateKey, escrowId });
+  return runJournaledOperation({ key: `mission:refund:${escrowId}`, kind: "mission_refund" },
+    (onSubmitted) => chainRainService.refundMission({ privateKey: ensureWallet().privateKey, escrowId, onSubmitted }));
 });
 
 ipcMain.handle("network:getMissionEscrow", async (_e, { escrowId } = {}) => {
@@ -1455,6 +1706,7 @@ ipcMain.handle("wallet:simulateDeposit", async () => {
     operation: "deposit_check",
     destination: chainRainService ? "base_rpc" : "local_device",
   }, async () => {
+    faultInjector.throwIf("rpc");
     const state = loadState() || {};
     delete state.cypherId;
     if (chainRainService) {
@@ -1485,7 +1737,8 @@ ipcMain.handle("wallet:claimTranche", async () => {
   if (chainRainService) {
     if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
     const wallet = ensureWallet();
-    const result = await chainRainService.claimTranche({ privateKey: wallet.privateKey, agentId: state.agentId });
+    const result = await runJournaledOperation({ key: `claim:${state.agentId}`, kind: "tranche_claim", agentId: state.agentId },
+      (onSubmitted) => chainRainService.claimTranche({ privateKey: wallet.privateKey, agentId: state.agentId, onSubmitted }));
     const synced = await reconcileChainState();
     return { state: synced, amount: Number(result.amount), hash: result.hash, demo: false };
   }
@@ -1521,6 +1774,9 @@ ipcMain.handle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
     operation: "rain_commit",
     destination: chainRainService ? "arena_contract" : "local_device",
   }, async () => {
+    faultInjector.throwIf("transaction");
+    faultInjector.throwIf("gas");
+    faultInjector.throwIf("runway");
     const state = loadState() || {};
     if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
     pennies = normalizeRainPennies(pennies);
@@ -1528,11 +1784,13 @@ ipcMain.handle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
     let result;
     if (chainRainService) {
       const wallet = ensureWallet();
-      const chain = await chainRainService.rainFromRunway({
-        privateKey: wallet.privateKey,
-        agentId: state.agentId,
-        pennies,
-      });
+      const chain = await runJournaledOperation({ key: `rain:${state.agentId}`, kind: "rain", agentId: state.agentId },
+        (onSubmitted) => chainRainService.rainFromRunway({
+          privateKey: wallet.privateKey,
+          agentId: state.agentId,
+          pennies,
+          onSubmitted,
+        }));
       const day = Math.floor(Date.now() / 86_400_000);
       if (Number(state.todayRainDay) !== day) state.rainPenniesToday = 0;
       state.vault = Number(chain.vault);
