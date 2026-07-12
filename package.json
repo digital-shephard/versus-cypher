@@ -33,6 +33,9 @@
     "lab:pet-rpc-fixture": "node scripts/lab/pet-rpc-fixture.js",
     "lab:pet-waku-publish": "node scripts/lab/publish-walkthrough-waku.js",
     "lab:visual-audit": "python scripts/lab/audit-visual-baseline.py",
-    "lab:validation-audit": "node scripts/lab/audit-validation-plan.js"
+    "lab:validation-audit": "node scripts/lab/audit-validation-plan.js",
+    "security:secrets": "node scripts/security/scan-secrets.js",
+    "security:audit:production": "node scripts/security/audit-production.js",
+    "security": "npm run security:secrets && npm run security:audit:production"
   }
 }

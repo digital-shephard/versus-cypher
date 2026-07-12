@@ -44,8 +44,11 @@ class CypherLocalDatabase {
     this.filePath = path.resolve(filePath);
     this.now = now;
     this.retention = { ...DEFAULT_RETENTION, ...retention };
-    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    const directory = path.dirname(this.filePath);
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    try { fs.chmodSync(directory, 0o700); } catch (_) {}
     this.db = new DatabaseSync(this.filePath, { enableForeignKeyConstraints: true });
+    try { fs.chmodSync(this.filePath, 0o600); } catch (_) {}
     this.db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;");
     this.migrate();
   }

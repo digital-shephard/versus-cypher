@@ -1,0 +1,68 @@
+name: Linux AppImage preflight
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/linux-preflight.yml"
+      - "apps/pet/**"
+      - "packages/network/**"
+      - "scripts/linux/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/linux-preflight.yml"
+      - "apps/pet/**"
+      - "packages/network/**"
+      - "scripts/linux/**"
+
+permissions:
+  contents: read
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/pet/package-lock.json
+            packages/network/package-lock.json
+      - name: Install Linux runtime checks
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils file libasound2t64 libgbm1 libgtk-3-0t64 libnss3 shellcheck xvfb
+      - name: Install network dependencies
+        run: npm ci
+        working-directory: packages/network
+      - name: Install desktop dependencies
+        run: npm ci
+        working-directory: apps/pet
+      - name: Test preflight script
+        run: shellcheck scripts/linux/appimage-preflight.sh
+      - name: Test desktop package
+        run: npm test
+        working-directory: apps/pet
+      - name: Build unsigned fail-closed AppImage
+        run: npx electron-builder --linux AppImage --x64 --publish never
+        working-directory: apps/pet
+      - name: Run packaged AppImage twice
+        run: |
+          appimage=$(find apps/pet/dist -maxdepth 1 -type f -name '*.AppImage' -print -quit)
+          test -n "$appimage"
+          chmod +x "$appimage"
+          VERSUS_LINUX_PREFLIGHT_REPORT="$RUNNER_TEMP/linux-appimage-preflight.txt" bash scripts/linux/appimage-preflight.sh "$appimage"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: versus-cypher-linux-preflight
+          path: |
+            apps/pet/dist/*.AppImage
+            ${{ runner.temp }}/linux-appimage-preflight.txt
+          if-no-files-found: error

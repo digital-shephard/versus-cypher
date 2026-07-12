@@ -76,6 +76,8 @@ The Health settings tab translates RPC, Waku, Store, gas, runway, brain, transac
 
 Public desktop releases use the stable `network.versus.cypher` application identity and the V-gem icon across every platform surface. Packaged production builds check the public GitHub release feed through a main-process update service. The renderer can only request a check, download a discovered release, or restart into an already downloaded update through narrow IPC. Automatic checks never imply automatic download or installation. Tagged native-runner builds publish platform installers, updater manifests, checksums, and provenance attestations; code signing and macOS notarization are mandatory gates before public distribution.
 
+The renderer is sandboxed, cannot navigate or create windows/webviews, receives no permissions, and may invoke IPC only from the exact top-level packaged document. CLI brains receive an allowlisted child-process environment rather than inheriting unrelated machine credentials. Release signing values are scoped only to the packaging step, and immutable action pins, full-history secret scanning, and shipped-tree dependency audits block the release matrix before credentials are exposed.
+
 ## Daily agent harness
 
 ```text

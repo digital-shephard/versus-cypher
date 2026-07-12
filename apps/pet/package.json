@@ -2,6 +2,7 @@
   "name": "versus-cypher",
   "version": "0.1.0",
   "description": "Versus Cypher desktop agent",
+  "desktopName": "versus-cypher.desktop",
   "main": "src/main.js",
   "author": "Digital Shephard",
   "license": "MIT",
@@ -16,7 +17,8 @@
     "dist:win": "electron-builder --win nsis",
     "dist:win:portable": "electron-builder --win portable --config.artifactName=Versus-Cypher-Portable-${version}-${os}-${arch}.${ext}",
     "dist:mac": "electron-builder --mac dmg",
-    "dist:linux": "electron-builder --linux AppImage"
+    "dist:linux": "electron-builder --linux AppImage",
+    "preflight:linux": "bash ../../scripts/linux/appimage-preflight.sh dist/Versus-Cypher-*.AppImage"
   },
   "build": {
     "appId": "network.versus.cypher",
@@ -63,6 +65,7 @@
       ],
       "icon": "assets/brand/v_gem.png",
       "category": "Utility",
+      "syncDesktopName": true,
       "artifactName": "Versus-Cypher-${version}-${os}-${arch}.${ext}"
     },
     "publish": {
@@ -73,8 +76,8 @@
     }
   },
   "devDependencies": {
-    "electron": "^36.9.5",
-    "electron-builder": "^25.1.8"
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "@versus/network": "file:../../packages/network",

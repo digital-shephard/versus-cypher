@@ -23,6 +23,11 @@ const { FaultInjector } = require("./fault-injection");
 const { HealthMonitor } = require("./health");
 const { OperationJournal } = require("./operation-journal");
 const { quarantineDatabaseFiles } = require("./local-recovery");
+const {
+  createTrustedIpcRegistrar,
+  hardenRendererWindow,
+  trustedFileUrl,
+} = require("./electron-security");
 const buildMetadata = require("../package.json");
 
 function configureStableIdentity() {
@@ -82,6 +87,9 @@ const WALLET_PATH = path.join(app.getPath("userData"), "wallet.json");
 const SETTINGS_PATH = path.join(app.getPath("userData"), "settings.json");
 const OPERATION_JOURNAL_PATH = path.join(app.getPath("userData"), "economic-operations.json");
 const NETWORK_DATA_DIR = path.join(app.getPath("userData"), "network");
+const RENDERER_PATH = path.join(__dirname, "..", "renderer", "index.html");
+const TRUSTED_RENDERER_URL = trustedFileUrl(RENDERER_PATH);
+const registerIpcHandle = createTrustedIpcRegistrar(ipcMain, TRUSTED_RENDERER_URL);
 const WIN_W = 390;
 const WIN_H = 640;
 
@@ -338,8 +346,13 @@ function loadJson(file, fallback = null) {
 }
 
 function saveJson(file, data) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+  const directory = path.dirname(file);
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  try { fs.chmodSync(directory, 0o700); } catch (_) {}
+  const temporary = `${file}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(data, null, 2), { encoding: "utf8", mode: 0o600 });
+  fs.renameSync(temporary, file);
+  try { fs.chmodSync(file, 0o600); } catch (_) {}
 }
 
 function backupDefaultPath(fileName) {
@@ -934,8 +947,15 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      navigateOnDragDrop: false,
     },
   });
+
+  hardenRendererWindow(mainWindow, TRUSTED_RENDERER_URL);
 
   mainWindow.setAlwaysOnTop(true, "floating");
   mainWindow.once("ready-to-show", () => {
@@ -1017,7 +1037,7 @@ function createWindow() {
     if (transparentSurfaceRefreshReason === "restore") refreshRestoredTransparentSurface();
     else refreshFocusedTransparentSurface();
   });
-  mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+  mainWindow.loadFile(RENDERER_PATH);
   mainWindow.on("closed", () => {
     mainWindow = null;
     stopPoll();
@@ -1146,7 +1166,7 @@ app.on("before-quit", () => {
   updateService?.stop();
 });
 
-ipcMain.handle("bond:load", async () => {
+registerIpcHandle("bond:load", async () => {
   dailyLifecycleScheduler?.wake("foreground").catch((error) => {
     console.error("Versus foreground lifecycle error:", error.message);
   });
@@ -1155,29 +1175,29 @@ ipcMain.handle("bond:load", async () => {
     return loadState();
   }
 });
-ipcMain.handle("service:activitySnapshot", () => serviceActivitySnapshot());
-ipcMain.handle("health:snapshot", async () => {
+registerIpcHandle("service:activitySnapshot", () => serviceActivitySnapshot());
+registerIpcHandle("health:snapshot", async () => {
   await reconcileOperationJournal();
   return refreshHealthSnapshot();
 });
-ipcMain.handle("diagnostics:export", () => exportDiagnostics());
-ipcMain.handle("bond:save", (_e, state) => {
+registerIpcHandle("diagnostics:export", () => exportDiagnostics());
+registerIpcHandle("bond:save", (_e, state) => {
   saveState(state);
   return true;
 });
 
-ipcMain.handle("wallet:ensure", () => {
+registerIpcHandle("wallet:ensure", () => {
   const w = ensureWallet();
   return { address: w.address, network: w.network, chainId: w.chainId };
 });
 
-ipcMain.handle("wallet:getPublic", () => {
+registerIpcHandle("wallet:getPublic", () => {
   const w = loadWallet();
   if (!w) return null;
   return { address: w.address, network: w.network, chainId: w.chainId };
 });
 
-ipcMain.handle("wallet:getAddressQr", async () => {
+registerIpcHandle("wallet:getAddressQr", async () => {
   const w = ensureWallet();
   return QRCode.toDataURL(w.address, {
     errorCorrectionLevel: "M",
@@ -1190,19 +1210,19 @@ ipcMain.handle("wallet:getAddressQr", async () => {
   });
 });
 
-ipcMain.handle("wallet:copyAddress", () => {
+registerIpcHandle("wallet:copyAddress", () => {
   const w = ensureWallet();
   clipboard.writeText(w.address);
   return w.address;
 });
 
-ipcMain.handle("wallet:copyPrivateKey", () => {
+registerIpcHandle("wallet:copyPrivateKey", () => {
   const wallet = ensureWallet();
   clipboard.writeText(wallet.privateKey);
   return true;
 });
 
-ipcMain.handle("wallet:createBackup", async (_e, { password } = {}) => {
+registerIpcHandle("wallet:createBackup", async (_e, { password } = {}) => {
   const wallet = ensureWallet();
   const backup = createWalletBackup({
     address: wallet.address,
@@ -1222,7 +1242,7 @@ ipcMain.handle("wallet:createBackup", async (_e, { password } = {}) => {
   return { canceled: false, filePath: selected.filePath };
 });
 
-ipcMain.handle("wallet:restoreBackup", async (_e, { password } = {}) => {
+registerIpcHandle("wallet:restoreBackup", async (_e, { password } = {}) => {
   const selected = await dialog.showOpenDialog(mainWindow, {
     title: "Restore Versus Cypher",
     defaultPath: backupDefaultPath(""),
@@ -1248,7 +1268,7 @@ ipcMain.handle("wallet:restoreBackup", async (_e, { password } = {}) => {
   return { canceled: false, address: recovered.address, state };
 });
 
-ipcMain.handle("cypher:createArchive", async (_e, { password } = {}) => {
+registerIpcHandle("cypher:createArchive", async (_e, { password } = {}) => {
   const wallet = ensureWallet();
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before creating its full archive");
@@ -1282,7 +1302,7 @@ ipcMain.handle("cypher:createArchive", async (_e, { password } = {}) => {
   };
 });
 
-ipcMain.handle("cypher:restoreArchive", async (_e, { password } = {}) => {
+registerIpcHandle("cypher:restoreArchive", async (_e, { password } = {}) => {
   const selected = await dialog.showOpenDialog(mainWindow, {
     title: "Restore Versus Cypher and memories",
     defaultPath: backupDefaultPath(""),
@@ -1324,21 +1344,21 @@ ipcMain.handle("cypher:restoreArchive", async (_e, { password } = {}) => {
   return { canceled: false, address: recovered.address, imported, state };
 });
 
-ipcMain.handle("settings:get", () => publicSettings(loadSettings()));
-ipcMain.handle("settings:brainCapabilities", () => detectAgentAdapters());
-ipcMain.handle("update:status", () => updateService?.getState() || {
+registerIpcHandle("settings:get", () => publicSettings(loadSettings()));
+registerIpcHandle("settings:brainCapabilities", () => detectAgentAdapters());
+registerIpcHandle("update:status", () => updateService?.getState() || {
   status: "disabled", currentVersion: app.getVersion(), availableVersion: null, progress: null, error: null,
 });
-ipcMain.handle("update:check", () => observeActivity({
+registerIpcHandle("update:check", () => observeActivity({
   channel: "update", operation: "update_check", destination: "github_releases",
 }, async () => {
   faultInjector.throwIf("update");
   return updateService?.check();
 }));
-ipcMain.handle("update:download", () => updateService?.download());
-ipcMain.handle("update:install", () => updateService?.install());
+registerIpcHandle("update:download", () => updateService?.download());
+registerIpcHandle("update:install", () => updateService?.install());
 
-ipcMain.handle("settings:save", async (_e, input = {}) => {
+registerIpcHandle("settings:save", async (_e, input = {}) => {
   const previous = loadSettings();
   const settings = saveSettings(input);
   if (JSON.stringify(previous.brain) !== JSON.stringify(settings.brain)) {
@@ -1359,7 +1379,7 @@ ipcMain.handle("settings:save", async (_e, input = {}) => {
   return publicSettings(settings);
 });
 
-ipcMain.handle("settings:testBrain", async (_e, input = null) => {
+registerIpcHandle("settings:testBrain", async (_e, input = null) => {
   const previous = loadSettings();
   const settings = input ? normalizeSettings({
     ...previous,
@@ -1390,7 +1410,7 @@ ipcMain.handle("settings:testBrain", async (_e, input = null) => {
   return { ok: true, silent: decision?.action == null, model: config.model };
 });
 
-ipcMain.handle("wallet:getHatchQuote", async () => {
+registerIpcHandle("wallet:getHatchQuote", async () => {
   return observeActivity({
     channel: chainRainService ? "base" : "local",
     operation: "hatch_quote",
@@ -1411,7 +1431,7 @@ ipcMain.handle("wallet:getHatchQuote", async () => {
   });
 });
 
-ipcMain.handle("wallet:beginFunding", async () => {
+registerIpcHandle("wallet:beginFunding", async () => {
   const wallet = ensureWallet();
   const state = loadState() || {};
   const balance = chainRainService ? await chainRainService.getEthBalance(wallet.address) : 0n;
@@ -1427,7 +1447,7 @@ ipcMain.handle("wallet:beginFunding", async () => {
   return { address: wallet.address, qr, baselineWei: balance.toString(), demo: !chainRainService };
 });
 
-ipcMain.handle("wallet:completeFunding", async () => {
+registerIpcHandle("wallet:completeFunding", async () => {
   const state = loadState() || {};
   if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
   if (!chainRainService) {
@@ -1457,9 +1477,9 @@ ipcMain.handle("wallet:completeFunding", async () => {
   return { ...result, amount: result.amount.toString(), runway: result.runway.toString(), demo: false };
 });
 
-ipcMain.handle("wallet:reconcile", () => reconcileChainState());
+registerIpcHandle("wallet:reconcile", () => reconcileChainState());
 
-ipcMain.handle("network:status", async () => {
+registerIpcHandle("network:status", async () => {
   const service = await ensureNetworkService();
   if (!service) {
     return applyWalkthroughNetworkStateFixture({
@@ -1470,49 +1490,49 @@ ipcMain.handle("network:status", async () => {
   return applyWalkthroughNetworkStateFixture(service.status());
 });
 
-ipcMain.handle("agent:status", async () => {
+registerIpcHandle("agent:status", async () => {
   const service = await ensureNetworkService();
   return service
     ? service.agentStatus()
     : { configured: false, mode: "off", status: "off", lastResult: null, lastError: null };
 });
 
-ipcMain.handle("agent:tick", async () => {
+registerIpcHandle("agent:tick", async () => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before waking its brain");
   return observeActivity({ channel: "brain", operation: "agent_tick", destination: "owner_brain" }, () => service.runAgentTick());
 });
 
-ipcMain.handle("agent:start", async () => {
+registerIpcHandle("agent:start", async () => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before waking its brain");
   return service.startAgent();
 });
 
-ipcMain.handle("agent:stop", async () => {
+registerIpcHandle("agent:stop", async () => {
   const service = await ensureNetworkService();
   return service ? service.stopAgent() : { configured: false, mode: "off", status: "off" };
 });
 
-ipcMain.handle("agent:nextThought", async () => {
+registerIpcHandle("agent:nextThought", async () => {
   return networkService ? networkService.nextThought() : null;
 });
 
-ipcMain.handle("agent:markThoughtShowing", async (_e, { id } = {}) => {
+registerIpcHandle("agent:markThoughtShowing", async (_e, { id } = {}) => {
   return networkService ? networkService.markThoughtShowing(id) : null;
 });
 
-ipcMain.handle("agent:markThoughtSeen", async (_e, { id } = {}) => {
+registerIpcHandle("agent:markThoughtSeen", async (_e, { id } = {}) => {
   return networkService ? networkService.markThoughtSeen(id) : null;
 });
 
-ipcMain.handle("network:connect", async (_e, { peerUrl } = {}) => {
+registerIpcHandle("network:connect", async (_e, { peerUrl } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before joining the network");
   return observeActivity({ channel: "waku", operation: "peer_connect", destination: "versus_mesh" }, () => service.connect(peerUrl));
 });
 
-ipcMain.handle("network:publish", async (_e, postcard = {}) => {
+registerIpcHandle("network:publish", async (_e, postcard = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before publishing postcards");
   return observeActivity({ channel: "waku", operation: "postcard_publish", destination: "versus_mesh" }, async () => {
@@ -1522,7 +1542,7 @@ ipcMain.handle("network:publish", async (_e, postcard = {}) => {
   });
 });
 
-ipcMain.handle("network:publishMission", async (_e, input = {}) => {
+registerIpcHandle("network:publishMission", async (_e, input = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before publishing a mission");
   const prepared = await service.prepareMission(input);
@@ -1530,7 +1550,7 @@ ipcMain.handle("network:publishMission", async (_e, input = {}) => {
   return prepared;
 });
 
-ipcMain.handle("network:publishOutcome", async (_e, input = {}) => {
+registerIpcHandle("network:publishOutcome", async (_e, input = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before publishing an outcome");
   const prepared = await service.prepareOutcome(input);
@@ -1538,50 +1558,50 @@ ipcMain.handle("network:publishOutcome", async (_e, input = {}) => {
   return prepared;
 });
 
-ipcMain.handle("network:list", async (_e, query = {}) => {
+registerIpcHandle("network:list", async (_e, query = {}) => {
   const service = await ensureNetworkService();
   return service ? service.list(query) : [];
 });
 
-ipcMain.handle("network:coalitionView", async (_e, { launchId } = {}) => {
+registerIpcHandle("network:coalitionView", async (_e, { launchId } = {}) => {
   const service = await ensureNetworkService();
   if (!service) return { launchId: String(launchId || "0"), proposals: [] };
   return service.coalitionView(launchId);
 });
 
-ipcMain.handle("network:clusterView", async () => {
+registerIpcHandle("network:clusterView", async () => {
   const service = await ensureNetworkService();
   return service ? service.clusterView() : [];
 });
 
-ipcMain.handle("network:getArtifact", async (_e, { reference } = {}) => {
+registerIpcHandle("network:getArtifact", async (_e, { reference } = {}) => {
   const service = await ensureNetworkService();
   return service ? service.getArtifact(reference) : null;
 });
 
-ipcMain.handle("network:assessOutcome", async (_e, input = {}) => {
+registerIpcHandle("network:assessOutcome", async (_e, input = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before assessing an outcome");
   return service.assessOutcome(input);
 });
 
-ipcMain.handle("network:listOutcomeAssessments", async () => {
+registerIpcHandle("network:listOutcomeAssessments", async () => {
   const service = await ensureNetworkService();
   return service ? service.listOutcomeAssessments() : [];
 });
 
-ipcMain.handle("network:listSignalBatches", async () => {
+registerIpcHandle("network:listSignalBatches", async () => {
   const service = await ensureNetworkService();
   return service ? service.listSignalBatches() : [];
 });
 
-ipcMain.handle("network:settleSignalBatch", async (_e, { launchId, limit } = {}) => {
+registerIpcHandle("network:settleSignalBatch", async (_e, { launchId, limit } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before settling durable signals");
   return queueSignalSettlement(service, launchId, limit);
 });
 
-ipcMain.handle("network:sponsorMission", async (_e, { missionId, amount, deadline } = {}) => {
+registerIpcHandle("network:sponsorMission", async (_e, { missionId, amount, deadline } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before sponsoring a mission");
   if (chainConfigError) throw chainConfigError;
@@ -1626,27 +1646,27 @@ ipcMain.handle("network:sponsorMission", async (_e, { missionId, amount, deadlin
   return { receipt, announcement };
 });
 
-ipcMain.handle("network:releaseMission", async (_e, { escrowId } = {}) => {
+registerIpcHandle("network:releaseMission", async (_e, { escrowId } = {}) => {
   if (chainConfigError) throw chainConfigError;
   if (!chainRainService) throw new Error("Base chain service is not configured");
   return runJournaledOperation({ key: `mission:release:${escrowId}`, kind: "mission_release" },
     (onSubmitted) => chainRainService.releaseMission({ privateKey: ensureWallet().privateKey, escrowId, onSubmitted }));
 });
 
-ipcMain.handle("network:refundMission", async (_e, { escrowId } = {}) => {
+registerIpcHandle("network:refundMission", async (_e, { escrowId } = {}) => {
   if (chainConfigError) throw chainConfigError;
   if (!chainRainService) throw new Error("Base chain service is not configured");
   return runJournaledOperation({ key: `mission:refund:${escrowId}`, kind: "mission_refund" },
     (onSubmitted) => chainRainService.refundMission({ privateKey: ensureWallet().privateKey, escrowId, onSubmitted }));
 });
 
-ipcMain.handle("network:getMissionEscrow", async (_e, { escrowId } = {}) => {
+registerIpcHandle("network:getMissionEscrow", async (_e, { escrowId } = {}) => {
   if (chainConfigError) throw chainConfigError;
   if (!chainRainService) throw new Error("Base chain service is not configured");
   return chainRainService.getMissionEscrow(escrowId);
 });
 
-ipcMain.handle("network:verifyEconomicProof", async (_e, { reference } = {}) => {
+registerIpcHandle("network:verifyEconomicProof", async (_e, { reference } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before verifying economic proof");
   const result = await service.verifyEconomicProof(reference);
@@ -1660,47 +1680,47 @@ ipcMain.handle("network:verifyEconomicProof", async (_e, { reference } = {}) => 
   };
 });
 
-ipcMain.handle("network:setBlocked", async (_e, { address, blocked } = {}) => {
+registerIpcHandle("network:setBlocked", async (_e, { address, blocked } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before changing network trust");
   return service.setBlocked(address, blocked);
 });
 
-ipcMain.handle("network:setTrustScore", async (_e, { address, dimension, score } = {}) => {
+registerIpcHandle("network:setTrustScore", async (_e, { address, dimension, score } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before changing network trust");
   return service.setTrustScore(address, dimension, score);
 });
 
-ipcMain.handle("network:listPeerRelationships", async (_e, query = {}) => {
+registerIpcHandle("network:listPeerRelationships", async (_e, query = {}) => {
   const service = await ensureNetworkService();
   return service ? service.listPeerRelationships(query) : [];
 });
 
-ipcMain.handle("network:setPeerPreference", async (_e, { address, preference } = {}) => {
+registerIpcHandle("network:setPeerPreference", async (_e, { address, preference } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before changing peer preferences");
   return service.setPeerPreference(address, preference);
 });
 
-ipcMain.handle("network:setPeerAffinity", async (_e, { address, affinity, evidence } = {}) => {
+registerIpcHandle("network:setPeerAffinity", async (_e, { address, affinity, evidence } = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before changing peer affinity");
   return service.setPeerAffinity(address, affinity, evidence);
 });
 
-ipcMain.handle("network:listMemories", async (_e, query = {}) => {
+registerIpcHandle("network:listMemories", async (_e, query = {}) => {
   const service = await ensureNetworkService();
   return service ? service.listMemories(query) : [];
 });
 
-ipcMain.handle("network:putMemory", async (_e, memory = {}) => {
+registerIpcHandle("network:putMemory", async (_e, memory = {}) => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before storing local memory");
   return service.putMemory(memory);
 });
 
-ipcMain.handle("wallet:simulateDeposit", async () => {
+registerIpcHandle("wallet:simulateDeposit", async () => {
   return observeActivity({
     channel: chainRainService ? "base" : "local",
     operation: "deposit_check",
@@ -1732,7 +1752,7 @@ ipcMain.handle("wallet:simulateDeposit", async () => {
   });
 });
 
-ipcMain.handle("wallet:claimTranche", async () => {
+registerIpcHandle("wallet:claimTranche", async () => {
   const state = loadState() || {};
   if (chainRainService) {
     if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
@@ -1752,7 +1772,7 @@ ipcMain.handle("wallet:claimTranche", async () => {
   return { state, amount };
 });
 
-ipcMain.handle("wallet:withdrawVault", async (_e, { amount } = {}) => {
+registerIpcHandle("wallet:withdrawVault", async (_e, { amount } = {}) => {
   const state = loadState() || {};
   if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
   if (!chainRainService) {
@@ -1768,7 +1788,7 @@ ipcMain.handle("wallet:withdrawVault", async (_e, { amount } = {}) => {
   return { state: synced, amount: Number(result.amount), hash: result.hash, demo: false };
 });
 
-ipcMain.handle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
+registerIpcHandle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
   const operation = rainLock.then(() => observeActivity({
     channel: chainRainService ? "base" : "local",
     operation: "rain_commit",
@@ -1820,7 +1840,7 @@ ipcMain.handle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
   return operation;
 });
 
-ipcMain.handle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } = {}) => observeActivity({
+registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } = {}) => observeActivity({
   channel: chainRainService ? "base" : "local",
   operation: "cypher_hatch",
   destination: chainRainService ? "arena_contract" : "local_device",
@@ -1897,10 +1917,10 @@ ipcMain.handle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } = {}
   return state;
 }));
 
-ipcMain.handle("window:close", () => {
+registerIpcHandle("window:close", () => {
   mainWindow?.minimize();
 });
-ipcMain.handle("window:quit", () => app.quit());
+registerIpcHandle("window:quit", () => app.quit());
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));

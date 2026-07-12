@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+  agentChildEnvironment,
   createCliAgentBrain,
   createHttpAgentBrain,
   invokeClaude,
@@ -8,6 +9,27 @@ const {
   loadAgentBrainConfig,
   publicBrainConfig,
 } = require("../src/brain");
+
+test("external CLI brains receive only adapter-specific credentials", () => {
+  const source = {
+    PATH: "C:\\tools",
+    USERPROFILE: "C:\\Users\\owner",
+    OPENAI_API_KEY: "openai-test-value",
+    ANTHROPIC_API_KEY: "anthropic-test-value",
+    AWS_SECRET_ACCESS_KEY: "must-not-cross-the-boundary",
+    OPENROUTER_API_KEY: "must-not-cross-the-boundary",
+  };
+  const codex = agentChildEnvironment("codex", source);
+  const claude = agentChildEnvironment("claude", source);
+
+  assert.equal(codex.OPENAI_API_KEY, source.OPENAI_API_KEY);
+  assert.equal(codex.ANTHROPIC_API_KEY, undefined);
+  assert.equal(claude.ANTHROPIC_API_KEY, source.ANTHROPIC_API_KEY);
+  assert.equal(claude.OPENAI_API_KEY, undefined);
+  assert.equal(codex.AWS_SECRET_ACCESS_KEY, undefined);
+  assert.equal(claude.OPENROUTER_API_KEY, undefined);
+  assert.equal(codex.PATH, source.PATH);
+});
 const { brainEnvironment, normalizeSettings } = require("../src/settings");
 
 test("agent brain configuration is explicit and keeps credentials private", () => {

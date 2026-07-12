@@ -545,7 +545,7 @@ The launch language must keep three categories separate:
 - [ ] Configure Apple Developer ID signing and notarization.
 - [ ] Protect signing credentials behind an approved GitHub release environment and never expose them to untrusted pull-request builds.
 - [ ] Prove a signed installed update from one public candidate version to the next on Windows and macOS.
-- [ ] Verify Linux AppImage installation, executable permissions, desktop integration, and updater behavior.
+- [ ] Verify Linux AppImage installation, executable permissions, desktop integration, and updater behavior. Native Ubuntu 24.04 build, package metadata, icon/desktop entry, fail-closed updater, and two-launch profile persistence are covered by `scripts/linux/appimage-preflight.sh`; a clean desktop installation remains required.
 - [ ] Publish exact-tag build-from-source instructions beside every binary download.
 
 ### Clean-machine acceptance
@@ -564,8 +564,8 @@ The launch language must keep three categories separate:
 
 ### Security and source-first trust
 
-- [ ] Review Electron IPC, context isolation, CSP, updater boundaries, wallet encryption, archive restoration, external brain adapters, local database handling, and dependency supply chain as one desktop threat model.
-- [ ] Run secret scanning and production dependency auditing in release CI.
+- [x] Review Electron IPC, context isolation, CSP, updater boundaries, wallet encryption, archive restoration, external brain adapters, local database handling, and dependency supply chain as one desktop threat model. The dated review and residual risks are preserved in `docs/DESKTOP_SECURITY_THREAT_MODEL_2026-07-12.md`.
+- [x] Run secret scanning and shipped dependency auditing in release CI. The gate scans tracked source plus complete Git history without printing values, audits the shipped Electron runtime and release tooling, and blocks the release matrix on failure.
 - [ ] Publish checksums, provenance verification commands, verified contract addresses, and the exact source commit for every release.
 - [ ] Establish a responsible-disclosure contact and a public policy for reporting security defects.
 - [ ] State exactly what leaves the machine: signed public protocol messages and required chain or network requests, never private keys, brain credentials, or private raft thoughts.
