@@ -4,11 +4,16 @@ pragma solidity ^0.8.26;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 /// @title Versus Agent NFT (ownerless)
 /// @notice Tradeable pet + USDC vault. Wired once by VersusFactory, then immutable auth.
 contract AgentNFT is ERC721 {
     using SafeERC20 for IERC20;
+    using Strings for uint256;
+
+    string public constant METADATA_BASE_URI =
+        "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/";
 
     IERC20 public immutable usdc;
     address public immutable deployer;
@@ -39,6 +44,7 @@ contract AgentNFT is ERC721 {
     error NotAgentOwner();
     error InvalidAgent();
     error InsufficientVault();
+    error VaultOverflow();
     error ZeroAddress();
     error AlreadyBootstrapped();
 
@@ -98,15 +104,17 @@ contract AgentNFT is ERC721 {
     function receiveProfit(uint256 agentId, uint256 amount) external onlyProfitSource {
         if (!_exists(agentId)) revert InvalidAgent();
         if (amount == 0) return;
+        uint128 nextVault = _nextVaultBalance(agents[agentId].vault, amount);
         usdc.safeTransferFrom(msg.sender, address(this), amount);
-        agents[agentId].vault += uint128(amount);
+        agents[agentId].vault = nextVault;
         emit ProfitReceived(agentId, amount);
     }
 
     function deposit(uint256 agentId, uint256 amount) external {
         _requireOwner(agentId);
+        uint128 nextVault = _nextVaultBalance(agents[agentId].vault, amount);
         usdc.safeTransferFrom(msg.sender, address(this), amount);
-        agents[agentId].vault += uint128(amount);
+        agents[agentId].vault = nextVault;
         emit VaultDeposited(agentId, msg.sender, amount);
     }
 
@@ -142,11 +150,23 @@ contract AgentNFT is ERC721 {
         return (a.cypherId, a.level, a.streak, a.lastCommitDay, a.vault, ownerOf(agentId));
     }
 
+    /// @notice Static species metadata. Agent ownership and live economic state remain canonical on Base.
+    function tokenURI(uint256 agentId) public view override returns (string memory) {
+        if (!_exists(agentId)) revert InvalidAgent();
+        return string.concat(METADATA_BASE_URI, uint256(agents[agentId].cypherId).toString(), ".json");
+    }
+
     function _requireOwner(uint256 agentId) internal view {
         if (ownerOf(agentId) != msg.sender) revert NotAgentOwner();
     }
 
     function _exists(uint256 agentId) internal view returns (bool) {
         return _ownerOf(agentId) != address(0);
+    }
+
+    function _nextVaultBalance(uint128 current, uint256 amount) internal pure returns (uint128) {
+        uint256 next = uint256(current) + amount;
+        if (next > type(uint128).max) revert VaultOverflow();
+        return uint128(next);
     }
 }

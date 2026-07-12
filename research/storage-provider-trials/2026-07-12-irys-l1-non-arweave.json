@@ -1,0 +1,695 @@
+{
+  "schema": "versus-cypher-arweave-v1",
+  "network": "arweave-mainnet",
+  "paymentNetwork": "base",
+  "paymentToken": "ETH",
+  "publisher": "0x7181E35E67e46fE7a6Ad732B2956335Ca9698c30",
+  "createdAt": "2026-07-12T12:50:24.720Z",
+  "images": {
+    "0": {
+      "id": "DddYkHpMR1aDGLjYrhzC5aH8Yhpub2tbv1Va3ZTcEaER",
+      "name": "Calfire",
+      "file": "Calfire.gif",
+      "bytes": 266910,
+      "sha256": "9b858bb505079cc11533a3b5d280ef72afb20727e51aafeb165ba68368bace7a",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 266910
+      },
+      "verifiedAt": "2026-07-12T12:57:48.433Z"
+    },
+    "1": {
+      "id": "3WqiP3yHCuroFhbCVixRSLE7aYZKxu2zaZMdXXEym6Di",
+      "name": "Ohwail",
+      "file": "Ohwail.gif",
+      "bytes": 325883,
+      "sha256": "42c148f633a065e89588aafb93b7d22076d62c646e994a285515c55c5a3a4056",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 325883
+      },
+      "verifiedAt": "2026-07-12T12:57:49.182Z"
+    },
+    "2": {
+      "id": "CRFta9ZVLJf4hfTWkLkmfXfKcWXgFnYjKAkA2BPPejMG",
+      "name": "Flexseed",
+      "file": "Flexseed.gif",
+      "bytes": 478764,
+      "sha256": "07b7a4ca70e240561c280ac455bb431fd844de6ac1f7278124f168266f3950c0",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 478764
+      },
+      "verifiedAt": "2026-07-12T12:57:50.023Z"
+    },
+    "3": {
+      "id": "8izUfKbTU5ERvKneSVnEZEL2cHi9DPbckRJmQ2PvjTAa",
+      "name": "Akitash",
+      "file": "Akitash.gif",
+      "bytes": 88998,
+      "sha256": "9a68b66ead693d909c790cbaa46910fcd87f676624bed221392ea2c640ebf59e",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 88998
+      },
+      "verifiedAt": "2026-07-12T12:57:50.743Z"
+    },
+    "4": {
+      "id": "G8umqfGm22g19MqkhovXfwjgKaDyJbobPXNajtsCctPV",
+      "name": "Ancient One",
+      "file": "AncientOne.gif",
+      "bytes": 296967,
+      "sha256": "678bf142443588e7c1309ec0786a4e7b13c68bf4c68019493269d48d057da765",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 296967
+      },
+      "verifiedAt": "2026-07-12T12:57:51.292Z"
+    },
+    "5": {
+      "id": "9A7iYzaxVvnmee9yJvmjxL7kMLY4AetpUpSDKLL8qPky",
+      "name": "Aralass",
+      "file": "Aralass.gif",
+      "bytes": 168192,
+      "sha256": "ed3b6b607fe168f8df5c8936960e458a8f45f79c881daa4b331a09136ad95122",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 168192
+      },
+      "verifiedAt": "2026-07-12T12:57:51.957Z"
+    },
+    "6": {
+      "id": "6Y2HrfC9DzDHhhGT9LrxYQf9ub56hxuuN4tDQ675WvwP",
+      "name": "Buff",
+      "file": "Buff.gif",
+      "bytes": 232973,
+      "sha256": "90d48c3feb87ee5024c85e23c004c65a179074b9d96ab25dcb35a0387b74ffde",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 232973
+      },
+      "verifiedAt": "2026-07-12T12:57:52.619Z"
+    },
+    "7": {
+      "id": "2mn54phrmqsWfQxLND5ZkrQRmb8jZMS5vqzk7WYoZYXr",
+      "name": "Chesare",
+      "file": "Chesare.gif",
+      "bytes": 271875,
+      "sha256": "8fc401eaa5ed6689477aebbd07b273c04224a0292ecbd5a1af773af21d0d60a9",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 271875
+      },
+      "verifiedAt": "2026-07-12T12:57:53.280Z"
+    },
+    "8": {
+      "id": "rQW9Bg4PAFb1CPtdBbxAfdT57HztmTi9CDtkto9FmpK",
+      "name": "Chonk",
+      "file": "Chonk.gif",
+      "bytes": 525924,
+      "sha256": "1a43fb6050f1c3890d0db5c6f3bd96001e43a27d175899d4c4394239409b1cd6",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 525924
+      },
+      "verifiedAt": "2026-07-12T12:57:54.312Z"
+    },
+    "9": {
+      "id": "9Za25wF2kyNZBEnmv9LheB7Fms26Ja9ULKFc11MiR17",
+      "name": "Crescient",
+      "file": "Crescient.gif",
+      "bytes": 379551,
+      "sha256": "4943ed7dc3f46f2210f3a536154fbff5ae449aa9fa46d5c557234c7fc7a4184d",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 379551
+      },
+      "verifiedAt": "2026-07-12T12:57:55.405Z"
+    },
+    "10": {
+      "id": "EtxwPKSrK5tdu91KVLBsfx2c5FeLae2firKpxrTbPhbz",
+      "name": "Dandeleon",
+      "file": "Dandeleon.gif",
+      "bytes": 547295,
+      "sha256": "9b3b689703c8c63f1e9bd739fccdd0d670ae230a1ac30aa15846d57d122c9e8d",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 547295
+      },
+      "verifiedAt": "2026-07-12T12:57:56.129Z"
+    },
+    "11": {
+      "id": "F4UnNbqqn7DqDsKJFuHGM34uUPBeePo48iwxidQysDdZ",
+      "name": "Dioxic",
+      "file": "Dioxic.gif",
+      "bytes": 225131,
+      "sha256": "6d0cabff2bf6abf50187eef2dd27697f6125c03213e4c01446d727664394b0f6",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 225131
+      },
+      "verifiedAt": "2026-07-12T12:57:56.793Z"
+    },
+    "12": {
+      "id": "GNMJS3W4SzgFo3pY9M9JLq13AR7sL8xi2aLm5i27gN8Y",
+      "name": "Emberion",
+      "file": "Emberion.gif",
+      "bytes": 187090,
+      "sha256": "9b4a0c2f380ba8011c5e761c2a8373ef2f01b59f9ff804fbc9342b14335af471",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 187090
+      },
+      "verifiedAt": "2026-07-12T12:57:57.587Z"
+    },
+    "13": {
+      "id": "FhbPduYFVjfT4wyfZ3Xqh3Zt5bypXPTnmS4XJ31PzJk2",
+      "name": "Espiritu",
+      "file": "Espiritu.gif",
+      "bytes": 290506,
+      "sha256": "e74de93cd135278a814f087ed4a8cec9d89d8c8e48eab1f51194952a30ea4c61",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 290506
+      },
+      "verifiedAt": "2026-07-12T12:57:58.266Z"
+    },
+    "14": {
+      "id": "BAabyshZtfeAP3nZDrvgL3X4aAB4hvqt4QpfUu4stt8Q",
+      "name": "Ethlectric",
+      "file": "Ethlectric.gif",
+      "bytes": 385192,
+      "sha256": "707a5661681c9b5a0dc62f8cb442e1c3a1d1cdcf60ab9dedc8f93ae572651ed4",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 385192
+      },
+      "verifiedAt": "2026-07-12T12:57:59.084Z"
+    },
+    "15": {
+      "id": "4ZyFNQtBLjXMYP2FqXWCPsyBEztYSUmpd1sRMiY9WiR3",
+      "name": "HokkaidoWave",
+      "file": "HokkaidoWave.gif",
+      "bytes": 374931,
+      "sha256": "7f455e565cf9fe0f01d28459bc5306841470d0594fa787dcf6d35ad38c2f4dfc",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 374931
+      },
+      "verifiedAt": "2026-07-12T12:57:59.768Z"
+    },
+    "16": {
+      "id": "9HijTXUhc43dLBM1qW9fmUqnRP3wvKQpdtm1PdAdx4iF",
+      "name": "Jawsome",
+      "file": "Jawsome.gif",
+      "bytes": 227467,
+      "sha256": "462499dfa38b2349833a4e68606e5b06305688a6eba89f4a9c2ba47751885201",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 227467
+      },
+      "verifiedAt": "2026-07-12T12:58:00.336Z"
+    },
+    "17": {
+      "id": "5rNbSXsDk91L7kQoqT9EFBBXojaLos8qE1p85Q1iLWuW",
+      "name": "Kamakasu",
+      "file": "Kamakasu.gif",
+      "bytes": 220077,
+      "sha256": "4485800ead71ef9267f24a8288129f9b242ec9a878e2d048f271a6cd3d046acb",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 220077
+      },
+      "verifiedAt": "2026-07-12T12:58:01.017Z"
+    },
+    "18": {
+      "id": "BFJQTj8uv781A7LHueuAEs41YicCjEcAF31jgrEs1JxT",
+      "name": "Metadash",
+      "file": "Metadash.gif",
+      "bytes": 319489,
+      "sha256": "0107dc4e61b2e65775c2906873b20d929a854b93d2d35bf26add2197ee7a895f",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 319489
+      },
+      "verifiedAt": "2026-07-12T12:58:01.683Z"
+    },
+    "19": {
+      "id": "GyDxdamRFqPuYpL7obEwacgAoHM5dJExCKaAhqbJKWcH",
+      "name": "Nyx",
+      "file": "Nyx.gif",
+      "bytes": 152651,
+      "sha256": "b62e1dca0ed50fa50df1d71dbbf936a6f7dfffe46fc7c47beda1c9230ada035a",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 152651
+      },
+      "verifiedAt": "2026-07-12T12:58:02.375Z"
+    },
+    "20": {
+      "id": "Gx8gKQSc5cZfKHxFhWikGz8jhYX5MVd7AQKVszZ4DQ2p",
+      "name": "Octopunch",
+      "file": "Octopunch.gif",
+      "bytes": 303179,
+      "sha256": "d568f727775ecc93c1160aeccbbed2406e17ce264bdd1650cbd22f2afc3a23eb",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 303179
+      },
+      "verifiedAt": "2026-07-12T12:58:03.424Z"
+    },
+    "21": {
+      "id": "8nhqXHfgjgiKFyX96YTBjnoRmHTGkMrBC6Soz7bseX3Q",
+      "name": "Oritori",
+      "file": "Oritori.gif",
+      "bytes": 165722,
+      "sha256": "ea96c53cdb18af374bfe06b32e548303eed590b8a45478cecfcbd50ab670d15e",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 165722
+      },
+      "verifiedAt": "2026-07-12T12:58:04.162Z"
+    },
+    "22": {
+      "id": "FzmyXDHmoTnv9Pf1nNcqphzAv9BDktwd3ob5hXA67TqX",
+      "name": "Rycelium",
+      "file": "Rycelium.gif",
+      "bytes": 485800,
+      "sha256": "4f8ecd29b0d8c71ec21e5ea20dfb77b9786aa5bfa0969e7a3607c7db620e6790",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 485800
+      },
+      "verifiedAt": "2026-07-12T12:58:04.898Z"
+    },
+    "23": {
+      "id": "33smKZajoB6Tscrt41Kpnnx2Aym8UTAdrViLjPm2uC8N",
+      "name": "Shibachu",
+      "file": "Shibachu.gif",
+      "bytes": 189847,
+      "sha256": "b441068c18fde858bd8efe2a72c04571f9195aacdc1eecae527d80be821d030d",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 189847
+      },
+      "verifiedAt": "2026-07-12T12:58:05.533Z"
+    },
+    "24": {
+      "id": "4MCJgsUjHFTKmwvmN7xQgh6Z4ceBKYa4y8XmaRXzoGgn",
+      "name": "Snek",
+      "file": "Snek.gif",
+      "bytes": 303863,
+      "sha256": "56dddcf50b8158bd8edab7ee4fec08f38e570f02d5bf1c8c80da95e923789598",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 303863
+      },
+      "verifiedAt": "2026-07-12T12:58:06.258Z"
+    },
+    "25": {
+      "id": "n5Qt4DyBjdpDTgmypsqLMcz5JuDEsQM6XBJCqxf8c2y",
+      "name": "Somnowing",
+      "file": "Somnowing.gif",
+      "bytes": 276654,
+      "sha256": "e9fe44cc91668f30dc89e32574268e518affc31d5e3da800b95e7c4c0fbf8ca3",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 276654
+      },
+      "verifiedAt": "2026-07-12T12:58:07.149Z"
+    },
+    "26": {
+      "id": "Bk5n7zq4aKwQ7bfuipQPdHb5aKzhnvzQogaCWBUBUb5Q",
+      "name": "Velocirock",
+      "file": "Velocirock.gif",
+      "bytes": 156394,
+      "sha256": "accfc29d2d73ed71826849d9cd4ef2d14b87e523d8b492d33905679fa0b235bf",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 156394
+      },
+      "verifiedAt": "2026-07-12T12:58:07.774Z"
+    },
+    "27": {
+      "id": "Am9sCdAyg8eXVcLEnAtUUpPKv577NKPzDNbGoJe6NGE8",
+      "name": "Voxelion",
+      "file": "Voxelion.gif",
+      "bytes": 277596,
+      "sha256": "fdec82532333c80d2abecea5f85d9e7bb5123a7b69180d657e10a571ac419a90",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 277596
+      },
+      "verifiedAt": "2026-07-12T12:58:08.534Z"
+    },
+    "28": {
+      "id": "7WFUCWdmb67dYzzghGDojBeNsXoBWXvPk7U4QUEoB12e",
+      "name": "Xaldin",
+      "file": "Xaldin.gif",
+      "bytes": 303215,
+      "sha256": "66622fa126f822f92274f37298baee4a03936f4374cd019475d2618141f7480f",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 303215
+      },
+      "verifiedAt": "2026-07-12T12:58:09.223Z"
+    }
+  },
+  "metadata": {
+    "0": {
+      "id": "D5VQGLW8RwSmfvYGrKFcFRRtFfVBcNFUXj9C9w4kKYkA",
+      "name": "Calfire",
+      "bytes": 1471,
+      "sha256": "5f98458be356b831c30c34fda20165be4cc84b78745512e7ad1fb96e747c2fa2",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1471
+      },
+      "verifiedAt": "2026-07-12T12:58:09.845Z"
+    },
+    "1": {
+      "id": "EcrTidogL8bfnA1E25hpBFfyBWEFu9P6PtNokd9o7Yn",
+      "name": "Ohwail",
+      "bytes": 1457,
+      "sha256": "b6f0201d7b35575871046f6cce4f45f6f9d6533aa6bee193c921143f98d2430b",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1457
+      },
+      "verifiedAt": "2026-07-12T12:58:10.904Z"
+    },
+    "2": {
+      "id": "LGUJBBK328YWLbEcULmuNE63k4Avj81koZ5ASPwN8KE",
+      "name": "Flexseed",
+      "bytes": 1474,
+      "sha256": "a91f91889d573dee128b23e6fd3b5e354de3d5ad8bfe3784fe7c6d68d01c4fe6",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1474
+      },
+      "verifiedAt": "2026-07-12T12:58:11.727Z"
+    },
+    "3": {
+      "id": "5o4JkegAhRTt7j9dRfVRyMk7YpBysKJUeTZaDg2jHYCb",
+      "name": "Akitash",
+      "bytes": 1511,
+      "sha256": "23a050a2e397610e0d00047bcb151da8e545d70bdc76e55e1290489f82eea075",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1511
+      },
+      "verifiedAt": "2026-07-12T12:58:12.319Z"
+    },
+    "4": {
+      "id": "EpjTTwMZPgTia9EP9qLdGJsS1ohakPEFzvtNoRiSJbhy",
+      "name": "Ancient One",
+      "bytes": 1583,
+      "sha256": "c74dec74d8db35937ac4b87473852d597a4f0fd640919da129a863c52561b93d",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1583
+      },
+      "verifiedAt": "2026-07-12T12:58:13.057Z"
+    },
+    "5": {
+      "id": "EPffoMkD4U7v1cUGPPvEWGg3w4JAmssXKhEoNQyepHHz",
+      "name": "Aralass",
+      "bytes": 1552,
+      "sha256": "b08ac8f749f10c1d6c715d721f35f9ca77448603971fc0e8dbe2f04523a7bcfb",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1552
+      },
+      "verifiedAt": "2026-07-12T12:58:13.554Z"
+    },
+    "6": {
+      "id": "BMftTQDucbZk54XsACciNb7hPNxtrHZB2dTEfbd6Dchp",
+      "name": "Buff",
+      "bytes": 1555,
+      "sha256": "d8d8e7c68e87a7bd5d2b350ad1e4e3759ba40b55d0e16233e47cae7af4e32963",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1555
+      },
+      "verifiedAt": "2026-07-12T12:58:14.227Z"
+    },
+    "7": {
+      "id": "8JoQmdwfwij8Mx58G4HC3cQuV5GoyJHNhQ8pteLBgStb",
+      "name": "Chesare",
+      "bytes": 1429,
+      "sha256": "5780043b81d5664a53cecc82dfd2ea76a129f639280d58d02c8667aafef9b5d4",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1429
+      },
+      "verifiedAt": "2026-07-12T12:58:14.927Z"
+    },
+    "8": {
+      "id": "8JcujfKerZJjNJMASMJKp9dibYs537wyp6QuMaXjo28f",
+      "name": "Chonk",
+      "bytes": 1646,
+      "sha256": "3249f057c95a039226238f655d365fb6b4923555899f3973813f3306acaf1191",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1646
+      },
+      "verifiedAt": "2026-07-12T12:58:15.552Z"
+    },
+    "9": {
+      "id": "6UzFoxdSwPfuyEq9CY6eZaX1MM12pqhLpqDVC3EGwzzW",
+      "name": "Crescient",
+      "bytes": 1545,
+      "sha256": "fb77bcb9526a57fa40b41cbee1832ec46e9b4c727bfa5fea3c54b6c1575a7766",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1545
+      },
+      "verifiedAt": "2026-07-12T12:58:16.123Z"
+    },
+    "10": {
+      "id": "4HamVAikfPmmMSEZndruLyG1LrxfgUik4gETM5qS5CzL",
+      "name": "Dandeleon",
+      "bytes": 1688,
+      "sha256": "58e401718f7ea996ea3bc66d5d8495d36d76d02b36ece85c8c3a3513993699a6",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1688
+      },
+      "verifiedAt": "2026-07-12T12:58:16.734Z"
+    },
+    "11": {
+      "id": "9eFhf6qdvj9Ud12S4HfXNjBri2TYEZYpYkUWnWo15dZm",
+      "name": "Dioxic",
+      "bytes": 1741,
+      "sha256": "12574ffdbcb1b74dc581d2e29b694d2218ad805719a4ec57255c2b496824145b",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1741
+      },
+      "verifiedAt": "2026-07-12T12:58:17.433Z"
+    },
+    "12": {
+      "id": "8tAiZzHz7EdZYcqjEkiaLPnBtBc2vPBJgkp7pv1jSrCQ",
+      "name": "Emberion",
+      "bytes": 1533,
+      "sha256": "5d04c03c6746a1cadcc63f23b391109513d2cc067f86d542a8b1a7ad08d91c00",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1533
+      },
+      "verifiedAt": "2026-07-12T12:58:18.077Z"
+    },
+    "13": {
+      "id": "3SdTpYQFC969gXFrX7BABe139QJEsE1TiQfoYiHFTKkw",
+      "name": "Espiritu",
+      "bytes": 1524,
+      "sha256": "da426a58ecf2efe478db59c5f5ddb97a2538a5630d8e7701f242d0a2ea4eec49",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1524
+      },
+      "verifiedAt": "2026-07-12T12:58:18.673Z"
+    },
+    "14": {
+      "id": "DpFs1NvWjXF6UA11njjJQN5uo1jNcTGA25XzzcKaLZQb",
+      "name": "Ethlectric",
+      "bytes": 1434,
+      "sha256": "ded0958f137a9978d80255d558a14da32bc9c9f41e4026401403c4a7c7da9019",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1434
+      },
+      "verifiedAt": "2026-07-12T12:58:19.284Z"
+    },
+    "15": {
+      "id": "hr1Wim5nPgEnLie18Q5p7GiQLqwiEdxoXZvtBBT5zXL",
+      "name": "HokkaidoWave",
+      "bytes": 1627,
+      "sha256": "00dc03c7931ae4f1a0f51ee5636194dda75f7e41f181b35437ca8630710de8d5",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1627
+      },
+      "verifiedAt": "2026-07-12T12:58:20.172Z"
+    },
+    "16": {
+      "id": "ARGLgEccFiPRPK3JeQggtbao11ugrhrD68WJs97a2ECA",
+      "name": "Jawsome",
+      "bytes": 1414,
+      "sha256": "bf9ca30ba6f6cd17a921eda2882630c426534dd65ddf43c4e21d20bb865e8a6b",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1414
+      },
+      "verifiedAt": "2026-07-12T12:58:20.808Z"
+    },
+    "17": {
+      "id": "3dT5zNszRCgFBgtpf2PsgdWM2WMRbJEgaH9qQ3q1dHXz",
+      "name": "Kamakasu",
+      "bytes": 1597,
+      "sha256": "753017ff163b6fb3b9ee835d30a84a2cae823007c12e57788353832a16e660f7",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1597
+      },
+      "verifiedAt": "2026-07-12T12:58:21.465Z"
+    },
+    "18": {
+      "id": "8xrxfFi96Zpk5khqdpAMFwJwpaBxwvf7F7EHHhaM3DJ2",
+      "name": "Metadash",
+      "bytes": 1652,
+      "sha256": "e289ddf164a7233bdd9f3cabc0c949303815e8c8d2e0b3ad0305fbafae472537",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1652
+      },
+      "verifiedAt": "2026-07-12T12:58:22.004Z"
+    },
+    "19": {
+      "id": "ESEAjPCh9LqWBVw97aX1iNQAYas1mdmU2VBRDhw6N2f2",
+      "name": "Nyx",
+      "bytes": 1483,
+      "sha256": "723430b99246f23782333d7b220e38a79b2b8bab2411aafd640e3fd61fc6dcf8",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1483
+      },
+      "verifiedAt": "2026-07-12T12:58:22.472Z"
+    },
+    "20": {
+      "id": "Bm9nFCoUynUQf1cb7XpEpZ9bS2ZUZtYUk73nKWHC5LR5",
+      "name": "Octopunch",
+      "bytes": 1620,
+      "sha256": "a8b9858b8755b568103a2033c80464cba29eb2d877b78deebe7b1628bfa996c8",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1620
+      },
+      "verifiedAt": "2026-07-12T12:58:23.157Z"
+    },
+    "21": {
+      "id": "2ppKTS8qcuhu7iqJ31oJ5oJR2dJFHMRScMXMcDkqmq9v",
+      "name": "Oritori",
+      "bytes": 1417,
+      "sha256": "fa707941b7632b29f2d58a546d7de4fc85833206532ef584a862c882aed7c18d",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1417
+      },
+      "verifiedAt": "2026-07-12T12:58:23.852Z"
+    },
+    "22": {
+      "id": "mcx6i1V4Twjm8XbuUHT3pmiNVsCYMUFE3Nnvz4pc226",
+      "name": "Rycelium",
+      "bytes": 1512,
+      "sha256": "93301f0fe96a695015eee08443747ff5ae7acda952326323f250c4a9cc37cbe2",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1512
+      },
+      "verifiedAt": "2026-07-12T12:58:24.754Z"
+    },
+    "23": {
+      "id": "F7wNQt5sWq6GZL68T1kaJLQnM5YCe9bEEbqQxnY88b2M",
+      "name": "Shibachu",
+      "bytes": 1525,
+      "sha256": "830d43d7a264d9cbba19e34eebc384703fe3ab8e1075a588434541834cdde902",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1525
+      },
+      "verifiedAt": "2026-07-12T12:58:25.359Z"
+    },
+    "24": {
+      "id": "2boH7jYz9kwWCMs5JshzY8KNjMyWpCJVPTtXJiJG2jmF",
+      "name": "Snek",
+      "bytes": 1641,
+      "sha256": "833908ef34c3fa4df4f882fb718eb0941ce381d4f846bfa3993587f4a8ef6357",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1641
+      },
+      "verifiedAt": "2026-07-12T12:58:26.022Z"
+    },
+    "25": {
+      "id": "9X7WMsygFAf6j3d3aZhaJL6PAP7KmkepPC6XUY8k6mK",
+      "name": "Somnowing",
+      "bytes": 1530,
+      "sha256": "344d9103aff99e945b2cd13841b9629803e382b1c866ec69cfbea7d3723b2278",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1530
+      },
+      "verifiedAt": "2026-07-12T12:58:26.972Z"
+    },
+    "26": {
+      "id": "3mNeRYMRh2RBpMGEm72rBTqCf3Dy7igwtn4mMPq8orpp",
+      "name": "Velocirock",
+      "bytes": 1438,
+      "sha256": "217decc140c2f2e06a4560707d6e8ce8822c2c9bb292ff43c1b1822cd4501a60",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1438
+      },
+      "verifiedAt": "2026-07-12T12:58:27.645Z"
+    },
+    "27": {
+      "id": "APMmrVePgqvf82H7bS8gog6S7WiVZnUmydtKoMmEfJRn",
+      "name": "Voxelion",
+      "bytes": 1723,
+      "sha256": "57ede19545926e32c17be552685cc6700c17c9dfdcef8a2370cbdadc0d0a4713",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1723
+      },
+      "verifiedAt": "2026-07-12T12:58:28.241Z"
+    },
+    "28": {
+      "id": "9R3Ex84yoYsyS5vsamAuvgqWRZXTDRdn3W8bptJKbzd4",
+      "name": "Xaldin",
+      "bytes": 1452,
+      "sha256": "b10c6ff64906b6eb29ce287f3f73ff257e7c1695a16166d08442205bb8b5e1fe",
+      "verified": {
+        "gateway": "https://gateway.irys.xyz",
+        "bytes": 1452
+      },
+      "verifiedAt": "2026-07-12T12:58:28.908Z"
+    }
+  },
+  "collection": {
+    "id": "Gug5a3oxpqvb9qLg5ZnrmrkdzuLizGsvMS8wzbvFuMUX",
+    "bytes": 171,
+    "sha256": "ed6a5d3e452dc06425557a707af9b60f1d9b63638d2fbbaa4b69ff95ba6eddcb",
+    "verified": {
+      "gateway": "https://gateway.irys.xyz",
+      "bytes": 171
+    },
+    "verifiedAt": "2026-07-12T12:58:29.574Z"
+  },
+  "manifest": {
+    "id": "8TbAkhqxtEBDpjgRod9eLsDHbAZxeCqj8zuKbqYYjisa",
+    "bytes": 5172,
+    "sha256": "b96aae4effafbe18042d262e0475ddb40cb7ec06e9b9d20d33bfc81af52a7388"
+  },
+  "uploader": "irys-mainnet"
+}

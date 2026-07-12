@@ -529,10 +529,12 @@ The launch language must keep three categories separate:
 
 ### Production contracts and economics
 
-- [ ] Freeze every immutable Base production parameter, dependency address, floor, fee, action price, and bootstrap step.
-- [ ] Complete a dedicated contract and deployment security review beyond the existing test suite.
-- [ ] Rehearse deployment, one-shot bootstrap, hatch, runway replenishment, daily rain, signal settlement, graduation, buy/sell tax conversion, tranche claim, reward withdrawal, and NFT transfer against the final configuration.
+- [ ] Freeze every immutable Base production parameter, dependency address, floor, fee, action price, and bootstrap step. Parameters and dependencies are frozen and onchain-preflighted; generated Versus contract addresses await mainnet deployment, and the recipient Safe must move beyond its current one-owner/one-threshold state.
+- [x] Complete a dedicated internal contract and deployment security review beyond the existing test suite; preserve the dated findings and triage in `docs/CONTRACT_SECURITY_REVIEW_2026-07-12.md`.
+- [x] Rehearse deployment, sealed one-shot bootstrap, hatch, runway replenishment, daily rain, signal settlement, exact `$1,000` graduation, buy/sell tax conversion, tranche claim, reward withdrawal, and NFT transfer against the final configuration, including a passing canonical-USDC/Uniswap Base mainnet Anvil fork.
 - [ ] Publish verified contract source, deployment manifests, addresses, bytecode checks, and a human-readable explanation of which components are ownerless.
+- [ ] After the first mainnet mint, register the canonical image and metadata CIDs with NFT.Storage/Filecoin, record confirmed deals, and publish the deterministic CAR recovery files with immutable release artifacts.
+- [ ] Obtain an independent external contract review before unrestricted public hatch.
 - [ ] Run a small closed production cohort before allowing an unrestricted public hatch.
 
 ### Signed desktop distribution and updates

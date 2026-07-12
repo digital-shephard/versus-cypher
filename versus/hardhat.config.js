@@ -23,6 +23,10 @@ module.exports = {
       url: process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545",
       chainId: 31337,
     },
+    baseFork: {
+      url: process.env.VERSUS_BASE_FORK_RPC_URL || "http://127.0.0.1:8546",
+      chainId: 8453,
+    },
     baseSepolia: {
       url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
@@ -38,6 +42,11 @@ module.exports = {
   gasReporter: {
     enabled: process.env.REPORT_GAS === "true",
     currency: "USD",
+  },
+  etherscan: {
+    apiKey: {
+      base: process.env.BASESCAN_API_KEY || "",
+    },
   },
   paths: {
     sources: "./contracts",

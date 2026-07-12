@@ -1,0 +1,644 @@
+{
+  "schema": "versus-cypher-ipfs-v1",
+  "provider": "ipfs",
+  "providers": [
+    "lighthouse",
+    "pinata-x402"
+  ],
+  "createdAt": "2026-07-12T13:11:30.240Z",
+  "images": {
+    "root": "bafybeicngwx5b64pbr2ot4dh7bfbzvoyjlphdi6s7up7fllvpkk7anhmmm",
+    "files": {
+      "0.gif": {
+        "name": "Calfire",
+        "bytes": 266910,
+        "sha256": "9b858bb505079cc11533a3b5d280ef72afb20727e51aafeb165ba68368bace7a",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 266910
+        },
+        "verifiedAt": "2026-07-12T13:31:33.028Z"
+      },
+      "1.gif": {
+        "name": "Ohwail",
+        "bytes": 325883,
+        "sha256": "42c148f633a065e89588aafb93b7d22076d62c646e994a285515c55c5a3a4056",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 325883
+        },
+        "verifiedAt": "2026-07-12T13:31:38.100Z"
+      },
+      "2.gif": {
+        "name": "Flexseed",
+        "bytes": 478764,
+        "sha256": "07b7a4ca70e240561c280ac455bb431fd844de6ac1f7278124f168266f3950c0",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 478764
+        },
+        "verifiedAt": "2026-07-12T13:31:42.814Z"
+      },
+      "3.gif": {
+        "name": "Akitash",
+        "bytes": 88998,
+        "sha256": "9a68b66ead693d909c790cbaa46910fcd87f676624bed221392ea2c640ebf59e",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 88998
+        },
+        "verifiedAt": "2026-07-12T13:31:49.327Z"
+      },
+      "4.gif": {
+        "name": "Ancient One",
+        "bytes": 296967,
+        "sha256": "678bf142443588e7c1309ec0786a4e7b13c68bf4c68019493269d48d057da765",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 296967
+        },
+        "verifiedAt": "2026-07-12T13:31:54.376Z"
+      },
+      "5.gif": {
+        "name": "Aralass",
+        "bytes": 168192,
+        "sha256": "ed3b6b607fe168f8df5c8936960e458a8f45f79c881daa4b331a09136ad95122",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 168192
+        },
+        "verifiedAt": "2026-07-12T13:31:59.946Z"
+      },
+      "6.gif": {
+        "name": "Buff",
+        "bytes": 232973,
+        "sha256": "90d48c3feb87ee5024c85e23c004c65a179074b9d96ab25dcb35a0387b74ffde",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 232973
+        },
+        "verifiedAt": "2026-07-12T13:32:05.602Z"
+      },
+      "7.gif": {
+        "name": "Chesare",
+        "bytes": 271875,
+        "sha256": "8fc401eaa5ed6689477aebbd07b273c04224a0292ecbd5a1af773af21d0d60a9",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 271875
+        },
+        "verifiedAt": "2026-07-12T13:32:10.149Z"
+      },
+      "8.gif": {
+        "name": "Chonk",
+        "bytes": 525924,
+        "sha256": "1a43fb6050f1c3890d0db5c6f3bd96001e43a27d175899d4c4394239409b1cd6",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 525924
+        },
+        "verifiedAt": "2026-07-12T13:32:13.752Z"
+      },
+      "9.gif": {
+        "name": "Crescient",
+        "bytes": 379551,
+        "sha256": "4943ed7dc3f46f2210f3a536154fbff5ae449aa9fa46d5c557234c7fc7a4184d",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 379551
+        },
+        "verifiedAt": "2026-07-12T13:32:19.646Z"
+      },
+      "10.gif": {
+        "name": "Dandeleon",
+        "bytes": 547295,
+        "sha256": "9b3b689703c8c63f1e9bd739fccdd0d670ae230a1ac30aa15846d57d122c9e8d",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 547295
+        },
+        "verifiedAt": "2026-07-12T13:32:23.371Z"
+      },
+      "11.gif": {
+        "name": "Dioxic",
+        "bytes": 225131,
+        "sha256": "6d0cabff2bf6abf50187eef2dd27697f6125c03213e4c01446d727664394b0f6",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 225131
+        },
+        "verifiedAt": "2026-07-12T13:32:26.656Z"
+      },
+      "12.gif": {
+        "name": "Emberion",
+        "bytes": 187090,
+        "sha256": "9b4a0c2f380ba8011c5e761c2a8373ef2f01b59f9ff804fbc9342b14335af471",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 187090
+        },
+        "verifiedAt": "2026-07-12T13:32:33.733Z"
+      },
+      "13.gif": {
+        "name": "Espiritu",
+        "bytes": 290506,
+        "sha256": "e74de93cd135278a814f087ed4a8cec9d89d8c8e48eab1f51194952a30ea4c61",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 290506
+        },
+        "verifiedAt": "2026-07-12T13:32:38.493Z"
+      },
+      "14.gif": {
+        "name": "Ethlectric",
+        "bytes": 385192,
+        "sha256": "707a5661681c9b5a0dc62f8cb442e1c3a1d1cdcf60ab9dedc8f93ae572651ed4",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 385192
+        },
+        "verifiedAt": "2026-07-12T13:32:43.793Z"
+      },
+      "15.gif": {
+        "name": "HokkaidoWave",
+        "bytes": 374931,
+        "sha256": "7f455e565cf9fe0f01d28459bc5306841470d0594fa787dcf6d35ad38c2f4dfc",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 374931
+        },
+        "verifiedAt": "2026-07-12T13:32:47.637Z"
+      },
+      "16.gif": {
+        "name": "Jawsome",
+        "bytes": 227467,
+        "sha256": "462499dfa38b2349833a4e68606e5b06305688a6eba89f4a9c2ba47751885201",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 227467
+        },
+        "verifiedAt": "2026-07-12T13:32:51.892Z"
+      },
+      "17.gif": {
+        "name": "Kamakasu",
+        "bytes": 220077,
+        "sha256": "4485800ead71ef9267f24a8288129f9b242ec9a878e2d048f271a6cd3d046acb",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 220077
+        },
+        "verifiedAt": "2026-07-12T13:32:56.093Z"
+      },
+      "18.gif": {
+        "name": "Metadash",
+        "bytes": 319489,
+        "sha256": "0107dc4e61b2e65775c2906873b20d929a854b93d2d35bf26add2197ee7a895f",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 319489
+        },
+        "verifiedAt": "2026-07-12T13:33:02.754Z"
+      },
+      "19.gif": {
+        "name": "Nyx",
+        "bytes": 152651,
+        "sha256": "b62e1dca0ed50fa50df1d71dbbf936a6f7dfffe46fc7c47beda1c9230ada035a",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 152651
+        },
+        "verifiedAt": "2026-07-12T13:33:08.132Z"
+      },
+      "20.gif": {
+        "name": "Octopunch",
+        "bytes": 303179,
+        "sha256": "d568f727775ecc93c1160aeccbbed2406e17ce264bdd1650cbd22f2afc3a23eb",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 303179
+        },
+        "verifiedAt": "2026-07-12T13:33:14.389Z"
+      },
+      "21.gif": {
+        "name": "Oritori",
+        "bytes": 165722,
+        "sha256": "ea96c53cdb18af374bfe06b32e548303eed590b8a45478cecfcbd50ab670d15e",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 165722
+        },
+        "verifiedAt": "2026-07-12T13:33:18.473Z"
+      },
+      "22.gif": {
+        "name": "Rycelium",
+        "bytes": 485800,
+        "sha256": "4f8ecd29b0d8c71ec21e5ea20dfb77b9786aa5bfa0969e7a3607c7db620e6790",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 485800
+        },
+        "verifiedAt": "2026-07-12T13:33:22.750Z"
+      },
+      "23.gif": {
+        "name": "Shibachu",
+        "bytes": 189847,
+        "sha256": "b441068c18fde858bd8efe2a72c04571f9195aacdc1eecae527d80be821d030d",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 189847
+        },
+        "verifiedAt": "2026-07-12T13:33:26.068Z"
+      },
+      "24.gif": {
+        "name": "Snek",
+        "bytes": 303863,
+        "sha256": "56dddcf50b8158bd8edab7ee4fec08f38e570f02d5bf1c8c80da95e923789598",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 303863
+        },
+        "verifiedAt": "2026-07-12T13:33:30.297Z"
+      },
+      "25.gif": {
+        "name": "Somnowing",
+        "bytes": 276654,
+        "sha256": "e9fe44cc91668f30dc89e32574268e518affc31d5e3da800b95e7c4c0fbf8ca3",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 276654
+        },
+        "verifiedAt": "2026-07-12T13:33:36.435Z"
+      },
+      "26.gif": {
+        "name": "Velocirock",
+        "bytes": 156394,
+        "sha256": "accfc29d2d73ed71826849d9cd4ef2d14b87e523d8b492d33905679fa0b235bf",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 156394
+        },
+        "verifiedAt": "2026-07-12T13:33:43.167Z"
+      },
+      "27.gif": {
+        "name": "Voxelion",
+        "bytes": 277596,
+        "sha256": "fdec82532333c80d2abecea5f85d9e7bb5123a7b69180d657e10a571ac419a90",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 277596
+        },
+        "verifiedAt": "2026-07-12T13:33:49.891Z"
+      },
+      "28.gif": {
+        "name": "Xaldin",
+        "bytes": 303215,
+        "sha256": "66622fa126f822f92274f37298baee4a03936f4374cd019475d2618141f7480f",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 303215
+        },
+        "verifiedAt": "2026-07-12T13:33:56.064Z"
+      }
+    },
+    "pinata": {
+      "cid": "bafybeicngwx5b64pbr2ot4dh7bfbzvoyjlphdi6s7up7fllvpkk7anhmmm",
+      "pinnedAt": "2026-07-12T13:21:41.218Z",
+      "paymentReceipt": "eyJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJwYXllciI6IjB4NzE4MUUzNUU2N2U0NmZFN2E2QWQ3MzJCMjk1NjMzNUNhOTY5OGMzMCIsInN1Y2Nlc3MiOnRydWUsInRyYW5zYWN0aW9uIjoiMHg0MWYzMDNkYzY5NTAxN2Y5YzQwY2VmYjI3NTM3MzY4NTVkYWRkOTQ4ZDc2MDFkZDhhZTBlZjliNjYzMzk1NzQ3In0=",
+      "verified": {
+        "gateway": "https://gateway.pinata.cloud/ipfs",
+        "bytes": 266910
+      }
+    },
+    "filecoin": []
+  },
+  "metadata": {
+    "root": "bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy",
+    "files": {
+      "0.json": {
+        "name": "Calfire",
+        "bytes": 1517,
+        "sha256": "0bc13dca3ee2f9175c33d01594e127bc321e8b4f7865f5a9c55a9e841b748224",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1517
+        },
+        "verifiedAt": "2026-07-12T13:34:02.047Z"
+      },
+      "1.json": {
+        "name": "Ohwail",
+        "bytes": 1503,
+        "sha256": "c344709de22c8600a8476080cabfff485a316aa3549367281fac6cbbd44c8e54",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1503
+        },
+        "verifiedAt": "2026-07-12T13:34:06.862Z"
+      },
+      "2.json": {
+        "name": "Flexseed",
+        "bytes": 1520,
+        "sha256": "7287a613984d5067aca7d9338c5669194301777302d9208146cb65a5315a8434",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1520
+        },
+        "verifiedAt": "2026-07-12T13:34:10.140Z"
+      },
+      "3.json": {
+        "name": "Akitash",
+        "bytes": 1557,
+        "sha256": "c6808267aa6ba61e5b5c549c2713afe84c1b102d89a32573a0d6e31591888981",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1557
+        },
+        "verifiedAt": "2026-07-12T13:34:15.802Z"
+      },
+      "4.json": {
+        "name": "Ancient One",
+        "bytes": 1629,
+        "sha256": "57baa418d33ebae90f117c7e495e6cdd67e542de0e460cbfdb79c7a2f89ce225",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1629
+        },
+        "verifiedAt": "2026-07-12T13:34:21.999Z"
+      },
+      "5.json": {
+        "name": "Aralass",
+        "bytes": 1598,
+        "sha256": "4b02f837aa65e722044faed59f621a82296c2e33fbb53979796c796d8f89bb43",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1598
+        },
+        "verifiedAt": "2026-07-12T13:34:26.653Z"
+      },
+      "6.json": {
+        "name": "Buff",
+        "bytes": 1601,
+        "sha256": "e31e4737859f83b20cb05c481979ce4983db5966d12e7b7fe9a119adb0128e52",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1601
+        },
+        "verifiedAt": "2026-07-12T13:34:29.900Z"
+      },
+      "7.json": {
+        "name": "Chesare",
+        "bytes": 1475,
+        "sha256": "aaac88aecce74295ee5e485b74471217d309b62853f8ed23d645d4a61346011e",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1475
+        },
+        "verifiedAt": "2026-07-12T13:34:36.381Z"
+      },
+      "8.json": {
+        "name": "Chonk",
+        "bytes": 1694,
+        "sha256": "84490a1fb02b00d161e0b7f45c9e1067925c4d9980d6ee03012e61b1955cd957",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1694
+        },
+        "verifiedAt": "2026-07-12T13:34:42.970Z"
+      },
+      "9.json": {
+        "name": "Crescient",
+        "bytes": 1593,
+        "sha256": "5c677229d0a9b914161a29ea96c14d002c44327eece23a485fb5cea37634645d",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1593
+        },
+        "verifiedAt": "2026-07-12T13:34:48.917Z"
+      },
+      "10.json": {
+        "name": "Dandeleon",
+        "bytes": 1736,
+        "sha256": "d653584ec468946f9a8ad7b9d6c93267add9a1268eab889a7c33e0ac703b4e9b",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1736
+        },
+        "verifiedAt": "2026-07-12T13:34:55.205Z"
+      },
+      "11.json": {
+        "name": "Dioxic",
+        "bytes": 1789,
+        "sha256": "7c9626f4a8af022056f911904ce8d05fb57e0e630a5184ba48e393d77b191ff1",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1789
+        },
+        "verifiedAt": "2026-07-12T13:34:58.622Z"
+      },
+      "12.json": {
+        "name": "Emberion",
+        "bytes": 1581,
+        "sha256": "54b229e780484c65e9a858680077345ad46db23393870b3716619709a59323aa",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1581
+        },
+        "verifiedAt": "2026-07-12T13:35:03.401Z"
+      },
+      "13.json": {
+        "name": "Espiritu",
+        "bytes": 1572,
+        "sha256": "bd68f4326851f41bbf8d4ac89065b4793896c43bf6a99692715168cfa29b23b6",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1572
+        },
+        "verifiedAt": "2026-07-12T13:35:08.835Z"
+      },
+      "14.json": {
+        "name": "Ethlectric",
+        "bytes": 1482,
+        "sha256": "edd2fdbb8abe10bf43813c42aef75592d30391bdb451ef1444b8fe2d7039b11f",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1482
+        },
+        "verifiedAt": "2026-07-12T13:35:13.597Z"
+      },
+      "15.json": {
+        "name": "HokkaidoWave",
+        "bytes": 1675,
+        "sha256": "1942b0f6c4b7cba551fcccee44d4715da77ab17e4444c6461550d2e68ebcddc9",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1675
+        },
+        "verifiedAt": "2026-07-12T13:35:20.117Z"
+      },
+      "16.json": {
+        "name": "Jawsome",
+        "bytes": 1462,
+        "sha256": "1369014fad86a9c771fe1de791470bf5b9e83cd9a4ff415c147a5221bbaf8eed",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1462
+        },
+        "verifiedAt": "2026-07-12T13:35:25.422Z"
+      },
+      "17.json": {
+        "name": "Kamakasu",
+        "bytes": 1645,
+        "sha256": "1af1a43f87b7e29981bd5cc30e6bf1bb9c3902a35202f23b3392287384c75770",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1645
+        },
+        "verifiedAt": "2026-07-12T13:35:31.636Z"
+      },
+      "18.json": {
+        "name": "Metadash",
+        "bytes": 1700,
+        "sha256": "77c455d3823f663d4891acb1cb925799270355c3c7fcdfd564681707850df43b",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1700
+        },
+        "verifiedAt": "2026-07-12T13:35:37.839Z"
+      },
+      "19.json": {
+        "name": "Nyx",
+        "bytes": 1531,
+        "sha256": "726f76b793208b5958fa3ccefd8227db0b5e20936c724112e396ad09a09c2250",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1531
+        },
+        "verifiedAt": "2026-07-12T13:35:43.867Z"
+      },
+      "20.json": {
+        "name": "Octopunch",
+        "bytes": 1668,
+        "sha256": "d7b0d02916b82a94ed6ed0265959cbf9d76927d317056eece1999ba1c82c0d4d",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1668
+        },
+        "verifiedAt": "2026-07-12T13:35:49.164Z"
+      },
+      "21.json": {
+        "name": "Oritori",
+        "bytes": 1465,
+        "sha256": "c215045b986279ab6e156af549afb79ebc7cda06d041afc32bd3dbeb7d93a52f",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1465
+        },
+        "verifiedAt": "2026-07-12T13:35:55.180Z"
+      },
+      "22.json": {
+        "name": "Rycelium",
+        "bytes": 1560,
+        "sha256": "dd0def2bbacd1f71137ccc5f3291ecf9dfa9ca6a9a165f3a52fbd8f8bdd36b74",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1560
+        },
+        "verifiedAt": "2026-07-12T13:35:58.330Z"
+      },
+      "23.json": {
+        "name": "Shibachu",
+        "bytes": 1573,
+        "sha256": "3a8777e3cd2c46214026d377e3c76afe7e813fd3551d1962fae6aeae47db500f",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1573
+        },
+        "verifiedAt": "2026-07-12T13:36:02.679Z"
+      },
+      "24.json": {
+        "name": "Snek",
+        "bytes": 1689,
+        "sha256": "c2bd1001633e974a52a1225d6c6706d295aea886d95a66e16e35679af3528a60",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1689
+        },
+        "verifiedAt": "2026-07-12T13:36:06.998Z"
+      },
+      "25.json": {
+        "name": "Somnowing",
+        "bytes": 1580,
+        "sha256": "2dbda7cdfc27537e5b370c968e4115bdaad2cde6bafa97ea86302ea090cee65a",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1580
+        },
+        "verifiedAt": "2026-07-12T13:36:12.432Z"
+      },
+      "26.json": {
+        "name": "Velocirock",
+        "bytes": 1486,
+        "sha256": "94c19db7eeb7f4bec2ecc97b81c5ec6a7614a1253d96091fa9cb311537c1225b",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1486
+        },
+        "verifiedAt": "2026-07-12T13:36:16.314Z"
+      },
+      "27.json": {
+        "name": "Voxelion",
+        "bytes": 1771,
+        "sha256": "5e79248c84e958283e43a53e61f60a19ba873e95a7ae4ba2c2e44e26f67d5911",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1771
+        },
+        "verifiedAt": "2026-07-12T13:36:20.423Z"
+      },
+      "28.json": {
+        "name": "Xaldin",
+        "bytes": 1500,
+        "sha256": "89e42cf4d02651be9d37ba7492d2258f3e0aab8f9481914685bb6d0b2152453a",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 1500
+        },
+        "verifiedAt": "2026-07-12T13:36:25.394Z"
+      },
+      "collection.json": {
+        "bytes": 257,
+        "sha256": "f4156543e08be0852da48cc93c09194e8341640246b9e0fb89e1ac04a264980b",
+        "verified": {
+          "gateway": "https://gateway.pinata.cloud/ipfs",
+          "bytes": 257
+        },
+        "verifiedAt": "2026-07-12T13:36:28.858Z"
+      }
+    },
+    "pinata": {
+      "cid": "bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy",
+      "pinnedAt": "2026-07-12T13:22:01.568Z",
+      "paymentReceipt": "eyJuZXR3b3JrIjoiZWlwMTU1Ojg0NTMiLCJwYXllciI6IjB4NzE4MUUzNUU2N2U0NmZFN2E2QWQ3MzJCMjk1NjMzNUNhOTY5OGMzMCIsInN1Y2Nlc3MiOnRydWUsInRyYW5zYWN0aW9uIjoiMHg2YTg0NDdmM2NiYjVmNDFmOWFmYWM5ODZmZDFmOGNlZGY3ZGJkN2Y3NTExZDViZWU0YzVlNWQ3NjFlZjFmMmQ5In0=",
+      "verified": {
+        "gateway": "https://gateway.pinata.cloud/ipfs",
+        "bytes": 1517
+      }
+    },
+    "filecoin": []
+  },
+  "completedAt": "2026-07-12T13:36:31.099Z",
+  "metadataBaseUri": "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/",
+  "cars": {
+    "images": {
+      "file": "tmp/ipfs-publish/images.car",
+      "root": "bafybeicngwx5b64pbr2ot4dh7bfbzvoyjlphdi6s7up7fllvpkk7anhmmm",
+      "bytes": 8430866,
+      "sha256": "6c6a7fc31c1f347f6d9f51610fcb34c6bde5da7d89ebe947b4c34c63856bff4c"
+    },
+    "metadata": {
+      "file": "tmp/ipfs-publish/metadata.car",
+      "root": "bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy",
+      "bytes": 49208,
+      "sha256": "30ccc2318840830136d3fd0b2ed65aed1d2c1933b4e5eb05cc7ed040aed61d09"
+    }
+  }
+}

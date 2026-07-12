@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ClassToken} from "./ClassToken.sol";
 
 interface IUniswapV2Factory {
@@ -61,7 +62,7 @@ interface ITrancheTreasuryFees {
 
 /// @title Versus Graduation Module (ownerless)
 /// @notice Anyone can graduate the open class once the floor is met. Sells automatically swap collected tax.
-contract GraduationModule {
+contract GraduationModule is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address public constant DEAD = address(0x000000000000000000000000000000000000dEaD);
@@ -116,12 +117,12 @@ contract GraduationModule {
     }
 
     /// @notice Graduate the current open class once floor is hit. Permissionless.
-    function graduate() external returns (address token, address pair) {
+    function graduate() external nonReentrant returns (address token, address pair) {
         uint256 classId = syndicate.currentClassId();
         return _graduate(classId);
     }
 
-    function graduateClass(uint256 classId) external returns (address token, address pair) {
+    function graduateClass(uint256 classId) external nonReentrant returns (address token, address pair) {
         return _graduate(classId);
     }
 
@@ -166,7 +167,7 @@ contract GraduationModule {
         }
         classToken.configure(pair);
 
-        classToken.approve(address(router), TOKEN_FOR_LP);
+        IERC20(token).forceApprove(address(router), TOKEN_FOR_LP);
         usdc.forceApprove(address(router), usdcAmount);
 
         (, , uint256 liquidity) = router.addLiquidity(
@@ -182,7 +183,7 @@ contract GraduationModule {
 
         uint256 leftover = classToken.balanceOf(address(this));
         if (leftover > 0) {
-            classToken.transfer(DEAD, leftover);
+            IERC20(token).safeTransfer(DEAD, leftover);
         }
 
         classToken.enableTrading();
@@ -195,14 +196,14 @@ contract GraduationModule {
             active: true
         });
         classIdForToken[token] = classId;
-        classToken.approve(address(router), type(uint256).max);
+        IERC20(token).forceApprove(address(router), type(uint256).max);
 
         syndicate.markGraduated(classId, token, pair, liquidity);
         emit Graduated(classId, token, pair, usdcAmount, liquidity, msg.sender);
     }
 
     /// @notice Called synchronously by a class token after collecting sell tax.
-    function swapCollectedTax() external returns (uint256 usdcOut) {
+    function swapCollectedTax() external nonReentrant returns (uint256 usdcOut) {
         uint256 classId = classIdForToken[msg.sender];
         if (classId == 0 || graduations[classId].token != msg.sender) revert NotClassToken();
 
@@ -219,7 +220,7 @@ contract GraduationModule {
     }
 
     /// @notice Permissionless fallback for buy tax if no sell arrives to trigger swap-back.
-    function harvestTax(uint256 classId) external returns (uint256 usdcOut) {
+    function harvestTax(uint256 classId) external nonReentrant returns (uint256 usdcOut) {
         return _harvestTax(classId, msg.sender);
     }
 

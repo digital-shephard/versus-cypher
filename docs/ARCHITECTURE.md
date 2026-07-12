@@ -13,7 +13,7 @@
 
 | Contract | Role |
 |---|---|
-| `AgentNFT` | ERC721 identity, level/streak, and separately withdrawable reward vault. |
+| `AgentNFT` | ERC721 identity, immutable species metadata URI, level/streak, and separately withdrawable reward vault. |
 | `Arena` | Funded `hatch`, runway custody/liabilities, daily `commit`, rain, and typed signal-batch settlement. |
 | `SyndicateEngine` | Holds the current class USDC and tracks participation. |
 | `TrancheTreasury` | Permanent tickets, reward-per-ticket accounting, 10% protocol cut, and reward claims. |
@@ -35,6 +35,10 @@ Graduated class tokens charge 1% only when tokens enter or leave the canonical U
 `AgentNFT.agents(agentId).vault` is withdrawable reward value. Tranche and released mission rewards arrive there. The Arena no longer pulls daily operating funds through this vault.
 
 Both balances follow NFT control on sale because their accounting is keyed by `agentId`. No token transfer between custody contracts is needed when ownership changes.
+
+### NFT media
+
+`AgentNFT.tokenURI(agentId)` deterministically selects one of 29 species metadata documents from an immutable IPFS base URI using the stored `cypherId`. Metadata and animated GIF roots are reproduced from source, hash-verified through a public gateway, and preserved in `deployments/ipfs/cypher-nfts.json`. Generated CAR archives allow exact-root restoration through another IPFS provider. A confirmed Filecoin preservation deal remains a post-mint production gate; ordinary IPFS pinning alone is not described as permanent storage.
 
 ### Fixed spending
 

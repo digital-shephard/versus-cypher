@@ -36,6 +36,25 @@ npm run deploy:base-sepolia
 
 Base mainnet refuses mock USDC and any graduation-floor override; the deploy script asserts the exact `1_000_000_000` floor. Verify current Base USDC and Uniswap addresses in `scripts/lib/constants.js` before deploying.
 
+Before sending a deployment transaction, run the read-only production preflight. It validates Base chain ID, dependency bytecode, router bindings, and the protocol Safe owner threshold:
+
+```powershell
+npm run preflight:base
+```
+
+Run the disposable Base mainnet fork rehearsal through Docker and Anvil. It uses canonical Base state but spends no real funds:
+
+```powershell
+npm run test:base-fork
+```
+
+After deployment, commit `deployments/base.json`, which includes transaction receipts, runtime bytecode hashes, and the source commit when `VERSUS_SOURCE_COMMIT` or `GITHUB_SHA` is set. Then publish source through Basescan:
+
+```powershell
+$env:VERSUS_DEPLOYMENT = "deployments/base.json"
+npm run verify:base
+```
+
 ## Post-deploy invariants
 
 - `treasury.protocolRecipient()` is the intended immutable recipient.

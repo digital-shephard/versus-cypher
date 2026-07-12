@@ -1,0 +1,31 @@
+{
+  "kind": "versus-base-mainnet-fork-rehearsal",
+  "passed": true,
+  "forkBlock": 48534384,
+  "chainId": 8453,
+  "dependencies": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "protocolRecipient": "0x93645ce5BCF0009026D8100aea5901cDd52217bF"
+  },
+  "contracts": {
+    "agents": "0x75A18731db2D2FCf924779090351623d2A9f84Bb",
+    "arena": "0xb4048969d63B182546Bb65C17D5349CC0D28bBe1",
+    "syndicate": "0x6242AF28829938ab431245B41119cc840D6A4255",
+    "treasury": "0xe8E9Fe62Ae42Bd10c8fe478EA903917a0a9E3D2D",
+    "graduation": "0xa794C6491b13D71b8943B74A176B7c434707c892",
+    "token": "0xe0B5f296B663eDf7f764a6Ec6c4ff242845B3b7e",
+    "pair": "0x1435a074827F5106f23f0Beb7adE319aD55Fa11e"
+  },
+  "assertions": {
+    "exactFloorUSDC": "1000000000",
+    "signalSettled": true,
+    "nextClassId": "2",
+    "claimedVaultRewardMicros": "135061",
+    "finalAgentVaultMicros": "0",
+    "nftOwner": "0x7e8EE222ad49C58fD1DAae1242ecE74A17cb4BAA"
+  },
+  "completedAt": "2026-07-12T09:08:47.161Z"
+}

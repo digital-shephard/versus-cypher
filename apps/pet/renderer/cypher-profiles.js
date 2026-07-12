@@ -382,16 +382,30 @@
   "hokkaidowave": {
     "name": "HokkaidoWave",
     "type": "Water",
-    "rarity": 0,
-    "description": "One of three elemental dogs, HokkaidoWave represents the shy and mysterious water spirit.",
-    "archivePending": true
+    "rarity": 4,
+    "description": "One of three elemental dogs, HokkaidoWave embodies the water spirit. Quiet and watchful, it draws moisture from the air into a flowing mantle and can cross open water without disturbing its surface. The tide-like flame at its tail brightens before storms.",
+    "health": 162,
+    "damageMin": 44,
+    "damageMax": 54,
+    "critChance": 8,
+    "strength": 28,
+    "stamina": 42,
+    "dexterity": 16,
+    "spirit": 17
   },
   "kamakasu": {
     "name": "Kamakasu",
-    "type": "Unknown",
-    "rarity": 0,
-    "description": "This Cypher's original field record has not yet been recovered.",
-    "archivePending": true
+    "type": "Flying",
+    "rarity": 3,
+    "description": "Kamakasu is a vigilant forest bird whose long ribbon feathers harden into razor-fine blades in flight. It remains motionless for hours among bare branches, then strikes with a burst of crimson wings before its prey hears the leaves move.",
+    "health": 112,
+    "damageMin": 27,
+    "damageMax": 33,
+    "critChance": 10,
+    "strength": 17,
+    "stamina": 18,
+    "dexterity": 15,
+    "spirit": 9
   }
 };
   const MAXIMA = {

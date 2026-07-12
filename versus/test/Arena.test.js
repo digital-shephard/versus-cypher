@@ -28,6 +28,10 @@ describe("Versus Arena (ownerless)", function () {
       .to.emit(arena, "Hatched")
       .withArgs(1, alice.address, 0, MIN_RUNWAY);
     expect(await agents.ownerOf(1)).to.equal(alice.address);
+    expect(await agents.tokenURI(1)).to.equal(
+      "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/0.json"
+    );
+    await expect(agents.tokenURI(2)).to.be.revertedWithCustomError(agents, "InvalidAgent");
     expect(await arena.runway(1)).to.equal(MIN_RUNWAY);
     expect(await arena.totalRunwayLiability()).to.equal(MIN_RUNWAY);
     expect(await usdc.balanceOf(await arena.getAddress())).to.equal(MIN_RUNWAY);
@@ -195,6 +199,16 @@ describe("Versus Arena (ownerless)", function () {
     expect(await arena.runway(1)).to.equal(MIN_RUNWAY - PENNY);
     await agents.connect(bob).withdraw(1, ethers.parseUnits("10", 6));
     expect((await agents.getAgent(1)).vault).to.equal(0);
+  });
+
+  it("rejects vault credits that cannot fit the immutable uint128 accounting field", async function () {
+    const { alice, usdc, agents, arena } = await deployVersus();
+    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await usdc.connect(alice).approve(await agents.getAddress(), ethers.MaxUint256);
+    await expect(agents.connect(alice).deposit(1, 1n << 128n)).to.be.revertedWithCustomError(
+      agents,
+      "VaultOverflow"
+    );
   });
 
   it("allocates 10% to protocol and 90% to tickets in the fee transaction", async function () {

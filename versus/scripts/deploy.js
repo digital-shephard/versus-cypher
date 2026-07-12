@@ -305,11 +305,22 @@ function writeOut({ network, deployer, protocolRecipient, graduationFloor, usedM
       permanentDailyVoiceCredentials: true,
       publicGraduateSwapBackContinuousClaim: true,
     },
+    sourceCommit: process.env.GITHUB_SHA || process.env.VERSUS_SOURCE_COMMIT || null,
+    runtimeBytecode: {},
     deployedAt: new Date().toISOString(),
   };
 
-  return hre.ethers.provider.getNetwork().then((net) => {
+  return hre.ethers.provider.getNetwork().then(async (net) => {
     out.chainId = Number(net.chainId);
+    for (const [label, address] of Object.entries(contracts)) {
+      if (typeof address !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(address)) continue;
+      const code = await hre.ethers.provider.getCode(address);
+      out.runtimeBytecode[label] = {
+        address: hre.ethers.getAddress(address),
+        bytes: (code.length - 2) / 2,
+        keccak256: hre.ethers.keccak256(code),
+      };
+    }
     const dir = path.join(__dirname, "..", "deployments");
     fs.mkdirSync(dir, { recursive: true });
     const file = process.env.VERSUS_DEPLOYMENT_OUT

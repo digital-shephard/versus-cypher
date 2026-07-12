@@ -1,0 +1,19 @@
+{
+  "name": "versus-cypher-storage-publisher",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic IPFS and Filecoin publisher for Versus Cypher NFT media and metadata",
+  "scripts": {
+    "publish": "node upload-cypher-nfts.js",
+    "verify": "node upload-cypher-nfts.js --verify-only",
+    "pin:pinata": "node pin-car-x402.mjs"
+  },
+  "dependencies": {
+    "@lighthouse-web3/sdk": "0.4.7",
+    "@x402/core": "2.18.0",
+    "@x402/evm": "2.18.0",
+    "@x402/fetch": "2.18.0",
+    "ipfs-car": "3.1.0",
+    "viem": "2.55.1"
+  }
+}

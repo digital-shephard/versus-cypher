@@ -17,7 +17,7 @@ module.exports = {
     // canonical Base Uniswap V2 fork addresses when graduating IRL.
     // For local/mock we deploy MockUniswapV2*.
     // Base Uniswap V2 factory/router (Uniswap deployed V2 on Base):
-    uniswapV2Factory: "0x8909Dc15e40173Ff4699343b9eB28605b28eC70f",
+    uniswapV2Factory: "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
     uniswapV2Router: "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
   },
 
