@@ -18,9 +18,9 @@ async function main() {
 
   console.log("1) Rain pennies into the open class (we are the fund)");
   const runway = hre.ethers.parseUnits("7", 6);
-  await (await arena.connect(alice).hatch(0, runway)).wait();
-  await (await arena.connect(bob).hatch(1, runway)).wait();
-  await (await arena.connect(carol).hatch(2, runway)).wait();
+  await (await arena.connect(alice).hatch(runway)).wait();
+  await (await arena.connect(bob).hatch(runway)).wait();
+  await (await arena.connect(carol).hatch(runway)).wait();
   await (await arena.connect(alice).commit(1)).wait();
   await (await arena.connect(bob).commit(2)).wait();
   await (await arena.connect(carol).commit(3)).wait();

@@ -19,7 +19,7 @@ describe("Versus onboard E2E (ownerless local chain)", function () {
     await usdc.connect(human).approve(await arena.getAddress(), ethers.MaxUint256);
     await usdc.connect(human).approve(await agents.getAddress(), ethers.MaxUint256);
 
-    await arena.connect(human).hatch(0, MIN_RUNWAY);
+    await arena.connect(human).hatch(MIN_RUNWAY);
     expect(await agents.ownerOf(1)).to.equal(human.address);
 
     // Rain until floor (3 pennies over 3 days)
@@ -73,7 +73,7 @@ describe("Versus onboard E2E (ownerless local chain)", function () {
     await usdc.connect(seller).approve(await arena.getAddress(), ethers.MaxUint256);
     await usdc.connect(seller).approve(await agents.getAddress(), ethers.MaxUint256);
 
-    await arena.connect(seller).hatch(1, MIN_RUNWAY);
+    await arena.connect(seller).hatch(MIN_RUNWAY);
     await agents.connect(seller).deposit(1, ethers.parseUnits("4", 6));
     await agents.connect(seller).transferFrom(seller.address, buyer.address, 1);
 
@@ -93,7 +93,7 @@ describe("Versus onboard E2E (ownerless local chain)", function () {
       const h = humans[i];
       await usdc.mint(h.address, MIN_RUNWAY);
       await usdc.connect(h).approve(await arena.getAddress(), ethers.MaxUint256);
-      await arena.connect(h).hatch(i % 3, MIN_RUNWAY);
+      await arena.connect(h).hatch(MIN_RUNWAY);
       await arena.connect(h).commit(i + 1);
     }
 

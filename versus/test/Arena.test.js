@@ -24,27 +24,52 @@ async function deployVersus() {
 describe("Versus Arena (ownerless)", function () {
   it("hatches an agent with Arena-held nonwithdrawable runway", async function () {
     const { alice, usdc, agents, arena } = await deployVersus();
-    await expect(arena.connect(alice).hatch(0, MIN_RUNWAY))
-      .to.emit(arena, "Hatched")
-      .withArgs(1, alice.address, 0, MIN_RUNWAY);
+    const hatch = await arena.connect(alice).hatch(MIN_RUNWAY);
+    await expect(hatch).to.emit(arena, "Hatched");
+    const receipt = await hatch.wait();
     expect(await agents.ownerOf(1)).to.equal(alice.address);
+    const agent = await agents.getAgent(1);
+    const block = await ethers.provider.send("eth_getBlockByNumber", [ethers.toQuantity(receipt.blockNumber), false]);
+    const network = await ethers.provider.getNetwork();
+    const expectedCypherId = BigInt(ethers.solidityPackedKeccak256(
+      ["bytes32", "address", "uint256", "uint256", "uint256", "address"],
+      [block.mixHash, alice.address, 1n, receipt.blockNumber, network.chainId, await arena.getAddress()]
+    )) % 29n;
+    expect(agent.cypherId).to.equal(expectedCypherId);
+    expect(agent.cypherId).to.be.lessThan(29n);
     expect(await agents.tokenURI(1)).to.equal(
-      "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/0.json"
+      `ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/${agent.cypherId}.json`
     );
     await expect(agents.tokenURI(2)).to.be.revertedWithCustomError(agents, "InvalidAgent");
     expect(await arena.runway(1)).to.equal(MIN_RUNWAY);
     expect(await arena.totalRunwayLiability()).to.equal(MIN_RUNWAY);
     expect(await usdc.balanceOf(await arena.getAddress())).to.equal(MIN_RUNWAY);
     expect(await arena.runwaySolvent()).to.equal(true);
-    await expect(arena.connect(alice).hatch(0, MIN_RUNWAY - 1n)).to.be.revertedWithCustomError(
+    await expect(arena.connect(alice).hatch(MIN_RUNWAY - 1n)).to.be.revertedWithCustomError(
       arena,
       "RunwayBelowMinimum"
     );
   });
 
+  it("selects species on-chain and always maps the result to immutable metadata", async function () {
+    const { alice, usdc, agents, arena } = await deployVersus();
+    await usdc.mint(alice.address, ethers.parseUnits("200", 6));
+    expect(await agents.CYPHER_COUNT()).to.equal(29n);
+    expect(arena.interface.hasFunction("hatch(uint8,uint256)")).to.equal(false);
+    for (let index = 0; index < 29; index += 1) {
+      await arena.connect(alice).hatch(MIN_RUNWAY);
+      const agentId = index + 1;
+      const agent = await agents.getAgent(agentId);
+      expect(agent.cypherId).to.be.lessThan(29n);
+      expect(await agents.tokenURI(agentId)).to.equal(
+        `ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/${agent.cypherId}.json`
+      );
+    }
+  });
+
   it("commits once per day and auto-awards a ticket", async function () {
     const { alice, arena, syndicate, treasury } = await deployVersus();
-    await arena.connect(alice).hatch(1, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
 
     const classId = await syndicate.currentClassId();
@@ -59,7 +84,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("levels and streaks across days into the same open class", async function () {
     const { alice, agents, arena, syndicate } = await deployVersus();
-    await arena.connect(alice).hatch(2, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
 
     await ethers.provider.send("evm_increaseTime", [86400]);
@@ -76,7 +101,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("daily commit spends one penny from runway and preserves reward vault", async function () {
     const { alice, agents, arena } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
 
     expect(await arena.runway(1)).to.equal(MIN_RUNWAY - PENNY);
@@ -85,11 +110,12 @@ describe("Versus Arena (ownerless)", function () {
 
   it("batches vault rain and awards exactly one ticket per confirmed penny", async function () {
     const { alice, agents, arena, syndicate, treasury } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    const classId = await syndicate.currentClassId();
 
     await expect(arena.connect(alice).rainFromRunway(1, 7))
       .to.emit(arena, "Rained")
-      .withArgs(1, alice.address, await arena.currentDay(), 7, PENNY * 7n);
+      .withArgs(1, classId, alice.address, await arena.currentDay(), 7, PENNY * 7n, PENNY * 7n);
 
     const agent = await agents.getAgent(1);
     expect(agent.vault).to.equal(0n);
@@ -99,7 +125,6 @@ describe("Versus Arena (ownerless)", function () {
     expect(await treasury.tickets(1)).to.equal(7n);
     expect(await treasury.totalTickets()).to.equal(7n);
 
-    const classId = await syndicate.currentClassId();
     const cls = await syndicate.getClass(classId);
     expect(cls.totalCommitted).to.equal(PENNY * 7n);
     expect(cls.participantCount).to.equal(1n);
@@ -108,7 +133,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("rejects empty, oversized, and unfunded rain batches", async function () {
     const { alice, arena } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await expect(arena.connect(alice).rainFromRunway(1, 0)).to.be.revertedWithCustomError(
       arena,
       "InvalidRainAmount"
@@ -123,7 +148,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("settles a nonreplayable batch of durable signals from the Cypher vault", async function () {
     const { alice, agents, arena, syndicate, treasury } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     const classId = await syndicate.currentClassId();
     const batchRoot = ethers.id("versus signal batch one");
     const typeCounts = [1, 0, 2, 0, 0, 0, 0, 0];
@@ -133,7 +158,7 @@ describe("Versus Arena (ownerless)", function () {
 
     await expect(arena.connect(alice).settleSignalBatchFromRunway(1, classId, batchRoot, typeCounts))
       .to.emit(arena, "SignalBatchSettled")
-      .withArgs(1, classId, batchRoot, 3, 7, PENNY * 7n, typeCountsHash);
+      .withArgs(1, classId, batchRoot, 3, 7, PENNY * 7n, PENNY * 7n, typeCountsHash);
 
     expect(await arena.settledSignalBatches(1, batchRoot)).to.equal(true);
     expect((await agents.getAgent(1)).vault).to.equal(0n);
@@ -148,7 +173,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("rejects invalid stale nonowner and unfunded signal batches", async function () {
     const { alice, bob, arena, syndicate } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     const classId = await syndicate.currentClassId();
     const root = ethers.id("versus signal batch invalid cases");
 
@@ -174,8 +199,8 @@ describe("Versus Arena (ownerless)", function () {
 
   it("scopes settled roots to each Cypher instead of globally burning copied roots", async function () {
     const { alice, arena, syndicate } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
-    await arena.connect(alice).hatch(1, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     const classId = await syndicate.currentClassId();
     const root = ethers.id("same manifest commitment for distinct agents");
     const counts = [1, 0, 0, 0, 0, 0, 0, 0];
@@ -189,7 +214,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("transfers control of runway with the NFT while rewards stay separately withdrawable", async function () {
     const { alice, bob, usdc, agents, arena } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await usdc.connect(alice).approve(await agents.getAddress(), ethers.MaxUint256);
     await agents.connect(alice).deposit(1, ethers.parseUnits("10", 6));
 
@@ -203,7 +228,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("rejects vault credits that cannot fit the immutable uint128 accounting field", async function () {
     const { alice, usdc, agents, arena } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await usdc.connect(alice).approve(await agents.getAddress(), ethers.MaxUint256);
     await expect(agents.connect(alice).deposit(1, 1n << 128n)).to.be.revertedWithCustomError(
       agents,
@@ -213,8 +238,8 @@ describe("Versus Arena (ownerless)", function () {
 
   it("allocates 10% to protocol and 90% to tickets in the fee transaction", async function () {
     const { deployer, alice, bob, usdc, agents, arena, treasury } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
-    await arena.connect(bob).hatch(1, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    await arena.connect(bob).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
     await arena.connect(bob).commit(2);
 
@@ -240,7 +265,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("makes consecutive fee deposits claimable immediately without a closing transaction", async function () {
     const { deployer, alice, usdc, arena, treasury } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
 
     const firstFees = ethers.parseUnits("10", 6);
@@ -256,8 +281,8 @@ describe("Versus Arena (ownerless)", function () {
 
   it("keeps tickets forever without letting new tickets claim prior rolling rewards", async function () {
     const { deployer, alice, bob, usdc, arena, treasury } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
-    await arena.connect(bob).hatch(1, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    await arena.connect(bob).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
     await arena.connect(bob).commit(2);
 
@@ -287,7 +312,7 @@ describe("Versus Arena (ownerless)", function () {
 
   it("keeps warm commit reasonably thin", async function () {
     const { alice, arena } = await deployVersus();
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
 
     await ethers.provider.send("evm_increaseTime", [86400]);

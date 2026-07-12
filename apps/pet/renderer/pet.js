@@ -76,8 +76,20 @@ async function wireServiceMonitor() {
 function setServiceStage(stage) {
   serviceStage = stage;
   $("shell").dataset.serviceStage = stage;
+  syncServiceScrewControls();
+}
+
+function serviceScrewsCanMove() {
+  return serviceStage === "closed" || serviceStage === "awaiting-screws";
+}
+
+function syncServiceScrewControls() {
+  const canMove = serviceScrewsCanMove();
+  document.querySelectorAll("[data-screw-id]").forEach((button) => {
+    button.disabled = !canMove || button.classList.contains("is-loosening");
+  });
   document.querySelectorAll("[data-loose-screw-id]").forEach((button) => {
-    button.disabled = stage !== "awaiting-screws";
+    button.disabled = !canMove || button.classList.contains("is-returning");
   });
 }
 
@@ -111,7 +123,7 @@ function reopenServiceChassis() {
 }
 
 function loosenServiceScrew(button) {
-  if (serviceStage !== "closed" || button.classList.contains("is-loosening")) return;
+  if (!serviceScrewsCanMove() || button.classList.contains("is-loosening")) return;
   const id = Number(button.dataset.screwId);
   if (!Number.isInteger(id) || removedServiceScrews.has(id)) return;
   button.classList.add("is-loosening");
@@ -120,14 +132,14 @@ function loosenServiceScrew(button) {
     button.classList.remove("is-visible", "is-loosening");
     const loose = document.querySelector(`[data-loose-screw-id="${id}"]`);
     loose.classList.add("is-visible", "is-landed");
-    loose.disabled = serviceStage !== "awaiting-screws";
     removedServiceScrews.add(id);
-    if (removedServiceScrews.size === SERVICE_SCREW_COUNT) openServiceChassis();
+    syncServiceScrewControls();
+    if (serviceStage === "closed" && removedServiceScrews.size === SERVICE_SCREW_COUNT) openServiceChassis();
   }, 620);
 }
 
 function reinstallServiceScrew(loose) {
-  if (serviceStage !== "awaiting-screws" || loose.classList.contains("is-returning")) return;
+  if (!serviceScrewsCanMove() || loose.classList.contains("is-returning")) return;
   const id = Number(loose.dataset.looseScrewId);
   const installed = document.querySelector(`[data-screw-id="${id}"]`);
   if (!installed || !removedServiceScrews.has(id)) return;
@@ -140,15 +152,17 @@ function reinstallServiceScrew(loose) {
   loose.classList.remove("is-landed");
   loose.classList.add("is-returning");
   loose.disabled = true;
+  // Reserve the socket immediately so another removal cannot open the chassis
+  // while this screw is visibly travelling home.
+  removedServiceScrews.delete(id);
   window.setTimeout(() => {
     loose.classList.remove("is-visible", "is-returning");
     loose.style.removeProperty("--return-x");
     loose.style.removeProperty("--return-y");
-    installed.disabled = false;
     installed.classList.add("is-visible", "is-tightening");
-    removedServiceScrews.delete(id);
+    syncServiceScrewControls();
     window.setTimeout(() => installed.classList.remove("is-tightening"), 460);
-    if (removedServiceScrews.size === 0) {
+    if (serviceStage === "awaiting-screws" && removedServiceScrews.size === 0) {
       scheduleServiceStep(() => setServiceStage("closed"), 480);
     }
   }, 520);
@@ -250,6 +264,7 @@ let fundingOpen = false;
 let signalFlipped = false;
 let networkSnapshot = null;
 let networkRefreshLock = false;
+let graduationRunning = false;
 const RAIN_BATCH_MAX = 25;
 let queuedRainPennies = 0;
 let inFlightRainPennies = 0;
@@ -305,15 +320,24 @@ function rnd() {
 
 /* rain depth layers: [lenMin,lenMax, spdMin,spdMax, width, alpha, windMul, rate/s@storm1] */
 const RAIN_LAYERS = [
-  { len0: 4, len1: 6, spd0: 90, spd1: 120, w: 1, a: 0.28, wind: 0.6, rate: 18 },
-  { len0: 7, len1: 10, spd0: 150, spd1: 190, w: 1, a: 0.45, wind: 1, rate: 12 },
-  { len0: 12, len1: 16, spd0: 230, spd1: 280, w: 1.7, a: 0.8, wind: 1, rate: 7 },
+  { len0: 5, len1: 9, spd0: 110, spd1: 155, w: 1.1, a: 0.42, wind: 1.08, rate: 18 },
+  { len0: 9, len1: 14, spd0: 170, spd1: 225, w: 1.35, a: 0.58, wind: 1, rate: 12 },
+  { len0: 14, len1: 21, spd0: 245, spd1: 320, w: 2, a: 0.82, wind: 0.92, rate: 7 },
 ];
+const RAIN_RATE_WINDOW_MS = 4_000;
+const MAX_RAIN_RATE = 5;
+const MAX_RAIN_RATE_SAMPLES = MAX_RAIN_RATE * (RAIN_RATE_WINDOW_MS / 1000);
+const MAX_PENDING_RAIN_BURSTS = 24;
+const MAX_COALESCED_RAIN_PENNIES = 1_000_000;
 
 const W = {
   w: 0, h: 0,
   fill: 0, targetFill: 0, raftFill: 0,
   storm: 0, targetStorm: 0, stormOffAt: 0,
+  verifiedDropsRendered: 0,
+  microburstsRendered: 0,
+  coalescedRainPennies: 0,
+  rainRate: 0, rainPressure: 0, rainTimes: [],
   wind: 0, isNight: false, gradNear: false,
   causticBoost: 0,
   palFrom: new Float32Array(21), palTo: new Float32Array(21), pal: new Float32Array(21),
@@ -322,7 +346,11 @@ const W = {
   bodyGrad: null, glowGrad: null, gradTop: -1,
   surfY: null,
   hash: new Float32Array(32),
-  drops: pool(32, () => ({ x: 0, y: 0, vy: 0, len: 0, layer: 0, gold: false, white: false })),
+  drops: pool(128, () => ({
+    x: 0, y: 0, vy: 0, len: 0, layer: 0,
+    gold: false, white: false, hero: false, front: false,
+    drift: 0, alphaScale: 1, widthScale: 1, headSize: 1, impactScale: 1,
+  })),
   ripples: pool(12, () => ({ x: 0, t: 0, dur: 900, amp: 1, gold: false })),
   splashes: pool(24, () => ({ x: 0, y: 0, vx: 0, vy: 0, t: 0, life: 380 })),
   sparkles: pool(20, () => ({ x: 0, y: 0, t: 0, dur: 1200, size: 1 })),
@@ -1332,22 +1360,75 @@ function surfaceYAt(x) {
 /* ------------------------------------------------------------------
    Spawners + impact FX
    ------------------------------------------------------------------ */
-function spawnDrop(layerIdx, gold, white) {
+function spawnDrop(layerIdx, options = {}) {
   const d = poolTake(W.drops);
   if (!d) return;
   const L = RAIN_LAYERS[layerIdx];
   d.layer = layerIdx;
-  d.gold = !!gold;
-  d.white = !!white;
+  d.gold = Boolean(options.gold);
+  d.white = Boolean(options.white);
+  d.hero = Boolean(options.hero);
+  d.front = Boolean(options.front);
   d.len = L.len0 + rnd() * (L.len1 - L.len0);
   d.vy = L.spd0 + rnd() * (L.spd1 - L.spd0);
-  d.x = (0.06 + 0.88 * rnd()) * W.w;
-  d.y = -d.len - rnd() * 20;
-  if (gold || white) {
-    d.x = (0.32 + 0.36 * rnd()) * W.w; // hero drops fall near the raft
-    d.len = 12;
-    d.vy = 200;
+  d.y = -d.len - rnd() * (d.hero ? 18 : 32);
+  d.drift = options.drift ?? (rnd() - 0.5) * 0.018;
+  d.alphaScale = options.alphaScale ?? 1;
+  d.widthScale = options.widthScale ?? 1;
+  d.impactScale = options.impactScale ?? 1;
+  d.headSize = options.headSize ?? (layerIdx === 2 ? 1.35 : layerIdx === 1 ? 1 : 0.7);
+  if (d.hero) {
+    d.len = 12 + rnd() * 8;
+    d.vy = 230 + rnd() * 80;
+    d.widthScale = options.widthScale ?? 1.05;
+    d.headSize = options.headSize ?? 1.75;
   }
+  const targetX = clamp(options.xNorm ?? (0.06 + 0.88 * rnd()), 0.035, 0.965) * W.w;
+  const fallDistance = Math.max(60, waterTopBase(W.fill) - d.y);
+  d.x = targetX - (W.wind + d.drift) * L.wind * fallDistance;
+}
+
+function spawnMicroburst(kind, pressure = W.rainPressure) {
+  const self = kind === "self";
+  const center = self ? 0.42 + rnd() * 0.16 : 0.09 + rnd() * 0.82;
+  const burstDrift = Math.sin(performance.now() / 2200 + center * 4.2) * (0.018 + pressure * 0.028);
+  spawnDrop(2, {
+    xNorm: center,
+    gold: self,
+    white: !self,
+    hero: true,
+    front: !self && rnd() < 0.38,
+    impactScale: 1,
+    drift: burstDrift,
+  });
+
+  const satellites = 2 + Math.floor(clamp(pressure, 0, 1) * 3 + rnd() * 1.7);
+  const spread = 0.26 + 0.38 * clamp(pressure, 0, 1);
+  for (let i = 0; i < satellites; i++) {
+    const depth = rnd();
+    const layer = depth < 0.15 ? 0 : depth < 0.6 ? 1 : 2;
+    spawnDrop(layer, {
+      xNorm: center + (rnd() - 0.5) * spread,
+      front: layer === 2 && rnd() < 0.68,
+      alphaScale: 0.76 + rnd() * 0.22,
+      widthScale: 0.86 + rnd() * 0.34,
+      impactScale: layer === 2 ? 0.32 : layer === 1 ? 0.16 : 0,
+      drift: burstDrift + (rnd() - 0.5) * (0.012 + pressure * 0.012),
+    });
+  }
+  W.microburstsRendered += 1;
+}
+
+function noteVerifiedRain(now) {
+  W.rainTimes.push(now);
+  while (W.rainTimes.length && W.rainTimes[0] < now - RAIN_RATE_WINDOW_MS) W.rainTimes.shift();
+  if (W.rainTimes.length > MAX_RAIN_RATE_SAMPLES) {
+    W.rainTimes.splice(0, W.rainTimes.length - MAX_RAIN_RATE_SAMPLES);
+  }
+  W.rainRate = W.rainTimes.length / (RAIN_RATE_WINDOW_MS / 1000);
+  W.rainPressure = clamp(Math.pow(W.rainRate / MAX_RAIN_RATE, 0.72), 0.04, 1);
+  W.targetStorm = Math.max(W.targetStorm * 0.92, W.rainPressure);
+  W.stormOffAt = now + 2_800;
 }
 
 function spawnRipple(x, amp, gold, delay) {
@@ -1395,52 +1476,58 @@ function spawnSparkle(x, y, dur, size) {
   s.size = size;
 }
 
-function dropImpact(xPx, layerIdx, gold) {
+function dropImpact(xPx, layerIdx, gold, impactScale = 1) {
+  if (impactScale <= 0) return;
   const xn = xPx / W.w;
   const prox = Math.max(0, 1 - Math.abs(xn - 0.5) / 0.55);
-  const weight = gold ? 1.6 : layerIdx === 2 ? 1.0 : 0.6;
+  const weight = (gold ? 1.6 : layerIdx === 2 ? 1.0 : 0.6) * impactScale;
   PH.heave.v += 10 * prox * weight;
   PH.roll.v += clamp((xn - 0.5) / 0.35, -1, 1) * 9 * prox * weight;
 
-  if (layerIdx >= 1 || gold) spawnRipple(xPx, gold ? 1.4 : 1, gold, 0);
+  if (gold || impactScale >= 0.7) spawnRipple(xPx, gold ? 1.4 : 1, gold, 0);
   if (gold) spawnRipple(xPx, 0.8, true, 180);
-  if (layerIdx === 2 || gold) spawnCrown(xPx, surfaceYAt(xPx), gold ? 4 : 3);
+  if (gold || impactScale >= 0.7) {
+    spawnCrown(xPx, surfaceYAt(xPx), (gold ? 4 : 3) + Math.round(W.rainPressure * 2));
+  }
   if (gold) {
     spawnSparkle(xPx - 6 + rnd() * 12, surfaceYAt(xPx) - 3, 900, 2);
     spawnSparkle(xPx - 8 + rnd() * 16, surfaceYAt(xPx) + 4, 1100, 1);
   }
-  W.causticBoost = Math.min(0.2, W.causticBoost + (gold ? 0.08 : 0.02));
+  W.causticBoost = Math.min(0.2, W.causticBoost + (gold ? 0.08 : 0.02) * impactScale);
 }
 
 /* ------------------------------------------------------------------
-   Event choreography
+   Verified event choreography
    ------------------------------------------------------------------ */
-let displayPotTimer = null;
 
-function potEvent(kind, pennies, { alreadyApplied = false } = {}) {
+function verifiedRainDrop(kind, classPotMicros) {
   if (!bond || bond.phase !== "active") return;
-  pennies = Math.max(1, pennies | 0);
-  W.lastPotEventAt = performance.now();
-
-  const confirmedPot = Number(bond.classPotMicros || 0);
-  const prevPot = alreadyApplied ? Math.max(0, confirmedPot - pennies * 10_000) : confirmedPot;
-  if (!alreadyApplied) bond.classPotMicros = prevPot + pennies * 10_000;
-  const prevFill = clamp(prevPot / FLOOR_MICROS, 0, 1);
-  const nextFill = clamp(bond.classPotMicros / FLOOR_MICROS, 0, 1);
+  W.verifiedDropsRendered += 1;
+  const now = performance.now();
+  W.lastPotEventAt = now;
+  noteVerifiedRain(now);
+  const prevFill = W.targetFill;
+  const absoluteFill = clamp(Number(classPotMicros) / FLOOR_MICROS, 0, 1);
+  const nextFill = Math.max(prevFill, absoluteFill);
   W.targetFill = nextFill;
-  saveDirty = true;
-
-  // the rising water shoves the raft before its slow tracker catches up
+  bond.classPotMicros = Math.max(Number(bond.classPotMicros || 0), Number(classPotMicros));
+  updateReadout({ preserveFill: true });
   PH.heave.v -= (nextFill - prevFill) * 0.62 * W.h * 1.2;
 
+  const pendingBursts = W.goldQueue + W.whiteQueue;
   if (kind === "self") {
+    if (pendingBursts >= MAX_PENDING_RAIN_BURSTS && W.whiteQueue > 0) {
+      W.whiteQueue -= 1;
+      W.coalescedRainPennies = Math.min(MAX_COALESCED_RAIN_PENNIES, W.coalescedRainPennies + 1);
+    }
+    if (W.goldQueue + W.whiteQueue < MAX_PENDING_RAIN_BURSTS) W.goldQueue += 1;
+    else W.coalescedRainPennies = Math.min(MAX_COALESCED_RAIN_PENNIES, W.coalescedRainPennies + 1);
     const cistern = $("cistern");
     if (cistern) {
       cistern.classList.remove("blip");
       void cistern.offsetWidth;
       cistern.classList.add("blip");
     }
-    W.goldQueue += pennies;
     setTimeout(() => {
       const face = $("face-motion");
       if (face) {
@@ -1448,32 +1535,19 @@ function potEvent(kind, pennies, { alreadyApplied = false } = {}) {
         void face.offsetWidth;
         face.classList.add("hop");
       }
-      toast(`+${pennies} ticket${pennies === 1 ? "" : "s"}`);
-      // hop landing hits the logs at the 70% keyframe (~365ms in)
-      setTimeout(() => {
-        PH.heave.v += 16;
-        PH.roll.v += rnd() < 0.5 ? -5 : 5;
-      }, 365);
+      toast("+1 verified ticket");
     }, 470);
-  } else if (pennies <= 3) {
-    W.whiteQueue += pennies;
+  } else if (pendingBursts < MAX_PENDING_RAIN_BURSTS) {
+    W.whiteQueue += 1;
   } else {
-    W.targetStorm = clamp(pennies / 40, 0.15, 0.65);
-    W.stormOffAt = performance.now() + 2000 + pennies * 120;
-    W.causticBoost = Math.min(0.2, W.causticBoost + 0.12);
+    W.coalescedRainPennies = Math.min(MAX_COALESCED_RAIN_PENNIES, W.coalescedRainPennies + 1);
   }
 
-  for (const m of [0.25, 0.5, 0.75, 0.9]) {
-    if (prevFill < m && nextFill >= m) milestone(m);
+  for (const milestoneFill of [0.25, 0.5, 0.75, 0.9]) {
+    if (prevFill < milestoneFill && nextFill >= milestoneFill) milestone(milestoneFill);
   }
   $("shell")?.setAttribute("data-grad", nextFill >= 0.95 ? "near" : "far");
   W.gradNear = nextFill >= 0.95;
-
-  clearTimeout(displayPotTimer);
-  displayPotTimer = setTimeout(() => {
-    updateReadout();
-    updateModeScreen();
-  }, 460);
 }
 
 function rainBatchDelay() {
@@ -1557,9 +1631,9 @@ async function flushRainBatch() {
     const result = await window.versus.rainFromRunway(pennies);
     if (!result || Number(result.pennies) !== pennies) throw new Error("rain receipt mismatch");
     bond = result.state;
-    potEvent("self", pennies, { alreadyApplied: true });
+    updateReadout({ preserveFill: true });
     updateModeScreen();
-    setRainBatchStatus(`CONFIRMED +${pennies}`);
+    setRainBatchStatus(`BASE OK · WAITING ×${pennies}`);
     setTimeout(() => {
       if (!queuedRainPennies && !inFlightRainPennies) setRainBatchStatus("");
     }, 900);
@@ -1601,13 +1675,13 @@ function toast(text) {
 }
 
 let lastAgents = -1;
-function updateReadout() {
+function updateReadout({ preserveFill = false } = {}) {
   const pot = bond?.classPotMicros ?? 0;
-  const agents = Math.max(1, bond?.classAgents ?? 1);
+  const agents = Math.max(0, bond?.classAgents ?? 0);
   const others = Math.max(0, agents - 1);
   const fill = clamp(Number(pot) / FLOOR_MICROS, 0, 1);
 
-  W.targetFill = fill;
+  if (!preserveFill) W.targetFill = fill;
 
   $("pot-now").textContent = formatClassPot(pot);
   $("pot-goal").textContent = `/ $${formatCompact(FLOOR_USDC)}`;
@@ -1627,6 +1701,83 @@ function updateReadout() {
     }
   }
   lastAgents = agents;
+}
+
+function updateRainDrops(dt) {
+  for (let i = W.drops.n - 1; i >= 0; i--) {
+    const d = W.drops.items[i];
+    const L = RAIN_LAYERS[d.layer];
+    const drift = (W.wind + d.drift) * L.wind;
+    d.y += d.vy * dt / 1000;
+    d.x += drift * d.vy * dt / 1000;
+    const impactX = d.x + drift * d.len;
+    if (d.y + d.len >= surfaceYAt(impactX)) {
+      dropImpact(impactX, d.layer, d.gold, d.impactScale);
+      poolKill(W.drops, i);
+      continue;
+    }
+    if (d.y > W.h + 20 || d.x < -W.w || d.x > W.w * 2) poolKill(W.drops, i);
+  }
+}
+
+function drawRainDrops(c, ts, front) {
+  c.save();
+  c.lineCap = "round";
+  for (let layer = 0; layer < RAIN_LAYERS.length; layer++) {
+    for (let i = 0; i < W.drops.n; i++) {
+      const d = W.drops.items[i];
+      if (d.layer !== layer || d.front !== front) continue;
+      const L = RAIN_LAYERS[d.layer];
+      const slant = (W.wind + d.drift) * L.wind * d.len;
+      const splitX = d.x + slant * 0.58;
+      const splitY = d.y + d.len * 0.58;
+      const headX = d.x + slant;
+      const headY = d.y + d.len;
+      const color = d.gold
+        ? (W.isNight ? "#cfe8ff" : "#ffd98a")
+        : d.white
+          ? (W.isNight ? "#c9edf4" : "#d9f2ec")
+          : d.layer === 2
+            ? W.css.foam
+            : W.isNight ? "rgba(128,174,190,1)" : "rgba(151,194,201,1)";
+      const shimmer = d.gold ? (Math.floor(ts / 50) % 2 ? 1 : 0.82) : 1;
+      const alpha = (d.gold ? 0.96 : d.white ? 0.82 : L.a) * d.alphaScale * shimmer;
+      const width = L.w * d.widthScale;
+
+      c.strokeStyle = color;
+      c.globalAlpha = alpha * 0.24;
+      c.lineWidth = Math.max(0.55, width * 0.58);
+      c.beginPath();
+      c.moveTo(d.x, d.y);
+      c.lineTo(splitX, splitY);
+      c.stroke();
+
+      c.globalAlpha = alpha * 0.78;
+      c.lineWidth = width;
+      c.beginPath();
+      c.moveTo(splitX, splitY);
+      c.lineTo(headX, headY);
+      c.stroke();
+
+      const head = d.headSize;
+      c.globalAlpha = alpha;
+      c.fillStyle = color;
+      c.beginPath();
+      c.moveTo(headX, headY - head * 1.3);
+      c.lineTo(headX + head * 0.78, headY - head * 0.1);
+      c.lineTo(headX, headY + head);
+      c.lineTo(headX - head * 0.78, headY - head * 0.1);
+      c.closePath();
+      c.fill();
+
+      if (d.hero) {
+        c.globalAlpha = alpha * 0.8;
+        c.fillStyle = d.gold ? W.css.spec : "#f5fff5";
+        c.fillRect(Math.round(headX), Math.round(headY - head), 1, 1);
+      }
+    }
+  }
+  c.restore();
 }
 
 /* ------------------------------------------------------------------
@@ -1663,7 +1814,9 @@ function drawFrame(ts) {
   }
   const tau = W.targetStorm > W.storm ? 800 : 6000;
   W.storm += (W.targetStorm - W.storm) * (1 - Math.exp(-dt / tau));
-  W.wind = Math.sin(ts / 23000) * 0.12 + Math.sin(ts / 7100) * 0.05;
+  W.wind = Math.sin(ts / 23000) * 0.1 + Math.sin(ts / 9300) * 0.04
+    + W.storm * (Math.sin(ts / 3200) * 0.2 + Math.sin(ts / 8100) * 0.08);
+  $("cistern")?.style.setProperty("--storm-shade-opacity", (W.storm * 0.24).toFixed(3));
   W.causticBoost *= Math.exp(-dt / 500);
 
   if (W.palT < 1) {
@@ -1675,24 +1828,12 @@ function drawFrame(ts) {
   const gradTopNow = waterTopBase(W.fill);
   if (W.paletteDirty || Math.abs(gradTopNow - W.gradTop) > 3) rebuildPalette(gradTopNow);
 
-  /* --- spawn schedulers --- */
+  /* --- verified penny scheduler --- */
   const storm = W.storm;
-  if (storm > 0.01) {
-    W.accFar += RAIN_LAYERS[0].rate * storm * dt / 1000;
-    W.accMid += RAIN_LAYERS[1].rate * storm * dt / 1000;
-    W.accNear += RAIN_LAYERS[2].rate * storm * dt / 1000;
-    while (W.accFar >= 1) { W.accFar--; spawnDrop(0); }
-    while (W.accMid >= 1) { W.accMid--; spawnDrop(1); }
-    while (W.accNear >= 1) { W.accNear--; spawnDrop(2); }
-  }
   if ((W.goldQueue > 0 || W.whiteQueue > 0) && ts > W.nextCoinAt) {
-    W.nextCoinAt = ts + 110 + rnd() * 60;
-    if (W.goldQueue > 0) { W.goldQueue--; spawnDrop(2, true, false); }
-    else { W.whiteQueue--; spawnDrop(2, false, true); }
-  }
-  if (ts > W.nextAmbientAt) {
-    W.nextAmbientAt = ts + 8000 + rnd() * 12000;
-    if (storm < 0.05) spawnDrop(0);
+    W.nextCoinAt = ts + 88 + (1 - storm) * 130 + rnd() * 42;
+    if (W.goldQueue > 0) { W.goldQueue--; spawnMicroburst("self"); }
+    else { W.whiteQueue--; spawnMicroburst("peer"); }
   }
   const waterH0 = h - waterTopBase(W.fill);
   if (ts > W.nextBubbleAt) {
@@ -1749,6 +1890,7 @@ function drawFrame(ts) {
   for (let i = 0, x = 0; x <= w + 4; i++, x += 4) {
     surf[i] = waterTop + A1 * Math.sin(x * 0.045 + (ts * TWO_PI) / 2900) + A2 * Math.sin(x * 0.11 - (ts * TWO_PI) / 1700);
   }
+  updateRainDrops(dt);
 
   if (!skipDraw) {
     ctx.clearRect(0, 0, w, h);
@@ -1928,43 +2070,8 @@ function drawFrame(ts) {
     /* idle life: birds / fish / shooting star */
     drawIdleLife(ts, dt);
 
-    /* rain: far -> mid -> near/coin (front) */
-    for (let i = W.drops.n - 1; i >= 0; i--) {
-      const d = W.drops.items[i];
-      const L = RAIN_LAYERS[d.layer];
-      d.y += d.vy * dt / 1000;
-      d.x += W.wind * L.wind * d.vy * dt / 1000;
-      const sy = surfaceYAt(d.x);
-      if (d.y + d.len >= sy) {
-        dropImpact(d.x, d.layer, d.gold);
-        poolKill(W.drops, i);
-        continue;
-      }
-      if (d.y > h + 20) { poolKill(W.drops, i); continue; }
-      const slant = W.wind * L.wind * d.len;
-      if (d.gold) {
-        ctx.strokeStyle = W.isNight ? "#cfe8ff" : "#ffd98a";
-        ctx.globalAlpha = 0.95 * (Math.floor(ts / 50) % 2 ? 1 : 0.8); // shimmer
-        ctx.lineWidth = 2;
-      } else if (d.white) {
-        ctx.strokeStyle = W.css.foam;
-        ctx.globalAlpha = 0.9;
-        ctx.lineWidth = 1.7;
-      } else {
-        ctx.strokeStyle = d.layer === 2 ? W.css.foam : W.isNight ? "rgba(150,190,204,1)" : "rgba(180,214,224,1)";
-        ctx.globalAlpha = L.a;
-        ctx.lineWidth = L.w;
-      }
-      ctx.beginPath();
-      ctx.moveTo(d.x, d.y);
-      ctx.lineTo(d.x + slant, d.y + d.len);
-      ctx.stroke();
-      if (d.gold) {
-        ctx.fillStyle = W.css.spec;
-        ctx.fillRect((d.x + slant - 1) | 0, (d.y + d.len - 1) | 0, 2, 2);
-      }
-    }
-    ctx.globalAlpha = 1;
+    /* far and mid rain stay behind the Cypher */
+    drawRainDrops(ctx, ts, false);
   }
 
   /* --- raft physics (always steps, even on skipped draws) --- */
@@ -2013,6 +2120,7 @@ function drawFrame(ts) {
       fctx.clip();
       drawSurfaceStrip(fctx, surf, w, 0.55);
       fctx.restore();
+      drawRainDrops(fctx, ts, true);
     }
   }
 }
@@ -2196,24 +2304,205 @@ function showClass() {
 }
 
 /* ------------------------------------------------------------------
-   Demo poll — rare, small, meaningful (most days: nothing)
+   Confirmed class graduation ritual
    ------------------------------------------------------------------ */
-function ambientPoll() {
-  if (document.hidden || !bond || bond.phase !== "active") return;
-  const r = Math.random();
-  if (r < 0.02) {
-    W.targetStorm = 0.25;
-    W.stormOffAt = performance.now() + 1800;
-  } else if (r < 0.12) {
-    W.whiteQueue += 1;
+
+function setGraduationStage(stage) {
+  const ritual = $("graduation-ritual");
+  ritual.dataset.stage = stage;
+  ritual.setAttribute("aria-hidden", stage === "idle" ? "true" : "false");
+}
+
+function raftCypherVisibleCenter() {
+  const cypher = cypherOf(bond?.cypherId);
+  const layout = layoutOf(cypher.file);
+  if (!layout) return { x: 75, y: 75 };
+  const [left, top, right, bottom] = layout.bounds;
+  const visibleWidth = Math.max(1, right - left);
+  const visibleHeight = Math.max(1, bottom - top);
+  const zoom = Math.round(
+    Math.min(140 / visibleWidth, 130 / visibleHeight) * (layout.zoom || 1) * 64
+  ) / 64;
+  return {
+    x: 75 + Number(layout.x || 0),
+    y: 139.5 + Number(layout.y || 0) - zoom * Number(layout.baseline) + zoom * (top + bottom) / 2,
+  };
+}
+
+function prepareGraduationRigGeometry() {
+  const cisternRect = $("cistern").getBoundingClientRect();
+  const faceRect = $("face-motion").getBoundingClientRect();
+  const visibleCenter = raftCypherVisibleCenter();
+  const ritual = $("graduation-ritual");
+  const anchorX = cisternRect.width * 0.58;
+  const anchorY = 68;
+  const targetX = faceRect.left - cisternRect.left + visibleCenter.x;
+  const targetY = faceRect.top - cisternRect.top + visibleCenter.y;
+  const dx = targetX - anchorX;
+  const dy = targetY - anchorY;
+  const length = Math.max(1, Math.hypot(dx, dy));
+  const angle = Math.atan2(-dx, dy) * 180 / Math.PI;
+  ritual.style.setProperty("--rig-dx", `${dx.toFixed(1)}px`);
+  ritual.style.setProperty("--rig-dy", `${dy.toFixed(1)}px`);
+  ritual.style.setProperty("--rig-length", `${length.toFixed(1)}px`);
+  ritual.style.setProperty("--rig-angle", `${angle.toFixed(1)}deg`);
+  const liftScale = 0.58;
+  const scaledCenterShiftX = (1 - liftScale) * (75 - visibleCenter.x);
+  const scaledCenterShiftY = (1 - liftScale) * (150 - visibleCenter.y);
+  $("face-motion").style.setProperty("--cypher-lift-x", `${(-dx - scaledCenterShiftX).toFixed(1)}px`);
+  $("face-motion").style.setProperty("--cypher-lift-y", `${(-dy - scaledCenterShiftY).toFixed(1)}px`);
+  return { x: targetX, y: targetY };
+}
+
+function normalizedGraduationPayload(payload) {
+  const ceremony = payload?.ceremony || payload;
+  const classId = Number(ceremony?.classId);
+  const nextClassId = Number(ceremony?.nextClassId);
+  if (!Number.isSafeInteger(classId) || classId < 1 || !Number.isSafeInteger(nextClassId) || nextClassId <= classId) {
+    throw new Error("graduation ceremony payload is invalid");
+  }
+  return { ceremony, nextState: payload?.state || null };
+}
+
+async function runGraduationCeremony(payload, { acknowledge = true } = {}) {
+  if (graduationRunning) return false;
+  const { ceremony, nextState } = normalizedGraduationPayload(payload);
+  graduationRunning = true;
+  saveDirty = false;
+  const shell = $("shell");
+  const raftLayer = $("raft-layer");
+  const faceMotion = $("face-motion");
+  const thought = $("cypher-thought");
+  try {
+    shell.dataset.graduationActive = "true";
+    if (thought) thought.classList.add("hidden");
+    thoughtShowing = false;
+    if (helpOpen) setHelpOpen(false);
+    if (settingsOpen) await setSettingsOpen(false);
+    activeMode = "raft";
+    updateModeScreen();
+
+    bond = {
+      ...bond,
+      classId: ceremony.classId,
+      classPotMicros: ceremony.classPotMicros,
+      classAgents: ceremony.classAgents || bond.classAgents || 1,
+    };
+    W.fill = W.raftFill = W.targetFill = clamp(
+      Number(ceremony.classPotMicros) / Number(ceremony.graduationFloorMicros || FLOOR_MICROS),
+      0,
+      1
+    );
+    W.gradNear = true;
+    shell.dataset.grad = "near";
+    updateReadout({ preserveFill: true });
+    $("graduation-class-label").textContent = `CLASS ${ceremony.classId} COMPLETE`;
+    $("graduation-token-label").textContent = `VRS${ceremony.tokenOrdinal} LAUNCHED`;
+    raftLayer.classList.remove("graduation-offstage", "graduation-return");
+    faceMotion.classList.remove("graduation-captured", "graduation-lifted", "graduation-departing");
+
+    setGraduationStage("approach");
+    await sleep(2350);
+    prepareGraduationRigGeometry();
+    setGraduationStage("lower");
+    await sleep(1400);
+    faceMotion.classList.add("graduation-captured");
+    setGraduationStage("capture");
+    await sleep(560);
+    faceMotion.classList.add("graduation-lifted");
+    setGraduationStage("lift");
+    await sleep(1450);
+    faceMotion.classList.add("graduation-departing");
+    setGraduationStage("depart");
+    await sleep(2150);
+
+    raftLayer.classList.add("graduation-offstage");
+    bond = {
+      ...bond,
+      ...(nextState || {}),
+      classId: ceremony.nextClassId,
+      classPotMicros: Number(nextState?.classPotMicros || 0),
+      classAgents: Number(nextState?.classAgents || 0),
+    };
+    W.targetFill = 0;
+    W.gradNear = false;
+    shell.dataset.grad = "far";
+    updateReadout({ preserveFill: true });
+    setGraduationStage("drain");
+    await sleep(2450);
+
+    faceMotion.classList.remove("graduation-captured", "graduation-lifted", "graduation-departing");
+    raftLayer.classList.remove("graduation-offstage", "graduation-return");
+    void raftLayer.offsetWidth;
+    raftLayer.classList.add("graduation-return");
+    setGraduationStage("return");
+    await sleep(1850);
+
+    if (acknowledge && window.versus?.acknowledgeGraduation) {
+      bond = await window.versus.acknowledgeGraduation(ceremony.classId) || bond;
+    } else {
+      delete bond.pendingGraduation;
+      bond.lastCelebratedClassId = ceremony.classId;
+    }
+    return true;
+  } finally {
+    raftLayer.classList.remove("graduation-offstage", "graduation-return");
+    faceMotion.classList.remove("graduation-captured", "graduation-lifted", "graduation-departing");
+    faceMotion.style.removeProperty("--cypher-lift-x");
+    faceMotion.style.removeProperty("--cypher-lift-y");
+    setGraduationStage("idle");
+    delete shell.dataset.graduationActive;
+    graduationRunning = false;
+    updateReadout();
+    updateModeScreen();
   }
 }
 
+/* ------------------------------------------------------------------
+   Verified rain delivery
+   ------------------------------------------------------------------ */
 let thoughtShowing = false;
+let verifiedRainPumpTimer = null;
+let verifiedRainPumpRunning = false;
+
+function scheduleVerifiedRainPump(delay = 0) {
+  clearTimeout(verifiedRainPumpTimer);
+  verifiedRainPumpTimer = setTimeout(pumpVerifiedRain, Math.max(0, delay));
+}
+
+async function pumpVerifiedRain() {
+  if (verifiedRainPumpRunning) return;
+  if (graduationRunning || document.hidden || bond?.phase !== "active" || activeMode !== "raft") {
+    scheduleVerifiedRainPump(1_000);
+    return;
+  }
+  verifiedRainPumpRunning = true;
+  try {
+    const result = await window.versus?.nextVerifiedRain?.();
+    if (result?.drop) {
+      const belongsToVisibleClass = bond.classId == null || String(result.drop.classId) === String(bond.classId);
+      if (belongsToVisibleClass) {
+        verifiedRainDrop(
+          String(result.drop.agentId) === String(bond.agentId) ? "self" : "peer",
+          result.drop.classPotMicros
+        );
+      }
+    }
+    const wait = result?.nextAt
+      ? clamp(result.nextAt - Date.now(), 100, 60_000)
+      : result?.pending ? 250 : 2_000;
+    scheduleVerifiedRainPump(wait);
+  } catch (error) {
+    console.error("Verified rain pump failed:", error);
+    scheduleVerifiedRainPump(2_000);
+  } finally {
+    verifiedRainPumpRunning = false;
+  }
+}
 
 async function showNextThought() {
   if (
-    thoughtShowing || document.hidden || bond?.phase !== "active" || activeMode !== "raft" ||
+    graduationRunning || thoughtShowing || document.hidden || bond?.phase !== "active" || activeMode !== "raft" ||
     W.whiteQueue > 0 || inFlightRainPennies > 0
   ) return;
   const thought = await window.versus?.agentNextThought?.();
@@ -2230,7 +2519,7 @@ async function showNextThought() {
 }
 
 setInterval(() => {
-  if (saveDirty && bond) {
+  if (saveDirty && bond && !graduationRunning) {
     saveDirty = false;
     window.versus?.saveBond?.(bond);
   }
@@ -2265,6 +2554,9 @@ async function boot() {
       W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
       startSceneClock();
       showClass();
+      if (bond.pendingGraduation) {
+        setTimeout(() => runGraduationCeremony({ ceremony: bond.pendingGraduation, state: bond }).catch(console.error), 420);
+      }
     } else if (!bond || !bond.phase || bond.phase === "awaiting_deposit") {
       bond = { phase: "awaiting_deposit", walletAddress: wallet.address };
       await window.versus.saveBond(bond);
@@ -2277,10 +2569,12 @@ async function boot() {
       await runHatchRitual(false);
     }
 
-    setInterval(ambientPoll, POLL_MS);
     setInterval(() => showNextThought().catch(console.error), 2500);
     refreshNetworkScreen();
     setInterval(refreshNetworkScreen, POLL_MS);
+    window.versus.onVerifiedRain?.(() => scheduleVerifiedRainPump(0));
+    window.versus.onGraduation?.((payload) => runGraduationCeremony(payload).catch(console.error));
+    scheduleVerifiedRainPump(0);
     window.addEventListener("resize", resizeCanvas);
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
@@ -2289,8 +2583,6 @@ async function boot() {
         flashLcd(true);
         W.lastT = performance.now();
         startLoop();
-        // A visual welcome-back drop; balances remain receipt-driven.
-        setTimeout(() => { W.whiteQueue += 1; }, 600);
       }
     });
   } catch (err) {
@@ -2371,7 +2663,6 @@ async function runHatchRitual(simulateDeposit = true) {
     await sleep(260);
     showClass();
     setTimeout(() => whiteout.classList.remove("run"), 1100);
-    setTimeout(() => potEvent("self", 1), 720);
   } catch (err) {
     console.error(err);
     hatchLock = false;
@@ -2506,11 +2797,11 @@ $("btn-mint")?.addEventListener("click", async () => {
   await window.versus.saveBond(bond);
   W.targetFill = 0;
   showClass();
-  // the first penny is yours — full ritual, hop included
-  setTimeout(() => potEvent("self", 1), 600);
+  // The first drop arrives later through the verified node weather stream.
 });
 
 $("btn-mode").onclick = () => {
+  if (graduationRunning) return;
   if (settingsOpen) {
     setSettingsOpen(false);
     return;
@@ -2693,14 +2984,13 @@ $("help-card-flip")?.addEventListener("click", () => {
 
 /* Tap the raft/Cypher to queue pennies; accounting moves only after confirmation. */
 $("cistern")?.addEventListener("click", (e) => {
-  if (!bond || bond.phase !== "active" || activeMode !== "raft") return;
+  if (graduationRunning || !bond || bond.phase !== "active" || activeMode !== "raft") return;
   const rect = $("cistern").getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const onRaft = Math.abs(x - rect.width / 2) < 90 && y > PH.heave.p && y < PH.heave.p + RAFT_H;
   if (onRaft) queueRainTap();
   else {
-    W.whiteQueue += 1;
     spawnRipple(x, 0.5, false, 0);
   }
 });
@@ -2717,6 +3007,20 @@ window.__pet = {
   show,
   showClass,
   runHatchRitual,
+  runGraduationCeremony,
+  graduationRunning: () => graduationRunning,
+  previewGraduationCapture() {
+    $("shell").dataset.graduationActive = "true";
+    setGraduationStage("capture");
+    const target = prepareGraduationRigGeometry();
+    $("face-motion").classList.add("graduation-captured");
+    return target;
+  },
+  resetGraduationPreview() {
+    $("face-motion").classList.remove("graduation-captured", "graduation-lifted", "graduation-departing");
+    setGraduationStage("idle");
+    delete $("shell").dataset.graduationActive;
+  },
   setBond(b) {
     bond = b;
     if (b) W.targetFill = clamp((b.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
@@ -2738,9 +3042,9 @@ window.__pet = {
     activeMode = m;
     updateModeScreen();
   },
-  potEvent,
   queueRainTap,
   flushRainBatch,
+  verifiedRainDrop,
   storm(v) {
     W.targetStorm = clamp(v, 0, 1);
     W.stormOffAt = 0;

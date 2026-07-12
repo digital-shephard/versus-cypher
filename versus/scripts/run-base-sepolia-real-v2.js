@@ -148,8 +148,8 @@ async function main() {
     await submit("approve Arena test USDC", usdc.approve(contracts.arena, MaxUint256));
     await submit("approve external V2 router test USDC", usdc.approve(contracts.v2Router, MaxUint256));
 
-    await submit("hatch class-one Cypher", arena.hatch(0, RUNWAY), { cypherId: 0, runway: RUNWAY });
-    await submit("hatch class-two Cypher", arena.hatch(1, RUNWAY), { cypherId: 1, runway: RUNWAY });
+    await submit("hatch class-one Cypher", arena.hatch(RUNWAY), { species: "selected-on-chain", runway: RUNWAY });
+    await submit("hatch class-two Cypher", arena.hatch(RUNWAY), { species: "selected-on-chain", runway: RUNWAY });
     assert(await agents.ownerOf(1) === address, "agent 1 owner mismatch");
     assert(await agents.ownerOf(2) === address, "agent 2 owner mismatch");
 

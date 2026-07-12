@@ -72,13 +72,12 @@ async function main() {
   });
   const hatch = await chain.hatchWithRunway({
     privateKey: peerWallet.privateKey,
-    cypherId: 6,
     runwayAmount: 7_000_000n,
   });
   recordEvent("waku_ui_peer_hatched", {
     address: peerWallet.address,
     agentId: Number(hatch.agentId),
-    cypherId: 6,
+    cypherId: Number(hatch.cypherId),
     runwayMicros: hatch.runway.toString(),
     approvalHash: hatch.approvalHash,
     transactionHash: hatch.hatchHash,
@@ -157,7 +156,7 @@ async function main() {
       runId: state.runId,
       passed: published.length === 1,
       launchId,
-      peer: { address: peerWallet.address, agentId: Number(hatch.agentId), cypherId: 6 },
+      peer: { address: peerWallet.address, agentId: Number(hatch.agentId), cypherId: Number(hatch.cypherId) },
       postcard: { id: postcard.id, type: postcard.type, body: postcard.body },
       settlement: { transactionHash: receipt.hash, blockNumber: receipt.blockNumber },
       chainClock: {

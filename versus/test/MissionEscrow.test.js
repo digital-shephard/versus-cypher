@@ -16,8 +16,8 @@ async function deployEscrowStack() {
     await stack.usdc.connect(signer).approve(await stack.arena.getAddress(), ethers.MaxUint256);
     await stack.usdc.connect(signer).approve(await stack.missionEscrow.getAddress(), ethers.MaxUint256);
   }
-  await stack.arena.connect(alice).hatch(0, MIN_RUNWAY);
-  await stack.arena.connect(bob).hatch(1, MIN_RUNWAY);
+  await stack.arena.connect(alice).hatch(MIN_RUNWAY);
+  await stack.arena.connect(bob).hatch(MIN_RUNWAY);
   return { deployer, alice, bob, carol, ...stack };
 }
 

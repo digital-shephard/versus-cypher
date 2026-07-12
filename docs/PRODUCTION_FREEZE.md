@@ -60,13 +60,14 @@ Onchain recheck on 2026-07-12 confirmed that the configured router's `factory()`
 PROTOCOL_RECIPIENT=0x93645ce5BCF0009026D8100aea5901cDd52217bF
 PRIVATE_KEY=<deployer>
 BASE_RPC_URL=https://mainnet.base.org
+VERSUS_RELEASE_STAGE=closed-cohort
 ```
 
 Do **not** set `USE_MOCK_USDC` on mainnet.
 
 ## Still not done (do not skip)
 
-1. Deploy + verify + publish `deployments/base.json`
+1. Deploy + verify + independently audit + publish the four Base deployment evidence files listed in `versus/DEPLOY.md`
 2. After the first mainnet mint, submit both existing CIDs to NFT.Storage/Filecoin and record confirmed storage deals; a Pinata pin and empty Lighthouse deal list are not permanent-storage proof
 3. Publish the two generated CAR files with immutable release artifacts
 4. Closed cohort before unrestricted public hatch

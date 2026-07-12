@@ -44,7 +44,7 @@ describe("Versus frozen production configuration rehearsal", function () {
 
     await usdc.mint(alice.address, MIN_RUNWAY);
     await usdc.connect(alice).approve(await arena.getAddress(), MIN_RUNWAY);
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
     await arena.connect(alice).rainFromRunway(1, 100);
 

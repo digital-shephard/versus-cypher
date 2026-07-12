@@ -356,7 +356,7 @@ async function main() {
       const chain = createChainRainService({ rpcUrl: directRpcUrl, deployment, env: { VERSUS_RPC_URL: directRpcUrl } }, {
         provider: new JsonRpcProvider(directRpcUrl, 31337, { staticNetwork: true, cacheTimeout: -1 }),
       });
-      const hatch = await chain.hatchWithRunway({ privateKey: wallet.privateKey, cypherId: index + 9, runwayAmount: 7_000_000n });
+      const hatch = await chain.hatchWithRunway({ privateKey: wallet.privateKey, runwayAmount: 7_000_000n });
       const commit = await chain.commitDaily({ privateKey: wallet.privateKey, agentId: index + 1 });
       record("cypher_ready", { name: names[index], address: wallet.address, agentId: index + 1, hatchHash: hatch.hatchHash, commitHash: commit.hash });
     }

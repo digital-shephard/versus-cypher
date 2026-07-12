@@ -33,6 +33,18 @@ contextBridge.exposeInMainWorld("versus", {
   claimTranche: () => ipcRenderer.invoke("wallet:claimTranche"),
   withdrawVault: (amount) => ipcRenderer.invoke("wallet:withdrawVault", { amount }),
   rainFromRunway: (pennies) => ipcRenderer.invoke("wallet:rainFromRunway", { pennies }),
+  nextVerifiedRain: () => ipcRenderer.invoke("rain:next"),
+  onVerifiedRain: (callback) => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on("rain:available", listener);
+    return () => ipcRenderer.removeListener("rain:available", listener);
+  },
+  acknowledgeGraduation: (classId) => ipcRenderer.invoke("graduation:acknowledge", { classId }),
+  onGraduation: (callback) => {
+    const listener = (_event, ceremony) => callback(ceremony);
+    ipcRenderer.on("graduation:available", listener);
+    return () => ipcRenderer.removeListener("graduation:available", listener);
+  },
   networkStatus: () => ipcRenderer.invoke("network:status"),
   networkConnect: (peerUrl) => ipcRenderer.invoke("network:connect", { peerUrl }),
   networkPublish: (postcard) => ipcRenderer.invoke("network:publish", postcard),

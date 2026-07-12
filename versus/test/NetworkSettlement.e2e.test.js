@@ -42,11 +42,11 @@ describe("Versus network economic settlement E2E", function () {
 
     const hatch = await service.hatchWithEth({
       privateKey: wallet.privateKey,
-      cypherId: 4,
       depositWei: ethers.parseEther("0.003"),
     });
     expect(hatch.agentId).to.equal(1n);
     expect(hatch.runway).to.equal(MIN_RUNWAY);
+    expect(hatch.cypherId).to.be.lessThan(29n);
     expect(hatch.swapHash).to.match(/^0x[0-9a-f]{64}$/i);
 
     await service.commitDaily({ privateKey: wallet.privateKey, agentId: 1 });
@@ -69,7 +69,7 @@ describe("Versus network economic settlement E2E", function () {
     await deployer.sendTransaction({ to: wallet.address, value: ethers.parseEther("1") });
     await stack.usdc.mint(wallet.address, ethers.parseUnits("12", 6));
     await stack.usdc.connect(wallet).approve(await stack.arena.getAddress(), ethers.MaxUint256);
-    await stack.arena.connect(wallet).hatch(0, MIN_RUNWAY);
+    await stack.arena.connect(wallet).hatch(MIN_RUNWAY);
     await stack.arena.connect(wallet).commit(1);
 
     const network = await ethers.provider.getNetwork();
@@ -138,8 +138,8 @@ describe("Versus network economic settlement E2E", function () {
     await stack.usdc.connect(wallet).approve(await stack.arena.getAddress(), ethers.MaxUint256);
     await stack.usdc.connect(wallet).approve(await stack.agents.getAddress(), ethers.MaxUint256);
     await stack.usdc.connect(recipient).approve(await stack.arena.getAddress(), ethers.MaxUint256);
-    await stack.arena.connect(wallet).hatch(0, MIN_RUNWAY);
-    await stack.arena.connect(recipient).hatch(1, MIN_RUNWAY);
+    await stack.arena.connect(wallet).hatch(MIN_RUNWAY);
+    await stack.arena.connect(recipient).hatch(MIN_RUNWAY);
     await stack.agents.connect(wallet).deposit(1, ethers.parseUnits("10", 6));
 
     const network = await ethers.provider.getNetwork();

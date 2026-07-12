@@ -4,6 +4,15 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { deployOwnerlessVersus, deployLocalStack } = require("./lib/deployOwnerless");
 const CONSTANTS = require("./lib/constants");
+const {
+  MANIFEST_VERSION,
+  assertBaseSourceReady,
+  collectSourceHashes,
+  constructorArguments,
+  evaluateSafePolicy,
+  resolveReleaseStage,
+  resolveSourceState,
+} = require("./lib/deployment-manifest");
 
 function requireAddress(name) {
   const v = process.env[name];
@@ -17,6 +26,11 @@ function requireAddress(name) {
 
 async function main() {
   const network = hre.network.name;
+  const repoRoot = path.join(__dirname, "..", "..");
+  const projectRoot = path.join(__dirname, "..");
+  const releaseStage = resolveReleaseStage(network);
+  const source = resolveSourceState(repoRoot);
+  if (network === "base") assertBaseSourceReady(source);
   const [deployer] = await hre.ethers.getSigners();
   console.log(`\nVersus deploy — network=${network} deployer=${deployer.address}\n`);
 
@@ -27,6 +41,7 @@ async function main() {
   let usedMockRouter = false;
   let protocolRecipient;
   let graduationFloor = CONSTANTS.GRADUATION_FLOOR;
+  let safePolicy = null;
   const transactions = [];
 
   async function recordDeployment(label, contract) {
@@ -72,6 +87,9 @@ async function main() {
 
     return writeOut({
       network,
+      releaseStage,
+      source,
+      projectRoot,
       deployer: deployer.address,
       protocolRecipient,
       graduationFloor,
@@ -85,6 +103,7 @@ async function main() {
       },
       stack,
       transactions: stack.transactions,
+      safePolicy,
     });
   }
 
@@ -166,6 +185,21 @@ async function main() {
     console.log("External V2 WETH:", boundWeth);
   }
 
+  if (network === "base") {
+    const safe = new hre.ethers.Contract(
+      protocolRecipient,
+      ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"],
+      hre.ethers.provider
+    );
+    const [owners, threshold] = await Promise.all([safe.getOwners(), safe.getThreshold()]);
+    safePolicy = evaluateSafePolicy({ owners, threshold, releaseStage });
+    safePolicy.owners = owners.map(hre.ethers.getAddress);
+    if (!safePolicy.passed) throw new Error(`protocol Safe does not satisfy ${safePolicy.required} policy`);
+    if (safePolicy.hardeningRequired) {
+      console.warn("WARNING: closed-cohort deployment; unrestricted public release remains blocked until the Safe is at least 2-of-3");
+    }
+  }
+
   const core = await deployOwnerlessVersus(hre.ethers, {
     usdcAddress,
     routerAddress,
@@ -198,6 +232,9 @@ async function main() {
 
   return writeOut({
     network,
+    releaseStage,
+    source,
+    projectRoot,
     deployer: deployer.address,
     protocolRecipient,
     graduationFloor,
@@ -210,6 +247,7 @@ async function main() {
       ...core.addresses,
     },
     transactions,
+    safePolicy,
   });
 }
 
@@ -276,10 +314,20 @@ function receiptRecord(label, receipt) {
   };
 }
 
-function writeOut({ network, deployer, protocolRecipient, graduationFloor, usedMockUsdc, usedMockRouter, contracts, transactions = [] }) {
+function writeOut({ network, releaseStage, source, projectRoot, deployer, protocolRecipient, graduationFloor, usedMockUsdc, usedMockRouter, contracts, transactions = [], safePolicy = null }) {
+  const rainAttestors = String(process.env.VERSUS_RAIN_ATTESTORS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => hre.ethers.getAddress(value));
   const out = {
+    manifestVersion: MANIFEST_VERSION,
+    protocol: "versus-cypher",
     network,
+    releaseStage,
+    releasePolicy: { protocolSafe: safePolicy },
     chainId: null, // filled below async — sync write in caller
+    ...(rainAttestors.length ? { rainAttestors: Array.from(new Set(rainAttestors)) } : {}),
     deployer,
     ownerless: true,
     economics: {
@@ -295,6 +343,12 @@ function writeOut({ network, deployer, protocolRecipient, graduationFloor, usedM
     usedMockRouter,
     transactions,
     contracts,
+    dependencies: {
+      usdc: contracts.usdc,
+      uniswapV2Factory: contracts.v2Factory,
+      uniswapV2Router: contracts.v2Router,
+    },
+    constructorArguments: constructorArguments(contracts, graduationFloor, protocolRecipient),
     checklist: {
       protocolRecipientImmutable: true,
       noOwnable: true,
@@ -305,7 +359,20 @@ function writeOut({ network, deployer, protocolRecipient, graduationFloor, usedM
       permanentDailyVoiceCredentials: true,
       publicGraduateSwapBackContinuousClaim: true,
     },
-    sourceCommit: process.env.GITHUB_SHA || process.env.VERSUS_SOURCE_COMMIT || null,
+    source: {
+      ...source,
+      ...collectSourceHashes(projectRoot),
+    },
+    compiler: {
+      solidity: "0.8.26",
+      optimizer: { enabled: true, runs: 1 },
+      viaIR: true,
+      evmVersion: "cancun",
+    },
+    verification: {
+      basescan: { status: network === "base" ? "pending" : "not-applicable" },
+      independentAudit: { status: "pending" },
+    },
     runtimeBytecode: {},
     deployedAt: new Date().toISOString(),
   };
@@ -321,6 +388,11 @@ function writeOut({ network, deployer, protocolRecipient, graduationFloor, usedM
         keccak256: hre.ethers.keccak256(code),
       };
     }
+    const blockNumbers = transactions.map((transaction) => Number(transaction.blockNumber)).filter(Number.isFinite);
+    out.deploymentBlocks = {
+      first: blockNumbers.length ? Math.min(...blockNumbers) : null,
+      last: blockNumbers.length ? Math.max(...blockNumbers) : null,
+    };
     const dir = path.join(__dirname, "..", "deployments");
     fs.mkdirSync(dir, { recursive: true });
     const file = process.env.VERSUS_DEPLOYMENT_OUT

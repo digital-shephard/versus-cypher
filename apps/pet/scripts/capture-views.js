@@ -139,6 +139,7 @@ function stubIpc() {
     return { state: claimState, amount };
   });
   ipcMain.handle("wallet:runOnboardPipeline", () => ACTIVE_BOND);
+  ipcMain.handle("rain:next", () => ({ drop: null, pending: 0, nextAt: null }));
   ipcMain.handle("network:status", () => ({
     active: true,
     launchId: "42",
@@ -306,6 +307,49 @@ async function main() {
       throw new Error(`CSS screw holes are misaligned before opening: ${JSON.stringify(holeAlignment)}`);
     }
 
+    // Every fastener is independently reversible before the chassis opens.
+    await exec(win, `document.querySelector('[data-screw-id="1"]').click();`);
+    await sleep(700);
+    const oneRemoved = await win.webContents.executeJavaScript(`(() => ({
+      stage: document.getElementById("shell").dataset.serviceStage,
+      installed: document.querySelectorAll("[data-screw-id].is-visible").length,
+      loose: document.querySelectorAll("[data-loose-screw-id].is-visible").length,
+      returnEnabled: !document.querySelector('[data-loose-screw-id="1"]').disabled,
+    }))()`, true);
+    if (oneRemoved.stage !== "closed" || oneRemoved.installed !== 3 || oneRemoved.loose !== 1 || !oneRemoved.returnEnabled) {
+      throw new Error(`one removed screw could not be independently returned: ${JSON.stringify(oneRemoved)}`);
+    }
+    await exec(win, `document.querySelector('[data-loose-screw-id="1"]').click();`);
+    await sleep(1100);
+
+    await exec(win, `
+      document.querySelector('[data-screw-id="3"]').click();
+      document.querySelector('[data-screw-id="0"]').click();
+    `);
+    await sleep(700);
+    const twoRemoved = await win.webContents.executeJavaScript(`(() => ({
+      stage: document.getElementById("shell").dataset.serviceStage,
+      installed: document.querySelectorAll("[data-screw-id].is-visible").length,
+      loose: document.querySelectorAll("[data-loose-screw-id].is-visible").length,
+      returnOrderEnabled: [0, 3].every((id) => !document.querySelector('[data-loose-screw-id="' + id + '"]').disabled),
+    }))()`, true);
+    if (twoRemoved.stage !== "closed" || twoRemoved.installed !== 2 || twoRemoved.loose !== 2 || !twoRemoved.returnOrderEnabled) {
+      throw new Error(`multiple removed screws could not be independently returned: ${JSON.stringify(twoRemoved)}`);
+    }
+    await exec(win, `
+      document.querySelector('[data-loose-screw-id="0"]').click();
+      document.querySelector('[data-loose-screw-id="3"]').click();
+    `);
+    await sleep(1100);
+    const partialReassembled = await win.webContents.executeJavaScript(`(() => ({
+      stage: document.getElementById("shell").dataset.serviceStage,
+      installed: document.querySelectorAll("[data-screw-id].is-visible").length,
+      loose: document.querySelectorAll("[data-loose-screw-id].is-visible").length,
+    }))()`, true);
+    if (partialReassembled.stage !== "closed" || partialReassembled.installed !== 4 || partialReassembled.loose !== 0) {
+      throw new Error(`partial screw reversal did not restore the device: ${JSON.stringify(partialReassembled)}`);
+    }
+
     await exec(win, `document.querySelectorAll("[data-screw-id]").forEach((button) => button.click());`);
     await sleep(2100);
     const opened = await win.webContents.executeJavaScript(`(() => ({
@@ -415,7 +459,13 @@ async function main() {
   await sleep(300);
 
   for (const phase of ["morning", "noon", "evening", "night"]) {
-    await exec(win, `__pet.setPhase("${phase}"); __pet.storm(0.5); __pet.potEvent("others", 2);`);
+    await exec(win, `
+      __pet.setPhase("${phase}");
+      __pet.storm(0.5);
+      const pot = Number(__pet.getBond().classPotMicros || 0);
+      __pet.verifiedRainDrop("peer", pot + 10000);
+      __pet.verifiedRainDrop("peer", pot + 20000);
+    `);
     await sleep(1400);
     await shoot(win, `04-raft-${phase}`);
   }

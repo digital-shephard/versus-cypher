@@ -14,6 +14,7 @@ contract AgentNFT is ERC721 {
 
     string public constant METADATA_BASE_URI =
         "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/";
+    uint8 public constant CYPHER_COUNT = 29;
 
     IERC20 public immutable usdc;
     address public immutable deployer;
@@ -47,6 +48,7 @@ contract AgentNFT is ERC721 {
     error VaultOverflow();
     error ZeroAddress();
     error AlreadyBootstrapped();
+    error InvalidCypher();
 
     modifier onlyArena() {
         if (msg.sender != arena) revert NotAuthorized();
@@ -77,6 +79,7 @@ contract AgentNFT is ERC721 {
     }
 
     function mint(address to, uint8 cypherId) external onlyArena returns (uint256 agentId) {
+        if (cypherId >= CYPHER_COUNT) revert InvalidCypher();
         agentId = nextId++;
         agents[agentId] = Agent({cypherId: cypherId, level: 0, streak: 0, lastCommitDay: 0, vault: 0});
         _safeMint(to, agentId);

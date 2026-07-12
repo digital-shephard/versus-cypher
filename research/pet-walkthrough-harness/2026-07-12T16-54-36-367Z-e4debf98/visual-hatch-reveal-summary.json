@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "kind": "versus-packaged-visual-onchain-hatch-reveal",
+  "runId": "2026-07-12T16-54-36-367Z-e4debf98",
+  "passed": true,
+  "controlledMining": {
+    "automine": false,
+    "intervalMs": 2500
+  },
+  "visual": {
+    "pending": {
+      "elapsedAfterClickMs": 5574,
+      "screenshot": "pending-hatch.png",
+      "sha256": "a61422be62310f9e02af4cfa0f52c270a223b1ab56955a2014c5d847e37d2549",
+      "monitor": "CYPHER_HATCH pending",
+      "creatureVisible": false
+    },
+    "confirmed": {
+      "screenshot": "confirmed-reveal.png",
+      "sha256": "21d2813bca750f32230a50ad2c08b4b20dc300acc15ada8e33aa6cb3a6169161",
+      "monitor": "CYPHER_HATCH OK 16625ms",
+      "creatureVisible": true
+    }
+  },
+  "chain": {
+    "transactionHash": "0x364948e1a491381f743811060dad2ee7e32e1feb98d267ac0280dfd4b91d2834",
+    "blockNumber": 21,
+    "agentId": 1,
+    "owner": "0xBBAFEA1d103382763444825794a498188380f6fc",
+    "cypherId": 25,
+    "runwayMicros": "7000000",
+    "tokenURI": "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/25.json"
+  },
+  "checks": {
+    "pendingScreenHadNoCreature": true,
+    "pendingMonitorShowedHatchInFlight": true,
+    "confirmedMonitorShowedHatchSuccess": true,
+    "eventMatchesSavedSpecies": true,
+    "contractMatchesSavedSpecies": true,
+    "tokenUriMatchesSpecies": true,
+    "receiptSucceeded": true
+  },
+  "secretsRecorded": false,
+  "completedAt": "2026-07-12T16:58:39.045Z"
+}

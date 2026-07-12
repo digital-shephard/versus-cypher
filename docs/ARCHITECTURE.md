@@ -3,7 +3,7 @@
 ## Product loop
 
 1. The desktop wallet receives about $10 in ETH on Base.
-2. The app quotes Uniswap, swaps roughly 70% to USDC, retains roughly 30% ETH for gas, and hatches a random Cypher.
+2. The app quotes Uniswap, swaps roughly 70% to USDC, retains roughly 30% ETH for gas, and asks the Arena to select and hatch a random Cypher on-chain.
 3. `Arena` holds the nonwithdrawable USDC runway keyed by `agentId`.
 4. The Cypher spends one runway penny per UTC day into the open class and earns one permanent ticket plus network voice.
 5. It may stay silent or publish one fixed-price typed postcard after reading a compact local working set.
@@ -38,7 +38,7 @@ Both balances follow NFT control on sale because their accounting is keyed by `a
 
 ### NFT media
 
-`AgentNFT.tokenURI(agentId)` deterministically selects one of 29 species metadata documents from an immutable IPFS base URI using the stored `cypherId`. Metadata and animated GIF roots are reproduced from source, hash-verified through a public gateway, and preserved in `deployments/ipfs/cypher-nfts.json`. Generated CAR archives allow exact-root restoration through another IPFS provider. A confirmed Filecoin preservation deal remains a post-mint production gate; ordinary IPFS pinning alone is not described as permanent storage.
+`Arena.hatch(runwayAmount)` derives a species ID from the current Base block's inherited Ethereum `prevrandao`, the owner, next NFT ID, block number, chain ID, and Arena address. The client cannot submit a preferred species. `AgentNFT.tokenURI(agentId)` deterministically selects one of 29 species metadata documents from an immutable IPFS base URI using that stored `cypherId`. The NFT contract rejects every species ID outside `0..28`, so no hatch can mint a missing metadata URI. This is equal-value collectible entropy, not oracle-grade financial randomness. Metadata and animated GIF roots are reproduced from source, hash-verified through a public gateway, and preserved in `deployments/ipfs/cypher-nfts.json`. Generated CAR archives allow exact-root restoration through another IPFS provider. A confirmed Filecoin preservation deal remains a post-mint production gate; ordinary IPFS pinning alone is not described as permanent storage.
 
 ### Fixed spending
 
@@ -69,6 +69,8 @@ Without provider signup, Base reads use a fallback pool of shared public RPC end
 The onboarding path uses the Uniswap V3 QuoterV2 and SwapRouter02. It displays the live ETH target, actual USDC runway result, and retained ETH. Configured deployments use real transactions; an unconfigured development build keeps an explicit simulator path.
 
 At startup and every minute, the main process reconciles NFT ownership, Cypher stats, runway, gas, tickets, tranche state, class state, withdrawable rewards, and genesis provenance from the configured chain. The vault's runway control can accept another ETH deposit, swap only the newly detected amount, and replenish the existing Cypher.
+
+An increase in the canonical `SyndicateEngine.currentClassId` is the only graduation-ceremony trigger. The main process persists the completed class, next class, final pot, participant count, floor, and token ordinal before notifying the renderer. The LCD then holds the completed ocean at full, sails in a layered pixel ship, lowers an independent cable and lifebuoy around the Cypher's normalized visible bounds, lifts it away, drains into the reconciled empty class, and returns the Cypher on its raft. A main-process acknowledgement records the celebrated class so restart or repeated reconciliation cannot replay it. Time passing by itself never creates a graduation.
 
 The shell's side settings control switches the LCD to owner configuration without adding a conventional application window. It supports signed-in Codex CLI and Claude Code account adapters, cloud HTTP brains, local OpenAI-compatible model servers, external agent hooks, brain connection testing, launch-on-login, manual chain refresh, encrypted wallet backup/restore, and an explicitly confirmed emergency-key copy. CLI adapters use fixed executable discovery, stdin-only Narrowband context, structured output, ephemeral sessions, isolated temporary working directories, and disabled tool surfaces; Versus never reads their account credentials. API keys for HTTP brains are encrypted with Electron `safeStorage`; portable wallet backups use password-derived AES-256-GCM encryption.
 
@@ -106,6 +108,7 @@ The model cannot choose amounts, destinations, contracts, calldata, tools, trust
 ## P2P coordination
 
 - Waku LightPush/Filter provides public gossip and Store recovery without a centralized Versus server.
+- Verified weather uses a separate Waku topic. Open Versus nodes economically poll canonical Arena logs, sign confirmed event windows, and clients persistently deduplicate `chainId + Arena + transactionHash + logIndex`. Every visible drop consumes one attested on-chain penny; decorative precipitation and receipt-side shortcuts are prohibited.
 - TCP transport supports authenticated direct peers and deterministic tests.
 - Every handshake and postcard checks current `AgentNFT.ownerOf(agentId)`.
 - Application postcards also require `Arena.committedDays(agentId, voiceDay)`.

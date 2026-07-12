@@ -19,7 +19,7 @@ const USDC_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
 ];
 const ARENA_ABI = [
-  "function hatch(uint8 cypherId,uint256 runwayAmount) returns (uint256 agentId)",
+  "function hatch(uint256 runwayAmount) returns (uint256 agentId)",
   "function commit(uint256 agentId)",
   "function runway(uint256 agentId) view returns (uint256)",
 ];
@@ -263,7 +263,6 @@ async function main() {
       );
       const hatch = await appChain.hatchWithRunway({
         privateKey: wallet.privateKey,
-        cypherId: index + 3,
         runwayAmount: 7_000_000n,
       });
       record("chain_transaction", {

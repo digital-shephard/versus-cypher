@@ -50,6 +50,23 @@ describe("confirmed rain accounting", () => {
   });
 });
 
+it("renderer precipitation is sourced only from verified penny queues", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "..", "renderer", "pet.js"), "utf8");
+  assert.doesNotMatch(renderer, /nextAmbientAt[\s\S]{0,180}spawnDrop/);
+  assert.doesNotMatch(renderer, /accFar[\s\S]{0,300}spawnDrop/);
+  assert.doesNotMatch(renderer, /visibilitychange[\s\S]{0,500}whiteQueue\s*\+=/);
+  assert.doesNotMatch(renderer, /function potEvent\(/);
+  assert.match(renderer, /function verifiedRainDrop\(kind, classPotMicros\)/);
+  assert.match(renderer, /function spawnMicroburst\(kind, pressure = W\.rainPressure\)/);
+  assert.match(renderer, /function noteVerifiedRain\(now\)/);
+  assert.match(renderer, /const MAX_PENDING_RAIN_BURSTS = 24/);
+  assert.match(renderer, /drawRainDrops\(fctx, ts, true\)/);
+  assert.match(renderer, /const nextFill = Math\.max\(prevFill, absoluteFill\)/);
+  assert.match(renderer, /updateReadout\(\{ preserveFill: true \}\)/);
+  assert.match(renderer, /BASE OK · WAITING ×\$\{pennies\}/);
+  assert.match(renderer, /nextVerifiedRain/);
+});
+
 describe("chain rain configuration", () => {
   it("uses the simulator only when no chain settings are present", () => {
     assert.equal(loadChainConfig({}), null);

@@ -27,9 +27,13 @@ The recorded factory `0x8909...8eC70f` had no bytecode and did not match the con
 
 Graduation and tax-harvest entrypoints now use `ReentrancyGuard`. Class-token transfers and approvals use `SafeERC20`. The synchronous sell callback remains intentional and can call only the immutable graduation collector.
 
+### Defensive: client-selectable species
+
+The desktop originally submitted a locally selected `cypherId`, so a modified client could choose any valid species. `Arena.hatch` now accepts runway only and derives the species on-chain from Base's inherited Ethereum `prevrandao` plus owner, next NFT ID, block, chain, and contract context. The confirmed `Hatched` event is the desktop's source of truth. `AgentNFT` independently rejects IDs outside the immutable 29-species collection.
+
 ## Base fork rehearsal
 
-The one-command `npm run test:base-fork` rehearsal passed against Base block `48,534,384`. It deployed the full ownerless stack locally, hatched and replenished a Cypher, committed daily rain and typed signal ink, filled the exact `1_000_000_000` USDC floor, created the canonical V2 pair, completed taxed buy and sell paths, credited and claimed rolling rewards, withdrew the NFT vault, transferred the NFT, and confirmed the former owner lost withdrawal authority. No mainnet state or funds were changed.
+The one-command `npm run test:base-fork` rehearsal passed against Base block `48,542,817`. It independently re-read 44 deployment, dependency, bytecode, metadata, bootstrap, economic, and Safe-policy invariants; deployed the full ownerless stack locally; hatched an on-chain-selected Cypher and verified its exact immutable token URI; replenished it; committed daily rain and typed signal ink; filled the exact `1_000_000_000` USDC floor; created the canonical V2 pair; completed taxed buy and sell paths; credited and claimed rolling rewards; withdrew the NFT vault; transferred the NFT; and confirmed the former owner lost withdrawal authority. No mainnet state or funds were changed. The machine-readable evidence is `research/base-fork-runs/2026-07-12T16-49-41-861Z/report.json`.
 
 ## Triaged findings
 
@@ -42,6 +46,6 @@ The one-command `npm run test:base-fork` rehearsal passed against Base block `48
 
 ## Remaining release blockers
 
-- The intended protocol Safe is currently one owner with threshold one. Production preflight requires at least three owners and threshold two.
+- The intended protocol Safe is currently one owner with threshold one. Closed-cohort preflight accepts a valid Safe with a published hardening warning; unrestricted-public preflight requires at least three owners and threshold two.
 - No Versus contracts are deployed on Base, so production addresses, verified source links, bytecode matches, and `deployments/base.json` do not yet exist.
 - Obtain an independent external contract review before unrestricted public hatch.

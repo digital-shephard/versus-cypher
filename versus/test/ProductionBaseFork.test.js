@@ -2,6 +2,8 @@ const { expect } = require("chai");
 const fs = require("fs");
 const { ethers, network } = require("hardhat");
 const { deployOwnerlessVersus } = require("../scripts/lib/deployOwnerless");
+const { auditDeployment } = require("../scripts/lib/deployment-audit");
+const { MANIFEST_VERSION, RELEASE_STAGES, constructorArguments } = require("../scripts/lib/deployment-manifest");
 const CONSTANTS = require("../scripts/lib/constants");
 
 const WETH = "0x4200000000000000000000000000000000000006";
@@ -44,13 +46,50 @@ describe("Versus Base mainnet fork rehearsal", function () {
     });
     const { agents, arena, syndicate, treasury, graduation } = stack;
 
+    const deployedContracts = {
+      usdc: CONSTANTS.base.usdc,
+      v2Factory: CONSTANTS.base.uniswapV2Factory,
+      v2Router: CONSTANTS.base.uniswapV2Router,
+      agents: await agents.getAddress(),
+      arena: await arena.getAddress(),
+      syndicate: await syndicate.getAddress(),
+      treasury: await treasury.getAddress(),
+      missionEscrow: await stack.missionEscrow.getAddress(),
+      graduation: await graduation.getAddress(),
+    };
+    const runtimeBytecode = {};
+    for (const [label, address] of Object.entries(deployedContracts)) {
+      const code = await ethers.provider.getCode(address);
+      runtimeBytecode[label] = { address, bytes: (code.length - 2) / 2, keccak256: ethers.keccak256(code) };
+    }
+    const deploymentAudit = await auditDeployment(ethers.provider, {
+      manifestVersion: MANIFEST_VERSION,
+      protocol: "versus-cypher",
+      network: "base",
+      chainId: 8453,
+      releaseStage: RELEASE_STAGES.CLOSED_COHORT,
+      source: { commit: "a".repeat(40), clean: true, treeSha256: "b".repeat(64) },
+      contracts: deployedContracts,
+      constructorArguments: constructorArguments(deployedContracts, FLOOR, SAFE),
+      economics: { protocolRecipient: SAFE, graduationFloorRaw: FLOOR.toString() },
+      runtimeBytecode,
+    });
+    expect(deploymentAudit.passed).to.equal(true);
+    expect(deploymentAudit.safePolicy.passed).to.equal(true);
+
     await (await usdc.connect(funder).transfer(alice.address, MIN_RUNWAY)).wait();
     await (await usdc.connect(funder).transfer(bob.address, 1_000_000n)).wait();
     await (await usdc.connect(funder).transfer(buyer.address, 10_000_000n)).wait();
     expect(await usdc.balanceOf(alice.address)).to.equal(MIN_RUNWAY);
     await (await usdc.connect(alice).approve(await arena.getAddress(), MIN_RUNWAY)).wait();
     expect(await usdc.allowance(alice.address, await arena.getAddress())).to.equal(MIN_RUNWAY);
-    await (await arena.connect(alice).hatch(0, MIN_RUNWAY)).wait();
+    await (await arena.connect(alice).hatch(MIN_RUNWAY)).wait();
+    const hatchedAgent = await agents.getAgent(1);
+    const hatchedTokenUri = await agents.tokenURI(1);
+    expect(hatchedAgent.cypherId).to.be.lessThan(29n);
+    expect(hatchedTokenUri).to.equal(
+      `ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/${hatchedAgent.cypherId}.json`
+    );
     await (await arena.connect(alice).commit(1)).wait();
     await (await arena.connect(alice).rainFromRunway(1, 100)).wait();
     await (await usdc.connect(bob).approve(await arena.getAddress(), 1_000_000n)).wait();
@@ -135,6 +174,10 @@ describe("Versus Base mainnet fork rehearsal", function () {
           pair: pairAddress,
         },
         assertions: {
+          independentDeploymentAuditChecks: deploymentAudit.checks.length,
+          safePublicReady: deploymentAudit.safePolicy.publicReady,
+          selectedCypherId: hatchedAgent.cypherId.toString(),
+          tokenURI: hatchedTokenUri,
           exactFloorUSDC: seeded.toString(),
           signalSettled: await arena.settledSignalBatches(1, signalRoot),
           nextClassId: (await syndicate.currentClassId()).toString(),

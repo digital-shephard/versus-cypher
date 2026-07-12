@@ -1,0 +1,2 @@
+{"at":1783875399092,"action":"fund","address":"0xBBAFEA1d103382763444825794a498188380f6fc","amountWei":"3000000000000000","transactionHash":"0x95fa11656b4a11da2ecf2403edf7d9bcf7fbd6064883da41a72a9541a36da0fc","blockNumber":14}
+{"at":1783875479473,"action":"assert","passed":true,"checks":{"active":true,"ownerMatches":true,"cypherMatches":true,"runwayMatches":true,"ticketsMatch":true,"vaultMatches":true,"claimableMatches":true,"encryptedWalletOnly":true}}

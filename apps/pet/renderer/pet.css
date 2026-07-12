@@ -1588,6 +1588,16 @@ body { display: grid; place-items: center; }
 
 #celestial.moon { opacity: 0.7; }
 
+#storm-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #173f46;
+  opacity: var(--storm-shade-opacity, 0);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
 #weather {
   position: absolute;
   inset: 0;
@@ -1605,6 +1615,300 @@ body { display: grid; place-items: center; }
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+/* ---- confirmed class graduation ritual ---- */
+
+#graduation-ritual {
+  --rig-anchor-x: 58%;
+  --rig-anchor-y: 68px;
+  --rig-dx: -18px;
+  --rig-dy: 28px;
+  --rig-length: 34px;
+  --rig-angle: 27deg;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+#graduation-ritual:not([data-stage="idle"]) { visibility: visible; }
+
+#graduation-ship {
+  position: absolute;
+  z-index: 2;
+  top: -47px;
+  left: 50%;
+  width: 356px;
+  height: 238px;
+  margin-left: -178px;
+  opacity: 0;
+  transform: translate3d(255px, 8px, 0) rotate(0.8deg);
+  transform-origin: 50% 70%;
+  will-change: transform, opacity;
+}
+
+#graduation-ship img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 5px 0 rgba(4, 28, 31, 0.34));
+  animation: graduation-ship-heave 3.4s ease-in-out infinite alternate;
+}
+
+#graduation-ritual:is([data-stage="approach"], [data-stage="lower"], [data-stage="capture"], [data-stage="lift"]) #graduation-ship {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) rotate(0deg);
+  transition: transform 2200ms cubic-bezier(0.16, 0.78, 0.18, 1), opacity 480ms linear;
+}
+
+#graduation-ritual[data-stage="depart"] #graduation-ship {
+  opacity: 0;
+  transform: translate3d(-286px, -8px, 0) rotate(-1.5deg);
+  transition: transform 2100ms cubic-bezier(0.48, 0.02, 0.88, 0.56), opacity 1900ms ease-in;
+}
+
+#graduation-rig {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+}
+
+#graduation-lifebuoy-back {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--rig-anchor-x) - 43px);
+  top: calc(var(--rig-anchor-y) - 43px);
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.38) rotate(-8deg);
+  transform-origin: 50% 12%;
+  filter: drop-shadow(2px 3px 0 rgba(3, 26, 29, 0.35));
+  will-change: transform, opacity;
+}
+
+#graduation-cable {
+  position: absolute;
+  left: var(--rig-anchor-x);
+  top: var(--rig-anchor-y);
+  width: 2px;
+  height: 0;
+  border-left: 2px solid #7d5426;
+  box-shadow: 1px 0 0 rgba(247, 205, 112, 0.62);
+  transform: rotate(var(--rig-angle));
+  transform-origin: 50% 0;
+  opacity: 0;
+}
+
+#graduation-lifebuoy {
+  position: absolute;
+  left: calc(var(--rig-anchor-x) - 43px);
+  top: calc(var(--rig-anchor-y) - 43px);
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(0.38) rotate(-8deg);
+  transform-origin: 50% 12%;
+  filter: drop-shadow(2px 3px 0 rgba(3, 26, 29, 0.35));
+  will-change: transform, opacity;
+  clip-path: inset(48% 0 0 0);
+}
+
+#graduation-ritual[data-stage="lower"] #graduation-cable,
+#graduation-ritual[data-stage="capture"] #graduation-cable {
+  height: var(--rig-length);
+  opacity: 1;
+  transition: height 1300ms cubic-bezier(0.22, 0.76, 0.24, 1), opacity 180ms linear;
+}
+
+#graduation-ritual[data-stage="lower"] #graduation-lifebuoy,
+#graduation-ritual[data-stage="capture"] #graduation-lifebuoy,
+#graduation-ritual[data-stage="lower"] #graduation-lifebuoy-back,
+#graduation-ritual[data-stage="capture"] #graduation-lifebuoy-back {
+  opacity: 1;
+  transform: translate3d(var(--rig-dx), var(--rig-dy), 0) scale(1) rotate(0deg);
+  transition: transform 1300ms cubic-bezier(0.22, 0.76, 0.24, 1), opacity 160ms linear;
+}
+
+#graduation-ritual[data-stage="capture"] #graduation-lifebuoy {
+  animation: graduation-ring-lock 360ms steps(3, end) 1;
+}
+
+#graduation-ritual[data-stage="capture"] #graduation-lifebuoy-back {
+  animation: graduation-ring-lock 360ms steps(3, end) 1;
+}
+
+#graduation-ritual[data-stage="lift"] #graduation-cable {
+  height: 0;
+  opacity: 1;
+  transition: height 1350ms cubic-bezier(0.42, 0, 0.3, 1);
+}
+
+#graduation-ritual[data-stage="lift"] #graduation-lifebuoy,
+#graduation-ritual[data-stage="lift"] #graduation-lifebuoy-back {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(0.5) rotate(-5deg);
+  transition: transform 1350ms cubic-bezier(0.42, 0, 0.3, 1);
+}
+
+#graduation-ritual[data-stage="depart"] #graduation-cable,
+#graduation-ritual[data-stage="depart"] #graduation-lifebuoy,
+#graduation-ritual[data-stage="depart"] #graduation-lifebuoy-back {
+  opacity: 0;
+  transform: translate3d(-286px, -6px, 0) scale(0.42) rotate(-9deg);
+  transition: transform 2100ms cubic-bezier(0.48, 0.02, 0.88, 0.56), opacity 1750ms ease-in;
+}
+
+#graduation-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: #f9ffe8;
+  opacity: 0;
+}
+
+#graduation-ritual[data-stage="capture"] #graduation-flash {
+  animation: graduation-flash 520ms steps(4, end) 1;
+}
+
+#graduation-plaque {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 92px;
+  width: 174px;
+  padding: 9px 8px 8px;
+  border: 2px solid #244f43;
+  border-radius: 4px;
+  background: #eff2cf;
+  box-shadow: inset 0 0 0 1px #b9c28f, 3px 3px 0 rgba(4, 28, 31, 0.45);
+  color: #21483d;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 8px) scale(0.9);
+}
+
+#graduation-plaque span,
+#graduation-plaque strong {
+  display: block;
+  letter-spacing: 0;
+}
+
+#graduation-plaque span { font-size: 0.52rem; }
+#graduation-plaque strong {
+  margin-top: 4px;
+  color: #9a5d22;
+  font-size: 0.72rem;
+}
+
+#graduation-ritual:is([data-stage="depart"], [data-stage="drain"]) #graduation-plaque {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  transition: opacity 380ms linear 900ms, transform 560ms steps(5, end) 900ms;
+}
+
+#graduation-ritual[data-stage="return"] #graduation-plaque {
+  opacity: 0;
+  transform: translate(-50%, -8px) scale(0.96);
+  transition: opacity 360ms linear, transform 360ms ease-in;
+}
+
+#graduation-sparks {
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  top: 126px;
+  width: 1px;
+  height: 1px;
+}
+
+#graduation-sparks i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #fff6a7;
+  opacity: 0;
+}
+
+#graduation-sparks i:nth-child(1) { --spark-x: -88px; --spark-y: -55px; }
+#graduation-sparks i:nth-child(2) { --spark-x: -58px; --spark-y: 52px; }
+#graduation-sparks i:nth-child(3) { --spark-x: -28px; --spark-y: -78px; }
+#graduation-sparks i:nth-child(4) { --spark-x: 76px; --spark-y: -48px; }
+#graduation-sparks i:nth-child(5) { --spark-x: 90px; --spark-y: 28px; }
+#graduation-sparks i:nth-child(6) { --spark-x: 48px; --spark-y: 63px; }
+#graduation-sparks i:nth-child(7) { --spark-x: -92px; --spark-y: 10px; }
+#graduation-sparks i:nth-child(8) { --spark-x: 18px; --spark-y: -88px; }
+
+#graduation-ritual[data-stage="depart"] #graduation-sparks i {
+  animation: graduation-spark 1150ms steps(7, end) 780ms 1;
+}
+
+#face-motion.graduation-captured {
+  filter: drop-shadow(0 0 5px rgba(255, 244, 157, 0.86));
+}
+
+#face-motion.graduation-lifted {
+  transform: translate3d(var(--cypher-lift-x, 16px), var(--cypher-lift-y, -55px), 0) scale(0.58);
+  transition: transform 1350ms cubic-bezier(0.42, 0, 0.3, 1);
+}
+
+#face-motion.graduation-departing {
+  opacity: 0;
+  transform: translate3d(-285px, calc(var(--cypher-lift-y, -55px) - 6px), 0) scale(0.48);
+  transition: transform 2100ms cubic-bezier(0.48, 0.02, 0.88, 0.56), opacity 1750ms ease-in;
+}
+
+#raft-layer.graduation-offstage {
+  opacity: 0;
+  transform: translate3d(-245px, 8px, 0);
+}
+
+#raft-layer.graduation-return {
+  animation: graduation-raft-return 1800ms cubic-bezier(0.16, 0.78, 0.18, 1) 1 both;
+}
+
+#shell[data-graduation-active="true"] #mode-dots,
+#shell[data-graduation-active="true"] #btn-mode {
+  pointer-events: none;
+}
+
+@keyframes graduation-ship-heave {
+  from { transform: translateY(-1px) rotate(-0.25deg); }
+  to { transform: translateY(2px) rotate(0.25deg); }
+}
+
+@keyframes graduation-ring-lock {
+  0%, 100% { filter: drop-shadow(2px 3px 0 rgba(3, 26, 29, 0.35)); }
+  50% { filter: brightness(1.28) drop-shadow(0 0 7px rgba(255, 242, 143, 0.9)); }
+}
+
+@keyframes graduation-flash {
+  0%, 100% { opacity: 0; }
+  36% { opacity: 0.78; }
+  60% { opacity: 0.22; }
+}
+
+@keyframes graduation-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--spark-x), var(--spark-y)) scale(1); }
+}
+
+@keyframes graduation-raft-return {
+  0% { opacity: 0; transform: translate3d(-245px, 8px, 0); }
+  22% { opacity: 1; }
+  72% { transform: translate3d(9px, -1px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 /* ---- raft ---- */

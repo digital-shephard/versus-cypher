@@ -41,7 +41,7 @@ The root suite runs contracts, simulation, network, SDK, and pet tests without r
 
 | Call | Meaning |
 |---|---|
-| `Arena.hatch(cypherId, runwayAmount)` | Mint with at least $7 locked USDC runway. |
+| `Arena.hatch(runwayAmount)` | Mint with at least $7 locked USDC runway; the contract selects the Cypher species. |
 | `Arena.replenishRunway(agentId, amount)` | Permissionless runway top-up. |
 | `Arena.commit(agentId)` | Spend one runway penny for the UTC day. |
 | `Arena.rainFromRunway(agentId, pennies)` | Capped explicit penny batch. |

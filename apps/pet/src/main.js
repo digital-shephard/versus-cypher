@@ -22,6 +22,8 @@ const { createDiagnosticsReport } = require("./diagnostics");
 const { FaultInjector } = require("./fault-injection");
 const { HealthMonitor } = require("./health");
 const { OperationJournal } = require("./operation-journal");
+const { RainInbox } = require("./rain-inbox");
+const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
 const {
   createTrustedIpcRegistrar,
@@ -87,6 +89,7 @@ const WALLET_PATH = path.join(app.getPath("userData"), "wallet.json");
 const SETTINGS_PATH = path.join(app.getPath("userData"), "settings.json");
 const OPERATION_JOURNAL_PATH = path.join(app.getPath("userData"), "economic-operations.json");
 const NETWORK_DATA_DIR = path.join(app.getPath("userData"), "network");
+const RAIN_INBOX_PATH = path.join(app.getPath("userData"), "verified-rain.json");
 const RENDERER_PATH = path.join(__dirname, "..", "renderer", "index.html");
 const TRUSTED_RENDERER_URL = trustedFileUrl(RENDERER_PATH);
 const registerIpcHandle = createTrustedIpcRegistrar(ipcMain, TRUSTED_RENDERER_URL);
@@ -115,6 +118,7 @@ const activityStates = new Map();
 const healthMonitor = new HealthMonitor();
 const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE) ? process.env.VERSUS_FAULTS : "");
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
+const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
 
 function publishHealth(snapshot = healthMonitor.snapshot()) {
   if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
@@ -546,6 +550,7 @@ function saveSettings(input) {
 }
 
 function applyChainState(state, chain) {
+  recordGraduationTransition(state, chain);
   state.walletAddress = chain.address;
   state.walletOwner = chain.owner;
   state.cypherId = Number(chain.cypherId);
@@ -564,6 +569,7 @@ function applyChainState(state, chain) {
   state.classId = Number(chain.classId);
   state.classPotMicros = Number(chain.classPotMicros);
   state.classAgents = Number(chain.classAgents);
+  state.graduationFloorMicros = Number(chain.graduationFloorMicros || 1_000_000_000);
   state.genesis = Boolean(chain.genesis);
   state.chainSyncedAt = Date.now();
   return state;
@@ -577,8 +583,18 @@ async function reconcileChainState() {
     const wallet = ensureWallet();
     const chain = await chainRainService.readState({ address: wallet.address, agentId: state.agentId });
     state.ownershipLost = chain.owner.toLowerCase() !== wallet.address.toLowerCase();
+    const pendingBefore = Number(state.pendingGraduation?.classId || 0);
     applyChainState(state, chain);
     saveState(state);
+    if (
+      Number(state.pendingGraduation?.classId || 0) > pendingBefore &&
+      mainWindow && !mainWindow.isDestroyed()
+    ) {
+      mainWindow.webContents.send("graduation:available", {
+        ceremony: state.pendingGraduation,
+        state: structuredClone(state),
+      });
+    }
     return state;
   });
 }
@@ -641,6 +657,29 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
       service.node.transport?.on?.("historySynced", () => activityBus.record({
         channel: "waku", direction: "in", operation: "store_sync", destination: "versus_mesh", status: "ok",
       }));
+      service.node.transport?.on?.("rainBatch", (batch, metadata = {}) => {
+        const accepted = rainInbox.acceptBatch(batch);
+        activityBus.record({
+          channel: "waku",
+          direction: "in",
+          operation: "verified_rain",
+          destination: "local_device",
+          status: accepted.acceptedPennies ? "ok" : "idle",
+        });
+        if (accepted.acceptedPennies && mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+          mainWindow.webContents.send("rain:available", {
+            pennies: accepted.acceptedPennies,
+            pending: accepted.pending,
+            history: Boolean(metadata.history),
+          });
+        }
+      });
+      service.node.transport?.on?.("rainRejected", (error) => {
+        activityBus.record({
+          channel: "waku", direction: "in", operation: "rain_reject", destination: "versus_mesh", status: "error",
+        });
+        console.error("Versus verified rain rejected:", error.message);
+      });
       service.node.transport?.on?.("state", (transportStatus = {}) => {
         const state = String(transportStatus.state || "wait").toLowerCase();
         recordActivityState("waku-state", {
@@ -1185,6 +1224,12 @@ registerIpcHandle("bond:save", (_e, state) => {
   saveState(state);
   return true;
 });
+registerIpcHandle("graduation:acknowledge", (_e, payload) => {
+  const state = loadState() || {};
+  acknowledgeGraduation(state, payload?.classId);
+  saveState(state);
+  return state;
+});
 
 registerIpcHandle("wallet:ensure", () => {
   const w = ensureWallet();
@@ -1209,6 +1254,8 @@ registerIpcHandle("wallet:getAddressQr", async () => {
     },
   });
 });
+
+registerIpcHandle("rain:next", () => rainInbox.next());
 
 registerIpcHandle("wallet:copyAddress", () => {
   const w = ensureWallet();
@@ -1281,6 +1328,7 @@ registerIpcHandle("cypher:createArchive", async (_e, { password } = {}) => {
     bond: loadState(),
     networkState: service.exportLocalArchive(),
     operationJournal: operationJournal.exportArchive(),
+    verifiedRain: rainInbox.exportArchive(),
   }, password);
   const selected = await dialog.showSaveDialog(mainWindow, {
     title: "Back up Versus Cypher and memories",
@@ -1334,6 +1382,7 @@ registerIpcHandle("cypher:restoreArchive", async (_e, { password } = {}) => {
   });
   saveState(payload.bond);
   if (payload.operationJournal) operationJournal.importArchive(payload.operationJournal);
+  if (payload.verifiedRain) rainInbox.importArchive(payload.verifiedRain);
 
   const service = await ensureNetworkService({ suppressAutostart: true });
   if (!service) throw new Error("restored Cypher could not start its local network service");
@@ -1847,17 +1896,15 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
 }, async () => {
   const w = ensureWallet();
   const state = loadState() || {};
-  const cypherId = Number.isInteger(state.cypherId)
-    ? state.cypherId
-    : chooseRandomCypher(cypherCount);
+  let cypherId = Number.isInteger(state.cypherId) ? state.cypherId : null;
+  if (!chainRainService && cypherId === null) cypherId = chooseRandomCypher(cypherCount);
 
   state.phase = "swapping";
-  state.cypherId = cypherId;
+  if (cypherId !== null) state.cypherId = cypherId;
   saveState(state);
   if (chainRainService && !state.demoDeposit) {
     const result = await chainRainService.hatchWithEth({
       privateKey: w.privateKey,
-      cypherId,
       depositWei: state.depositWei,
       onPhase: async (phase, details) => {
         state.phase = phase;
@@ -1867,6 +1914,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
         saveState(state);
       },
     });
+    cypherId = Number(result.cypherId);
     await chainRainService.commitDaily({ privateKey: w.privateKey, agentId: result.agentId });
     state.phase = "active";
     state.agentId = Number(result.agentId);

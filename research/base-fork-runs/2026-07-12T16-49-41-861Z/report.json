@@ -1,0 +1,35 @@
+{
+  "kind": "versus-base-mainnet-fork-rehearsal",
+  "passed": true,
+  "forkBlock": 48542817,
+  "chainId": 8453,
+  "dependencies": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "protocolRecipient": "0x93645ce5BCF0009026D8100aea5901cDd52217bF"
+  },
+  "contracts": {
+    "agents": "0x3e3C9B323DB0d0162a451feE87c5c887b4aa9bC2",
+    "arena": "0x51653dB9b68F3Be238D2195f817675D063458a0E",
+    "syndicate": "0x1CD1465128d506684C1668275FeF3649dbF24BD7",
+    "treasury": "0x4bf637e26B082157c05df5AB2C1810A439Cd4847",
+    "graduation": "0xCbC4927a5Ad7913831ba39CE758F683Bb4D6E8EB",
+    "token": "0x87436be82E73a6711bD06E9FF9b16a397cc07E7D",
+    "pair": "0xb89241C3b93cE037174928162f1517b5F5d4DF18"
+  },
+  "assertions": {
+    "independentDeploymentAuditChecks": 44,
+    "safePublicReady": false,
+    "selectedCypherId": "6",
+    "tokenURI": "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/6.json",
+    "exactFloorUSDC": "1000000000",
+    "signalSettled": true,
+    "nextClassId": "2",
+    "claimedVaultRewardMicros": "135061",
+    "finalAgentVaultMicros": "0",
+    "nftOwner": "0xAd56076a75d365e2b9587cA4f7889a672aFbFFd7"
+  },
+  "completedAt": "2026-07-12T16:49:51.281Z"
+}

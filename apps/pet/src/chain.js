@@ -17,7 +17,7 @@ const ALLOWANCE_SYNC_TIMEOUT_MS = 15_000;
 const CHAIN_STATE_SYNC_TIMEOUT_MS = 30_000;
 
 const arenaAbi = [
-  "function hatch(uint8 cypherId, uint256 runwayAmount) returns (uint256 agentId)",
+  "function hatch(uint256 runwayAmount) returns (uint256 agentId)",
   "function replenishRunway(uint256 agentId, uint256 amount)",
   "function commit(uint256 agentId)",
   "function rainFromRunway(uint256 agentId, uint256 pennies)",
@@ -25,7 +25,7 @@ const arenaAbi = [
   "function settledSignalBatches(uint256 agentId, bytes32 batchRoot) view returns (bool)",
   "function runway(uint256 agentId) view returns (uint128)",
   "event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount)",
-  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, bytes32 typeCountsHash)",
+  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, uint256 classTotal, bytes32 typeCountsHash)",
 ];
 const agentAbi = [
   "function getAgent(uint256 agentId) view returns (uint8 cypherId, uint32 level, uint32 streak, uint32 lastCommitDay, uint128 vault, address owner)",
@@ -43,6 +43,7 @@ const treasuryAbi = [
 ];
 const syndicateAbi = [
   "function currentClassId() view returns (uint256)",
+  "function graduationFloor() view returns (uint256)",
   "function getClass(uint256 classId) view returns (uint256 totalCommitted, uint32 participantCount, uint32 openedDay, bool graduated)",
   "function isParticipant(uint256 classId, uint256 agentId) view returns (bool)",
   "function isGenesisAgent(uint256 agentId) view returns (bool)",
@@ -74,6 +75,19 @@ function findEvent(contract, receipt, name) {
     } catch (_) {}
   }
   throw new Error(`${name} event was missing from the confirmed receipt`);
+}
+
+function validateHatchReceipt(arena, receipt, owner, runwayAmount) {
+  const event = findEvent(arena, receipt, "Hatched");
+  if (
+    event.args.owner.toLowerCase() !== owner.toLowerCase() ||
+    event.args.runwayAmount !== BigInt(runwayAmount) ||
+    event.args.cypherId < 0n ||
+    event.args.cypherId >= 29n
+  ) {
+    throw new Error("hatch event does not match the confirmed on-chain selection");
+  }
+  return event;
 }
 
 function validateSignalReceipt(arena, receipt, agentId, batch) {
@@ -222,7 +236,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const syndicate = new Contract(addresses.syndicate, syndicateAbi, provider);
       const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, provider);
       const classId = await syndicate.currentClassId();
-      const [ethBalance, usdcBalance, agent, runway, tickets, totalTickets, claimable, tranchePot, currentClass, genesis] = await Promise.all([
+      const [ethBalance, usdcBalance, agent, runway, tickets, totalTickets, claimable, tranchePot, currentClass, genesis, graduationFloor] = await Promise.all([
         provider.getBalance(address),
         token.balanceOf(address),
         agents.getAgent(BigInt(agentId)),
@@ -233,6 +247,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         treasury.tranchePot(),
         syndicate.getClass(classId),
         syndicate.isGenesisAgent(BigInt(agentId)),
+        syndicate.graduationFloor(),
       ]);
       return {
         address,
@@ -256,11 +271,12 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         classAgents: currentClass.participantCount,
         classOpenedDay: currentClass.openedDay,
         classGraduated: currentClass.graduated,
+        graduationFloorMicros: graduationFloor,
         genesis,
       };
     },
 
-    async hatchWithEth({ privateKey, cypherId, depositWei, onPhase = null }) {
+    async hatchWithEth({ privateKey, depositWei, onPhase = null }) {
       const wallet = new Wallet(privateKey, provider);
       const signer = new NonceManager(wallet);
       const owner = wallet.address;
@@ -303,20 +319,21 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       const hatchReceipt = await confirmed(
-        await arena.hatch(Number(cypherId), runwayAmount),
+        await arena.hatch(runwayAmount),
         "Cypher hatch"
       );
-      const event = findEvent(arena, hatchReceipt, "Hatched");
+      const event = validateHatchReceipt(arena, hatchReceipt, owner, runwayAmount);
       return {
         plan,
         agentId: event.args.agentId,
+        cypherId: event.args.cypherId,
         runway: event.args.runwayAmount,
         swapHash: swapReceipt.hash,
         hatchHash: hatchReceipt.hash,
       };
     },
 
-    async hatchWithRunway({ privateKey, cypherId, runwayAmount }) {
+    async hatchWithRunway({ privateKey, runwayAmount }) {
       runwayAmount = BigInt(runwayAmount);
       if (runwayAmount <= 0n) throw new RangeError("runway amount must be positive");
       const signer = new NonceManager(new Wallet(privateKey, provider));
@@ -331,12 +348,13 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       const receipt = await confirmed(
-        await arena.hatch(Number(cypherId), runwayAmount),
+        await arena.hatch(runwayAmount),
         "Cypher hatch"
       );
-      const event = findEvent(arena, receipt, "Hatched");
+      const event = validateHatchReceipt(arena, receipt, owner, runwayAmount);
       return {
         agentId: event.args.agentId,
+        cypherId: event.args.cypherId,
         runway: event.args.runwayAmount,
         approvalHash,
         hatchHash: receipt.hash,

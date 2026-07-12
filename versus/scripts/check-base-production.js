@@ -1,10 +1,20 @@
 const { Contract, JsonRpcProvider, getAddress } = require("ethers");
+const path = require("path");
 const CONSTANTS = require("./lib/constants");
+const {
+  assertBaseSourceReady,
+  evaluateSafePolicy,
+  resolveReleaseStage,
+  resolveSourceState,
+} = require("./lib/deployment-manifest");
 
 const EXPECTED_WETH = "0x4200000000000000000000000000000000000006";
 const DEFAULT_PROTOCOL_RECIPIENT = "0x93645ce5BCF0009026D8100aea5901cDd52217bF";
 
 async function main() {
+  const releaseStage = resolveReleaseStage("base");
+  const source = resolveSourceState(path.join(__dirname, "..", ".."));
+  assertBaseSourceReady(source);
   const rpcUrl = process.env.BASE_RPC_URL || "https://mainnet.base.org";
   const protocolRecipient = getAddress(process.env.PROTOCOL_RECIPIENT || DEFAULT_PROTOCOL_RECIPIENT);
   const provider = new JsonRpcProvider(rpcUrl, CONSTANTS.base.chainId, {
@@ -58,11 +68,17 @@ async function main() {
     protocolRecipient,
     safeOwners: owners.map(getAddress),
     safeThreshold: Number(threshold),
+    releaseStage,
+    sourceCommit: source.commit,
     checkedAt: new Date().toISOString(),
   };
+  report.safePolicy = evaluateSafePolicy({ owners, threshold, releaseStage });
   console.log(JSON.stringify(report, null, 2));
-  if (owners.length < 3 || threshold < 2n) {
-    throw new Error("protocol Safe is not ready: require at least three owners and threshold >= 2");
+  if (!report.safePolicy.passed) {
+    throw new Error(`protocol Safe is not ready for ${releaseStage}: requires ${report.safePolicy.required}`);
+  }
+  if (report.safePolicy.hardeningRequired) {
+    console.warn("WARNING: closed-cohort Safe accepted, but unrestricted public release remains blocked until it is at least 2-of-3");
   }
 }
 

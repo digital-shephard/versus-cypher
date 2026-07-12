@@ -6,6 +6,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 interface IAgentNFT {
     function mint(address to, uint8 cypherId) external returns (uint256 agentId);
+    function nextId() external view returns (uint256);
+    function CYPHER_COUNT() external view returns (uint8);
     function recordCommit(uint256 agentId, uint32 day) external;
     function ownerOf(uint256 tokenId) external view returns (address);
     function agents(uint256 agentId)
@@ -15,7 +17,7 @@ interface IAgentNFT {
 }
 
 interface ISyndicateEngine {
-    function receiveCommit(uint256 agentId, uint32 day, uint256 amount) external;
+    function receiveCommit(uint256 agentId, uint32 day, uint256 amount) external returns (uint256 classTotal);
     function currentClassId() external view returns (uint256);
 }
 
@@ -48,8 +50,23 @@ contract Arena {
 
     event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount);
     event RunwayReplenished(uint256 indexed agentId, address indexed from, uint256 amount);
-    event Committed(uint256 indexed agentId, address indexed owner, uint32 day, uint256 amount);
-    event Rained(uint256 indexed agentId, address indexed owner, uint32 day, uint256 pennies, uint256 amount);
+    event Committed(
+        uint256 indexed agentId,
+        uint256 indexed classId,
+        address indexed owner,
+        uint32 day,
+        uint256 amount,
+        uint256 classTotal
+    );
+    event Rained(
+        uint256 indexed agentId,
+        uint256 indexed classId,
+        address indexed owner,
+        uint32 day,
+        uint256 pennies,
+        uint256 amount,
+        uint256 classTotal
+    );
     event SignalBatchSettled(
         uint256 indexed agentId,
         uint256 indexed classId,
@@ -57,6 +74,7 @@ contract Arena {
         uint256 signalCount,
         uint256 inkPennies,
         uint256 amount,
+        uint256 classTotal,
         bytes32 typeCountsHash
     );
 
@@ -81,9 +99,23 @@ contract Arena {
     }
 
     /// @notice Hatches a Cypher with nonwithdrawable protocol fuel held by the Arena.
-    function hatch(uint8 cypherId, uint256 runwayAmount) external returns (uint256 agentId) {
+    function hatch(uint256 runwayAmount) external returns (uint256 agentId) {
         if (runwayAmount < MIN_RUNWAY || runwayAmount > type(uint128).max) revert RunwayBelowMinimum();
         usdc.safeTransferFrom(msg.sender, address(this), runwayAmount);
+        uint8 cypherId = uint8(
+            uint256(
+                keccak256(
+                    abi.encodePacked(
+                        block.prevrandao,
+                        msg.sender,
+                        agents.nextId(),
+                        block.number,
+                        block.chainid,
+                        address(this)
+                    )
+                )
+            ) % agents.CYPHER_COUNT()
+        );
         agentId = agents.mint(msg.sender, cypherId);
         runway[agentId] = uint128(runwayAmount);
         totalRunwayLiability += runwayAmount;
@@ -116,10 +148,11 @@ contract Arena {
         _spendRunway(agentId, amount);
 
         uint32 day = uint32(block.timestamp / DAY);
-        syndicate.receiveCommit(agentId, day, amount);
+        uint256 classId = syndicate.currentClassId();
+        uint256 classTotal = syndicate.receiveCommit(agentId, day, amount);
         treasury.awardTickets(agentId, pennies);
 
-        emit Rained(agentId, msg.sender, day, pennies, amount);
+        emit Rained(agentId, classId, msg.sender, day, pennies, amount, classTotal);
     }
 
     /// @notice Settles a bounded set of durable postcard IDs as one vault transaction.
@@ -144,10 +177,10 @@ contract Arena {
         _spendRunway(agentId, amount);
 
         uint32 day = uint32(block.timestamp / DAY);
-        syndicate.receiveCommit(agentId, day, amount);
+        uint256 classTotal = syndicate.receiveCommit(agentId, day, amount);
         treasury.awardTickets(agentId, inkPennies);
         emit SignalBatchSettled(
-            agentId, classId, batchRoot, signalCount, inkPennies, amount, keccak256(abi.encode(typeCounts))
+            agentId, classId, batchRoot, signalCount, inkPennies, amount, classTotal, keccak256(abi.encode(typeCounts))
         );
     }
 
@@ -173,12 +206,13 @@ contract Arena {
 
         _spendRunway(agentId, PENNY);
 
+        uint256 classId = syndicate.currentClassId();
         agents.recordCommit(agentId, day);
         committedDays[agentId][day] = true;
-        syndicate.receiveCommit(agentId, day, PENNY);
+        uint256 classTotal = syndicate.receiveCommit(agentId, day, PENNY);
         treasury.awardCommitTicket(agentId);
 
-        emit Committed(agentId, msg.sender, day, PENNY);
+        emit Committed(agentId, classId, msg.sender, day, PENNY, classTotal);
     }
 
     function runwayDays(uint256 agentId) external view returns (uint256) {

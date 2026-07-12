@@ -39,8 +39,11 @@ Base mainnet refuses mock USDC and any graduation-floor override; the deploy scr
 Before sending a deployment transaction, run the read-only production preflight. It validates Base chain ID, dependency bytecode, router bindings, and the protocol Safe owner threshold:
 
 ```powershell
+$env:VERSUS_RELEASE_STAGE = "closed-cohort"
 npm run preflight:base
 ```
+
+`closed-cohort` accepts a valid Safe and publishes a warning until it is at least 2-of-3. `unrestricted-public` fails closed unless the Safe has at least three owners and threshold two. Base deploys also fail before transaction signing unless the repository is clean and the source commit is a full 40-character Git commit.
 
 Run the disposable Base mainnet fork rehearsal through Docker and Anvil. It uses canonical Base state but spends no real funds:
 
@@ -48,12 +51,26 @@ Run the disposable Base mainnet fork rehearsal through Docker and Anvil. It uses
 npm run test:base-fork
 ```
 
-After deployment, commit `deployments/base.json`, which includes transaction receipts, runtime bytecode hashes, and the source commit when `VERSUS_SOURCE_COMMIT` or `GITHUB_SHA` is set. Then publish source through Basescan:
+After deployment, commit `deployments/base.json`. It conforms to `deployments/schema-v1.json` and records the exact commit, clean-source hash inventory, compiler settings, constructor arguments, transaction receipts, deployment block range, and runtime bytecode hashes. Then publish source through Basescan:
 
 ```powershell
 $env:VERSUS_DEPLOYMENT = "deployments/base.json"
 npm run verify:base
 ```
+
+Finally, audit the deployment through a second Base RPC. This independently reads every binding, bootstrap seal, frozen economic constant, router dependency, Safe policy, and runtime bytecode hash, then writes the publishable evidence files `base-verification.json` and `base-ownerless-summary.md`:
+
+```powershell
+$env:BASE_AUDIT_RPC_URL = "<independent Base RPC>"
+npm run audit:base
+```
+
+Publish together:
+
+- `deployments/base.json`
+- `deployments/base-source-verification.json`
+- `deployments/base-verification.json`
+- `deployments/base-ownerless-summary.md`
 
 ## Post-deploy invariants
 

@@ -58,6 +58,14 @@ test("sdk submits durable signal batches to the Arena", async () => {
   assert.deepEqual(writes[0].args, [11n, 7n, `0x${"2".repeat(64)}`, [1, 0, 2, 0, 0, 0, 0, 0]]);
 });
 
+test("sdk hatch submits runway only and cannot select a species", async () => {
+  const { publicClient, walletClient, writes } = clients();
+  const client = createVersusClient({ publicClient, walletClient, addresses });
+  await client.hatch(7_000_000n);
+  assert.equal(writes[0].functionName, "hatch");
+  assert.deepEqual(writes[0].args, [7_000_000n]);
+});
+
 test("sdk sponsors releases refunds and reads ownerless mission escrows", async () => {
   const { publicClient, walletClient, writes } = clients();
   const client = createVersusClient({ publicClient, walletClient, addresses });

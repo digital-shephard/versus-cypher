@@ -313,7 +313,6 @@ async function main() {
       );
       const hatch = await appChain.hatchWithRunway({
         privateKey: wallet.privateKey,
-        cypherId: index + 5,
         runwayAmount: 7_000_000n,
       });
       record("chain_transaction", {

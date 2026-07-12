@@ -14,6 +14,7 @@ module.exports = {
   ...require("./payment-proof-store"),
   ...require("./protocol"),
   ...require("./rate-policy"),
+  ...require("./rain-protocol"),
   ...require("./signal-batch"),
   ...require("./store"),
   ...require("./sponsorship"),

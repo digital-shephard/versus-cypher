@@ -6,7 +6,6 @@ export const arenaAbi = [
     name: "hatch",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "cypherId", type: "uint8" },
       { name: "runwayAmount", type: "uint256" },
     ],
     outputs: [{ name: "agentId", type: "uint256" }],
@@ -304,7 +303,7 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
   }
 
   return {
-    async hatch(cypherId = 0, runwayAmount = MIN_RUNWAY) {
+    async hatch(runwayAmount = MIN_RUNWAY) {
       runwayAmount = BigInt(runwayAmount);
       if (runwayAmount < MIN_RUNWAY) throw new RangeError("hatch runway must be at least $7 USDC");
       await ensureAllowance(addresses.arena, runwayAmount);
@@ -312,7 +311,7 @@ export function createVersusClient({ publicClient, walletClient, addresses }) {
         address: addresses.arena,
         abi: arenaAbi,
         functionName: "hatch",
-        args: [cypherId, runwayAmount],
+        args: [runwayAmount],
       });
       return publicClient.waitForTransactionReceipt({ hash });
     },

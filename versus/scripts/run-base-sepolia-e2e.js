@@ -328,10 +328,10 @@ async function main() {
       await submit("mint alpha test usdc", usdcMaster.mint(alphaWallet.address, 8_500_000n), "master");
       await submit("mint beta test usdc", usdcMaster.mint(betaWallet.address, 7_000_000n), "master");
 
-      const alphaHatch = await alphaChain.hatchWithRunway({ privateKey: alphaWallet.privateKey, cypherId: 4, runwayAmount: MIN_RUNWAY });
+      const alphaHatch = await alphaChain.hatchWithRunway({ privateKey: alphaWallet.privateKey, runwayAmount: MIN_RUNWAY });
       await recordHash("approve alpha arena", alphaHatch.approvalHash, "alpha");
       await recordHash("hatch alpha cypher", alphaHatch.hatchHash, "alpha", { agentId: alphaHatch.agentId });
-      const betaHatch = await betaChain.hatchWithRunway({ privateKey: betaWallet.privateKey, cypherId: 7, runwayAmount: MIN_RUNWAY });
+      const betaHatch = await betaChain.hatchWithRunway({ privateKey: betaWallet.privateKey, runwayAmount: MIN_RUNWAY });
       await recordHash("approve beta arena", betaHatch.approvalHash, "beta");
       await recordHash("hatch beta cypher", betaHatch.hatchHash, "beta", { agentId: betaHatch.agentId });
       assert(alphaHatch.agentId === 1n && betaHatch.agentId === 2n, "fresh deployment did not mint agents one and two");

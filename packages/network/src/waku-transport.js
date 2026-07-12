@@ -1,5 +1,6 @@
 const { EventEmitter } = require("events");
 const { getAddress, isAddress } = require("ethers");
+const { createRainContentTopic, verifyRainBatch } = require("./rain-protocol");
 
 const WAKU_TOPIC_VERSION = 1;
 const DEFAULT_WAKU_CLUSTER_ID = 66;
@@ -48,6 +49,8 @@ class WakuPostcardTransport extends EventEmitter {
   constructor({
     chainId,
     contractAddress,
+    arenaAddress = null,
+    trustedRainAttestors = [],
     launchId,
     topicScope = "",
     bootstrapPeers = [],
@@ -82,6 +85,11 @@ class WakuPostcardTransport extends EventEmitter {
     this.handlesPropagation = true;
     this.chainId = String(chainId);
     this.contractAddress = getAddress(contractAddress);
+    this.arenaAddress = arenaAddress ? getAddress(arenaAddress) : null;
+    this.trustedRainAttestors = Array.from(trustedRainAttestors, getAddress);
+    if ((this.arenaAddress === null) !== (this.trustedRainAttestors.length === 0)) {
+      throw new TypeError("Arena address and trusted rain attestors must be configured together");
+    }
     this.launchId = normalizeLaunchId(launchId);
     this.topicScope = normalizeTopicScope(topicScope);
     this.contentTopic = createVersusContentTopic({
@@ -90,6 +98,9 @@ class WakuPostcardTransport extends EventEmitter {
       launchId: this.launchId,
       topicScope: this.topicScope,
     });
+    this.rainContentTopic = this.arenaAddress
+      ? createRainContentTopic({ chainId: this.chainId, arenaAddress: this.arenaAddress })
+      : null;
     this.bootstrapPeers = [...bootstrapPeers];
     this.defaultBootstrap = defaultBootstrap;
     this.clusterId = clusterId;
@@ -107,7 +118,9 @@ class WakuPostcardTransport extends EventEmitter {
     this.node = null;
     this.encoder = null;
     this.decoder = null;
+    this.rainDecoder = null;
     this.subscription = null;
+    this.rainSubscription = null;
     this.started = false;
     this.connectedPeerCount = 0;
     this.connectedPeers = [];
@@ -234,6 +247,9 @@ class WakuPostcardTransport extends EventEmitter {
       }
       this.encoder = this.node.createEncoder({ contentTopic: this.contentTopic, ephemeral: false });
       this.decoder = this.node.createDecoder({ contentTopic: this.contentTopic });
+      this.rainDecoder = this.rainContentTopic
+        ? this.node.createDecoder({ contentTopic: this.rainContentTopic })
+        : null;
       const subscribedContentTopic = this.contentTopic;
       const subscribedLaunchId = this.launchId;
       const subscribed = await this.node.filter.subscribe(this.decoder, (message) => {
@@ -244,13 +260,46 @@ class WakuPostcardTransport extends EventEmitter {
       });
       if (!subscribed) throw new Error("Waku Filter subscription was rejected");
       this.subscription = true;
+      if (this.rainDecoder) {
+        const rainSubscribed = await this.node.filter.subscribe(this.rainDecoder, (message) => {
+          this.onRainMessage(message, { contentTopic: this.rainContentTopic });
+        });
+        if (!rainSubscribed) throw new Error("Waku verified rain subscription was rejected");
+        this.rainSubscription = true;
+      }
       this.started = true;
       this.setConnectionState(this.classifyConnectionState());
       this.emit("ready", { contentTopic: this.contentTopic, peerCount: this.connectedPeerCount });
       this.storeCatchUp = this.catchUp();
+      if (this.rainDecoder) this.rainStoreCatchUp = this.catchUpRain();
     } catch (error) {
       this.setConnectionState("offline", error.message);
       throw error;
+    }
+  }
+
+  onRainMessage(message, { history = false, contentTopic = this.rainContentTopic } = {}) {
+    try {
+      if (!this.rainContentTopic || contentTopic !== this.rainContentTopic) return false;
+      const payload = message?.payload;
+      if (!(payload instanceof Uint8Array)) throw new Error("Waku rain message has no byte payload");
+      if (payload.byteLength > this.maxPayloadBytes) throw new Error("Waku rain payload is too large");
+      const envelope = JSON.parse(new TextDecoder().decode(payload));
+      const verified = verifyRainBatch(envelope, {
+        chainId: this.chainId,
+        arenaAddress: this.arenaAddress,
+        trustedAttestors: this.trustedRainAttestors,
+      });
+      this.emit("rainBatch", verified, {
+        transport: "waku",
+        hash: message.hashStr || null,
+        contentTopic,
+        history,
+      });
+      return true;
+    } catch (error) {
+      this.emit("rainRejected", error);
+      return false;
     }
   }
 
@@ -425,6 +474,33 @@ class WakuPostcardTransport extends EventEmitter {
     }
   }
 
+  async catchUpRain() {
+    if (!this.enableStore || !this.rainDecoder || !this.node?.store?.queryWithOrderedCallback) {
+      return { attempted: false, received: 0, error: "Waku verified rain Store is unavailable" };
+    }
+    const decoder = this.rainDecoder;
+    const contentTopic = this.rainContentTopic;
+    const timeEnd = new Date();
+    const timeStart = new Date(timeEnd.getTime() - this.storeHistoryMs);
+    let received = 0;
+    try {
+      await this.node.store.queryWithOrderedCallback(
+        [decoder],
+        (message) => {
+          if (received >= this.storeMessageLimit) return true;
+          received += 1;
+          this.onRainMessage(message, { history: true, contentTopic });
+          return received >= this.storeMessageLimit;
+        },
+        { timeStart, timeEnd, paginationForward: true, paginationLimit: this.storePageSize, includeData: true }
+      );
+      return { attempted: true, received };
+    } catch (error) {
+      this.emit("rainRejected", error);
+      return { attempted: true, received, error: error.message };
+    }
+  }
+
   switchLaunch(launchId) {
     const nextLaunchId = normalizeLaunchId(launchId);
     const operation = this.launchSwitch.catch(() => {}).then(() => this.applyLaunch(nextLaunchId));
@@ -497,13 +573,18 @@ class WakuPostcardTransport extends EventEmitter {
     if (this.subscription && this.decoder) {
       await this.node.filter.unsubscribe(this.decoder).catch(() => false);
     }
+    if (this.rainSubscription && this.rainDecoder) {
+      await this.node.filter.unsubscribe(this.rainDecoder).catch(() => false);
+    }
     await this.node.stop();
     this.started = false;
     this.subscription = null;
+    this.rainSubscription = null;
     this.node = null;
     this.connectedPeerCount = 0;
     this.connectedPeers = [];
     this.protocolCounts = { lightPush: 0, filter: 0, store: 0, relay: 0 };
+    this.rainDecoder = null;
     this.storeCatchUp = null;
     this.setConnectionState("offline");
   }

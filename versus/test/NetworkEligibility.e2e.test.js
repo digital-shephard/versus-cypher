@@ -13,7 +13,7 @@ describe("Versus network Cypher eligibility", function () {
     });
     await usdc.mint(alice.address, MIN_RUNWAY);
     await usdc.connect(alice).approve(await arena.getAddress(), ethers.MaxUint256);
-    await arena.connect(alice).hatch(4, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
 
     const verifier = new ContractCypherVerifier({
       provider: ethers.provider,

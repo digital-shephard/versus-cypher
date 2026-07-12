@@ -4,7 +4,7 @@ const { normalizeMissionSponsorship } = require("./sponsorship");
 
 const ARENA_ABI = [
   "function settledSignalBatches(uint256 agentId, bytes32 batchRoot) view returns (bool)",
-  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, bytes32 typeCountsHash)",
+  "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, uint256 classTotal, bytes32 typeCountsHash)",
 ];
 const ESCROW_ABI = [
   "function escrows(uint256 escrowId) view returns (bytes32 missionId, uint256 launchId, uint256 sponsorAgentId, uint256 recipientAgentId, uint128 amount, uint64 deadline, uint8 state, address sponsor)",

@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "runId": "2026-07-12T13-52-18-463-04-00",
+  "recordedAt": "2026-07-12T17:52:18.463Z",
+  "repositories": {
+    "versusCypher": {
+      "head": "42fbcca8f98084b0558559aeaedaff5afc200699",
+      "workingTreeDirty": true
+    },
+    "versusNode": {
+      "head": "3c575a50563658cd790ee1630659f3f8c80834d3",
+      "workingTreeDirty": true
+    }
+  },
+  "protocol": {
+    "kind": "versus-verified-rain",
+    "version": 1,
+    "wakuClusterId": 66,
+    "wakuShardCount": 8,
+    "eventIdentity": "chainId:arena:transactionHash:logIndex",
+    "arenaEvents": ["Committed", "Rained", "SignalBatchSettled"],
+    "classBound": true,
+    "canonicalPostEventClassTotalBound": true
+  },
+  "fullPath": {
+    "chainId": 31337,
+    "transport": "real local nwaku Relay Filter and Store",
+    "confirmedTransactions": 2,
+    "committedPennies": 1,
+    "batchedRainPennies": 5,
+    "acceptedPennies": 6,
+    "durablyDrainedDrops": 6,
+    "passed": true
+  },
+  "visualPath": {
+    "engine": "Electron offscreen renderer",
+    "queuedCurrentClassPennies": 3,
+    "queuedClosedClassPennies": 1,
+    "renderedDrops": 3,
+    "suppressedClosedClassDrops": 1,
+    "capturedFrames": 8,
+    "frameDirectory": "apps/pet/shots/ritual",
+    "passed": true
+  },
+  "adversarialAndRecovery": {
+    "unknownAttestorRejected": true,
+    "tamperedPennyCountRejected": true,
+    "duplicateAttestationsDeduplicated": true,
+    "storeReplayCannotDoubleRaiseOcean": true,
+    "wakuPublishFailurePreservedCursor": true,
+    "restartPreservedPendingDrops": true,
+    "archivePreservedPendingAndSeenDrops": true,
+    "rpcDailyCreditBudgetFailedClosed": true,
+    "decorativePrecipitationAbsent": true
+  },
+  "providerBudget": {
+    "defaultPollMs": 300000,
+    "creditsPerSteadyCycle": 335,
+    "projectedCreditsPerDay": 96480,
+    "defaultDailyBudget": 3000000
+  },
+  "testResults": {
+    "versusNode": { "passed": 10, "failed": 0 },
+    "networkPackage": { "passed": 73, "failed": 0 },
+    "desktop": { "passed": 66, "failed": 0 },
+    "sdk": { "passed": 3, "failed": 0 },
+    "contracts": { "passed": 37, "failed": 0, "pendingBaseFork": 1 },
+    "terraformFormat": "passed",
+    "terraformValidate": "passed",
+    "nodeContainerBuild": "passed",
+    "fullStableViewCapture": { "passed": true, "screenshots": 28 }
+  }
+}

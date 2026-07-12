@@ -41,6 +41,11 @@ function parsePeerUrls(value = "") {
     .filter(Boolean);
 }
 
+function parseAddresses(value = []) {
+  const entries = Array.isArray(value) ? value : String(value || "").split(",");
+  return entries.map((address) => String(address).trim()).filter(Boolean);
+}
+
 class PetNetworkService {
   constructor({
     privateKey,
@@ -762,9 +767,16 @@ async function createPetNetworkService({
       const launchId = env.VERSUS_WAKU_LAUNCH_ID
         ? BigInt(env.VERSUS_WAKU_LAUNCH_ID).toString()
         : await launchResolver();
+      const trustedRainAttestors = parseAddresses(
+        env.VERSUS_RAIN_ATTESTORS || deployment.rainAttestors || []
+      );
       transport = new WakuPostcardTransport({
         chainId: deployment.chainId,
         contractAddress: deployment.contracts.agents,
+        ...(trustedRainAttestors.length ? {
+          arenaAddress: deployment.contracts.arena,
+          trustedRainAttestors,
+        } : {}),
         launchId,
         bootstrapPeers: env.VERSUS_WAKU_BOOTSTRAP_PEERS === ""
           ? []

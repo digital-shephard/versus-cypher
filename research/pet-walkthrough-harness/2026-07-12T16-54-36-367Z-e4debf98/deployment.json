@@ -1,0 +1,344 @@
+{
+  "manifestVersion": 1,
+  "protocol": "versus-cypher",
+  "network": "localhost",
+  "releaseStage": "test",
+  "releasePolicy": {
+    "protocolSafe": null
+  },
+  "chainId": 31337,
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "ownerless": true,
+  "economics": {
+    "graduationFloorUSDC": "1.00",
+    "graduationFloorRaw": "1000000",
+    "protocolTrancheBps": 1000,
+    "protocolRecipient": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "seedFund": false,
+    "classPenniesAreTheFund": true,
+    "taxBps": 100
+  },
+  "usedMockUsdc": true,
+  "usedMockRouter": true,
+  "transactions": [
+    {
+      "label": "deploy AgentNFT",
+      "hash": "0xc9804db22efe3fab8962623a8caa9f570e7261a49b775046a1e6320676a95fb3",
+      "blockNumber": 4,
+      "status": 1,
+      "gasUsed": "1630667",
+      "contractAddress": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+    },
+    {
+      "label": "deploy SyndicateEngine",
+      "hash": "0x82bf6aa1a36092a39d92dc140efbc707f6a9840bc94d6ff1e0ffd96fd6e2a3ab",
+      "blockNumber": 5,
+      "status": 1,
+      "gasUsed": "888602",
+      "contractAddress": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
+    },
+    {
+      "label": "deploy TrancheTreasury",
+      "hash": "0xbbae0bd58daa8ef29441586b0b429b8207ec89a768cf9b4975d9a75a807ce552",
+      "blockNumber": 6,
+      "status": 1,
+      "gasUsed": "841513",
+      "contractAddress": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+    },
+    {
+      "label": "deploy MissionEscrow",
+      "hash": "0x928714bc3134e617082a46b267ccf3df9562fbf615d2a90753f1e719a78849e8",
+      "blockNumber": 7,
+      "status": 1,
+      "gasUsed": "623698",
+      "contractAddress": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+    },
+    {
+      "label": "deploy Arena",
+      "hash": "0x34fb611b1c61dee5499c1550d000c9af3c44347875429e1159d6efe140ed9aad",
+      "blockNumber": 8,
+      "status": 1,
+      "gasUsed": "1302310",
+      "contractAddress": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
+    },
+    {
+      "label": "deploy GraduationModule",
+      "hash": "0xa45eeec31b6c37d15e85dc4297162705ac5e903d2e643d4a9e5221d50a2ada6f",
+      "blockNumber": 9,
+      "status": 1,
+      "gasUsed": "2576117",
+      "contractAddress": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6"
+    },
+    {
+      "label": "bootstrap AgentNFT",
+      "hash": "0xf9a9382b11560b5537ef3094117e16b9795ba81a4e21c7bb91d598e4a17da882",
+      "blockNumber": 10,
+      "status": 1,
+      "gasUsed": "90863",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap SyndicateEngine",
+      "hash": "0x07592109f328e76f1a06774ec861764a41a82c7e66c9b5f20c171d7457223139",
+      "blockNumber": 11,
+      "status": 1,
+      "gasUsed": "68293",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap TrancheTreasury",
+      "hash": "0x88428dbc9137f8f0043c305b9a9512c674e270f590bdc69e729d31f59d9b8a36",
+      "blockNumber": 12,
+      "status": 1,
+      "gasUsed": "95508",
+      "contractAddress": null
+    }
+  ],
+  "contracts": {
+    "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "v2Factory": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "v2Router": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "agents": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+    "arena": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "syndicate": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+    "treasury": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "missionEscrow": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "graduation": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+    "router": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "protocolRecipient": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+    "graduationFloor": "1000000"
+  },
+  "dependencies": {
+    "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "uniswapV2Factory": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "uniswapV2Router": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+  },
+  "constructorArguments": {
+    "agents": [
+      "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    ],
+    "syndicate": [
+      "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "1000000"
+    ],
+    "treasury": [
+      "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "0xEA78E0FB02987A602Ae6408B8932F705A982c96A"
+    ],
+    "missionEscrow": [
+      "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+    ],
+    "arena": [
+      "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+    ],
+    "graduation": [
+      "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+    ]
+  },
+  "checklist": {
+    "protocolRecipientImmutable": true,
+    "noOwnable": true,
+    "noPause": true,
+    "noSeedFund": true,
+    "missionEscrowOwnerless": true,
+    "paidSignalBatches": true,
+    "permanentDailyVoiceCredentials": true,
+    "publicGraduateSwapBackContinuousClaim": true
+  },
+  "source": {
+    "repository": "digital-shephard/versus-cypher",
+    "commit": "42fbcca8f98084b0558559aeaedaff5afc200699",
+    "headCommit": "42fbcca8f98084b0558559aeaedaff5afc200699",
+    "clean": false,
+    "dirtyEntries": [
+      "M README.md",
+      " M ROLLING.md",
+      " M apps/pet/src/chain.js",
+      " M apps/pet/src/main.js",
+      " M docs/ARCHITECTURE.md",
+      " M docs/CONTRACT_SECURITY_REVIEW_2026-07-12.md",
+      " M docs/PRODUCTION_FREEZE.md",
+      " M packages/sdk/src/index.js",
+      " M packages/sdk/test/client.test.js",
+      " M scripts/lab/publish-walkthrough-waku.js",
+      " M scripts/lab/run-controlled-waku-reliability.js",
+      " M scripts/lab/run-local-e2e.js",
+      " M scripts/lab/run-mixed-brain-coalition.js",
+      " M scripts/lab/run-public-waku-e2e.js",
+      " M versus/DEPLOY.md",
+      " M versus/contracts/core/AgentNFT.sol",
+      " M versus/contracts/core/Arena.sol",
+      " M versus/package.json",
+      " M versus/scripts/check-base-production.js",
+      " M versus/scripts/deploy.js",
+      " M versus/scripts/run-base-sepolia-e2e.js",
+      " M versus/scripts/run-base-sepolia-real-v2.js",
+      " M versus/scripts/simulate.js",
+      " M versus/scripts/verify-base.js",
+      " M versus/test/Arena.test.js",
+      " M versus/test/Graduation.e2e.test.js",
+      " M versus/test/MissionEscrow.test.js",
+      " M versus/test/NetworkEligibility.e2e.test.js",
+      " M versus/test/NetworkSettlement.e2e.test.js",
+      " M versus/test/Onboard.e2e.test.js",
+      " M versus/test/ProductionBaseFork.test.js",
+      " M versus/test/ProductionConfig.test.js",
+      "?? research/base-fork-runs/2026-07-12T16-49-41-861Z/report.json",
+      "?? versus/deployments/schema-v1.json",
+      "?? versus/scripts/audit-base-deployment.js",
+      "?? versus/scripts/lib/deployment-audit.js",
+      "?? versus/scripts/lib/deployment-manifest.js",
+      "?? versus/test/DeploymentTooling.test.js",
+      "?? versus/test/NftMetadataManifest.test.js"
+    ],
+    "treeSha256": "5c7e07992e4f0aefcc7a7b0d91f8881887b7589256a619769cf79ed9d6af8bfe",
+    "files": [
+      {
+        "path": "contracts/core/AgentNFT.sol",
+        "sha256": "465e0de09d6321f453102043f7debc17aa2247d78e390d2369e8c13757e79723"
+      },
+      {
+        "path": "contracts/core/Arena.sol",
+        "sha256": "e0f689536ace39af21c2033bdafa44669bfb13221607996a9aa23028c3e2033d"
+      },
+      {
+        "path": "contracts/core/MissionEscrow.sol",
+        "sha256": "091d7e7ab25b431d197cb710132b48f75093e84c6f433d476fc1dd6c04170678"
+      },
+      {
+        "path": "contracts/core/SyndicateEngine.sol",
+        "sha256": "b3ab5aa7ca72d456e7e4bdd74c6b891c77941c412b7428d0605421f573ca981b"
+      },
+      {
+        "path": "contracts/core/TrancheTreasury.sol",
+        "sha256": "889b07f66b9865cf6fd37d2f56608903b5e8d410c719db20110e68cc69aa54e1"
+      },
+      {
+        "path": "contracts/launch/ClassToken.sol",
+        "sha256": "7bb56b2c8c565251300f7a047c7b6e1c11fb35831a85be1dcfa365cce9cb877a"
+      },
+      {
+        "path": "contracts/launch/GraduationModule.sol",
+        "sha256": "de5061b2f46205b7d10eab62cac40fe2b375b6eb87709a217476b5bf5848d219"
+      },
+      {
+        "path": "contracts/test/MockUSDC.sol",
+        "sha256": "19c485cc1fa22ffc705ff3bb90afb21854f9d79294d720373b79d33b186d651b"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Factory.sol",
+        "sha256": "25cd12cb6c1416bd5270a057d9b58515ebc394bffbba9346332cb95f2fb4cdd4"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Pair.sol",
+        "sha256": "ce05f4fefcdc797e20e90254e2c76029623c834cae059fe31d03bb71ad94111a"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Router.sol",
+        "sha256": "bd548e18f4c191c47253103cff0bc033322175403bb790f73aaec7f84deb58c2"
+      },
+      {
+        "path": "scripts/lib/deployOwnerless.js",
+        "sha256": "43b33519fe4b5b0d444c792bd963ddede7acb358d96cc5f11e97ab73f542661b"
+      },
+      {
+        "path": "hardhat.config.js",
+        "sha256": "7cadacdb6923d4f110dc728efe106b0f86ea12f0c6dfef9720669b2b8985ddbc"
+      },
+      {
+        "path": "package.json",
+        "sha256": "39c66d5b136b385c072975217535a1d96ada215613502fcf295ec964e167bd84"
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "52b2d919a2e6a9224be529f4b798f1b61482444ec9bfa0a71dd0ec25495edc9d"
+      }
+    ]
+  },
+  "compiler": {
+    "solidity": "0.8.26",
+    "optimizer": {
+      "enabled": true,
+      "runs": 1
+    },
+    "viaIR": true,
+    "evmVersion": "cancun"
+  },
+  "verification": {
+    "basescan": {
+      "status": "not-applicable"
+    },
+    "independentAudit": {
+      "status": "pending"
+    }
+  },
+  "runtimeBytecode": {
+    "usdc": {
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "bytes": 1691,
+      "keccak256": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b"
+    },
+    "v2Factory": {
+      "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      "bytes": 7237,
+      "keccak256": "0x80c499ae8dcb0c4e67c7fe3b3f634dd2eceed36a18f36326b3f52928d2c86f0f"
+    },
+    "v2Router": {
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "bytes": 3369,
+      "keccak256": "0x7e94d7b73fccc69b6ce9b3c56ee65b98a7b0e5d78ae7680b690c56a7e41c3edd"
+    },
+    "agents": {
+      "address": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      "bytes": 6925,
+      "keccak256": "0x5a83683e64442ea6a07f985087e8c9c9c7eb806c9fa33de562ee6f1c40f01673"
+    },
+    "arena": {
+      "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+      "bytes": 5769,
+      "keccak256": "0xcc500e3f7b3ee9fb9a9f478de06d582116f4842a4c7c95af1fecad15c45ac597"
+    },
+    "syndicate": {
+      "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "bytes": 3755,
+      "keccak256": "0x869fbf1dd6b2442178966151e90a784b32fd4a553e2b314f2c5fce35cd2818ad"
+    },
+    "treasury": {
+      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      "bytes": 3635,
+      "keccak256": "0x60e8de6ccc6d71af5647d780dc74727db7a2562a0ec10c46418e7bc6dc73f24d"
+    },
+    "missionEscrow": {
+      "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+      "bytes": 2377,
+      "keccak256": "0xb5bcc79bf645d8531dde7bf6818a3ba67a5b78e89c32e62bf9b584a15e2f3bf9"
+    },
+    "graduation": {
+      "address": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+      "bytes": 11392,
+      "keccak256": "0xea37687ca5e8f2851e3cc294d383f2070c562dfefbce01cf8335d056bd72cded"
+    },
+    "router": {
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "bytes": 3369,
+      "keccak256": "0x7e94d7b73fccc69b6ce9b3c56ee65b98a7b0e5d78ae7680b690c56a7e41c3edd"
+    },
+    "protocolRecipient": {
+      "address": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+      "bytes": 0,
+      "keccak256": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+    }
+  },
+  "deployedAt": "2026-07-12T16:54:38.584Z",
+  "deploymentBlocks": {
+    "first": 4,
+    "last": 12
+  }
+}

@@ -84,7 +84,7 @@ contract SyndicateEngine {
         emit Bootstrapped(arena_, graduation_);
     }
 
-    function receiveCommit(uint256 agentId, uint32 day, uint256 amount) external onlyArena {
+    function receiveCommit(uint256 agentId, uint32 day, uint256 amount) external onlyArena returns (uint256 classTotal) {
         uint256 classId = currentClassId;
         Class storage c = classes[classId];
         if (c.graduated) revert AlreadyGraduated();
@@ -106,6 +106,7 @@ contract SyndicateEngine {
         c.totalCommitted += amount;
 
         emit CommitReceived(classId, agentId, day, amount, c.totalCommitted);
+        return c.totalCommitted;
     }
 
     function canGraduate(uint256 classId) public view returns (bool) {

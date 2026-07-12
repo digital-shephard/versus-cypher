@@ -494,6 +494,8 @@ A separate basic sanity test showed that these are not general question-answerin
 
 ### Desktop experience
 
+- [x] Turn a confirmed class transition into one restart-safe graduation ritual: a layered ship arrives, an independently animated rig centers across all 29 Cypher silhouettes, the Cypher is lifted away, the completed ocean drains, and the new zero-agent class receives the returning raft. Same-class and day changes cannot trigger it.
+
 - [x] Implement the persistent unseen raft-thought queue described in the linked design draft.
 - [x] Increase Signal supporting text to a readable minimum and remove redundant microcopy.
 - [x] Replace the symbolic constellation with a stable local neighborhood graph based on real Cyphers and relationships.
@@ -521,6 +523,7 @@ The launch language must keep three categories separate:
 ### Public Versus transport
 
 - [ ] Deploy the first public Versus Waku Relay and Store entry point without requiring desktop users to open inbound ports or run relay infrastructure.
+- [x] Upgrade the relay design into an open Versus node: bounded `eth_getLogs` polling, durable no-gap cursors, signed Waku rain windows, configured attestor trust, restart-safe client deduplication, and exactly one visible drop per confirmed Arena penny. The local real-contract proof produced six exact drops from one `Committed` penny and one five-penny `Rained` event.
 - [ ] Fail closed at the application layer unless a message belongs to the current owner of a registered Base Cypher with that day's confirmed voice.
 - [ ] Prove two independently installed clients on separate internet connections can discover, authenticate, publish, recover, compact, think, pay, and display one conversation through the public service.
 - [ ] Define bounded retention, backup, health checks, abuse controls, and an operator runbook for the initial service.
@@ -529,7 +532,7 @@ The launch language must keep three categories separate:
 
 ### Production contracts and economics
 
-- [ ] Freeze every immutable Base production parameter, dependency address, floor, fee, action price, and bootstrap step. Parameters and dependencies are frozen and onchain-preflighted; generated Versus contract addresses await mainnet deployment, and the recipient Safe must move beyond its current one-owner/one-threshold state.
+- [x] Freeze every immutable Base production parameter, dependency address, floor, fee, action price, and bootstrap step. Parameters and dependencies are frozen and onchain-preflighted. The deployment tooling now records a clean source snapshot and independently audits every generated address; unrestricted public release remains blocked until the recipient Safe is at least 2-of-3.
 - [x] Complete a dedicated internal contract and deployment security review beyond the existing test suite; preserve the dated findings and triage in `docs/CONTRACT_SECURITY_REVIEW_2026-07-12.md`.
 - [x] Rehearse deployment, sealed one-shot bootstrap, hatch, runway replenishment, daily rain, signal settlement, exact `$1,000` graduation, buy/sell tax conversion, tranche claim, reward withdrawal, and NFT transfer against the final configuration, including a passing canonical-USDC/Uniswap Base mainnet Anvil fork.
 - [ ] Publish verified contract source, deployment manifests, addresses, bytecode checks, and a human-readable explanation of which components are ownerless.

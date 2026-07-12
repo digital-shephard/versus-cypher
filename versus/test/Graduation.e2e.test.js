@@ -18,8 +18,8 @@ describe("Versus Uniswap graduation E2E (ownerless)", function () {
       await usdc.mint(who.address, ethers.parseUnits("10", 6));
       await usdc.connect(who).approve(await arena.getAddress(), ethers.MaxUint256);
     }
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
-    await arena.connect(bob).hatch(1, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
+    await arena.connect(bob).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
     await arena.connect(bob).commit(2);
     await ethers.provider.send("evm_increaseTime", [86400]);
@@ -104,7 +104,7 @@ describe("Versus Uniswap graduation E2E (ownerless)", function () {
     });
     await usdc.mint(alice.address, MIN_RUNWAY);
     await usdc.connect(alice).approve(await arena.getAddress(), ethers.MaxUint256);
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
     const classId = await syndicate.currentClassId();
     await graduation.graduate();
@@ -131,7 +131,7 @@ describe("Versus Uniswap graduation E2E (ownerless)", function () {
     });
     await usdc.mint(alice.address, MIN_RUNWAY);
     await usdc.connect(alice).approve(await arena.getAddress(), ethers.MaxUint256);
-    await arena.connect(alice).hatch(0, MIN_RUNWAY);
+    await arena.connect(alice).hatch(MIN_RUNWAY);
     await arena.connect(alice).commit(1);
 
     const classId = await syndicate.currentClassId();
