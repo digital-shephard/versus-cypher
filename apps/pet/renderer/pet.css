@@ -1429,6 +1429,8 @@ body { display: grid; place-items: center; }
   image-rendering: pixelated;
 }
 
+#address-qr[hidden] { visibility: hidden; }
+
 #view-deposit #btn-copy { min-height: 78px; font-size: 0.56rem; }
 
 #view-deposit #btn-sim-deposit { min-height: 27px; margin-top: 1px; font-size: 0.62rem; }

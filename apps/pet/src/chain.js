@@ -36,6 +36,8 @@ const arenaAbi = [
   "function referralFundedDays(uint256 agentId, uint32 day) view returns (bool)",
   "error WrongClass()",
   "event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount)",
+  "event Committed(uint256 indexed agentId, uint256 indexed classId, address indexed owner, uint32 day, uint256 amount, uint256 classTotal)",
+  "event Rained(uint256 indexed agentId, uint256 indexed classId, address indexed owner, uint32 day, uint256 pennies, uint256 amount, uint256 classTotal)",
   "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, uint256 classTotal, bytes32 typeCountsHash)",
 ];
 const agentAbi = [
@@ -358,7 +360,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       };
     },
 
-    async hatchWithEth({ privateKey, depositWei, referrerAgentId = 0n, onPhase = null }) {
+    async hatchWithEth({ privateKey, depositWei, referrerAgentId = 0n, onPhase = null, onCheckpoint = null }) {
       const wallet = new Wallet(privateKey, provider);
       const signer = new NonceManager(wallet);
       const owner = wallet.address;
@@ -369,51 +371,99 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, signer);
       let swapReceipt;
       if (localFixture) {
-        swapReceipt = await confirmed(
-          await token.mint(owner, plan.quotedRunwayMicros),
-          "fixture runway conversion"
-        );
+        const swap = await token.mint(owner, plan.quotedRunwayMicros);
+        if (onCheckpoint) await onCheckpoint("swap_submitted", { hash: swap.hash });
+        swapReceipt = await confirmed(swap, "fixture runway conversion");
       } else {
         const router = new Contract(addresses.swapRouter || BASE_UNISWAP_SWAP_ROUTER_02, swapRouterAbi, signer);
-        swapReceipt = await confirmed(
-          await router.exactInputSingle(
-            {
-              tokenIn: BASE_WETH,
-              tokenOut: addresses.usdc || BASE_USDC,
-              fee: plan.fee,
-              recipient: owner,
-              amountIn: plan.swapWei,
-              amountOutMinimum: plan.minimumRunwayMicros,
-              sqrtPriceLimitX96: 0,
-            },
-            { value: plan.swapWei }
-          ),
-          "runway swap"
+        const swap = await router.exactInputSingle(
+          {
+            tokenIn: BASE_WETH,
+            tokenOut: addresses.usdc || BASE_USDC,
+            fee: plan.fee,
+            recipient: owner,
+            amountIn: plan.swapWei,
+            amountOutMinimum: plan.minimumRunwayMicros,
+            sqrtPriceLimitX96: 0,
+          },
+          { value: plan.swapWei }
         );
+        if (onCheckpoint) await onCheckpoint("swap_submitted", { hash: swap.hash });
+        swapReceipt = await confirmed(swap, "runway swap");
       }
+      if (onCheckpoint) await onCheckpoint("swap_confirmed", { hash: swapReceipt.hash, blockNumber: swapReceipt.blockNumber });
       const runwayAmount = await token.balanceOf(owner);
       if (runwayAmount < plan.minimumRunwayMicros) throw new Error("swap returned less runway than quoted minimum");
       if (onPhase) await onPhase("minting", { ...plan, runwayAmount });
       const allowance = await token.allowance(owner, addresses.arena);
       if (allowance < runwayAmount) {
-        await confirmed(await token.approve(addresses.arena, MaxUint256), "Arena approval");
+        const approval = await token.approve(addresses.arena, MaxUint256);
+        if (onCheckpoint) await onCheckpoint("approval_submitted", { hash: approval.hash });
+        const approvalReceipt = await confirmed(approval, "Arena approval");
+        if (onCheckpoint) await onCheckpoint("approval_confirmed", { hash: approvalReceipt.hash, blockNumber: approvalReceipt.blockNumber });
         await waitForAllowance(token, owner, addresses.arena, runwayAmount);
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
       const hatch = arena["hatch(uint256,uint256)"];
       const gasLimit = addGasMargin(await hatch.estimateGas(runwayAmount, BigInt(referrerAgentId)));
-      const hatchReceipt = await confirmed(
-        await hatch(runwayAmount, BigInt(referrerAgentId), { gasLimit }),
-        "Cypher hatch"
-      );
+      const hatchTransaction = await hatch(runwayAmount, BigInt(referrerAgentId), { gasLimit });
+      if (onCheckpoint) await onCheckpoint("hatch_submitted", { hash: hatchTransaction.hash });
+      const hatchReceipt = await confirmed(hatchTransaction, "Cypher hatch");
       const event = validateHatchReceipt(arena, hatchReceipt, owner, runwayAmount);
-      return {
+      const result = {
         plan,
         agentId: event.args.agentId,
         cypherId: event.args.cypherId,
         runway: event.args.runwayAmount,
         swapHash: swapReceipt.hash,
         hatchHash: hatchReceipt.hash,
+        blockNumber: hatchReceipt.blockNumber,
+        referrerAgentId: BigInt(referrerAgentId),
+      };
+      if (onCheckpoint) await onCheckpoint("hatch_confirmed", result);
+      return result;
+    },
+
+    async recoverOwnedHatch({ owner, transactionHash = null, recentBlocks = 50_000 } = {}) {
+      owner = String(owner || "");
+      if (!/^0x[a-f0-9]{40}$/i.test(owner)) throw new RangeError("hatch owner is invalid");
+      const arena = new Contract(addresses.arena, arenaAbi, provider);
+      let receipt = null;
+      let event = null;
+      if (transactionHash) {
+        receipt = await provider.getTransactionReceipt(transactionHash);
+        if (receipt?.status === 1) {
+          try { event = findEvent(arena, receipt, "Hatched"); } catch (_) {}
+        }
+      }
+      if (!event) {
+        const latest = await provider.getBlockNumber();
+        const deploymentStart = Number(config.deployment?.deploymentBlocks?.first || 0);
+        const earliest = Math.max(deploymentStart, latest - Number(recentBlocks));
+        for (let to = latest; to >= earliest && !event; to -= 8_000) {
+          const from = Math.max(earliest, to - 7_999);
+          const logs = await arena.queryFilter(arena.filters.Hatched(null, owner), from, to);
+          if (logs.length) {
+            const log = logs[logs.length - 1];
+            event = log;
+            receipt = await provider.getTransactionReceipt(log.transactionHash);
+          }
+        }
+      }
+      if (!event || String(event.args.owner).toLowerCase() !== owner.toLowerCase()) return null;
+      const agents = new Contract(addresses.agents, agentAbi, provider);
+      const agent = await waitForChainState(
+        () => agents.getAgent(event.args.agentId),
+        (value) => String(value.owner).toLowerCase() === owner.toLowerCase(),
+        { label: "confirmed hatch ownership" }
+      );
+      return {
+        agentId: event.args.agentId,
+        cypherId: agent.cypherId,
+        runway: event.args.runwayAmount,
+        hatchHash: receipt?.hash || event.transactionHash,
+        blockNumber: receipt?.blockNumber || event.blockNumber,
+        owner,
       };
     },
 
@@ -449,10 +499,21 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       };
     },
 
-    async commitDaily({ privateKey, agentId }) {
+    async commitDaily({ privateKey, agentId, onSubmitted = null }) {
       const signer = new Wallet(privateKey, provider);
       const arena = new Contract(addresses.arena, arenaAbi, signer);
-      return confirmed(await arena.commit(BigInt(agentId)), "daily rain");
+      const transaction = await arena.commit(BigInt(agentId));
+      if (onSubmitted) await onSubmitted(transaction.hash);
+      const receipt = await confirmed(transaction, "daily rain");
+      const event = findEvent(arena, receipt, "Committed");
+      return {
+        hash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        classId: event.args.classId,
+        day: event.args.day,
+        amount: event.args.amount,
+        classTotal: event.args.classTotal,
+      };
     },
 
     async fundReferralPoolFromRunway({ privateKey, agentId, proposalId, onSubmitted = null }) {
@@ -583,31 +644,18 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       if (onSubmitted) await onSubmitted(tx.hash);
       const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) throw new Error("rain transaction did not confirm");
-
-      const agents = new Contract(addresses.agents, agentAbi, provider);
-      const treasury = new Contract(addresses.treasury, treasuryAbi, provider);
-      const syndicate = new Contract(addresses.syndicate, syndicateAbi, provider);
-      const classId = await syndicate.currentClassId();
-      const [agent, runway, tickets, totalTickets, currentClass] = await Promise.all([
-        agents.getAgent(BigInt(agentId)),
-        arena.runway(BigInt(agentId)),
-        treasury.tickets(BigInt(agentId)),
-        treasury.totalTickets(),
-        syndicate.getClass(classId),
-      ]);
-
+      const event = findEvent(arena, receipt, "Rained");
+      if (event.args.agentId !== BigInt(agentId) || event.args.pennies !== BigInt(pennies)) {
+        throw new Error("rain event does not match the submitted action");
+      }
       return {
         hash: receipt.hash,
-        vault: agent.vault,
-        runway,
-        level: agent.level,
-        streak: agent.streak,
-        lastCommitDay: agent.lastCommitDay,
-        tickets,
-        totalTickets,
-        classId,
-        classPotMicros: currentClass.totalCommitted,
-        classAgents: currentClass.participantCount,
+        blockNumber: receipt.blockNumber,
+        classId: event.args.classId,
+        day: event.args.day,
+        pennies: event.args.pennies,
+        amount: event.args.amount,
+        classPotMicros: event.args.classTotal,
       };
     },
 

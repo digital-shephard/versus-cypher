@@ -14,6 +14,13 @@ const FEE_TIERS = Object.freeze([500, 3000, 10000]);
 const BPS = 10_000n;
 const DEFAULT_RUNWAY_BPS = 7_000n;
 const DEFAULT_SWAP_MIN_BPS = 9_900n;
+const BASE_RPC_PROVIDER_OPTIONS = Object.freeze({
+  staticNetwork: true,
+  // Several public Base endpoints cap JSON-RPC batches at ten calls. State
+  // reconciliation intentionally issues more reads than that, so keep each
+  // request independent and let FallbackProvider handle endpoint failover.
+  batchMaxCount: 1,
+});
 
 const quoterAbi = [
   "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
@@ -30,10 +37,10 @@ function rpcUrlsFromEnv(env = process.env) {
 function createBaseProvider(env = process.env) {
   const urls = rpcUrlsFromEnv(env);
   if (urls.length === 1) {
-    return new JsonRpcProvider(urls[0], BASE_CHAIN_ID, { staticNetwork: true });
+    return new JsonRpcProvider(urls[0], BASE_CHAIN_ID, BASE_RPC_PROVIDER_OPTIONS);
   }
   const providers = urls.map((url, index) => ({
-    provider: new JsonRpcProvider(url, BASE_CHAIN_ID, { staticNetwork: true }),
+    provider: new JsonRpcProvider(url, BASE_CHAIN_ID, BASE_RPC_PROVIDER_OPTIONS),
     priority: index + 1,
     stallTimeout: 900,
     weight: 1,
@@ -140,6 +147,7 @@ async function quoteUsdDepositTarget(provider, targetMicros = 10_000_000n, optio
 module.exports = {
   BASE_CHAIN_ID,
   BASE_PUBLIC_RPCS,
+  BASE_RPC_PROVIDER_OPTIONS,
   BASE_UNISWAP_QUOTER_V2,
   BASE_UNISWAP_SWAP_ROUTER_02,
   BASE_USDC,

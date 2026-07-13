@@ -2,10 +2,16 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   BASE_PUBLIC_RPCS,
+  BASE_RPC_PROVIDER_OPTIONS,
   rpcUrlsFromEnv,
   runwaySafeTargetMicros,
   splitDepositWei,
 } = require("../src/base-rpc");
+
+test("Base RPC reads stay below restrictive public-provider batch caps", () => {
+  assert.equal(BASE_RPC_PROVIDER_OPTIONS.batchMaxCount, 1);
+  assert.equal(BASE_RPC_PROVIDER_OPTIONS.staticNetwork, true);
+});
 
 test("deposit split keeps thirty percent ETH and assigns seventy percent to runway", () => {
   const plan = splitDepositWei(10_000_000_000_000_000n);

@@ -30,6 +30,7 @@ const { createDiagnosticsReport } = require("./diagnostics");
 const { FaultInjector } = require("./fault-injection");
 const { HealthMonitor } = require("./health");
 const { OperationJournal } = require("./operation-journal");
+const { activateConfirmedHatch, isInterruptedHatch } = require("./onboard-state");
 const { RainInbox } = require("./rain-inbox");
 const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
@@ -344,7 +345,11 @@ async function reconcileOperationJournal() {
         operationJournal.fail(record.key, "transaction_reverted");
       } else {
         operationJournal.complete(record.key, result);
-        await reconcileChainState();
+        try {
+          await reconcileChainState();
+        } catch (error) {
+          console.error("Versus post-transaction state refresh error:", error.message);
+        }
       }
     } catch (error) {
       operationJournal.uncertain(record.key);
@@ -355,6 +360,22 @@ async function reconcileOperationJournal() {
   }
   if (operationJournal.pending().length === 0) healthMonitor.resolve("transaction_uncertain");
   return operationJournal.summary();
+}
+
+async function recoverInterruptedHatch() {
+  const state = loadState() || {};
+  if (!chainRainService || !isInterruptedHatch(state)) return state;
+  const wallet = ensureWallet();
+  const recovered = await chainRainService.recoverOwnedHatch({
+    owner: wallet.address,
+    transactionHash: state.hatchTxHash || null,
+  });
+  if (!recovered) return state;
+  recovered.swapHash = state.swapTxHash || null;
+  recovered.referrerAgentId = state.pendingReferrerAgentId || state.referredBy || 0;
+  activateConfirmedHatch(state, recovered, wallet.address);
+  saveState(state);
+  return state;
 }
 
 function loadJson(file, fallback = null) {
@@ -882,13 +903,32 @@ async function performDailyRainForAgent() {
   let hash = null;
   if (chainRainService) {
     const wallet = ensureWallet();
-    const receipt = await chainRainService.commitDaily({
-      privateKey: wallet.privateKey,
-      agentId: state.agentId,
-    });
+    const receipt = await runJournaledOperation(
+      { key: `daily:${state.agentId}:${dueAt}`, kind: "daily_rain", agentId: state.agentId },
+      (onSubmitted) => chainRainService.commitDaily({
+        privateKey: wallet.privateKey,
+        agentId: state.agentId,
+        onSubmitted,
+      })
+    );
     hash = receipt.hash;
-    state = await reconcileChainState();
-    if (commitIsDue(state, Date.now())) throw new Error("daily rain receipt did not reconcile onchain");
+    const committedAt = Math.floor(Date.now() / 1000);
+    state.runway = Math.max(0, Number(state.runway || 0) - Number(receipt.amount || 10_000));
+    state.lastCommitDay = Number(receipt.day);
+    state.level = Number(state.level || 0) + 1;
+    state.streak = nextCadenceStreak(dueAt, state.streak, committedAt);
+    state.nextCommitAt = committedAt + DAY_SECONDS;
+    state.tickets = Number(state.tickets || 0) + 1;
+    state.totalTickets = Number(state.totalTickets || 0) + 1;
+    state.classId = Number(receipt.classId);
+    state.classPotMicros = Number(receipt.classTotal);
+    state.inCurrentClass = true;
+    saveState(state);
+    try {
+      state = await reconcileChainState();
+    } catch (error) {
+      console.error("Versus confirmed daily rain refresh error:", error.message);
+    }
   } else {
     const committedAt = Math.floor(Date.now() / 1000);
     state.runway = Number(state.runway) - 10_000;
@@ -2074,24 +2114,18 @@ registerIpcHandle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
           pennies,
           onSubmitted,
         }));
-      const day = Math.floor(Date.now() / 86_400_000);
-      if (Number(state.todayRainDay) !== day) state.rainPenniesToday = 0;
-      state.vault = Number(chain.vault);
-      state.runway = Number(chain.runway);
-      state.level = Number(chain.level);
-      state.streak = Number(chain.streak);
-      state.lastCommitDay = Number(chain.lastCommitDay);
-      state.tickets = Number(chain.tickets);
-      state.totalTickets = Number(chain.totalTickets);
+      result = applyConfirmedRain(state, pennies);
+      state.classId = Number(chain.classId);
       state.classPotMicros = Number(chain.classPotMicros);
-      state.classAgents = Number(chain.classAgents);
-      state.rainPenniesToday = Number(state.rainPenniesToday || 0) + Number(pennies);
-      state.todayRainDay = day;
-      state.lifetimeRainPennies = Number(state.lifetimeRainPennies || 0) + Number(pennies);
-      state.lastRainAt = Date.now();
-      state.lastRainPennies = Number(pennies);
       state.lastRainTxHash = chain.hash;
-      result = { state, pennies: Number(pennies), amount: Number(pennies) * 10_000, hash: chain.hash };
+      saveState(state);
+      try {
+        result.state = await reconcileChainState();
+      } catch (error) {
+        console.error("Versus confirmed manual rain refresh error:", error.message);
+      }
+      state = result.state;
+      result.hash = chain.hash;
     } else {
       await sleep(520);
       result = applyConfirmedRain(state, pennies);
@@ -2109,7 +2143,11 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
   destination: chainRainService ? "arena_contract" : "local_device",
 }, async () => {
   const w = ensureWallet();
-  const state = loadState() || {};
+  let state = loadState() || {};
+  if (chainRainService && isInterruptedHatch(state)) {
+    state = await recoverInterruptedHatch();
+    if (state.phase === "active" && state.agentId) return state;
+  }
   const referrerAgentId = BigInt(state.pendingReferrerAgentId || 0);
   let cypherId = Number.isInteger(state.cypherId) ? state.cypherId : null;
   if (!chainRainService && cypherId === null) cypherId = chooseRandomCypher(cypherCount);
@@ -2129,17 +2167,23 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
         ));
         saveState(state);
       },
+      onCheckpoint: async (checkpoint, details) => {
+        if (checkpoint === "swap_submitted" || checkpoint === "swap_confirmed") {
+          state.swapTxHash = details.hash;
+        } else if (checkpoint === "approval_submitted" || checkpoint === "approval_confirmed") {
+          state.approvalTxHash = details.hash;
+        } else if (checkpoint === "hatch_submitted") {
+          state.hatchTxHash = details.hash;
+        } else if (checkpoint === "hatch_confirmed") {
+          activateConfirmedHatch(state, details, w.address);
+        }
+        state.hatchCheckpoint = checkpoint;
+        saveState(state);
+      },
     });
     cypherId = Number(result.cypherId);
-    await chainRainService.commitDaily({ privateKey: w.privateKey, agentId: result.agentId });
-    state.phase = "active";
-    state.agentId = Number(result.agentId);
-    state.runway = Number(result.runway) - 10_000;
-    state.usdcMicros = Number(result.runway);
-    state.ethGasReserveWei = state.hatchQuote.gasReserveWei;
-    state.swapTxHash = result.swapHash;
-    state.hatchTxHash = result.hatchHash;
-    state.referredBy = Number(referrerAgentId);
+    activateConfirmedHatch(state, result, w.address);
+    state.ethGasReserveWei = state.hatchQuote?.gasReserveWei || state.ethGasReserveWei;
   } else {
     await sleep(900);
 
@@ -2155,21 +2199,21 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
 
   state.phase = "active";
   state.cypherId = cypherId;
-  state.level = 1;
-  state.streak = 1;
-  state.lastCommitDay = Math.floor(Date.now() / 86_400_000);
-  state.nextCommitAt = Math.floor(Date.now() / 1000) + DAY_SECONDS;
+  state.level = chainRainService ? Number(state.level || 0) : 1;
+  state.streak = chainRainService ? Number(state.streak || 0) : 1;
+  state.lastCommitDay = chainRainService ? Number(state.lastCommitDay || 0) : Math.floor(Date.now() / 86_400_000);
+  state.nextCommitAt = chainRainService ? Number(state.nextCommitAt || Math.floor(Date.now() / 1000)) : Math.floor(Date.now() / 1000) + DAY_SECONDS;
   state.vault = 0;
-  state.tickets = 1;
-  state.totalTickets = 1;
+  state.tickets = chainRainService ? Number(state.tickets || 0) : 1;
+  state.totalTickets = chainRainService ? Number(state.totalTickets || 0) : 1;
   state.trancheClaimableMicros = 0;
   state.tranchePreviewMicros = 0;
-  state.classPotMicros = 10_000; // first penny in the open class
-  state.rainPenniesToday = 1;
+  state.classPotMicros = chainRainService ? Number(state.classPotMicros || 0) : 10_000;
+  state.rainPenniesToday = chainRainService ? Number(state.rainPenniesToday || 0) : 1;
   state.todayRainDay = Math.floor(Date.now() / 86_400_000);
-  state.lifetimeRainPennies = 1;
-  state.classAgents = 1;
-  state.inCurrentClass = true;
+  state.lifetimeRainPennies = chainRainService ? Number(state.lifetimeRainPennies || 0) : 1;
+  state.classAgents = chainRainService ? Number(state.classAgents || 0) : 1;
+  state.inCurrentClass = chainRainService ? Boolean(state.inCurrentClass) : true;
   state.walletAddress = w.address;
   state.onboardedAt = Date.now();
   delete state.pendingReferralCode;

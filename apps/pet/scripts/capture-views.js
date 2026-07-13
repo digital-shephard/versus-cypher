@@ -455,7 +455,7 @@ async function main() {
     await shoot(win, "01-deposit");
   }
 
-  await exec(win, `document.getElementById("view-deposit").dataset.hatchState = "funding";`);
+  await exec(win, `document.getElementById("view-deposit").dataset.hatchState = "funding"; refreshHatchQuote();`);
   await sleep(350);
   await shoot(win, "01b-deposit-qr");
 

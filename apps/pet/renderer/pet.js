@@ -2605,11 +2605,12 @@ async function boot() {
     flashLcd(false);
     wallet = await window.versus.ensureWallet();
     bond = await window.versus.loadBond();
+    await ensureDepositQr();
 
     if (bond?.phase === "active" && bond.cypherId != null) {
-      if (bond.classPotMicros == null) bond.classPotMicros = 10_000;
-      if (bond.classAgents == null) bond.classAgents = 1;
-      if (bond.tickets == null) bond.tickets = Math.max(1, bond.streak || 1);
+      if (bond.classPotMicros == null) bond.classPotMicros = 0;
+      if (bond.classAgents == null) bond.classAgents = 0;
+      if (bond.tickets == null) bond.tickets = 0;
       if (bond.totalTickets == null) bond.totalTickets = Math.max(bond.tickets, bond.classAgents);
       if (bond.trancheClaimableMicros == null) bond.trancheClaimableMicros = 0;
       if (bond.tranchePreviewMicros == null) bond.tranchePreviewMicros = 0;
@@ -2623,7 +2624,6 @@ async function boot() {
       bond = { phase: "awaiting_deposit", walletAddress: wallet.address };
       await window.versus.saveBond(bond);
       show("view-deposit");
-      $("address-qr").src = await window.versus.getAddressQr();
       startSceneClock();
     } else if (bond.phase === "awaiting_referral") {
       show("view-deposit");
@@ -2671,17 +2671,34 @@ function setHatchState(state) {
   $("hatch-referral").setAttribute("aria-hidden", state === "referral" ? "false" : "true");
 }
 
+async function ensureDepositQr() {
+  const qr = $("address-qr");
+  if (!qr || qr.hasAttribute("src")) return;
+  try {
+    qr.hidden = true;
+    qr.src = await window.versus.getAddressQr();
+    qr.hidden = false;
+  } catch (_) {
+    qr.removeAttribute("src");
+    qr.hidden = true;
+    const status = $("deposit-status");
+    if (status) {
+      status.textContent = "QR unavailable. Copy the address instead.";
+      status.classList.remove("hidden");
+    }
+  }
+}
+
 async function refreshHatchQuote() {
-  const amount = $("deposit-amount");
-  if (!amount || !window.versus?.getHatchQuote) return;
+  const title = $("fund-title");
+  if (!title || !window.versus?.getHatchQuote) return;
   try {
     const quote = await window.versus.getHatchQuote();
     const wei = BigInt(quote.targetDepositWei);
     const eth = Number(wei) / 1e18;
-    const runway = Number(quote.quotedRunwayMicros || 0) / 1e6;
-    amount.textContent = `${eth.toFixed(5)} ETH · $${runway.toFixed(2)} runway`;
+    title.textContent = `FUND ABOUT ${eth.toFixed(5)} BASE ETH`;
   } catch (_) {
-    amount.textContent = "70% runway · 30% gas";
+    title.textContent = "FUND WITH BASE ETH";
   }
 }
 
@@ -2691,6 +2708,7 @@ function wakeEgg() {
   setHatchState("waking");
   setTimeout(() => {
     setHatchState("funding");
+    ensureDepositQr();
     refreshHatchQuote();
   }, 720);
 }
@@ -2734,10 +2752,7 @@ async function runHatchRitual(simulateDeposit = true) {
     await sleep(760);
 
     bond = await pipeline;
-    bond.classPotMicros = 0;
-    bond.classAgents = 1;
-    await window.versus.saveBond(bond);
-    W.targetFill = 0;
+    W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
 
     const whiteout = $("hatch-whiteout");
     whiteout.classList.remove("run");
@@ -2750,10 +2765,24 @@ async function runHatchRitual(simulateDeposit = true) {
     console.error(err);
     hatchLock = false;
     if (confirm) confirm.disabled = false;
-    const referralPending = Boolean((await window.versus.loadBond())?.pendingReferrerAgentId);
+    bond = await window.versus.loadBond();
+    if (bond?.phase === "active" && bond.cypherId != null) {
+      W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
+      showClass();
+      return;
+    }
+    const referralPending = Boolean(bond?.pendingReferrerAgentId);
     setHatchState(referralPending ? "referral" : "funding");
     const status = referralPending ? $("referral-status") : $("deposit-status");
-    status.textContent = referralPending ? "Referral changed or the pool emptied. Check the code or choose no one." : "Hatch failed. Try again.";
+    if (referralPending) {
+      status.textContent = "Referral changed or the pool emptied. Check the code or choose no one.";
+    } else if (err?.code === "TRANSACTION_UNCERTAIN") {
+      status.textContent = "Transaction submitted. Waiting for Base; do not resend.";
+    } else if (/rpc|network|timeout|batch/i.test(String(err?.message || ""))) {
+      status.textContent = "Base is taking longer to respond. Funds are safe; check again shortly.";
+    } else {
+      status.textContent = "Hatch did not complete. Check the funding amount and try again.";
+    }
     status.classList.remove("hidden");
   }
 }
@@ -2898,10 +2927,7 @@ $("btn-mint")?.addEventListener("click", async () => {
   await sleep(700);
   setPipe("class");
   bond = await pipeline;
-  bond.classPotMicros = 0;
-  bond.classAgents = 1;
-  await window.versus.saveBond(bond);
-  W.targetFill = 0;
+  W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
   showClass();
   // The first drop arrives later through the verified node weather stream.
 });

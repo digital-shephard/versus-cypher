@@ -1,6 +1,6 @@
 {
   "name": "versus-cypher",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Versus Cypher desktop agent",
   "desktopName": "versus-cypher.desktop",
   "main": "src/main.js",
@@ -59,6 +59,7 @@
     },
     "nsis": {
       "oneClick": false,
+      "include": "installer.nsh",
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
