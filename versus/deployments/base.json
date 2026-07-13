@@ -1,0 +1,495 @@
+{
+  "manifestVersion": 2,
+  "protocol": "versus-cypher",
+  "network": "base",
+  "releaseStage": "closed-cohort",
+  "releasePolicy": {
+    "protocolSafe": {
+      "releaseStage": "closed-cohort",
+      "required": "valid-safe",
+      "passed": true,
+      "ownerCount": 1,
+      "threshold": 1,
+      "publicReady": false,
+      "hardeningRequired": true,
+      "owners": [
+        "0xB212cf58D8442C3bFc9320ADAcDb6984DbF2AA82"
+      ],
+      "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "modules": [],
+      "guard": null,
+      "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99"
+    }
+  },
+  "chainId": 8453,
+  "deployer": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
+  "ownerless": true,
+  "economics": {
+    "graduationFloorUSDC": "1000.00",
+    "graduationFloorRaw": "1000000000",
+    "referralRewardUSDC": "1.00",
+    "referralRewardRaw": "1000000",
+    "protocolTrancheBps": 1000,
+    "protocolRecipient": "0x93645ce5BCF0009026D8100aea5901cDd52217bF",
+    "seedFund": false,
+    "classPenniesAreTheFund": true,
+    "taxBps": 100
+  },
+  "usedMockUsdc": false,
+  "usedMockRouter": false,
+  "transactions": [
+    {
+      "label": "deploy AgentNFT",
+      "hash": "0xd93f36616c04dc157977e6ff99fff0fbcb9aa3b827f73988b6bfaea3674b0a94",
+      "blockNumber": 48588398,
+      "status": 1,
+      "gasUsed": "1610785",
+      "contractAddress": "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3"
+    },
+    {
+      "label": "deploy SyndicateEngine",
+      "hash": "0x1fdc806542c2afdfd30ae046b8db30321189a6ffddd65bd011c7308ac8daf981",
+      "blockNumber": 48588399,
+      "status": 1,
+      "gasUsed": "890330",
+      "contractAddress": "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483"
+    },
+    {
+      "label": "deploy TrancheTreasury",
+      "hash": "0x9aad5b509fde8cbf91fa3f07c058d3a872f93dc70a8ba1a3dde3bb0a6b4a8ad2",
+      "blockNumber": 48588400,
+      "status": 1,
+      "gasUsed": "836971",
+      "contractAddress": "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d"
+    },
+    {
+      "label": "deploy MissionEscrow",
+      "hash": "0xced348440c1747ec56237ebddb780f9d0e387d0e8b95de257b027f73d62cd2d7",
+      "blockNumber": 48588400,
+      "status": 1,
+      "gasUsed": "633214",
+      "contractAddress": "0x150698d02Fb21aAEBa2c28007222471BEFCEf498"
+    },
+    {
+      "label": "deploy ReferralPool",
+      "hash": "0xd413bcc6cf2b69b4c2b6582f017157c5793a1486dfdc1fa36f17776b63d470b1",
+      "blockNumber": 48588401,
+      "status": 1,
+      "gasUsed": "746763",
+      "contractAddress": "0x8F00FB70621A98969555cA797Cd8667345F52fa1"
+    },
+    {
+      "label": "deploy Arena",
+      "hash": "0x98acc3ac11d2c81841564a7d5c916b6b8767edd2f585af29edfb9fb50ca37edd",
+      "blockNumber": 48588402,
+      "status": 1,
+      "gasUsed": "1831998",
+      "contractAddress": "0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5"
+    },
+    {
+      "label": "deploy GraduationModule",
+      "hash": "0x2749d8d56b72d24100b1293de346145e19931eeb4ad9174d2d214ea2a294f6ed",
+      "blockNumber": 48588403,
+      "status": 1,
+      "gasUsed": "2545261",
+      "contractAddress": "0x415F4E0cca426c5BB871aaf54eA765D621A308a9"
+    },
+    {
+      "label": "bootstrap SyndicateEngine",
+      "hash": "0xc4ee83590ef51d052c86a319314586a6e435b760d07416e7f0245b0918e01a0e",
+      "blockNumber": 48588404,
+      "status": 1,
+      "gasUsed": "68293",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap TrancheTreasury",
+      "hash": "0x39ca7e8754e12a7ad3fb806e551e9d14102add4ea8f5a4c19ffa7a82cc5b791f",
+      "blockNumber": 48588404,
+      "status": 1,
+      "gasUsed": "105012",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap ReferralPool",
+      "hash": "0x089bed2d9c315c205e71501be93470469f21d7e4113aa6eface769712cd1092c",
+      "blockNumber": 48588405,
+      "status": 1,
+      "gasUsed": "44886",
+      "contractAddress": null
+    },
+    {
+      "label": "bootstrap AgentNFT",
+      "hash": "0x3164dde94bb47a49f2c717093a8c749ea773946f6526be6bbc26d15f93c0e338",
+      "blockNumber": 48588405,
+      "status": 1,
+      "gasUsed": "113625",
+      "contractAddress": null
+    }
+  ],
+  "contracts": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "v2Factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "v2Router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "agents": "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3",
+    "arena": "0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5",
+    "syndicate": "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483",
+    "treasury": "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d",
+    "missionEscrow": "0x150698d02Fb21aAEBa2c28007222471BEFCEf498",
+    "referralPool": "0x8F00FB70621A98969555cA797Cd8667345F52fa1",
+    "graduation": "0x415F4E0cca426c5BB871aaf54eA765D621A308a9"
+  },
+  "dependencies": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "uniswapV2Factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "uniswapV2Router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24"
+  },
+  "constructorArguments": {
+    "agents": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+    ],
+    "syndicate": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "1000000000"
+    ],
+    "treasury": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "0x93645ce5BCF0009026D8100aea5901cDd52217bF"
+    ],
+    "missionEscrow": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3"
+    ],
+    "referralPool": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3",
+      "1000000"
+    ],
+    "arena": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3",
+      "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483",
+      "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d",
+      "0x8F00FB70621A98969555cA797Cd8667345F52fa1"
+    ],
+    "graduation": [
+      "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+      "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483",
+      "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d"
+    ]
+  },
+  "checklist": {
+    "protocolRecipientImmutable": true,
+    "noOwnable": true,
+    "noPause": true,
+    "noSeedFund": true,
+    "missionEscrowOwnerless": true,
+    "continuousReferralPoolOwnerless": true,
+    "paidSignalBatches": true,
+    "permanentDailyVoiceCredentials": true,
+    "boundedSellTaxSwapContinuousClaim": true
+  },
+  "source": {
+    "repository": "digital-shephard/versus-cypher",
+    "commit": "932d297b919d30d1cf5520b09c5abb97e13dd7fe",
+    "headCommit": "932d297b919d30d1cf5520b09c5abb97e13dd7fe",
+    "clean": true,
+    "dirtyEntries": [],
+    "treeSha256": "13d0fe2832e021737526ff9e906ae39d77d70748844af31c0d481c79b9fb9b7b",
+    "files": [
+      {
+        "path": "contracts/core/AgentNFT.sol",
+        "sha256": "e34d5a25b7b359133120beee31a38c9406871a058bb63ab1704d0987540b5310"
+      },
+      {
+        "path": "contracts/core/Arena.sol",
+        "sha256": "66560e09445cb6e0072d323dcbbd58672de69282042f959d13d79eaf5c78e466"
+      },
+      {
+        "path": "contracts/core/MissionEscrow.sol",
+        "sha256": "091d7e7ab25b431d197cb710132b48f75093e84c6f433d476fc1dd6c04170678"
+      },
+      {
+        "path": "contracts/core/ReferralPool.sol",
+        "sha256": "0c052c3a87713c83b58f89b331b627a518ea4bb7e7687b34505f791b046d29a2"
+      },
+      {
+        "path": "contracts/core/SyndicateEngine.sol",
+        "sha256": "b26793e667975dfb653daea3ef1d3011b8efb5d661fb48083d85be8168962fa9"
+      },
+      {
+        "path": "contracts/core/TrancheTreasury.sol",
+        "sha256": "8a0091ccefc04dc11b3363ad84e54618f3d295237977682a027ffaaabb1441e3"
+      },
+      {
+        "path": "contracts/launch/ClassToken.sol",
+        "sha256": "1c7fc3193ae2756e015d40bf409188d1aa9191d22533d95fade1af1991892761"
+      },
+      {
+        "path": "contracts/launch/GraduationModule.sol",
+        "sha256": "753e13a405d444c6ff388c84279d96888329b0648f70f47f8ce3126639cd1604"
+      },
+      {
+        "path": "contracts/test/MockUSDC.sol",
+        "sha256": "19c485cc1fa22ffc705ff3bb90afb21854f9d79294d720373b79d33b186d651b"
+      },
+      {
+        "path": "contracts/test/ReentrantHatcher.sol",
+        "sha256": "1de5a00f35f483f2d6f8e19bfca6da8408dcf19952a7c3361d903a39e62dfedc"
+      },
+      {
+        "path": "contracts/test/ReferralTransferHatcher.sol",
+        "sha256": "9cc26ecddb4ace2094d1415c7f1b563a8077367886ab3efa68cb583bcf9c353d"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Factory.sol",
+        "sha256": "25cd12cb6c1416bd5270a057d9b58515ebc394bffbba9346332cb95f2fb4cdd4"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Pair.sol",
+        "sha256": "ce05f4fefcdc797e20e90254e2c76029623c834cae059fe31d03bb71ad94111a"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Router.sol",
+        "sha256": "06aa92e0ed50a9e87034348cf0f41b3a73e0e30ac3ff1222c38026ca8718699d"
+      },
+      {
+        "path": "hardhat.config.js",
+        "sha256": "d7253e4df3462d460279034ed165576be58e9efc9a0021f08be7cb012579dbfa"
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "06f955c70ff3db03f06fec8ab2e090ba167b5e2a295f7cd9aaf0eec0e7644aa9"
+      },
+      {
+        "path": "package.json",
+        "sha256": "ba784fc65932ff72726708d62de8266661e634976d83a6ce38d2fff50c459fef"
+      },
+      {
+        "path": "scripts/audit-base-deployment.js",
+        "sha256": "26612510d38c495f622c3fd7617982b47b4cc2a465ab05048f0516fc6dc0caa3"
+      },
+      {
+        "path": "scripts/check-base-production.js",
+        "sha256": "b77f706c6ad10493268c8fff3554ebeca2ffd62f31e5a8a28bbe6875ed4327a2"
+      },
+      {
+        "path": "scripts/deploy.js",
+        "sha256": "ac123a34a217f3a1c796e3c34cd513d905ced0b0f98c0d9558188bdf769c36ec"
+      },
+      {
+        "path": "scripts/freeze-base-build.js",
+        "sha256": "8392c1cd674dcbda28599cebfa511dfadbedad1dc041d9fe20c450062df10588"
+      },
+      {
+        "path": "scripts/lib/base-production.js",
+        "sha256": "c12157614095b78b29fca196495a50318565153f2cde8161645d365cf682e10b"
+      },
+      {
+        "path": "scripts/lib/build-freeze.js",
+        "sha256": "46b8a2f7a46d0f3e5a1c3f0489f25f946c2d71fd1a40053c4658eec65b33c2fc"
+      },
+      {
+        "path": "scripts/lib/constants.js",
+        "sha256": "c1bff4113dc1e5d526d6332fed52371f1a356b4c0d0f95182a527f6fcf8b0f49"
+      },
+      {
+        "path": "scripts/lib/deployOwnerless.js",
+        "sha256": "efbb64752878dc67b84a707f09f60d0846b3af58e71d7dbab7af5cbc2b21705d"
+      },
+      {
+        "path": "scripts/lib/deployment-audit.js",
+        "sha256": "4500f02989a9c57d805db3bbe5782dd59a03ff8192813af70d96a19efa078c77"
+      },
+      {
+        "path": "scripts/lib/deployment-manifest.js",
+        "sha256": "9fc9afd54032e0ebbb2fa5981dbb25c4a7e9ac72f53121ee39182063ba105f37"
+      },
+      {
+        "path": "scripts/lib/safe-inspection.js",
+        "sha256": "c3e7a14149977dd77fdce838d30d2d2b2c7d56e21cbf7f7bcc6b9f1aeb8c5c93"
+      },
+      {
+        "path": "scripts/run-base-fork-rehearsal.js",
+        "sha256": "2c08035ed8fb75bd904b53b4cd892140781c15a22fb2187f4813d1f4fc5432f2"
+      },
+      {
+        "path": "scripts/run-base-sepolia-e2e.js",
+        "sha256": "ec5c15caedd7e40e9cac53b7e7202d202d9c48c621d0277a9a418ca5e75558fe"
+      },
+      {
+        "path": "scripts/run-base-sepolia-real-v2.js",
+        "sha256": "10000a867cabbb307f2eddfa8f75024885a4c4993133cd89d9201ef73d61ba55"
+      },
+      {
+        "path": "scripts/simulate.js",
+        "sha256": "be9a7b36217e88198232feb9354b41f54bd82df8425b65dd144bd2be981cb300"
+      },
+      {
+        "path": "scripts/verify-base.js",
+        "sha256": "96051ddb612f5a847c564d42343eed67b7ae422b8e9741eb1c62213a72207757"
+      }
+    ]
+  },
+  "compiler": {
+    "solidity": "0.8.26",
+    "optimizer": {
+      "enabled": true,
+      "runs": 1
+    },
+    "viaIR": true,
+    "evmVersion": "cancun",
+    "compilerInputSha256": "8ac9aed7a69947a23130393b6622962d72b60d0a8a543afb765a8e700802ea60",
+    "creationBytecode": {
+      "AgentNFT": {
+        "keccak256": "22652a942f4db65c3949d0bb00e56e918cb77a030b51207e04c1fdfebab845c5",
+        "bytes": 7762
+      },
+      "SyndicateEngine": {
+        "keccak256": "4f3ee4a0c816abaf599eaf8632d526f6878c045070749234e4cbc3bda0e78e80",
+        "bytes": 3994
+      },
+      "TrancheTreasury": {
+        "keccak256": "605e85948dae27d3219d93fa93ea166a55e827ff6457b05005dd070ea287b7d2",
+        "bytes": 3883
+      },
+      "MissionEscrow": {
+        "keccak256": "9a894cc1e80ffc47cc50957c863f4ba81f22a7bc4138b5f1f8f784f6b193bc12",
+        "bytes": 2924
+      },
+      "ReferralPool": {
+        "keccak256": "c9c2ff07b176e01c451257df1dcda1fc8f7a7d4c1f94f547a82c28450990d890",
+        "bytes": 3569
+      },
+      "Arena": {
+        "keccak256": "af62e562d1440fef323f62d45e2f9601e0864d71dff25389d09096523d9d080d",
+        "bytes": 8702
+      },
+      "GraduationModule": {
+        "keccak256": "b77fdacb3d7cb76dbb4356c4b00b39ed59a2ca3db27e3e37f6bb2428b4bd238d",
+        "bytes": 12071
+      },
+      "ClassToken": {
+        "keccak256": "55ac2851c0dfc81ab83b8133a871563280f77c3b78f1891f3fc806c0a1f28c98",
+        "bytes": 4686
+      }
+    }
+  },
+  "verification": {
+    "basescan": {
+      "status": "pending"
+    },
+    "independentAudit": {
+      "status": "passed",
+      "checkedAt": "2026-07-13T18:20:48.620Z",
+      "report": "base-verification.json"
+    },
+    "sourcify": {
+      "status": "verified",
+      "checkedAt": "2026-07-13T18:18:58.560Z",
+      "report": "base-source-verification.json",
+      "contracts": [
+        {
+          "name": "AgentNFT",
+          "address": "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3",
+          "verificationId": "8420fee1-863c-404d-b85f-f03e25ab7b17",
+          "status": "verified"
+        },
+        {
+          "name": "SyndicateEngine",
+          "address": "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483",
+          "verificationId": "c6613913-ef31-4bc7-b7f4-971e2b10e6cc",
+          "status": "verified"
+        },
+        {
+          "name": "TrancheTreasury",
+          "address": "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d",
+          "verificationId": "0ea3ded9-6d19-44f9-8a03-7cea1e94c9c2",
+          "status": "verified"
+        },
+        {
+          "name": "MissionEscrow",
+          "address": "0x150698d02Fb21aAEBa2c28007222471BEFCEf498",
+          "verificationId": "e97b0690-0a9b-4b2e-a0a8-adaac7b88611",
+          "status": "verified"
+        },
+        {
+          "name": "ReferralPool",
+          "address": "0x8F00FB70621A98969555cA797Cd8667345F52fa1",
+          "verificationId": "006feb2c-f90a-457c-a9ba-2564f2df1cd1",
+          "status": "verified"
+        },
+        {
+          "name": "Arena",
+          "address": "0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5",
+          "verificationId": "2f0e9599-001f-4a5b-bd8c-8717ac28564d",
+          "status": "verified"
+        },
+        {
+          "name": "GraduationModule",
+          "address": "0x415F4E0cca426c5BB871aaf54eA765D621A308a9",
+          "verificationId": "0a24f263-d646-4510-b435-0f95ec818205",
+          "status": "verified"
+        }
+      ]
+    }
+  },
+  "runtimeBytecode": {
+    "usdc": {
+      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "bytes": 1852,
+      "keccak256": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab"
+    },
+    "v2Factory": {
+      "address": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+      "bytes": 13859,
+      "keccak256": "0xbab145d02e7005f0d84c6c1639d39b799b0ea16df99ebbdaf5a14d9da820b4e0"
+    },
+    "v2Router": {
+      "address": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+      "bytes": 17891,
+      "keccak256": "0xec2a9bc649a4a1f23eee18c570628b28c03c665cdd7ebbdb3c46a6c4007959c1"
+    },
+    "agents": {
+      "address": "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3",
+      "bytes": 6832,
+      "keccak256": "0x485fcd70c4c6eb6473e8ace688069b72c59d308a819e180a27b15642064101aa"
+    },
+    "arena": {
+      "address": "0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5",
+      "bytes": 8116,
+      "keccak256": "0x3673c1ef19d874fc05fe5dbcf53e75f88f1214396cc6001e7ffd1ac35cf38d66"
+    },
+    "syndicate": {
+      "address": "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483",
+      "bytes": 3763,
+      "keccak256": "0xa1959a692c14ef4b061bfc5da1e24d3383d75f3d04a982aeaddadc3f6061d9a1"
+    },
+    "treasury": {
+      "address": "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d",
+      "bytes": 3614,
+      "keccak256": "0x328236cb8935b37b4e1c26cc1f4578d2c3ef45e7b43d9de81360ac2bbbbba030"
+    },
+    "missionEscrow": {
+      "address": "0x150698d02Fb21aAEBa2c28007222471BEFCEf498",
+      "bytes": 2377,
+      "keccak256": "0x933a3addceb6522ee592672d13121837c10fde7b3b0ab1ac6a0a6fe47c238f4a"
+    },
+    "referralPool": {
+      "address": "0x8F00FB70621A98969555cA797Cd8667345F52fa1",
+      "bytes": 2906,
+      "keccak256": "0xa5bc8c48e04ca7658809e38b411746b2d9905976a9b97c20ee0e9c24817b4938"
+    },
+    "graduation": {
+      "address": "0x415F4E0cca426c5BB871aaf54eA765D621A308a9",
+      "bytes": 11203,
+      "keccak256": "0x969c21375f41e7220bf9152bc8c910e639b5089f2a16b830be9d6378189fbb11"
+    }
+  },
+  "deploymentBlocks": {
+    "first": 48588398,
+    "last": 48588405
+  },
+  "deployedAt": "2026-07-13T18:09:17.000Z"
+}
