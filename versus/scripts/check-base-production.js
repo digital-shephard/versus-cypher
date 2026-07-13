@@ -30,6 +30,7 @@ async function main() {
   const provider = new JsonRpcProvider(rpcUrl, CONSTANTS.base.chainId, {
     staticNetwork: true,
     cacheTimeout: -1,
+    batchMaxCount: 1,
   });
   const inspected = await inspectBaseProduction({ provider, protocolRecipient, releaseStage });
 
