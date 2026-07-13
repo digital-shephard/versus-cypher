@@ -5,8 +5,8 @@
 - Chain: Base (8453)
 - Source commit: `932d297b919d30d1cf5520b09c5abb97e13dd7fe`
 - Source tree SHA-256: `13d0fe2832e021737526ff9e906ae39d77d70748844af31c0d481c79b9fb9b7b`
-- Manifest SHA-256: `920efc61605ddf2dd3f1fc856d3b9465e8accf6f80fd1a3b59b876d7db32a0a4`
-- Independently checked: 2026-07-13T18:20:48.620Z
+- Manifest SHA-256: `bd12cfe4744c8c1f5af0f9922a699a03182735e8fcfe663394fe7694278417f4`
+- Independently checked: 2026-07-13T18:43:52.559Z
 - Safe: 1 owner(s), threshold 1
 - Unrestricted-public ready: no
 - Safe hardening required: yes
@@ -90,4 +90,4 @@ The deployed core has no admin upgrade, pause, or ownership surface. One-time bo
 
 ## Source Verification
 
-Basescan status: **pending**.
+Basescan status: **verified**.

@@ -378,11 +378,58 @@
   },
   "verification": {
     "basescan": {
-      "status": "pending"
+      "status": "verified",
+      "provider": "Etherscan V2",
+      "checkedAt": "2026-07-13T18:42:53.243Z",
+      "report": "base-basescan-verification.json",
+      "contracts": [
+        {
+          "name": "AgentNFT",
+          "address": "0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3",
+          "guid": "gwpx3xfakcttuwhwgmkyuw7pmfqqh6drduewdwtxdr7kvjruip",
+          "status": "verified"
+        },
+        {
+          "name": "SyndicateEngine",
+          "address": "0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483",
+          "guid": "qfiduuhgyklij4fvcd1aijqurtqwreqs8uefutcr1ich6n1kdt",
+          "status": "verified"
+        },
+        {
+          "name": "TrancheTreasury",
+          "address": "0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d",
+          "guid": "b18vv6gem14kpkvtbqrbsk29zzyhp4t6ip4qkczyqf7bngtsmc",
+          "status": "verified"
+        },
+        {
+          "name": "MissionEscrow",
+          "address": "0x150698d02Fb21aAEBa2c28007222471BEFCEf498",
+          "guid": "1plaaad2xhmjkbg1zbc4rdsxwhhnfprssruufkzeiaizzn8f5j",
+          "status": "verified"
+        },
+        {
+          "name": "ReferralPool",
+          "address": "0x8F00FB70621A98969555cA797Cd8667345F52fa1",
+          "guid": "5ri4cnnfdiufm9sksv7cmnbzkgvty9ashvis9np66r8ha3paye",
+          "status": "verified"
+        },
+        {
+          "name": "Arena",
+          "address": "0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5",
+          "guid": "dakd1qzynvzzqi7xcsg59yhsbcdqmt7fvbrjk6pdqlqdyrqp4q",
+          "status": "verified"
+        },
+        {
+          "name": "GraduationModule",
+          "address": "0x415F4E0cca426c5BB871aaf54eA765D621A308a9",
+          "guid": "vd8syhejjvtuhw82yrq1cv627vfuphikvtdxjrw2cq4tdciez9",
+          "status": "verified"
+        }
+      ]
     },
     "independentAudit": {
       "status": "passed",
-      "checkedAt": "2026-07-13T18:20:48.620Z",
+      "checkedAt": "2026-07-13T18:43:52.559Z",
       "report": "base-verification.json"
     },
     "sourcify": {

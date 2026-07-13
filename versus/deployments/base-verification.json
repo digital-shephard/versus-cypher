@@ -1,11 +1,11 @@
 {
   "kind": "versus-base-independent-deployment-audit",
   "passed": true,
-  "manifestSha256": "920efc61605ddf2dd3f1fc856d3b9465e8accf6f80fd1a3b59b876d7db32a0a4",
+  "manifestSha256": "bd12cfe4744c8c1f5af0f9922a699a03182735e8fcfe663394fe7694278417f4",
   "sourceCommit": "932d297b919d30d1cf5520b09c5abb97e13dd7fe",
   "releaseStage": "closed-cohort",
   "chainId": 8453,
-  "checkedAt": "2026-07-13T18:20:48.620Z",
+  "checkedAt": "2026-07-13T18:43:52.559Z",
   "checks": [
     {
       "name": "chain id",
