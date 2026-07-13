@@ -19,9 +19,20 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          submodules: recursive
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: 22
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+        with:
+          version: v1.7.1
+          cache: false
+      - name: Run strict deep contract invariants
+        run: forge test --match-contract VersusInvariants -vv
+        working-directory: versus
+        env:
+          FOUNDRY_PROFILE: deep
       - name: Scan tracked source and Git history for credentials
         run: npm run security:secrets
       - name: Audit shipped dependency trees
@@ -83,22 +94,38 @@ jobs:
         run: npm test
         working-directory: ${{ github.workspace }}
       - name: Build packages
+        if: runner.os != 'Windows'
         shell: bash
         run: ${{ matrix.command }}
         env:
-          CSC_LINK: ${{ matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_LINK || matrix.os == 'macos-latest' && secrets.MAC_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_KEY_PASSWORD || matrix.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
           APPLE_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
+      - name: Sign in to Azure with the protected release identity
+        if: runner.os == 'Windows'
+        uses: Azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a # v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and sign Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: npx electron-builder --win nsis --x64 --publish never --config.extraMetadata.versusSignedUpdates=true
       - name: Verify Windows Authenticode signature
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $files = Get-ChildItem dist -Filter *.exe
-          if (-not $files) { throw "No Windows installer found" }
+          $files = Get-ChildItem dist -Recurse -Filter *.exe
+          if (-not $files) { throw "No Windows executables found" }
           foreach ($file in $files) {
-            if ((Get-AuthenticodeSignature $file.FullName).Status -ne "Valid") { throw "Invalid Authenticode signature: $($file.Name)" }
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne "Valid") { throw "Invalid Authenticode signature: $($file.Name)" }
+            if ($signature.SignerCertificate.Subject -notmatch 'CN=DIGITAL SHEPARD LLC(?:,|$)') {
+              throw "Unexpected Authenticode publisher: $($signature.SignerCertificate.Subject)"
+            }
           }
       - name: Verify Apple signature and notarization
         if: runner.os == 'macOS'

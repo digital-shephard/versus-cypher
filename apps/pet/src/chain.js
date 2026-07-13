@@ -10,11 +10,13 @@ const {
   createBaseProvider,
   quoteDepositPlan,
   quoteUsdDepositTarget,
+  runwaySafeTargetMicros,
   splitDepositWei,
 } = require("./base-rpc");
 
 const LOCAL_FIXTURE_DEPOSIT_WEI = 3_000_000_000_000_000n;
 const LOCAL_FIXTURE_DEPOSIT_MICROS = 10_000_000n;
+const MIN_HATCH_RUNWAY_MICROS = 7_000_000n;
 const ALLOWANCE_SYNC_TIMEOUT_MS = 15_000;
 const CHAIN_STATE_SYNC_TIMEOUT_MS = 30_000;
 
@@ -190,12 +192,15 @@ function localFixtureDepositPlan(depositWei) {
   };
 }
 
-function localFixtureTargetPlan(targetMicros) {
-  targetMicros = BigInt(targetMicros);
-  if (targetMicros <= 0n) throw new RangeError("target must be positive");
+function localFixtureTargetPlan(targetMicros, requiredRunwayMicros = MIN_HATCH_RUNWAY_MICROS) {
+  targetMicros = runwaySafeTargetMicros(targetMicros, { requiredRunwayMicros });
   const depositWei = (LOCAL_FIXTURE_DEPOSIT_WEI * targetMicros + LOCAL_FIXTURE_DEPOSIT_MICROS - 1n) /
     LOCAL_FIXTURE_DEPOSIT_MICROS;
-  return localFixtureDepositPlan(depositWei);
+  const plan = localFixtureDepositPlan(depositWei);
+  if (plan.minimumRunwayMicros < requiredRunwayMicros) {
+    throw new Error("fixture hatch quote does not clear the minimum runway");
+  }
+  return plan;
 }
 
 function createChainRainService(config, { provider: injectedProvider = null } = {}) {
@@ -233,10 +238,10 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       return provider.getBalance(address);
     },
 
-    async quoteHatchTarget({ targetMicros = 10_000_000n } = {}) {
+    async quoteHatchTarget({ targetMicros = 10_000_000n, requiredRunwayMicros = MIN_HATCH_RUNWAY_MICROS } = {}) {
       return localFixture
-        ? localFixtureTargetPlan(targetMicros)
-        : quoteUsdDepositTarget(provider, targetMicros);
+        ? localFixtureTargetPlan(targetMicros, requiredRunwayMicros)
+        : quoteUsdDepositTarget(provider, targetMicros, { requiredRunwayMicros });
     },
 
     async quoteHatch({ depositWei }) {

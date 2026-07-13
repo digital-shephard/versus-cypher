@@ -36,14 +36,17 @@ contract TrancheTreasury {
     mapping(uint256 => uint256) public tickets;
     uint256 public totalTickets;
     uint256 public accRewardPerTicket;
-    mapping(uint256 => uint256) public rewardDebt;
-    mapping(uint256 => uint256) public storedRewards;
+    /// @notice High-precision entitlement checkpoint used to prevent new tickets reaching old rewards.
+    mapping(uint256 => uint256) public rewardDebtScaled;
+    /// @notice High-precision settled entitlement. Whole USDC units are removed only when claimed.
+    mapping(uint256 => uint256) public storedRewardsScaled;
 
     event Bootstrapped(address arena, address agents);
     event FeeReceived(uint256 amount, uint256 tranchePot);
     event FeesAllocated(uint256 agentPot, uint256 protocolCut, uint256 rewardPerTicket, uint256 totalTickets);
     event TicketsAwarded(uint256 indexed agentId, uint256 amount, uint256 newTotal);
     event Claimed(uint256 indexed agentId, uint256 amount);
+    event ClaimCapped(uint256 indexed agentId, uint256 requested, uint256 paid);
 
     error NotArena();
     error NotDeployer();
@@ -93,7 +96,7 @@ contract TrancheTreasury {
         _settle(agentId);
         tickets[agentId] += amount;
         totalTickets += amount;
-        rewardDebt[agentId] = (tickets[agentId] * accRewardPerTicket) / ACC_REWARD_PRECISION;
+        rewardDebtScaled[agentId] = tickets[agentId] * accRewardPerTicket;
 
         // Fees cannot normally arrive before graduation and tickets, but do not strand them if they do.
         if (previousTotal == 0 && rewardRemainder > 0) {
@@ -106,9 +109,10 @@ contract TrancheTreasury {
 
     /// @notice Exact rolling rewards earned by permanent tickets and not yet moved into the NFT vault.
     function claimable(uint256 agentId) public view returns (uint256) {
-        uint256 accumulated = (tickets[agentId] * accRewardPerTicket) / ACC_REWARD_PRECISION;
-        uint256 unsettled = accumulated > rewardDebt[agentId] ? accumulated - rewardDebt[agentId] : 0;
-        return storedRewards[agentId] + unsettled;
+        uint256 accumulatedScaled = tickets[agentId] * accRewardPerTicket;
+        uint256 debtScaled = rewardDebtScaled[agentId];
+        uint256 unsettledScaled = accumulatedScaled > debtScaled ? accumulatedScaled - debtScaled : 0;
+        return (storedRewardsScaled[agentId] + unsettledScaled) / ACC_REWARD_PRECISION;
     }
 
     /// @notice Backward-compatible view alias. Rolling rewards are already earned and claimable.
@@ -117,13 +121,25 @@ contract TrancheTreasury {
     }
 
     /// @notice Permissionless accounting; the reward is deposited into the separately withdrawable NFT vault.
+    /// @dev Entitlements remain scaled until this final conversion, so account-level flooring cannot create
+    ///      liabilities above tranchePot. The cap is a fail-safe for any future invariant regression and emits
+    ///      ClaimCapped if it ever activates.
     function claim(uint256 agentId) external {
         _settle(agentId);
-        uint256 amount = storedRewards[agentId];
-        if (amount == 0) revert NothingToClaim();
-        storedRewards[agentId] = 0;
-        tranchePot -= amount;
-        agents.receiveProfit(agentId, amount);
+        uint256 scaled = storedRewardsScaled[agentId];
+        uint256 requested = scaled / ACC_REWARD_PRECISION;
+        if (requested == 0) revert NothingToClaim();
+
+        // Keep only the sub-USDC fraction. Any impossible unbacked whole-unit liability is discarded by
+        // the fail-safe rather than leaking into rewards deposited after this claim.
+        storedRewardsScaled[agentId] = scaled % ACC_REWARD_PRECISION;
+        uint256 pot = tranchePot;
+        uint256 amount = requested > pot ? pot : requested;
+        if (amount < requested) emit ClaimCapped(agentId, requested, amount);
+        if (amount > 0) {
+            tranchePot = pot - amount;
+            agents.receiveProfit(agentId, amount);
+        }
         emit Claimed(agentId, amount);
     }
 
@@ -157,11 +173,11 @@ contract TrancheTreasury {
     }
 
     function _settle(uint256 agentId) internal {
-        uint256 accumulated = (tickets[agentId] * accRewardPerTicket) / ACC_REWARD_PRECISION;
-        uint256 debt = rewardDebt[agentId];
-        if (accumulated > debt) {
-            storedRewards[agentId] += accumulated - debt;
+        uint256 accumulatedScaled = tickets[agentId] * accRewardPerTicket;
+        uint256 debtScaled = rewardDebtScaled[agentId];
+        if (accumulatedScaled > debtScaled) {
+            storedRewardsScaled[agentId] += accumulatedScaled - debtScaled;
         }
-        rewardDebt[agentId] = accumulated;
+        rewardDebtScaled[agentId] = accumulatedScaled;
     }
 }

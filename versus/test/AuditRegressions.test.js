@@ -23,9 +23,9 @@ async function aggregateClaimable(treasury, agentIds) {
 
 describe("audit action plan regressions", function () {
   describe("A1 reward-remainder solvency", function () {
-    it("never lets aggregate claimable exceed tranchePot under micro deposits", async function () {
+    it("keeps micro-deposit liabilities solvent and conserves every claim order", async function () {
       const [deployer, a, b, c] = await ethers.getSigners();
-      const { usdc, arena, treasury } = await deployLocalStack(ethers, {
+      const { usdc, agents, arena, treasury } = await deployLocalStack(ethers, {
         protocolRecipient: deployer.address,
         graduationFloor: TEST_FLOOR,
       });
@@ -54,14 +54,32 @@ describe("audit action plan regressions", function () {
       ];
       for (const order of orderings) {
         const snapshot = await ethers.provider.send("evm_snapshot");
+        const initialPot = await treasury.tranchePot();
+        const initialTreasuryBalance = await usdc.balanceOf(await treasury.getAddress());
+        let expectedPaid = 0n;
+        let vaultPaid = 0n;
         for (const agentId of order) {
           const amount = await treasury.claimable(agentId);
           if (amount === 0n) continue;
-          await expect(treasury.claim(agentId)).to.not.be.reverted;
+          const potBefore = await treasury.tranchePot();
+          const expected = amount < potBefore ? amount : potBefore;
+          const vaultBefore = (await agents.getAgent(agentId)).vault;
+          await expect(treasury.claim(agentId))
+            .to.emit(treasury, "Claimed")
+            .withArgs(agentId, expected);
+          const vaultAfter = (await agents.getAgent(agentId)).vault;
+          expect(vaultAfter - vaultBefore).to.equal(expected);
+          expectedPaid += expected;
+          vaultPaid += vaultAfter - vaultBefore;
         }
         const remaining = await aggregateClaimable(treasury, [1, 2, 3]);
-        expect(remaining).to.be.lte(await treasury.tranchePot());
-        expect(await usdc.balanceOf(await treasury.getAddress())).to.be.gte(await treasury.tranchePot());
+        const pot = await treasury.tranchePot();
+        const treasuryBalance = await usdc.balanceOf(await treasury.getAddress());
+        expect(remaining).to.equal(0n);
+        expect(expectedPaid).to.equal(vaultPaid);
+        expect(initialTreasuryBalance - treasuryBalance).to.equal(expectedPaid);
+        expect(pot).to.equal(initialPot - expectedPaid);
+        expect(await usdc.balanceOf(await treasury.getAddress())).to.be.gte(pot);
         await ethers.provider.send("evm_revert", [snapshot]);
       }
     });

@@ -11,6 +11,9 @@ const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const BASE_UNISWAP_QUOTER_V2 = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 const BASE_UNISWAP_SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481";
 const FEE_TIERS = Object.freeze([500, 3000, 10000]);
+const BPS = 10_000n;
+const DEFAULT_RUNWAY_BPS = 7_000n;
+const DEFAULT_SWAP_MIN_BPS = 9_900n;
 
 const quoterAbi = [
   "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
@@ -38,13 +41,41 @@ function createBaseProvider(env = process.env) {
   return new FallbackProvider(providers, BASE_CHAIN_ID, { quorum: 1 });
 }
 
-function splitDepositWei(depositWei, runwayBps = 7000n) {
+function splitDepositWei(depositWei, runwayBps = DEFAULT_RUNWAY_BPS) {
   depositWei = BigInt(depositWei);
   runwayBps = BigInt(runwayBps);
   if (depositWei <= 0n) throw new RangeError("deposit must be positive");
-  if (runwayBps <= 0n || runwayBps >= 10_000n) throw new RangeError("runway split is invalid");
-  const swapWei = (depositWei * runwayBps) / 10_000n;
+  if (runwayBps <= 0n || runwayBps >= BPS) throw new RangeError("runway split is invalid");
+  const swapWei = (depositWei * runwayBps) / BPS;
   return { depositWei, swapWei, gasReserveWei: depositWei - swapWei, runwayBps };
+}
+
+function divideRoundUp(numerator, denominator) {
+  if (denominator <= 0n) throw new RangeError("denominator must be positive");
+  return (numerator + denominator - 1n) / denominator;
+}
+
+function runwaySafeTargetMicros(
+  targetMicros,
+  {
+    requiredRunwayMicros = 0n,
+    runwayBps = DEFAULT_RUNWAY_BPS,
+    slippageBps = DEFAULT_SWAP_MIN_BPS,
+  } = {}
+) {
+  targetMicros = BigInt(targetMicros);
+  requiredRunwayMicros = BigInt(requiredRunwayMicros);
+  runwayBps = BigInt(runwayBps);
+  slippageBps = BigInt(slippageBps);
+  if (targetMicros <= 0n) throw new RangeError("target must be positive");
+  if (requiredRunwayMicros < 0n) throw new RangeError("required runway cannot be negative");
+  if (runwayBps <= 0n || runwayBps >= BPS) throw new RangeError("runway split is invalid");
+  if (slippageBps <= 0n || slippageBps > BPS) throw new RangeError("slippage floor is invalid");
+  if (requiredRunwayMicros === 0n) return targetMicros;
+
+  const quotedRunwayRequired = divideRoundUp(requiredRunwayMicros * BPS, slippageBps);
+  const grossTargetRequired = divideRoundUp(quotedRunwayRequired * BPS, runwayBps);
+  return targetMicros > grossTargetRequired ? targetMicros : grossTargetRequired;
 }
 
 async function quoteEthToUsdc(provider, amountWei, { quoterAddress = BASE_UNISWAP_QUOTER_V2 } = {}) {
@@ -75,22 +106,35 @@ async function quoteEthToUsdc(provider, amountWei, { quoterAddress = BASE_UNISWA
 async function quoteDepositPlan(provider, depositWei, options = {}) {
   const split = splitDepositWei(depositWei, options.runwayBps);
   const quote = await quoteEthToUsdc(provider, split.swapWei, options);
+  const slippageBps = BigInt(options.slippageBps ?? DEFAULT_SWAP_MIN_BPS);
+  if (slippageBps <= 0n || slippageBps > BPS) throw new RangeError("slippage floor is invalid");
   return {
     ...split,
     fee: quote.fee,
     quotedRunwayMicros: quote.amountOut,
-    minimumRunwayMicros: (quote.amountOut * 9900n) / 10_000n,
+    minimumRunwayMicros: (quote.amountOut * slippageBps) / BPS,
+    slippageBps,
     quoteGasEstimate: quote.gasEstimate,
   };
 }
 
 async function quoteUsdDepositTarget(provider, targetMicros = 10_000_000n, options = {}) {
-  targetMicros = BigInt(targetMicros);
-  if (targetMicros <= 0n) throw new RangeError("target must be positive");
+  const requiredRunwayMicros = BigInt(options.requiredRunwayMicros ?? 0n);
+  targetMicros = runwaySafeTargetMicros(targetMicros, { ...options, requiredRunwayMicros });
   const probeWei = 3_000_000_000_000_000n;
   const probe = await quoteEthToUsdc(provider, probeWei, options);
-  const targetDepositWei = (probeWei * targetMicros + probe.amountOut - 1n) / probe.amountOut;
-  return quoteDepositPlan(provider, targetDepositWei, options);
+  let targetDepositWei = divideRoundUp(probeWei * targetMicros, probe.amountOut);
+  let plan = await quoteDepositPlan(provider, targetDepositWei, options);
+
+  // Re-quote against the real trade size; pool curvature can differ from the small probe.
+  for (let attempt = 0; requiredRunwayMicros > 0n && plan.minimumRunwayMicros < requiredRunwayMicros; attempt++) {
+    if (attempt >= 2 || plan.minimumRunwayMicros === 0n) {
+      throw new Error("unable to quote a hatch deposit above the minimum runway");
+    }
+    targetDepositWei = divideRoundUp(plan.depositWei * requiredRunwayMicros, plan.minimumRunwayMicros);
+    plan = await quoteDepositPlan(provider, targetDepositWei, options);
+  }
+  return plan;
 }
 
 module.exports = {
@@ -106,5 +150,6 @@ module.exports = {
   quoteEthToUsdc,
   quoteUsdDepositTarget,
   rpcUrlsFromEnv,
+  runwaySafeTargetMicros,
   splitDepositWei,
 };

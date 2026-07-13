@@ -129,9 +129,10 @@ describe("chain rain configuration", () => {
     }, { provider: {} });
 
     const target = await service.quoteHatchTarget();
-    assert.equal(target.depositWei, 3_000_000_000_000_000n);
-    assert.equal(target.quotedRunwayMicros, 7_000_000n);
-    assert.equal(target.gasReserveWei, 900_000_000_000_000n);
+    assert.equal(target.depositWei, 3_030_303_600_000_000n);
+    assert.equal(target.quotedRunwayMicros, 7_070_708n);
+    assert.equal(target.minimumRunwayMicros, 7_000_000n);
+    assert.equal(target.gasReserveWei, 909_091_080_000_000n);
     assert.equal(target.localFixture, true);
   });
 

@@ -46,6 +46,8 @@ for (const relative of tracked) {
   const absolute = path.join(ROOT, relative);
   // A tracked file can be intentionally deleted in the working tree before the removal is committed.
   if (!fs.existsSync(absolute)) continue;
+  // Git submodules are tracked as gitlinks but appear as directories in the working tree.
+  if (!fs.statSync(absolute).isFile()) continue;
   const content = fs.readFileSync(absolute);
   if (content.includes(0)) continue;
   const lines = content.toString("utf8").split(/\r?\n/);

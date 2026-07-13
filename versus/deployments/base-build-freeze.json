@@ -1,6 +1,6 @@
 {
   "kind": "versus-base-build-freeze",
-  "generatedAt": "2026-07-13T02:21:38.739Z",
+  "generatedAt": "2026-07-13T12:20:50.170Z",
   "note": "Compare against freshly compiled artifacts before the first Base deployment transaction.",
   "solidity": "0.8.26",
   "compiler": {
@@ -34,9 +34,9 @@
       }
     }
   },
-  "compilerInputSha256": "dee1d8f627c4a156e650ed5738d854962b1df183e1fa805cd411cb342a6a9bd6",
+  "compilerInputSha256": "8ac9aed7a69947a23130393b6622962d72b60d0a8a543afb765a8e700802ea60",
   "importedSources": {
-    "treeSha256": "4cf430046725b9d904caa6cb547bb0e572c5147f97c29acec833baaaec84a396",
+    "treeSha256": "ab6178f8e68c7ad731f9a4721785bc11653de796a15f43b5fb37493ef3c4cdf5",
     "files": [
       {
         "path": "@openzeppelin/contracts/interfaces/IERC1363.sol",
@@ -156,7 +156,7 @@
       },
       {
         "path": "contracts/core/TrancheTreasury.sol",
-        "sha256": "dde56d9fb16fabc97f9621e9b7dd6ee2e16904209a720a3edfa05cd6bdd4f570"
+        "sha256": "8a0091ccefc04dc11b3363ad84e54618f3d295237977682a027ffaaabb1441e3"
       },
       {
         "path": "contracts/launch/ClassToken.sol",
@@ -202,8 +202,8 @@
       "creationBytecodeBytes": 3994
     },
     "TrancheTreasury": {
-      "creationBytecodeKeccak256": "3e669b56a6c3b65faa26ce95d08c2f4d8c13d21bac7d9d9f55c49a0bcc0609dd",
-      "creationBytecodeBytes": 3817
+      "creationBytecodeKeccak256": "605e85948dae27d3219d93fa93ea166a55e827ff6457b05005dd070ea287b7d2",
+      "creationBytecodeBytes": 3883
     },
     "MissionEscrow": {
       "creationBytecodeKeccak256": "9a894cc1e80ffc47cc50957c863f4ba81f22a7bc4138b5f1f8f784f6b193bc12",

@@ -5,6 +5,10 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "test:invariants": "hardhat test test/invariants/VersusInvariants.fuzz.js",
+    "test:invariants:long": "hardhat test test/invariants/VersusInvariants.fuzz.js",
+    "test:forge": "forge test --match-contract VersusInvariants -vv",
+    "test:forge:deep": "FOUNDRY_PROFILE=deep forge test --match-contract VersusInvariants -vv",
     "test:gas": "REPORT_GAS=true hardhat test",
     "test:base-fork": "node scripts/run-base-fork-rehearsal.js",
     "node": "hardhat node",

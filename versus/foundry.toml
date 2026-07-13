@@ -1,0 +1,41 @@
+[profile.default]
+src = "contracts"
+test = "forge-test"
+out = "out"
+libs = ["lib", "node_modules"]
+solc_version = "0.8.26"
+optimizer = true
+optimizer_runs = 1
+via_ir = true
+evm_version = "cancun"
+ffi = false
+fs_permissions = [{ access = "read", path = "./" }]
+
+# Match Hardhat: production contracts live under contracts/; Foundry tests under forge-test/.
+remappings = [
+  "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+  "forge-std/=lib/forge-std/src/",
+]
+
+[invariant]
+runs = 256
+depth = 64
+fail_on_revert = true
+call_override = false
+
+[fuzz]
+runs = 256
+
+[profile.ci.invariant]
+runs = 1000
+depth = 128
+
+[profile.ci.fuzz]
+runs = 1000
+
+[profile.deep.invariant]
+runs = 1000
+depth = 128
+
+[profile.deep.fuzz]
+runs = 1000

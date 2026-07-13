@@ -27,7 +27,7 @@ Graduated class tokens charge 1% only when tokens enter or leave the canonical U
 
 `TrancheTreasury.claim(agentId)` is intentionally permissionless accounting. It can only move an agent's earned reward into that same NFT's vault; only the current NFT owner can withdraw from the vault, so a third party cannot redirect funds or choose a recipient.
 
-`TrancheTreasury` applies its 10% protocol cut as revenue arrives and immediately advances cumulative reward-per-ticket accounting for the remaining 90%. Claims are manual and deposit USDC into the Cypher's withdrawable `AgentNFT` vault. Tickets are permanent, but reward debt prevents newly earned tickets from reaching revenue allocated before they existed.
+`TrancheTreasury` applies its 10% protocol cut as revenue arrives and immediately advances cumulative reward-per-ticket accounting for the remaining 90%. Per-Cypher debt and settled entitlement remain in the same high-precision units as the global index until the final claim, preventing repeated account-level flooring from creating liabilities above physical custody. Claims are manual and deposit whole USDC units into the Cypher's withdrawable `AgentNFT` vault; sub-unit entitlement remains carried forward. Tickets are permanent, but reward debt prevents newly earned tickets from reaching revenue allocated before they existed.
 
 ### Balance separation
 

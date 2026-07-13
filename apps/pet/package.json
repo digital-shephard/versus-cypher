@@ -43,8 +43,11 @@
       ],
       "icon": "assets/brand/v_gem.ico",
       "artifactName": "Versus-Cypher-Setup-${version}-${os}-${arch}.${ext}",
-      "signtoolOptions": {
-        "publisherName": "Digital Shephard"
+      "azureSignOptions": {
+        "publisherName": "DIGITAL SHEPARD LLC",
+        "endpoint": "https://eus.codesigning.azure.net/",
+        "certificateProfileName": "versus-cypher-public",
+        "codeSigningAccountName": "versuscyphersigning"
       }
     },
     "nsis": {

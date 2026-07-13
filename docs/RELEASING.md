@@ -50,7 +50,9 @@ The workflow rejects a tag that does not match the desktop package version.
 
 Unsigned packages are internal test artifacts only. Auto-update is fail-closed in source and unsigned packages: packaged metadata must explicitly identify a signed update build. The protected `release` GitHub environment is the only workflow permitted to set that metadata, and Windows/macOS builds fail unless Authenticode or Apple signing/notarization validation succeeds. Before the first public release:
 
-- Configure a hardware-backed or managed Windows code-signing certificate.
+- Windows uses the managed Azure Artifact Signing profile `versus-cypher-public` in account
+  `versuscyphersigning`. GitHub authenticates without a stored credential through the protected
+  `release` environment's OIDC identity, which has signer access only to that certificate profile.
 - Configure Apple Developer ID signing and notarization secrets.
 - Restrict signing secrets to the protected GitHub `release` environment.
 - Require manual approval for stable releases.

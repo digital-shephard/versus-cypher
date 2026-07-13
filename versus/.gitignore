@@ -1,6 +1,8 @@
 node_modules/
 cache/
 artifacts/
+out/
+cache_forge/
 coverage/
 coverage.json
 .env
