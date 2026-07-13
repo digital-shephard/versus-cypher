@@ -178,7 +178,7 @@ describe("production deployment tooling", function () {
     if (hre.__SOLIDITY_COVERAGE_RUNNING) this.skip();
     const freeze = loadBuildFreeze(projectRoot);
     const fresh = collectFreshBuildFingerprint(projectRoot, ethers);
-    expect(() => assertBuildMatchesFreeze(fresh, freeze)).to.not.throw();
+    assertBuildMatchesFreeze(fresh, freeze);
   });
 
   it("validates a generated fixture against schema v2 and the semantic validator", async function () {
