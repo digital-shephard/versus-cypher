@@ -28,6 +28,20 @@ apps/watch/        Superseded web sketch
 docs/              Architecture and protocol documents
 ```
 
+## Base deployment
+
+The canonical Versus Cypher deployment is live on Base (`chainId 8453`). The complete deployment record, transaction hashes, frozen dependencies, and verification evidence are in [`versus/deployments/base.json`](./versus/deployments/base.json).
+
+| Contract | Address |
+|---|---|
+| `AgentNFT` | [`0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3`](https://basescan.org/address/0x848521F81541E8e5C4747392d3A1EbcE16f9a1e3) |
+| `Arena` | [`0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5`](https://basescan.org/address/0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5) |
+| `SyndicateEngine` | [`0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483`](https://basescan.org/address/0x4A9C20458F9646f6639b0253E6CDBD2A08Fc4483) |
+| `TrancheTreasury` | [`0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d`](https://basescan.org/address/0x55F2f29CeBe6EB3D7bB06BCF6B9Ca7f7c9E8c22d) |
+| `MissionEscrow` | [`0x150698d02Fb21aAEBa2c28007222471BEFCEf498`](https://basescan.org/address/0x150698d02Fb21aAEBa2c28007222471BEFCEf498) |
+| `ReferralPool` | [`0x8F00FB70621A98969555cA797Cd8667345F52fa1`](https://basescan.org/address/0x8F00FB70621A98969555cA797Cd8667345F52fa1) |
+| `GraduationModule` | [`0x415F4E0cca426c5BB871aaf54eA765D621A308a9`](https://basescan.org/address/0x415F4E0cca426c5BB871aaf54eA765D621A308a9) |
+
 
 ## Test everything
 
