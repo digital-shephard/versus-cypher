@@ -1,12 +1,13 @@
 const { Contract, getAddress, keccak256 } = require("ethers");
 const { evaluateSafePolicy, validateManifest } = require("./deployment-manifest");
+const { inspectSafeConfiguration } = require("./safe-inspection");
+const CONSTANTS = require("./constants");
 
-const SAFE_ABI = ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"];
 const ROUTER_ABI = ["function factory() view returns (address)", "function WETH() view returns (address)"];
-const EXPECTED_WETH = "0x4200000000000000000000000000000000000006";
+const EXPECTED_WETH = CONSTANTS.base.weth;
 
-async function auditDeployment(provider, manifest) {
-  const schema = validateManifest(manifest);
+async function auditDeployment(provider, manifest, options = {}) {
+  const schema = validateManifest(manifest, options);
   if (!schema.valid) throw new Error(`invalid deployment manifest: ${schema.errors.join("; ")}`);
   const checks = [];
   const check = (name, actual, expected) => {
@@ -60,23 +61,43 @@ async function auditDeployment(provider, manifest) {
   check("metadata base URI", await x.agents.METADATA_BASE_URI(), "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/");
 
   const bytecode = {};
-  for (const [label, expected] of Object.entries(manifest.runtimeBytecode)) {
-    const code = await provider.getCode(expected.address);
+  for (const label of Object.keys(manifest.runtimeBytecode)) {
+    const expectedAddress = getAddress(manifest.contracts[label]);
+    check(`${label} runtime address binding`, getAddress(manifest.runtimeBytecode[label].address), expectedAddress);
+    const code = await provider.getCode(expectedAddress);
     if (code === "0x") throw new Error(`${label} has no runtime bytecode`);
     const hash = keccak256(code);
-    check(`${label} runtime bytecode`, hash, expected.keccak256);
-    bytecode[label] = { address: getAddress(expected.address), bytes: (code.length - 2) / 2, keccak256: hash };
+    check(`${label} runtime bytecode`, hash, manifest.runtimeBytecode[label].keccak256);
+    bytecode[label] = { address: expectedAddress, bytes: (code.length - 2) / 2, keccak256: hash };
   }
 
   let safePolicy = null;
   if (manifest.network === "base") {
+    check("canonical Base USDC", c.usdc, CONSTANTS.base.usdc);
+    check("canonical Base V2 factory", c.v2Factory, CONSTANTS.base.uniswapV2Factory);
+    check("canonical Base V2 router", c.v2Router, CONSTANTS.base.uniswapV2Router);
+    check("canonical Base protocol recipient", manifest.economics.protocolRecipient, CONSTANTS.base.protocolRecipient);
     const router = new Contract(c.v2Router, ROUTER_ABI, provider);
     check("router factory", await router.factory(), c.v2Factory);
     check("router WETH", await router.WETH(), EXPECTED_WETH);
-    const safe = new Contract(manifest.economics.protocolRecipient, SAFE_ABI, provider);
-    const [owners, threshold] = await Promise.all([safe.getOwners(), safe.getThreshold()]);
-    safePolicy = evaluateSafePolicy({ owners, threshold, releaseStage: manifest.releaseStage });
-    safePolicy.owners = owners.map(getAddress);
+    const safeConfig = await inspectSafeConfiguration(provider, manifest.economics.protocolRecipient, {
+      expectedSingleton: CONSTANTS.base.safeSingleton,
+      expectedFallbackHandler: CONSTANTS.base.safeFallbackHandler,
+    });
+    check("safe singleton", safeConfig.singleton, CONSTANTS.base.safeSingleton);
+    check("safe modules empty", safeConfig.modules.length, 0);
+    check("safe guard zero", safeConfig.guard || "0x0", "0x0");
+    check("safe fallback handler", safeConfig.fallbackHandler, CONSTANTS.base.safeFallbackHandler);
+    safePolicy = evaluateSafePolicy({
+      owners: safeConfig.owners,
+      threshold: safeConfig.threshold,
+      releaseStage: manifest.releaseStage,
+    });
+    safePolicy.owners = safeConfig.owners;
+    safePolicy.singleton = safeConfig.singleton;
+    safePolicy.modules = safeConfig.modules;
+    safePolicy.guard = safeConfig.guard;
+    safePolicy.fallbackHandler = safeConfig.fallbackHandler;
     if (!safePolicy.passed) throw new Error(`protocol Safe does not satisfy ${safePolicy.required} policy`);
   }
   return { passed: true, checks, bytecode, safePolicy };

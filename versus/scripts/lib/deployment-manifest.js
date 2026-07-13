@@ -2,6 +2,9 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { getAddress } = require("ethers");
+const CONSTANTS = require("./constants");
+const { FREEZE_RELATIVE, loadBuildFreeze } = require("./build-freeze");
 
 const MANIFEST_VERSION = 2;
 const RELEASE_STAGES = Object.freeze({
@@ -9,6 +12,29 @@ const RELEASE_STAGES = Object.freeze({
   CLOSED_COHORT: "closed-cohort",
   UNRESTRICTED_PUBLIC: "unrestricted-public",
 });
+
+const CONTRACT_KEYS = Object.freeze([
+  "usdc",
+  "v2Factory",
+  "v2Router",
+  "agents",
+  "arena",
+  "syndicate",
+  "treasury",
+  "missionEscrow",
+  "referralPool",
+  "graduation",
+]);
+
+const CONSTRUCTOR_KEYS = Object.freeze([
+  "agents",
+  "syndicate",
+  "treasury",
+  "missionEscrow",
+  "referralPool",
+  "arena",
+  "graduation",
+]);
 
 function evaluateSafePolicy({ owners, threshold, releaseStage }) {
   const ownerCount = Number(owners?.length || 0);
@@ -68,7 +94,7 @@ function assertBaseSourceReady(source) {
 }
 
 function collectSourceHashes(projectRoot) {
-  const roots = ["contracts", "scripts/lib/deployOwnerless.js", "hardhat.config.js", "package.json", "package-lock.json"];
+  const roots = ["contracts", "scripts", "hardhat.config.js", "package.json", "package-lock.json"];
   const files = [];
   const visit = (relative) => {
     const absolute = path.join(projectRoot, relative);
@@ -82,6 +108,7 @@ function collectSourceHashes(projectRoot) {
     files.push({ path: relative.replace(/\\/g, "/"), sha256: crypto.createHash("sha256").update(bytes).digest("hex") });
   };
   roots.forEach(visit);
+  files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const treeSha256 = crypto.createHash("sha256")
     .update(files.map((entry) => `${entry.path}:${entry.sha256}`).join("\n"))
     .digest("hex");
@@ -100,7 +127,15 @@ function constructorArguments(contracts, graduationFloor, protocolRecipient, ref
   };
 }
 
-function validateManifest(manifest) {
+function sameAddress(a, b) {
+  try {
+    return getAddress(a) === getAddress(b);
+  } catch (_) {
+    return false;
+  }
+}
+
+function validateManifest(manifest, options = {}) {
   const errors = [];
   const addressPattern = /^0x[a-fA-F0-9]{40}$/;
   const hashPattern = /^(?:0x)?[a-fA-F0-9]{64}$/;
@@ -110,21 +145,113 @@ function validateManifest(manifest) {
   if (!Object.values(RELEASE_STAGES).includes(manifest?.releaseStage)) errors.push("releaseStage is invalid");
   if (!/^[a-fA-F0-9]{40}$/.test(manifest?.source?.commit || "")) errors.push("source.commit must be full length");
   if (!hashPattern.test(manifest?.source?.treeSha256 || "")) errors.push("source.treeSha256 is invalid");
-  const contractKeys = ["usdc", "v2Factory", "v2Router", "agents", "arena", "syndicate", "treasury", "missionEscrow", "referralPool", "graduation"];
-  for (const key of contractKeys) {
-    if (!addressPattern.test(manifest?.contracts?.[key] || "")) errors.push(`contracts.${key} is invalid`);
-    if (!addressPattern.test(manifest?.runtimeBytecode?.[key]?.address || "")) errors.push(`runtimeBytecode.${key} is missing`);
-    if (!hashPattern.test(manifest?.runtimeBytecode?.[key]?.keccak256 || "")) errors.push(`runtimeBytecode.${key}.keccak256 is invalid`);
+
+  const contractKeys = Object.keys(manifest?.contracts || {}).sort();
+  const expectedContractKeys = [...CONTRACT_KEYS].sort();
+  if (JSON.stringify(contractKeys) !== JSON.stringify(expectedContractKeys)) {
+    errors.push(`contracts key set must equal ${expectedContractKeys.join(",")}`);
   }
-  for (const key of ["agents", "syndicate", "treasury", "missionEscrow", "referralPool", "arena", "graduation"]) {
+  const missingContracts = CONTRACT_KEYS.filter((key) => !manifest?.contracts?.[key]);
+  if (missingContracts.length) errors.push(`contracts missing keys: ${missingContracts.join(",")}`);
+  const runtimeKeys = Object.keys(manifest?.runtimeBytecode || {}).sort();
+  const expectedRuntimeKeys = [...CONTRACT_KEYS].sort();
+  if (JSON.stringify(runtimeKeys) !== JSON.stringify(expectedRuntimeKeys)) {
+    errors.push(`runtimeBytecode key set must equal ${expectedRuntimeKeys.join(",")}`);
+  }
+
+  for (const key of CONTRACT_KEYS) {
+    if (!addressPattern.test(manifest?.contracts?.[key] || "")) errors.push(`contracts.${key} is invalid`);
+    if (!addressPattern.test(manifest?.runtimeBytecode?.[key]?.address || "")) {
+      errors.push(`runtimeBytecode.${key} is missing`);
+    } else if (
+      addressPattern.test(manifest?.contracts?.[key] || "") &&
+      !sameAddress(manifest.runtimeBytecode[key].address, manifest.contracts[key])
+    ) {
+      errors.push(`runtimeBytecode.${key}.address must equal contracts.${key}`);
+    }
+    if (!hashPattern.test(manifest?.runtimeBytecode?.[key]?.keccak256 || "")) {
+      errors.push(`runtimeBytecode.${key}.keccak256 is invalid`);
+    }
+  }
+  for (const key of CONSTRUCTOR_KEYS) {
     if (!Array.isArray(manifest?.constructorArguments?.[key])) errors.push(`constructorArguments.${key} is required`);
   }
+
+  const sourceFiles = manifest?.source?.files;
+  if (!Array.isArray(sourceFiles) || sourceFiles.length === 0) {
+    errors.push("source.files must be a non-empty array");
+  } else {
+    const paths = sourceFiles.map((entry) => entry?.path);
+    if (paths.some((value) => typeof value !== "string" || !value)) {
+      errors.push("source.files entries require path");
+    }
+    if (new Set(paths).size !== paths.length) errors.push("source.files paths must be unique");
+    const sorted = [...paths].sort();
+    if (JSON.stringify(paths) !== JSON.stringify(sorted)) errors.push("source.files must be sorted by path");
+    for (const entry of sourceFiles) {
+      if (!hashPattern.test(entry?.sha256 || "")) errors.push(`source.files ${entry?.path} sha256 is invalid`);
+    }
+    const recomputedTree = crypto.createHash("sha256")
+      .update(sourceFiles.map((entry) => `${entry.path}:${entry.sha256}`).join("\n"))
+      .digest("hex");
+    if (recomputedTree !== String(manifest.source.treeSha256 || "").replace(/^0x/, "")) {
+      errors.push("source.treeSha256 does not match source.files");
+    }
+  }
+
+  if (options.projectRoot) {
+    const live = collectSourceHashes(options.projectRoot);
+    if (live.treeSha256 !== String(manifest?.source?.treeSha256 || "").replace(/^0x/, "")) {
+      errors.push("source.treeSha256 does not match live repository inventory");
+    }
+  }
+
   if (manifest?.network === "base") {
     if (Number(manifest.chainId) !== 8453) errors.push("Base chainId must equal 8453");
     if (manifest.releaseStage === RELEASE_STAGES.TEST) errors.push("Base releaseStage cannot be test");
     if (manifest?.source?.clean !== true) errors.push("Base source must be clean");
     if (manifest?.economics?.graduationFloorRaw !== "1000000000") errors.push("Base graduation floor must equal 1000000000");
     if (manifest?.economics?.referralRewardRaw !== "1000000") errors.push("Base referral reward must equal 1000000");
+    if (String(manifest?.economics?.protocolRecipient || "").toLowerCase() !== CONSTANTS.base.protocolRecipient.toLowerCase()) {
+      errors.push(`Base economics.protocolRecipient must equal canonical Safe ${CONSTANTS.base.protocolRecipient}`);
+    }
+    const canonical = {
+      usdc: CONSTANTS.base.usdc,
+      v2Factory: CONSTANTS.base.uniswapV2Factory,
+      v2Router: CONSTANTS.base.uniswapV2Router,
+    };
+    for (const [key, expected] of Object.entries(canonical)) {
+      if (String(manifest?.contracts?.[key] || "").toLowerCase() !== expected.toLowerCase()) {
+        errors.push(`Base contracts.${key} must equal canonical address ${expected}`);
+      }
+    }
+    if (!hashPattern.test(manifest?.compiler?.compilerInputSha256 || "")) {
+      errors.push("Base compiler.compilerInputSha256 is required");
+    }
+    if (!manifest?.compiler?.creationBytecode || typeof manifest.compiler.creationBytecode !== "object") {
+      errors.push("Base compiler.creationBytecode is required");
+    } else {
+      try {
+        const freeze = options.buildFreeze || loadBuildFreeze(options.projectRoot || path.join(__dirname, "..", ".."));
+        const creationKeys = Object.keys(manifest.compiler.creationBytecode).sort();
+        const expectedCreationKeys = Object.keys(freeze.contracts || {}).sort();
+        if (JSON.stringify(creationKeys) !== JSON.stringify(expectedCreationKeys)) {
+          errors.push(`Base compiler.creationBytecode key set must equal ${expectedCreationKeys.join(",")}`);
+        }
+        if (manifest.compiler.compilerInputSha256 !== freeze.compilerInputSha256) {
+          errors.push("Base compiler.compilerInputSha256 must equal committed build freeze");
+        }
+        for (const [name, expected] of Object.entries(freeze.contracts || {})) {
+          const actual = manifest.compiler.creationBytecode[name]?.keccak256
+            || manifest.compiler.creationBytecode[name]?.creationBytecodeKeccak256;
+          if (actual !== expected.creationBytecodeKeccak256) {
+            errors.push(`Base creation bytecode for ${name} must equal committed build freeze`);
+          }
+        }
+      } catch (error) {
+        errors.push(error.message || String(error));
+      }
+    }
   }
   return { valid: errors.length === 0, errors };
 }
@@ -132,6 +259,9 @@ function validateManifest(manifest) {
 module.exports = {
   MANIFEST_VERSION,
   RELEASE_STAGES,
+  CONTRACT_KEYS,
+  CONSTRUCTOR_KEYS,
+  FREEZE_RELATIVE,
   assertBaseSourceReady,
   collectSourceHashes,
   constructorArguments,

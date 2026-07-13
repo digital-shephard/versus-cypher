@@ -12,7 +12,12 @@ This is the deploy intent record. It does **not** mean mainnet is live.
 | Kind | Safe vault on Base mainnet (8453) |
 | Role | Receives **10%** of every finalized tranche forever |
 | Controllers | Safe owners (intended: 3 separately stored keys; on-chain check 2026-07-11 showed **1** owner so far) |
+| Singleton | `0x29fcB43b46531BcA003ddC8FCB67FFE91900C762` (frozen Safe L2 singleton) |
+| Modules / guard | No enabled modules; zero guard |
+| Fallback handler | `0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99` (frozen CompatibilityFallbackHandler) |
 | Base mainnet check (2026-07-11) | **Confirmed contract** — Safe `getOwners()` succeeds |
+
+The address is frozen in `versus/scripts/lib/constants.js`. `PROTOCOL_RECIPIENT` may be omitted at deploy time; if supplied for operator visibility, it must match this address exactly. Manifest validation and independent audit compare the deployed Treasury recipient back to the same constant.
 
 Versus cannot change this address after deploy. Distribution logic later (splitter, payouts to other addresses) must be done **through** this Safe, not by retargeting Versus.
 
@@ -45,7 +50,7 @@ The metadata root is compiled into `AgentNFT`; there is no URI administrator. Th
 | Uniswap V2 factory | `0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6` |
 | Uniswap V2 router | `0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24` |
 
-Source of truth for dependency addresses: `versus/scripts/lib/constants.js`. Re-verify on Basescan immediately before `deploy:base`.
+Source of truth for dependency addresses: `versus/scripts/lib/constants.js`. `deploy:base` rejects every mismatching environment override, runs the canonical dependency/Safe preflight internally before its first transaction, and records only the frozen addresses. Manifest validation and independent post-deploy audit compare back to the same constants. Re-verify on Basescan immediately before deployment.
 
 Onchain recheck on 2026-07-12 confirmed that the configured router's `factory()` returns this address, the factory and router both contain bytecode, and `WETH()` is Base WETH `0x4200000000000000000000000000000000000006`. The previously recorded factory ending in `...b28eC70f` contained no bytecode and was removed before deployment.
 
@@ -64,6 +69,8 @@ PRIVATE_KEY=<deployer>
 BASE_RPC_URL=https://mainnet.base.org
 VERSUS_RELEASE_STAGE=closed-cohort
 ```
+
+`PROTOCOL_RECIPIENT` is optional and shown only as an explicit cross-check; any different value aborts before deployment.
 
 Do **not** set `USE_MOCK_USDC` on mainnet.
 

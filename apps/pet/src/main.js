@@ -947,6 +947,19 @@ function queueSignalSettlement(service, launchId = null, limit = 100, postcards 
   return operation;
 }
 
+async function announceClassOver(classId, currentClassId) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("class:over", {
+      classId: Number(classId),
+      currentClassId: Number(currentClassId),
+      detectedAt: Date.now(),
+    });
+  }
+  await reconcileChainState().catch((error) => {
+    console.error("Versus class transition reconciliation error:", error.message);
+  });
+}
+
 async function settlePreparedSignals(service, launchId = null, limit = 100, postcards = null) {
   if (chainConfigError) throw chainConfigError;
   if (!chainRainService) throw new Error("Base chain service is not configured");
@@ -990,6 +1003,9 @@ async function settlePreparedSignals(service, launchId = null, limit = 100, post
     }
   } catch (error) {
     if (!submittedHash || error?.receipt?.status === 0) service.failSignalBatch(record.batch.root, error.message);
+    if (error?.code === "CLASS_OVER") {
+      await announceClassOver(error.classId, error.currentClassId);
+    }
     throw error;
   }
 }
@@ -1011,6 +1027,12 @@ async function reconcileSubmittedSignalBatches(service) {
       if (result.status === "failed") {
         service.failSignalBatch(record.batch.root, "submitted transaction reverted");
         outcomes.push({ root: record.batch.root, status: "failed" });
+        continue;
+      }
+      if (result.status === "class_over") {
+        service.failSignalBatch(record.batch.root, `class ${result.classId} is over`);
+        await announceClassOver(result.classId, result.currentClassId);
+        outcomes.push({ root: record.batch.root, status: "class_over" });
         continue;
       }
       const confirmed = service.confirmSignalBatch(record.batch.root, {

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://versus.network/schemas/deployment-manifest-v2.json",
+  "title": "Versus Cypher deployment manifest v2",
+  "type": "object",
+  "required": [
+    "manifestVersion", "protocol", "network", "chainId", "releaseStage", "source",
+    "compiler", "economics", "dependencies", "contracts", "constructorArguments",
+    "transactions", "runtimeBytecode", "verification", "deployedAt"
+  ],
+  "properties": {
+    "manifestVersion": { "const": 2 },
+    "protocol": { "const": "versus-cypher" },
+    "network": { "type": "string" },
+    "rainAttestors": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "chainId": { "type": "integer" },
+    "releaseStage": { "enum": ["test", "closed-cohort", "unrestricted-public"] },
+    "source": {
+      "type": "object",
+      "required": ["repository", "commit", "clean", "treeSha256", "files"],
+      "properties": {
+        "repository": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[a-fA-F0-9]{40}$" },
+        "clean": { "type": "boolean" },
+        "treeSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["path", "sha256"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "compiler": {
+      "type": "object",
+      "required": ["solidity", "optimizer", "viaIR", "evmVersion"],
+      "properties": {
+        "solidity": { "const": "0.8.26" },
+        "optimizer": {
+          "type": "object",
+          "required": ["enabled", "runs"],
+          "properties": {
+            "enabled": { "const": true },
+            "runs": { "const": 1 }
+          }
+        },
+        "viaIR": { "const": true },
+        "evmVersion": { "const": "cancun" },
+        "compilerInputSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "creationBytecode": { "type": "object" }
+      }
+    },
+    "economics": {
+      "type": "object",
+      "required": ["protocolRecipient", "graduationFloorRaw", "referralRewardRaw", "protocolTrancheBps"],
+      "properties": {
+        "protocolRecipient": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+        "graduationFloorRaw": { "type": "string" },
+        "referralRewardRaw": { "type": "string" },
+        "protocolTrancheBps": { "const": 1000 }
+      }
+    },
+    "dependencies": { "type": "object" },
+    "contracts": { "type": "object" },
+    "constructorArguments": { "type": "object" },
+    "runtimeBytecode": { "type": "object" },
+    "transactions": { "type": "array" },
+    "verification": { "type": "object" },
+    "deployedAt": { "type": "string" }
+  },
+  "additionalProperties": true
+}

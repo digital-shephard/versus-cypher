@@ -13,7 +13,8 @@
     "simulate": "hardhat run scripts/simulate.js",
     "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
     "deploy:base": "hardhat run scripts/deploy.js --network base",
-    "preflight:base": "node scripts/check-base-production.js",
+    "preflight:base": "hardhat run scripts/check-base-production.js",
+    "freeze:base-build": "hardhat run scripts/freeze-base-build.js",
     "verify:base": "hardhat run scripts/verify-base.js --network base",
     "audit:base": "node scripts/audit-base-deployment.js",
     "test:all": "node ../scripts/test-all.js"
@@ -21,6 +22,7 @@
   "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "ajv": "8.17.1",
     "hardhat": "^2.19.0"
   },
   "dependencies": {

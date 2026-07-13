@@ -265,6 +265,17 @@ let signalFlipped = false;
 let networkSnapshot = null;
 let networkRefreshLock = false;
 let graduationRunning = false;
+let classOverUntil = 0;
+let classOverTimer = null;
+
+function clearClassOverNotice() {
+  clearTimeout(classOverTimer);
+  classOverTimer = null;
+  classOverUntil = 0;
+  const notice = $("class-over-notice");
+  notice?.classList.remove("run");
+  notice?.setAttribute("aria-hidden", "true");
+}
 const RAIN_BATCH_MAX = 25;
 let queuedRainPennies = 0;
 let inFlightRainPennies = 0;
@@ -2383,9 +2394,37 @@ function normalizedGraduationPayload(payload) {
   return { ceremony, nextState: payload?.state || null };
 }
 
+function showClassOverNotice(payload = {}) {
+  if (graduationRunning || bond?.phase !== "active") return false;
+  const notice = $("class-over-notice");
+  if (!notice) return false;
+  const classId = Number(payload.classId);
+  $("class-over-title").textContent = Number.isSafeInteger(classId) && classId > 0
+    ? `CLASS ${classId} OVER`
+    : "CLASS OVER";
+  clearTimeout(classOverTimer);
+  notice.classList.remove("run");
+  notice.setAttribute("aria-hidden", "false");
+  void notice.offsetWidth;
+  notice.classList.add("run");
+  classOverUntil = Date.now() + 2400;
+  classOverTimer = setTimeout(() => {
+    clearClassOverNotice();
+  }, 2400);
+  return true;
+}
+
+async function runGraduationWhenReady(payload, options) {
+  const wait = Math.max(0, classOverUntil - Date.now());
+  if (wait) await sleep(wait);
+  clearClassOverNotice();
+  return runGraduationCeremony(payload, options);
+}
+
 async function runGraduationCeremony(payload, { acknowledge = true } = {}) {
   if (graduationRunning) return false;
   const { ceremony, nextState } = normalizedGraduationPayload(payload);
+  clearClassOverNotice();
   graduationRunning = true;
   saveDirty = false;
   const shell = $("shell");
@@ -2575,7 +2614,7 @@ async function boot() {
       startSceneClock();
       showClass();
       if (bond.pendingGraduation) {
-        setTimeout(() => runGraduationCeremony({ ceremony: bond.pendingGraduation, state: bond }).catch(console.error), 420);
+        setTimeout(() => runGraduationWhenReady({ ceremony: bond.pendingGraduation, state: bond }).catch(console.error), 420);
       }
     } else if (!bond || !bond.phase || bond.phase === "awaiting_deposit") {
       bond = { phase: "awaiting_deposit", walletAddress: wallet.address };
@@ -2597,7 +2636,8 @@ async function boot() {
     refreshNetworkScreen();
     setInterval(refreshNetworkScreen, POLL_MS);
     window.versus.onVerifiedRain?.(() => scheduleVerifiedRainPump(0));
-    window.versus.onGraduation?.((payload) => runGraduationCeremony(payload).catch(console.error));
+    window.versus.onClassOver?.(showClassOverNotice);
+    window.versus.onGraduation?.((payload) => runGraduationWhenReady(payload).catch(console.error));
     scheduleVerifiedRainPump(0);
     window.addEventListener("resize", resizeCanvas);
     document.addEventListener("visibilitychange", () => {

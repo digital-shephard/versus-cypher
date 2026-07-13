@@ -1,82 +1,64 @@
-const { Contract, JsonRpcProvider, getAddress } = require("ethers");
+const { JsonRpcProvider } = require("ethers");
 const path = require("path");
+const hre = require("hardhat");
 const CONSTANTS = require("./lib/constants");
+const { inspectBaseProduction } = require("./lib/base-production");
 const {
   assertBaseSourceReady,
-  evaluateSafePolicy,
   resolveReleaseStage,
   resolveSourceState,
 } = require("./lib/deployment-manifest");
-
-const EXPECTED_WETH = "0x4200000000000000000000000000000000000006";
-const DEFAULT_PROTOCOL_RECIPIENT = "0x93645ce5BCF0009026D8100aea5901cDd52217bF";
+const {
+  assertBuildMatchesFreeze,
+  collectFreshBuildFingerprint,
+  loadBuildFreeze,
+} = require("./lib/build-freeze");
 
 async function main() {
   const releaseStage = resolveReleaseStage("base");
+  const projectRoot = path.join(__dirname, "..");
   const source = resolveSourceState(path.join(__dirname, "..", ".."));
   assertBaseSourceReady(source);
+
+  await hre.run("compile");
+  const freeze = loadBuildFreeze(projectRoot);
+  const fingerprint = collectFreshBuildFingerprint(projectRoot, hre.ethers);
+  assertBuildMatchesFreeze(fingerprint, freeze);
+
   const rpcUrl = process.env.BASE_RPC_URL || "https://mainnet.base.org";
-  const protocolRecipient = getAddress(process.env.PROTOCOL_RECIPIENT || DEFAULT_PROTOCOL_RECIPIENT);
+  const protocolRecipient = process.env.PROTOCOL_RECIPIENT || CONSTANTS.base.protocolRecipient;
   const provider = new JsonRpcProvider(rpcUrl, CONSTANTS.base.chainId, {
     staticNetwork: true,
     cacheTimeout: -1,
   });
-  const router = new Contract(
-    CONSTANTS.base.uniswapV2Router,
-    ["function factory() view returns (address)", "function WETH() view returns (address)"],
-    provider
-  );
-  const safe = new Contract(
-    protocolRecipient,
-    ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"],
-    provider
-  );
-
-  const [network, factory, weth, owners, threshold, usdcCode, factoryCode, routerCode, recipientCode] =
-    await Promise.all([
-      provider.getNetwork(),
-      router.factory(),
-      router.WETH(),
-      safe.getOwners(),
-      safe.getThreshold(),
-      provider.getCode(CONSTANTS.base.usdc),
-      provider.getCode(CONSTANTS.base.uniswapV2Factory),
-      provider.getCode(CONSTANTS.base.uniswapV2Router),
-      provider.getCode(protocolRecipient),
-    ]);
-
-  if (Number(network.chainId) !== CONSTANTS.base.chainId) throw new Error("Base RPC returned the wrong chain");
-  if (getAddress(factory) !== getAddress(CONSTANTS.base.uniswapV2Factory)) {
-    throw new Error(`router factory mismatch: ${factory}`);
-  }
-  if (getAddress(weth) !== getAddress(EXPECTED_WETH)) throw new Error(`router WETH mismatch: ${weth}`);
-  for (const [label, code] of [
-    ["USDC", usdcCode],
-    ["Uniswap V2 factory", factoryCode],
-    ["Uniswap V2 router", routerCode],
-    ["protocol recipient", recipientCode],
-  ]) {
-    if (code === "0x") throw new Error(`${label} has no bytecode`);
-  }
+  const inspected = await inspectBaseProduction({ provider, protocolRecipient, releaseStage });
 
   const report = {
-    chainId: Number(network.chainId),
-    usdc: getAddress(CONSTANTS.base.usdc),
-    factory: getAddress(factory),
-    router: getAddress(CONSTANTS.base.uniswapV2Router),
-    weth: getAddress(weth),
-    protocolRecipient,
-    safeOwners: owners.map(getAddress),
-    safeThreshold: Number(threshold),
+    chainId: inspected.chainId,
+    usdc: inspected.usdc,
+    factory: inspected.factory,
+    router: inspected.router,
+    weth: inspected.weth,
+    protocolRecipient: inspected.protocolRecipient,
+    safeOwners: inspected.safeOwners,
+    safeThreshold: inspected.safeThreshold,
+    safeSingleton: inspected.safeSingleton,
+    safeConfig: {
+      singleton: inspected.safeConfig.singleton,
+      modules: inspected.safeConfig.modules,
+      guard: inspected.safeConfig.guard,
+      fallbackHandler: inspected.safeConfig.fallbackHandler,
+    },
+    buildFreeze: {
+      compilerInputSha256: fingerprint.compilerInputSha256,
+      contracts: Object.keys(fingerprint.contracts),
+    },
     releaseStage,
     sourceCommit: source.commit,
     checkedAt: new Date().toISOString(),
+    safePolicy: inspected.safePolicy,
   };
-  report.safePolicy = evaluateSafePolicy({ owners, threshold, releaseStage });
   console.log(JSON.stringify(report, null, 2));
-  if (!report.safePolicy.passed) {
-    throw new Error(`protocol Safe is not ready for ${releaseStage}: requires ${report.safePolicy.required}`);
-  }
   if (report.safePolicy.hardeningRequired) {
     console.warn("WARNING: closed-cohort Safe accepted, but unrestricted public release remains blocked until it is at least 2-of-3");
   }

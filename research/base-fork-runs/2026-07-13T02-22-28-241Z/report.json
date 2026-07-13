@@ -1,0 +1,52 @@
+{
+  "kind": "versus-base-mainnet-fork-rehearsal",
+  "passed": true,
+  "forkBlock": 48560000,
+  "chainId": 8453,
+  "dependencies": {
+    "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "factory": "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
+    "router": "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
+    "weth": "0x4200000000000000000000000000000000000006",
+    "protocolRecipient": "0x93645ce5BCF0009026D8100aea5901cDd52217bF"
+  },
+  "contracts": {
+    "agents": "0x39ED8904652787f3258d999a7ed62996AEC112d1",
+    "arena": "0x9c4A80dD392E499614aa73FfA765f72B92A64e78",
+    "syndicate": "0x7a8Df97594B422F5073F255AEefBe3910598d540",
+    "treasury": "0x1246972C664599199bC1b27E583A1D50ec6197e2",
+    "missionEscrow": "0x37F6e13feDBBb9E782041CD3463BE1b831cc6764",
+    "referralPool": "0xCaCd7592548615d6C045949666Fd1aad6C634440",
+    "graduation": "0x6cfA1d69413358009B4503432412c92Ced2FA92b",
+    "token": "0xcFD6A59D8167b886471fC59c8dB454e43a34ae5b",
+    "pair": "0xB8F94593F67F94BF6f57C658E48aFf8cDe99cA5e"
+  },
+  "assertions": {
+    "independentDeploymentAuditChecks": 70,
+    "integratedProductionPreflight": true,
+    "safePublicReady": false,
+    "selectedCypherId": "25",
+    "tokenURI": "ipfs://bafybeicbtgrjvljtdjgjua6n6vteayl5micu222mbw5ifessrx63xpuyzy/25.json",
+    "referralRewardMicros": "1000000",
+    "referredByAgent2": "1",
+    "underfundedReferralAgent3Hatched": true,
+    "referredByAgent3WithoutReward": "1",
+    "referralPoolBalanceMicros": "0",
+    "firstNextCommitAt": "1783995758",
+    "exactFloorUSDC": "1000000000",
+    "predictedPairPrecreated": true,
+    "preTokenSyncRejected": true,
+    "unsynchronizedDustDonationMicros": "1",
+    "pairUSDCImmediatelyAfterGraduation": "1000000001",
+    "bankedBuyTaxBeforeSell": "49357901670982403763495",
+    "boundedTaxConvertedOnSell": "977286453085451594516",
+    "maxTaxAuthorizedBySell": "977286453085451594516",
+    "taxBankRemainsAfterBoundedSell": "48869258444439677966237",
+    "signalSettled": true,
+    "nextClassId": "2",
+    "claimedVaultRewardMicros": "1001788",
+    "finalAgentVaultMicros": "0",
+    "nftOwner": "0x360eE34b1DA967f55E06A0008867de97ef4e985E"
+  },
+  "completedAt": "2026-07-13T02:22:43.586Z"
+}

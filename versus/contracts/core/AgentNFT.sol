@@ -138,17 +138,6 @@ contract AgentNFT is ERC721 {
         emit VaultWithdrawn(agentId, msg.sender, amount);
     }
 
-    function pullFromVault(uint256 agentId, uint256 amount) external onlyArena returns (bool) {
-        Agent storage a = agents[agentId];
-        if (!_exists(agentId)) revert InvalidAgent();
-        if (a.vault < amount) return false;
-        unchecked {
-            a.vault -= uint128(amount);
-        }
-        usdc.safeTransfer(msg.sender, amount);
-        return true;
-    }
-
     function getAgent(uint256 agentId)
         external
         view

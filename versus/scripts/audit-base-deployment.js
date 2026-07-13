@@ -46,7 +46,9 @@ async function main() {
   const rpcUrl = process.env.BASE_AUDIT_RPC_URL;
   if (!rpcUrl) throw new Error("BASE_AUDIT_RPC_URL is required so the independent audit does not silently reuse the deployment RPC");
   const provider = new JsonRpcProvider(rpcUrl, 8453, { staticNetwork: true, cacheTimeout: -1 });
-  const audited = await auditDeployment(provider, manifest);
+  const audited = await auditDeployment(provider, manifest, {
+    projectRoot: path.join(__dirname, ".."),
+  });
   const checkedAt = new Date().toISOString();
   manifest.verification = manifest.verification || {};
   manifest.verification.independentAudit = { status: "passed", checkedAt, report: "base-verification.json" };

@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 interface IClassTaxCollector {
-    function swapCollectedTax() external returns (uint256 usdcOut);
+    function swapCollectedTax(uint256 maxTokenAmount) external returns (uint256 usdcOut);
 }
 
 /// @title Versus Class Token (ownerless after launch)
@@ -89,7 +89,8 @@ contract ClassToken is ERC20 {
                 super._update(from, taxCollector, tax);
                 emit TaxTaken(from, tax);
                 if (isSell) {
-                    try IClassTaxCollector(taxCollector).swapCollectedTax() returns (uint256 usdcOut) {
+                    // Convert this sell's tax plus at most one matching slice of banked buy tax.
+                    try IClassTaxCollector(taxCollector).swapCollectedTax(tax * 2) returns (uint256 usdcOut) {
                         emit TaxSwapTriggered(tax, usdcOut);
                     } catch {
                         emit TaxSwapDeferred(tax);

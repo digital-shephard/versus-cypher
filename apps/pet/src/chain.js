@@ -2,6 +2,7 @@ const fs = require("fs");
 const { AbiCoder, Contract, JsonRpcProvider, MaxUint256, NonceManager, Wallet, keccak256 } = require("ethers");
 const { normalizeSignalBatch } = require("@versus/network");
 const { parseReferralCode, referralCodeFor } = require("./referrals");
+const { classOverError, isWrongClassError } = require("./class-transition");
 const {
   BASE_UNISWAP_SWAP_ROUTER_02,
   BASE_USDC,
@@ -30,6 +31,7 @@ const arenaAbi = [
   "function nextCommitAt(uint256 agentId) view returns (uint64)",
   "function currentDay() view returns (uint32)",
   "function referralFundedDays(uint256 agentId, uint32 day) view returns (bool)",
+  "error WrongClass()",
   "event Hatched(uint256 indexed agentId, address indexed owner, uint8 cypherId, uint256 runwayAmount)",
   "event SignalBatchSettled(uint256 indexed agentId, uint256 indexed classId, bytes32 indexed batchRoot, uint256 signalCount, uint256 inkPennies, uint256 amount, uint256 classTotal, bytes32 typeCountsHash)",
 ];
@@ -604,6 +606,17 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         throw new Error("signal batch author does not match the configured signer");
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
+      const syndicate = new Contract(addresses.syndicate, syndicateAbi, provider);
+      const translateClassRace = async (error) => {
+        let currentClassId = null;
+        try {
+          currentClassId = await syndicate.currentClassId();
+        } catch (_) {}
+        if (isWrongClassError(error) || (currentClassId != null && currentClassId.toString() !== batch.launchId)) {
+          throw classOverError(batch.launchId, currentClassId ?? batch.launchId, error);
+        }
+        throw error;
+      };
       let tx;
       try {
         await signer.getNonce("pending");
@@ -615,10 +628,15 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         );
       } catch (error) {
         signer.reset();
-        throw error;
+        await translateClassRace(error);
       }
       if (onSubmitted) await onSubmitted(tx.hash);
-      const receipt = await confirmed(tx, "signal batch");
+      let receipt;
+      try {
+        receipt = await confirmed(tx, "signal batch");
+      } catch (error) {
+        await translateClassRace(error);
+      }
       const event = validateSignalReceipt(arena, receipt, agentId, batch);
       await waitForChainState(
         () => arena.settledSignalBatches(BigInt(agentId), batch.root),
@@ -645,6 +663,18 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const receipt = await provider.getTransactionReceipt(transactionHash);
       if (!receipt) return { status: "pending", transactionHash, batch };
       if (receipt.status !== 1) {
+        const syndicate = new Contract(addresses.syndicate, syndicateAbi, provider);
+        const currentClassId = await syndicate.currentClassId();
+        if (currentClassId.toString() !== batch.launchId) {
+          return {
+            status: "class_over",
+            transactionHash,
+            blockNumber: receipt.blockNumber,
+            classId: batch.launchId,
+            currentClassId: currentClassId.toString(),
+            batch,
+          };
+        }
         return { status: "failed", transactionHash, blockNumber: receipt.blockNumber, batch };
       }
       const arena = new Contract(addresses.arena, arenaAbi, provider);

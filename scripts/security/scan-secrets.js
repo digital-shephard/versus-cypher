@@ -44,6 +44,8 @@ const findings = [];
 const tracked = git(["ls-files", "-z"]).split("\0").filter(Boolean);
 for (const relative of tracked) {
   const absolute = path.join(ROOT, relative);
+  // A tracked file can be intentionally deleted in the working tree before the removal is committed.
+  if (!fs.existsSync(absolute)) continue;
   const content = fs.readFileSync(absolute);
   if (content.includes(0)) continue;
   const lines = content.toString("utf8").split(/\r?\n/);

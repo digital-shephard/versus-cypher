@@ -4,15 +4,21 @@ require("dotenv").config();
 const hre = require("hardhat");
 const { deployOwnerlessVersus, deployLocalStack } = require("./lib/deployOwnerless");
 const CONSTANTS = require("./lib/constants");
+const { inspectBaseProduction } = require("./lib/base-production");
 const {
   MANIFEST_VERSION,
+  CONTRACT_KEYS,
   assertBaseSourceReady,
   collectSourceHashes,
   constructorArguments,
-  evaluateSafePolicy,
   resolveReleaseStage,
   resolveSourceState,
 } = require("./lib/deployment-manifest");
+const {
+  assertBuildMatchesFreeze,
+  collectFreshBuildFingerprint,
+  loadBuildFreeze,
+} = require("./lib/build-freeze");
 
 function requireAddress(name) {
   const v = process.env[name];
@@ -119,14 +125,40 @@ async function main() {
     });
   }
 
+  let buildFingerprint = null;
+  if (network === "base") {
+    console.log("Cleaning Hardhat artifacts and verifying committed Base build freeze…");
+    await hre.run("clean");
+    await hre.run("compile", { force: true });
+    const freeze = loadBuildFreeze(projectRoot);
+    buildFingerprint = collectFreshBuildFingerprint(projectRoot, hre.ethers);
+    assertBuildMatchesFreeze(buildFingerprint, freeze);
+    console.log("Base build freeze matched freshly compiled creation bytecode");
+  }
+
   // ── Live networks (baseSepolia / base) ──────────────────────────────────
-  protocolRecipient = requireAddress("PROTOCOL_RECIPIENT");
+  protocolRecipient = network === "base" ? CONSTANTS.base.protocolRecipient : requireAddress("PROTOCOL_RECIPIENT");
   console.log("IMMUTABLE protocolRecipient (dev vault):", protocolRecipient);
   console.log("graduationFloor:", graduationFloor.toString(), `($${(Number(graduationFloor) / 1e6).toFixed(2)})`);
   console.log("referralReward:", referralReward.toString(), `($${(Number(referralReward) / 1e6).toFixed(2)})`);
 
   const cfg = CONSTANTS[network];
   if (!cfg) throw new Error(`No constants for network ${network}`);
+  let baseDependencies = null;
+  if (network === "base") {
+    const inspected = await inspectBaseProduction({
+      provider: hre.ethers.provider,
+      protocolRecipient,
+      releaseStage,
+    });
+    safePolicy = inspected.safePolicy;
+    baseDependencies = {
+      usdc: inspected.usdc,
+      factory: inspected.factory,
+      router: inspected.router,
+    };
+    console.log("Canonical Base dependency preflight passed");
+  }
 
   const useMockUsdc = process.env.USE_MOCK_USDC === "true";
   if (useMockUsdc) {
@@ -148,14 +180,14 @@ async function main() {
       mock.mint(deployer.address, mockMint)
     );
   } else {
-    usdcAddress = process.env.USDC_ADDRESS || cfg.usdc;
+    usdcAddress = network === "base" ? baseDependencies.usdc : process.env.USDC_ADDRESS || cfg.usdc;
     if (!usdcAddress) throw new Error("USDC address missing");
     console.log("USDC:", usdcAddress);
   }
 
   // Router: use mocks on Sepolia unless a complete external deployment is explicitly provided.
-  const requestedRouter = process.env.UNISWAP_V2_ROUTER || cfg.uniswapV2Router;
-  const requestedFactory = process.env.UNISWAP_V2_FACTORY || cfg.uniswapV2Factory;
+  const requestedRouter = network === "base" ? baseDependencies.router : process.env.UNISWAP_V2_ROUTER || cfg.uniswapV2Router;
+  const requestedFactory = network === "base" ? baseDependencies.factory : process.env.UNISWAP_V2_FACTORY || cfg.uniswapV2Factory;
   if (network === "baseSepolia" && ((!requestedRouter || !requestedFactory) || process.env.USE_MOCK_ROUTER === "true")) {
     const factory = await recordDeployment(
       "deploy MockUniswapV2Factory",
@@ -199,15 +231,6 @@ async function main() {
   }
 
   if (network === "base") {
-    const safe = new hre.ethers.Contract(
-      protocolRecipient,
-      ["function getOwners() view returns (address[])", "function getThreshold() view returns (uint256)"],
-      hre.ethers.provider
-    );
-    const [owners, threshold] = await Promise.all([safe.getOwners(), safe.getThreshold()]);
-    safePolicy = evaluateSafePolicy({ owners, threshold, releaseStage });
-    safePolicy.owners = owners.map(hre.ethers.getAddress);
-    if (!safePolicy.passed) throw new Error(`protocol Safe does not satisfy ${safePolicy.required} policy`);
     if (safePolicy.hardeningRequired) {
       console.warn("WARNING: closed-cohort deployment; unrestricted public release remains blocked until the Safe is at least 2-of-3");
     }
@@ -268,6 +291,7 @@ async function main() {
     },
     transactions,
     safePolicy,
+    buildFingerprint,
   });
 }
 
@@ -341,12 +365,25 @@ function receiptRecord(label, receipt) {
   };
 }
 
-function writeOut({ network, releaseStage, source, projectRoot, deployer, protocolRecipient, graduationFloor, referralReward, usedMockUsdc, usedMockRouter, contracts, transactions = [], safePolicy = null }) {
+function writeOut({ network, releaseStage, source, projectRoot, deployer, protocolRecipient, graduationFloor, referralReward, usedMockUsdc, usedMockRouter, contracts, transactions = [], safePolicy = null, buildFingerprint = null }) {
   const rainAttestors = String(process.env.VERSUS_RAIN_ATTESTORS || "")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean)
     .map((value) => hre.ethers.getAddress(value));
+  const sourceInventory = collectSourceHashes(projectRoot);
+  let creationBytecode = null;
+  let compilerInputSha256 = null;
+  if (network === "base") {
+    const fingerprint = buildFingerprint || collectFreshBuildFingerprint(projectRoot, hre.ethers);
+    compilerInputSha256 = fingerprint.compilerInputSha256;
+    creationBytecode = Object.fromEntries(
+      Object.entries(fingerprint.contracts).map(([name, value]) => [
+        name,
+        { keccak256: value.creationBytecodeKeccak256, bytes: value.creationBytecodeBytes },
+      ])
+    );
+  }
   const out = {
     manifestVersion: MANIFEST_VERSION,
     protocol: "versus-cypher",
@@ -387,17 +424,18 @@ function writeOut({ network, releaseStage, source, projectRoot, deployer, protoc
       continuousReferralPoolOwnerless: true,
       paidSignalBatches: true,
       permanentDailyVoiceCredentials: true,
-      publicGraduateSwapBackContinuousClaim: true,
+      boundedSellTaxSwapContinuousClaim: true,
     },
     source: {
       ...source,
-      ...collectSourceHashes(projectRoot),
+      ...sourceInventory,
     },
     compiler: {
       solidity: "0.8.26",
       optimizer: { enabled: true, runs: 1 },
       viaIR: true,
       evmVersion: "cancun",
+      ...(compilerInputSha256 ? { compilerInputSha256, creationBytecode } : {}),
     },
     verification: {
       basescan: { status: network === "base" ? "pending" : "not-applicable" },
@@ -409,10 +447,13 @@ function writeOut({ network, releaseStage, source, projectRoot, deployer, protoc
 
   return hre.ethers.provider.getNetwork().then(async (net) => {
     out.chainId = Number(net.chainId);
-    for (const [label, address] of Object.entries(contracts)) {
-      if (typeof address !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(address)) continue;
+    for (const key of CONTRACT_KEYS) {
+      const address = contracts[key];
+      if (typeof address !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        throw new Error(`manifest contracts.${key} is missing`);
+      }
       const code = await hre.ethers.provider.getCode(address);
-      out.runtimeBytecode[label] = {
+      out.runtimeBytecode[key] = {
         address: hre.ethers.getAddress(address),
         bytes: (code.length - 2) / 2,
         keccak256: hre.ethers.keccak256(code),

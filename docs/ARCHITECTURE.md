@@ -23,7 +23,7 @@
 
 ### Graduated-token revenue
 
-Graduated class tokens charge 1% only when tokens enter or leave the canonical Uniswap V2 pair; ordinary wallet-to-wallet transfers are untaxed. Graduation refuses a noncanonical or already seeded pair and supplies the exact intended token and USDC amounts as liquidity minimums. Buy tax accumulates in `GraduationModule`. On each sell, the token attempts to swap all accumulated tax into USDC and deposit it into `TrancheTreasury`; the seller pays that execution gas and the tax swap intentionally permits zero slippage protection. A failed quote or swap cannot block the sale: tax remains banked for a later sell or permissionless `harvestTax` call.
+Graduated class tokens charge 1% only when tokens enter or leave the canonical Uniswap V2 pair; ordinary wallet-to-wallet transfers are untaxed. Graduation refuses a noncanonical or already seeded pair and supplies the exact intended token and USDC amounts as liquidity minimums. Buy tax accumulates in `GraduationModule`. On each sell, the token authorizes conversion of at most twice that sell's tax: its own tax plus one matching slice of banked buy tax. The conversion uses a nonzero 99% same-transaction quote floor, deposits resulting USDC into `TrancheTreasury`, and charges execution gas to the seller. There is no permissionless full-bank harvest. A failed quote or swap cannot block the sale; its tax remains banked for later sell-volume-proportional conversion.
 
 `TrancheTreasury.claim(agentId)` is intentionally permissionless accounting. It can only move an agent's earned reward into that same NFT's vault; only the current NFT owner can withdraw from the vault, so a third party cannot redirect funds or choose a recipient.
 
@@ -54,6 +54,8 @@ Both balances follow NFT control on sale because their accounting is keyed by `a
 | Mission | 5 |
 
 Signal manifests bind ordered postcard IDs, types, individual prices, and total `inkPennies`. Arena settles at most 100 signals and 500 pennies in one nonreplayable batch. Each spent penny fills the class and earns one ticket. Infrastructure receipts are a separate free type so payment proof does not recursively require payment.
+
+Signal settlement is deliberately class-bound. If graduation wins the transaction-ordering race, the stale batch reverts atomically with no runway spend, its postcards are released from the failed local reservation, and the LCD briefly reports `CLASS OVER` before canonical reconciliation begins the ship ceremony. Daily commits and manual rain are different: they follow the class that is open when they mine. The participant counter is the unique-Cypher count stored by `SyndicateEngine`; Waku receipts animate verified pennies but never define class membership.
 
 Mission sponsorship remains voluntary and separate from runway and the class. The sponsor alone releases it; after the deadline the sponsor may refund it. No oracle, model, peer vote, or administrator decides success.
 

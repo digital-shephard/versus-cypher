@@ -23,7 +23,6 @@ interface ISyndicateEngine {
 }
 
 interface ITrancheTreasury {
-    function receiveFee(uint256 amount) external;
     function awardCommitTicket(uint256 agentId) external;
     function awardTickets(uint256 agentId, uint256 amount) external;
 }
@@ -149,17 +148,19 @@ contract Arena is ReentrancyGuard {
             ) % agents.CYPHER_COUNT()
         );
         agentId = agents.mint(msg.sender, cypherId);
+        // Read post-mint owner: _safeMint may transfer during onERC721Received before mint returns.
+        address referredOwner = agents.ownerOf(agentId);
         runway[agentId] = uint128(runwayAmount);
         nextCommitAt[agentId] = uint64(block.timestamp);
         totalRunwayLiability += runwayAmount;
         if (referrerAgentId != 0) {
-            try referralPool.recordReferral(agentId, referrerAgentId, msg.sender) returns (uint256 rewardPaid) {
+            try referralPool.recordReferral(agentId, referrerAgentId, referredOwner) returns (uint256 rewardPaid) {
                 emit ReferralAttempted(agentId, referrerAgentId, true, rewardPaid);
             } catch {
                 emit ReferralAttempted(agentId, referrerAgentId, false, 0);
             }
         }
-        emit Hatched(agentId, msg.sender, cypherId, runwayAmount);
+        emit Hatched(agentId, referredOwner, cypherId, runwayAmount);
     }
 
     /// @notice Adds protocol fuel to an existing Cypher. Anyone may sponsor a Cypher.

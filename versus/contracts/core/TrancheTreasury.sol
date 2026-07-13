@@ -26,10 +26,11 @@ contract TrancheTreasury {
     IAgentNFTTreasury public agents;
     bool public bootstrapped;
 
-    /// @notice Agent rewards still held by this contract, including rounding remainder.
+    /// @notice Agent rewards still held by this contract (claimable liabilities plus any sub-precision dust).
     uint256 public tranchePot;
     uint256 public totalFeesReceived;
     uint256 public totalProtocolPaid;
+    /// @notice Fees received while totalTickets == 0; indexed once when the first ticket arrives.
     uint256 public rewardRemainder;
 
     mapping(uint256 => uint256) public tickets;
@@ -71,10 +72,6 @@ contract TrancheTreasury {
         usdc.forceApprove(agents_, type(uint256).max);
         bootstrapped = true;
         emit Bootstrapped(arena_, agents_);
-    }
-
-    function receiveFee(uint256 amount) external onlyArena {
-        _take(amount);
     }
 
     function depositFees(uint256 amount) external {
@@ -152,13 +149,11 @@ contract TrancheTreasury {
         emit FeesAllocated(agentPot, protocolCut, accRewardPerTicket, totalTickets);
     }
 
+    /// @dev Indexes `amount` into accRewardPerTicket once. Sub-precision dust stays as excess USDC
+    ///      rather than a second liability in rewardRemainder (which would double-count).
     function _indexRewards(uint256 amount) internal {
-        uint256 distributable = amount + rewardRemainder;
-        rewardRemainder = 0;
-        uint256 rewardPerTicket = (distributable * ACC_REWARD_PRECISION) / totalTickets;
-        uint256 allocated = (rewardPerTicket * totalTickets) / ACC_REWARD_PRECISION;
-        rewardRemainder = distributable - allocated;
-        accRewardPerTicket += rewardPerTicket;
+        if (amount == 0 || totalTickets == 0) return;
+        accRewardPerTicket += (amount * ACC_REWARD_PRECISION) / totalTickets;
     }
 
     function _settle(uint256 agentId) internal {

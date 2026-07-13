@@ -17,7 +17,7 @@ Fixed action prices are one penny for observations, questions, critiques, endors
 
 ## Before deployment
 
-1. Choose and verify the immutable `PROTOCOL_RECIPIENT` contract (see `docs/PRODUCTION_FREEZE.md`). Live deployment fails if this address has no bytecode.
+1. Verify the frozen immutable `PROTOCOL_RECIPIENT` Safe in `scripts/lib/constants.js` and `docs/PRODUCTION_FREEZE.md`. Base deployment rejects a different environment value and fails if the Safe has no bytecode or violates the selected threshold policy.
 2. Configure the deployer key and network RPC in `versus/.env`.
 3. Run the complete local suite.
 
@@ -34,16 +34,24 @@ Base Sepolia:
 npm run deploy:base-sepolia
 ```
 
-Base mainnet refuses mock USDC and any graduation-floor override; the deploy script asserts the exact `1_000_000_000` floor. Verify current Base USDC and Uniswap addresses in `scripts/lib/constants.js` before deploying.
+Base mainnet refuses mock USDC, any graduation-floor override, and any USDC/router/factory/protocol-recipient environment value that differs from `scripts/lib/constants.js`. The deploy script resolves only the frozen canonical dependencies and Safe, then asserts the exact `1_000_000_000` floor.
 
-Before sending a deployment transaction, run the read-only production preflight. It validates Base chain ID, dependency bytecode, router bindings, and the protocol Safe owner threshold:
+The Base deploy command runs the read-only production preflight internally before its first transaction. Run it separately as an operator preview; it validates Base chain ID, canonical dependency bytecode, router bindings, USDC decimals, and the protocol Safe owner threshold:
 
 ```powershell
 $env:VERSUS_RELEASE_STAGE = "closed-cohort"
 npm run preflight:base
 ```
 
-`closed-cohort` accepts a valid Safe and publishes a warning until it is at least 2-of-3. `unrestricted-public` fails closed unless the Safe has at least three owners and threshold two. Base deploys also fail before transaction signing unless the repository is clean and the source commit is a full 40-character Git commit.
+`closed-cohort` accepts a valid Safe and publishes a warning until it is at least 2-of-3. `unrestricted-public` fails closed unless the Safe has at least three owners and threshold two. Base deploys also fail before transaction signing unless the repository is clean, the source commit is a full 40-character Git commit, every configured production dependency equals its frozen canonical address, the protocol Safe singleton/modules/guard/fallback match the freeze, and freshly compiled creation bytecode matches `deployments/base-build-freeze.json`.
+
+Regenerate the freeze only after intentional contract changes:
+
+```powershell
+npm run freeze:base-build
+```
+
+Run public Base deployment from a clean isolated worktree populated with `npm ci --ignore-scripts` from the committed lockfile so ignored `node_modules` and stale artifacts cannot diverge from the reviewed freeze.
 
 Run the disposable Base mainnet fork rehearsal through Docker and Anvil. It uses canonical Base state but spends no real funds:
 
@@ -51,7 +59,7 @@ Run the disposable Base mainnet fork rehearsal through Docker and Anvil. It uses
 npm run test:base-fork
 ```
 
-After deployment, commit `deployments/base.json`. It conforms to `deployments/schema-v1.json` and records the exact commit, clean-source hash inventory, compiler settings, constructor arguments, transaction receipts, deployment block range, and runtime bytecode hashes. Then publish source through Basescan:
+After deployment, commit `deployments/base.json`. It conforms to `deployments/schema-v2.json` and records the exact commit, clean-source hash inventory, compiler settings, compiler-input fingerprint, creation-bytecode freeze hashes, constructor arguments, transaction receipts, deployment block range, and runtime bytecode hashes. Then publish source through Basescan:
 
 ```powershell
 $env:VERSUS_DEPLOYMENT = "deployments/base.json"

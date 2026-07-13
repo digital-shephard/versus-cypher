@@ -8,6 +8,8 @@ import "./MockUniswapV2Pair.sol";
 contract MockUniswapV2Router {
     address private immutable _factory;
     bool public failQuotes;
+    uint256 public lastSwapAmountIn;
+    uint256 public lastSwapAmountOutMin;
 
     constructor(address factory_) {
         _factory = factory_;
@@ -87,6 +89,8 @@ contract MockUniswapV2Router {
     ) external {
         require(block.timestamp <= deadline, "Expired");
         require(path.length == 2, "Only 2-token path");
+        lastSwapAmountIn = amountIn;
+        lastSwapAmountOutMin = amountOutMin;
 
         address tokenIn = path[0];
         address tokenOut = path[1];

@@ -1,0 +1,229 @@
+{
+  "kind": "versus-base-build-freeze",
+  "generatedAt": "2026-07-13T02:21:38.739Z",
+  "note": "Compare against freshly compiled artifacts before the first Base deployment transaction.",
+  "solidity": "0.8.26",
+  "compiler": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 1
+    },
+    "viaIR": true,
+    "evmVersion": "cancun",
+    "version": "0.8.26+commit.8a97fa7a",
+    "settings": {
+      "optimizer": {
+        "enabled": true,
+        "runs": 1
+      },
+      "viaIR": true,
+      "evmVersion": "cancun",
+      "outputSelection": {
+        "*": {
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ],
+          "": [
+            "ast"
+          ]
+        }
+      }
+    }
+  },
+  "compilerInputSha256": "dee1d8f627c4a156e650ed5738d854962b1df183e1fa805cd411cb342a6a9bd6",
+  "importedSources": {
+    "treeSha256": "4cf430046725b9d904caa6cb547bb0e572c5147f97c29acec833baaaec84a396",
+    "files": [
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC1363.sol",
+        "sha256": "9c3a75a925a6dac9e88b03cddc58d42fe3131b0aaaad84408521f3f7af2f991b"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC165.sol",
+        "sha256": "dfb3f56fa928a7c6cae41a7ce2c86b9210fa18d33fa26389099d66a0fa790368"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC20.sol",
+        "sha256": "0158e2d3e0e28bedd99eec13dcf1a8aa3a70a5b7e4bb2ad709609c95fcc740d1"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
+        "sha256": "fa7068f56bc180571a6095be6eaef06d51dbe81e30cb128397d993c9599ecc30"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        "sha256": "50f34ae16a067a41c2c1091445d11d63788e54c717677cb6d6b0e4cdea2ad21d"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "sha256": "01b6f5c4fa45fd38822b286ecef6daf983d27306dd6362496fa71b3e4600b72c"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+        "sha256": "0b7132f17d14d1d84b41b0bb429be62dafdff00fd3470f68724d8018eb07f57a"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "sha256": "c2394cb2a327f234711da34884947f4aa0f6dd2791d1d6303a0c7acfaf81bca3"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        "sha256": "ef8e2398c78851bd2ec12bc48d923058c557889d5a3d5ee4919c17ff0fb3517e"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC721/IERC721.sol",
+        "sha256": "ff0eb9902bf0ac099205615fac90eacf34fae637571b05aab3ea35dea53d5f17"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol",
+        "sha256": "eafee3ffdc7cb2fba4bf6bd16fb28f8e5b4679742e81c2ad42a1b1df5c179feb"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol",
+        "sha256": "33223782ea652dca413702ce92f9f59d91d758a035065b24bbedb7dc60c63a78"
+      },
+      {
+        "path": "@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol",
+        "sha256": "b48e95db8c85866c1d88af8e82f346e0d22d24b5aac5b936079d958c72e13b9f"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/Bytes.sol",
+        "sha256": "3ce9120a27934c75a074cb785d3a88868069ef6529dbe4dc6b845af0836f3c70"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/Context.sol",
+        "sha256": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/Panic.sol",
+        "sha256": "270fc8401c1a13fae6a7a4a2dd6e381b95d658896701e51f0d3e2688acab3dec"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "sha256": "94e409e8f6e3184236651a6cc2b1a6a3ea0f0a25eb85b71e524ad5791bb2fbc8"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/StorageSlot.sol",
+        "sha256": "75704538dcb223239280c6726d9a31cf769a7816718517c997fc7d63bdb70778"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/Strings.sol",
+        "sha256": "e318709bbe73a7831d64c1351e8bdc43780b245f25191234e361e6ab9b98c67b"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
+        "sha256": "61a2b12c96857aaa35f48aeda67a4281637a42494c0b3795be0ae976aa7b3793"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
+        "sha256": "9055c2994b37dea1a41b7b7926dcb510f05dbe2540b0aafc5fbee9558fffd0ca"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/math/Math.sol",
+        "sha256": "bdfdbe133991c0c78042957ff5cd97167926fcaf6d15664f3835a076cb066457"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/math/SafeCast.sol",
+        "sha256": "5779bc848bde39f1ad7bc02b4f708a0040888e0083b1a33f119cd94639350134"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/math/SignedMath.sol",
+        "sha256": "1ed50b1056af886752f0fb48a0165d381e69bb4a4b18b893b066dc144a7e08d7"
+      },
+      {
+        "path": "contracts/core/AgentNFT.sol",
+        "sha256": "e34d5a25b7b359133120beee31a38c9406871a058bb63ab1704d0987540b5310"
+      },
+      {
+        "path": "contracts/core/Arena.sol",
+        "sha256": "66560e09445cb6e0072d323dcbbd58672de69282042f959d13d79eaf5c78e466"
+      },
+      {
+        "path": "contracts/core/MissionEscrow.sol",
+        "sha256": "091d7e7ab25b431d197cb710132b48f75093e84c6f433d476fc1dd6c04170678"
+      },
+      {
+        "path": "contracts/core/ReferralPool.sol",
+        "sha256": "0c052c3a87713c83b58f89b331b627a518ea4bb7e7687b34505f791b046d29a2"
+      },
+      {
+        "path": "contracts/core/SyndicateEngine.sol",
+        "sha256": "b26793e667975dfb653daea3ef1d3011b8efb5d661fb48083d85be8168962fa9"
+      },
+      {
+        "path": "contracts/core/TrancheTreasury.sol",
+        "sha256": "dde56d9fb16fabc97f9621e9b7dd6ee2e16904209a720a3edfa05cd6bdd4f570"
+      },
+      {
+        "path": "contracts/launch/ClassToken.sol",
+        "sha256": "1c7fc3193ae2756e015d40bf409188d1aa9191d22533d95fade1af1991892761"
+      },
+      {
+        "path": "contracts/launch/GraduationModule.sol",
+        "sha256": "753e13a405d444c6ff388c84279d96888329b0648f70f47f8ce3126639cd1604"
+      },
+      {
+        "path": "contracts/test/MockUSDC.sol",
+        "sha256": "19c485cc1fa22ffc705ff3bb90afb21854f9d79294d720373b79d33b186d651b"
+      },
+      {
+        "path": "contracts/test/ReentrantHatcher.sol",
+        "sha256": "1de5a00f35f483f2d6f8e19bfca6da8408dcf19952a7c3361d903a39e62dfedc"
+      },
+      {
+        "path": "contracts/test/ReferralTransferHatcher.sol",
+        "sha256": "9cc26ecddb4ace2094d1415c7f1b563a8077367886ab3efa68cb583bcf9c353d"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Factory.sol",
+        "sha256": "25cd12cb6c1416bd5270a057d9b58515ebc394bffbba9346332cb95f2fb4cdd4"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Pair.sol",
+        "sha256": "ce05f4fefcdc797e20e90254e2c76029623c834cae059fe31d03bb71ad94111a"
+      },
+      {
+        "path": "contracts/uniswap/MockUniswapV2Router.sol",
+        "sha256": "06aa92e0ed50a9e87034348cf0f41b3a73e0e30ac3ff1222c38026ca8718699d"
+      }
+    ]
+  },
+  "contracts": {
+    "AgentNFT": {
+      "creationBytecodeKeccak256": "22652a942f4db65c3949d0bb00e56e918cb77a030b51207e04c1fdfebab845c5",
+      "creationBytecodeBytes": 7762
+    },
+    "SyndicateEngine": {
+      "creationBytecodeKeccak256": "4f3ee4a0c816abaf599eaf8632d526f6878c045070749234e4cbc3bda0e78e80",
+      "creationBytecodeBytes": 3994
+    },
+    "TrancheTreasury": {
+      "creationBytecodeKeccak256": "3e669b56a6c3b65faa26ce95d08c2f4d8c13d21bac7d9d9f55c49a0bcc0609dd",
+      "creationBytecodeBytes": 3817
+    },
+    "MissionEscrow": {
+      "creationBytecodeKeccak256": "9a894cc1e80ffc47cc50957c863f4ba81f22a7bc4138b5f1f8f784f6b193bc12",
+      "creationBytecodeBytes": 2924
+    },
+    "ReferralPool": {
+      "creationBytecodeKeccak256": "c9c2ff07b176e01c451257df1dcda1fc8f7a7d4c1f94f547a82c28450990d890",
+      "creationBytecodeBytes": 3569
+    },
+    "Arena": {
+      "creationBytecodeKeccak256": "af62e562d1440fef323f62d45e2f9601e0864d71dff25389d09096523d9d080d",
+      "creationBytecodeBytes": 8702
+    },
+    "GraduationModule": {
+      "creationBytecodeKeccak256": "b77fdacb3d7cb76dbb4356c4b00b39ed59a2ca3db27e3e37f6bb2428b4bd238d",
+      "creationBytecodeBytes": 12071
+    },
+    "ClassToken": {
+      "creationBytecodeKeccak256": "55ac2851c0dfc81ab83b8133a871563280f77c3b78f1891f3fc806c0a1f28c98",
+      "creationBytecodeBytes": 4686
+    }
+  }
+}

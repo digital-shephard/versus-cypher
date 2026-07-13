@@ -22,6 +22,60 @@ class MemoryTransport extends EventEmitter {
 }
 
 describe("Versus network economic settlement E2E", function () {
+  it("translates a stale class-bound signal into CLASS_OVER without spending runway", async function () {
+    const [deployer] = await ethers.getSigners();
+    const stack = await deployLocalStack(ethers, {
+      protocolRecipient: deployer.address,
+      graduationFloor: 10_000n,
+    });
+    const wallet = ethers.Wallet.createRandom().connect(ethers.provider);
+    await deployer.sendTransaction({ to: wallet.address, value: ethers.parseEther("1") });
+    await stack.usdc.mint(wallet.address, MIN_RUNWAY);
+    await stack.usdc.connect(wallet).approve(await stack.arena.getAddress(), ethers.MaxUint256);
+    await stack.arena.connect(wallet).hatch(MIN_RUNWAY);
+
+    const network = await ethers.provider.getNetwork();
+    const identity = new CypherIdentity({ signer: wallet, cypherId: 1 });
+    const createdAt = Math.floor(Date.now() / 1000);
+    const proposal = await identity.signPostcard({
+      type: "proposal",
+      launchId: "1",
+      sequence: 0,
+      createdAt,
+      expiresAt: createdAt + 3600,
+      body: "build a public harbor ritual",
+    });
+    const batch = buildSignalBatch({
+      postcards: [proposal],
+      chainId: network.chainId,
+      arena: await stack.arena.getAddress(),
+      launchId: 1,
+      agentId: 1,
+      author: wallet.address,
+    });
+    const service = createChainRainService(
+      { rpcUrl: "injected", deployment: { chainId: Number(network.chainId), contracts: stack.addresses } },
+      { provider: ethers.provider }
+    );
+
+    await stack.arena.connect(wallet).commit(1);
+    const runwayBefore = await stack.arena.runway(1);
+    await stack.graduation.graduate();
+    expect(await stack.syndicate.currentClassId()).to.equal(2n);
+
+    let failure;
+    try {
+      await service.settleSignalBatchFromRunway({ privateKey: wallet.privateKey, agentId: 1, batch });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure?.code).to.equal("CLASS_OVER");
+    expect(failure?.classId).to.equal("1");
+    expect(failure?.currentClassId).to.equal("2");
+    expect(await stack.arena.runway(1)).to.equal(runwayBefore);
+    expect(await stack.arena.settledSignalBatches(1, batch.root)).to.equal(false);
+  });
+
   it("validates a code and completes manual funding referred hatch payout and one-penny agent funding", async function () {
     const [deployer] = await ethers.getSigners();
     const stack = await deployLocalStack(ethers, {

@@ -50,6 +50,11 @@ contextBridge.exposeInMainWorld("versus", {
     ipcRenderer.on("graduation:available", listener);
     return () => ipcRenderer.removeListener("graduation:available", listener);
   },
+  onClassOver: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("class:over", listener);
+    return () => ipcRenderer.removeListener("class:over", listener);
+  },
   networkStatus: () => ipcRenderer.invoke("network:status"),
   networkConnect: (peerUrl) => ipcRenderer.invoke("network:connect", { peerUrl }),
   networkPublish: (postcard) => ipcRenderer.invoke("network:publish", postcard),

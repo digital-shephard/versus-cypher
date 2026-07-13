@@ -74,6 +74,8 @@ contract GraduationModule is ReentrancyGuard {
     ITrancheTreasuryFees public immutable treasury;
 
     uint256 public constant TOKEN_FOR_LP = 500_000_000 ether;
+    uint256 public constant TAX_SWAP_MIN_BPS = 9_900;
+    uint256 public constant BPS = 10_000;
 
     struct Graduation {
         address token;
@@ -99,7 +101,6 @@ contract GraduationModule is ReentrancyGuard {
     error ZeroAddress();
     error NotReady();
     error AlreadyGraduated();
-    error NoTax();
     error NotClassToken();
     error InvalidCanonicalPair();
     error PairAlreadySeeded();
@@ -203,47 +204,34 @@ contract GraduationModule is ReentrancyGuard {
     }
 
     /// @notice Called synchronously by a class token after collecting sell tax.
-    function swapCollectedTax() external nonReentrant returns (uint256 usdcOut) {
+    /// @dev maxTokenAmount is tied to the current sell, preventing a full-bank dump.
+    function swapCollectedTax(uint256 maxTokenAmount) external nonReentrant returns (uint256 usdcOut) {
         uint256 classId = classIdForToken[msg.sender];
         if (classId == 0 || graduations[classId].token != msg.sender) revert NotClassToken();
+        if (maxTokenAmount == 0) return 0;
 
         uint256 taxBal = IERC20(msg.sender).balanceOf(address(this));
         if (taxBal == 0) return 0;
+        uint256 tokenAmount = taxBal < maxTokenAmount ? taxBal : maxTokenAmount;
 
         address[] memory path = new address[](2);
         path[0] = msg.sender;
         path[1] = address(usdc);
-        uint256[] memory quoted = router.getAmountsOut(taxBal, path);
-        if (quoted[quoted.length - 1] == 0) return 0;
-
-        return _harvestTax(classId, msg.sender);
-    }
-
-    /// @notice Permissionless fallback for buy tax if no sell arrives to trigger swap-back.
-    function harvestTax(uint256 classId) external nonReentrant returns (uint256 usdcOut) {
-        return _harvestTax(classId, msg.sender);
-    }
-
-    function _harvestTax(uint256 classId, address caller) internal returns (uint256 usdcOut) {
-        Graduation storage g = graduations[classId];
-        if (!g.active) revert NotReady();
-
-        uint256 taxBal = IERC20(g.token).balanceOf(address(this));
-        if (taxBal == 0) revert NoTax();
-
-        address[] memory path = new address[](2);
-        path[0] = g.token;
-        path[1] = address(usdc);
+        uint256[] memory quoted = router.getAmountsOut(tokenAmount, path);
+        uint256 quotedOut = quoted[quoted.length - 1];
+        if (quotedOut == 0) return 0;
+        uint256 amountOutMin = (quotedOut * TAX_SWAP_MIN_BPS) / BPS;
+        if (amountOutMin == 0) amountOutMin = 1;
 
         uint256 beforeBal = usdc.balanceOf(address(this));
         router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            taxBal, 0, path, address(this), block.timestamp + 600
+            tokenAmount, amountOutMin, path, address(this), block.timestamp + 600
         );
         usdcOut = usdc.balanceOf(address(this)) - beforeBal;
         require(usdcOut > 0, "zero out");
 
         treasury.depositFees(usdcOut);
-        emit TaxHarvested(classId, taxBal, usdcOut, caller);
+        emit TaxHarvested(classId, tokenAmount, usdcOut, msg.sender);
     }
 
     function getGraduation(uint256 classId)

@@ -82,6 +82,16 @@ async function deployOwnerlessVersus(
     )
   );
 
+  // Arena dependencies first. AgentNFT bootstrap is the activation gate: Arena cannot mint before it.
+  await recordCall(
+    "bootstrap SyndicateEngine",
+    syndicate.bootstrap(await arena.getAddress(), await graduation.getAddress())
+  );
+  await recordCall(
+    "bootstrap TrancheTreasury",
+    treasury.bootstrap(await arena.getAddress(), await agents.getAddress())
+  );
+  await recordCall("bootstrap ReferralPool", referralPool.bootstrap(await arena.getAddress()));
   await recordCall(
     "bootstrap AgentNFT",
     agents.bootstrap(
@@ -90,15 +100,6 @@ async function deployOwnerlessVersus(
       await missionEscrow.getAddress(),
       await referralPool.getAddress()
     )
-  );
-  await recordCall("bootstrap ReferralPool", referralPool.bootstrap(await arena.getAddress()));
-  await recordCall(
-    "bootstrap SyndicateEngine",
-    syndicate.bootstrap(await arena.getAddress(), await graduation.getAddress())
-  );
-  await recordCall(
-    "bootstrap TrancheTreasury",
-    treasury.bootstrap(await arena.getAddress(), await agents.getAddress())
   );
 
   return {

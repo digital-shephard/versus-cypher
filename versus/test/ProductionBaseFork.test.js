@@ -1,13 +1,21 @@
 const { expect } = require("chai");
 const fs = require("fs");
+const path = require("path");
 const { ethers, network } = require("hardhat");
 const { deployOwnerlessVersus } = require("../scripts/lib/deployOwnerless");
 const { auditDeployment } = require("../scripts/lib/deployment-audit");
-const { MANIFEST_VERSION, RELEASE_STAGES, constructorArguments } = require("../scripts/lib/deployment-manifest");
+const { inspectBaseProduction } = require("../scripts/lib/base-production");
+const { loadBuildFreeze } = require("../scripts/lib/build-freeze");
+const {
+  MANIFEST_VERSION,
+  RELEASE_STAGES,
+  collectSourceHashes,
+  constructorArguments,
+} = require("../scripts/lib/deployment-manifest");
 const CONSTANTS = require("../scripts/lib/constants");
 
 const WETH = "0x4200000000000000000000000000000000000006";
-const SAFE = "0x93645ce5BCF0009026D8100aea5901cDd52217bF";
+const SAFE = CONSTANTS.base.protocolRecipient;
 const FLOOR = 1_000_000_000n;
 const MIN_RUNWAY = 7_000_000n;
 const REFERRAL_REWARD = 1_000_000n;
@@ -31,11 +39,26 @@ describe("Versus Base mainnet fork rehearsal", function () {
     const usdc = await ethers.getContractAt("IERC20", CONSTANTS.base.usdc);
     const factory = new ethers.Contract(
       CONSTANTS.base.uniswapV2Factory,
-      ["function getPair(address,address) view returns (address)"],
+      [
+        "function getPair(address,address) view returns (address)",
+        "function createPair(address,address) returns (address)",
+      ],
       ethers.provider
     );
     const fundingPair = await factory.getPair(CONSTANTS.base.usdc, WETH);
     expect(fundingPair).to.not.equal(ethers.ZeroAddress);
+    const productionPreflight = await inspectBaseProduction({
+      provider: ethers.provider,
+      protocolRecipient: SAFE,
+      releaseStage: RELEASE_STAGES.CLOSED_COHORT,
+      env: {},
+    });
+    expect(productionPreflight).to.include({
+      chainId: 8453,
+      usdc: ethers.getAddress(CONSTANTS.base.usdc),
+      factory: ethers.getAddress(CONSTANTS.base.uniswapV2Factory),
+      router: ethers.getAddress(CONSTANTS.base.uniswapV2Router),
+    });
     await network.provider.send("anvil_setBalance", [fundingPair, "0x56BC75E2D63100000"]);
     await network.provider.send("anvil_impersonateAccount", [fundingPair]);
     const funder = await ethers.getSigner(fundingPair);
@@ -48,6 +71,26 @@ describe("Versus Base mainnet fork rehearsal", function () {
       referralReward: REFERRAL_REWARD,
     });
     const { agents, arena, syndicate, treasury, referralPool, graduation } = stack;
+    const graduationAddress = await graduation.getAddress();
+    const createNonce = await ethers.provider.getTransactionCount(graduationAddress);
+    const predictedToken = ethers.getCreateAddress({ from: graduationAddress, nonce: createNonce });
+    await (await factory.connect(deployer).createPair(predictedToken, CONSTANTS.base.usdc)).wait();
+    const precreatedPair = await factory.getPair(predictedToken, CONSTANTS.base.usdc);
+    const pairBeforeGraduation = new ethers.Contract(
+      precreatedPair,
+      [
+        "function sync()",
+        "function totalSupply() view returns (uint256)",
+        "function getReserves() view returns (uint112,uint112,uint32)",
+      ],
+      deployer
+    );
+    await (await usdc.connect(funder).transfer(precreatedPair, 1n)).wait();
+    await expect(pairBeforeGraduation.sync()).to.be.reverted;
+    expect(await pairBeforeGraduation.totalSupply()).to.equal(0n);
+    const poisonedReserves = await pairBeforeGraduation.getReserves();
+    expect(poisonedReserves[0]).to.equal(0n);
+    expect(poisonedReserves[1]).to.equal(0n);
 
     const deployedContracts = {
       usdc: CONSTANTS.base.usdc,
@@ -66,19 +109,41 @@ describe("Versus Base mainnet fork rehearsal", function () {
       const code = await ethers.provider.getCode(address);
       runtimeBytecode[label] = { address, bytes: (code.length - 2) / 2, keccak256: ethers.keccak256(code) };
     }
+    const projectRoot = path.join(__dirname, "..");
+    const freeze = loadBuildFreeze(projectRoot);
+    const sourceInventory = collectSourceHashes(projectRoot);
     const deploymentAudit = await auditDeployment(ethers.provider, {
       manifestVersion: MANIFEST_VERSION,
       protocol: "versus-cypher",
       network: "base",
       chainId: 8453,
       releaseStage: RELEASE_STAGES.CLOSED_COHORT,
-      source: { commit: "a".repeat(40), clean: true, treeSha256: "b".repeat(64) },
+      source: {
+        repository: "digital-shephard/versus-cypher",
+        commit: "a".repeat(40),
+        clean: true,
+        ...sourceInventory,
+      },
       contracts: deployedContracts,
       constructorArguments: constructorArguments(deployedContracts, FLOOR, SAFE, REFERRAL_REWARD),
       economics: {
         protocolRecipient: SAFE,
         graduationFloorRaw: FLOOR.toString(),
         referralRewardRaw: REFERRAL_REWARD.toString(),
+        protocolTrancheBps: 1000,
+      },
+      compiler: {
+        solidity: "0.8.26",
+        optimizer: { enabled: true, runs: 1 },
+        viaIR: true,
+        evmVersion: "cancun",
+        compilerInputSha256: freeze.compilerInputSha256,
+        creationBytecode: Object.fromEntries(
+          Object.entries(freeze.contracts).map(([name, value]) => [
+            name,
+            { keccak256: value.creationBytecodeKeccak256 },
+          ])
+        ),
       },
       runtimeBytecode,
     });
@@ -140,8 +205,12 @@ describe("Versus Base mainnet fork rehearsal", function () {
     await (await graduation.connect(bob).graduate()).wait();
     const [tokenAddress, pairAddress, , seeded] = await graduation.getGraduation(classId);
     const token = await ethers.getContractAt("ClassToken", tokenAddress);
+    expect(tokenAddress).to.equal(predictedToken);
+    expect(pairAddress).to.equal(precreatedPair);
     expect(await factory.getPair(tokenAddress, CONSTANTS.base.usdc)).to.equal(pairAddress);
     expect(seeded).to.equal(FLOOR);
+    const pairUSDCImmediatelyAfterGraduation = await usdc.balanceOf(pairAddress);
+    expect(pairUSDCImmediatelyAfterGraduation).to.equal(FLOOR + 1n);
 
     const router = new ethers.Contract(
       CONSTANTS.base.uniswapV2Router,
@@ -155,12 +224,23 @@ describe("Versus Base mainnet fork rehearsal", function () {
       { gasLimit: 1_000_000n }
     )).wait();
     const bought = await token.balanceOf(buyer.address);
+    const bankedBuyTax = await token.balanceOf(await graduation.getAddress());
+    expect(bankedBuyTax).to.be.gt(0n);
     await (await token.connect(buyer).approve(CONSTANTS.base.uniswapV2Router, bought)).wait();
+    const sellAmount = bought / 100n;
+    const sellTax = sellAmount / 100n;
     deadline = (await ethers.provider.getBlock("latest")).timestamp + 600;
-    await (await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-      bought / 2n, 0, [tokenAddress, CONSTANTS.base.usdc], buyer.address, deadline,
+    const sellReceipt = await (await router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+      sellAmount, 0, [tokenAddress, CONSTANTS.base.usdc], buyer.address, deadline,
       { gasLimit: 1_000_000n }
     )).wait();
+    const taxHarvests = sellReceipt.logs.flatMap((log) => {
+      try { return [graduation.interface.parseLog(log)]; } catch (_) { return []; }
+    }).filter((event) => event?.name === "TaxHarvested");
+    expect(taxHarvests).to.have.length(1);
+    expect(taxHarvests[0].args.tokenTax).to.equal(sellTax * 2n);
+    expect(taxHarvests[0].args.tokenTax).to.be.lt(bankedBuyTax);
+    expect(await token.balanceOf(await graduation.getAddress())).to.be.gt(0n);
 
     expect(await treasury.claimable(1)).to.be.gt(0n);
     await (await treasury.connect(bob).claim(1)).wait();
@@ -201,6 +281,7 @@ describe("Versus Base mainnet fork rehearsal", function () {
         },
         assertions: {
           independentDeploymentAuditChecks: deploymentAudit.checks.length,
+          integratedProductionPreflight: productionPreflight.safePolicy.passed,
           safePublicReady: deploymentAudit.safePolicy.publicReady,
           selectedCypherId: hatchedAgent.cypherId.toString(),
           tokenURI: hatchedTokenUri,
@@ -211,6 +292,14 @@ describe("Versus Base mainnet fork rehearsal", function () {
           referralPoolBalanceMicros: (await usdc.balanceOf(await referralPool.getAddress())).toString(),
           firstNextCommitAt: firstNextCommitAt.toString(),
           exactFloorUSDC: seeded.toString(),
+          predictedPairPrecreated: pairAddress === precreatedPair,
+          preTokenSyncRejected: true,
+          unsynchronizedDustDonationMicros: "1",
+          pairUSDCImmediatelyAfterGraduation: pairUSDCImmediatelyAfterGraduation.toString(),
+          bankedBuyTaxBeforeSell: bankedBuyTax.toString(),
+          boundedTaxConvertedOnSell: taxHarvests[0].args.tokenTax.toString(),
+          maxTaxAuthorizedBySell: (sellTax * 2n).toString(),
+          taxBankRemainsAfterBoundedSell: (await token.balanceOf(await graduation.getAddress())).toString(),
           signalSettled: await arena.settledSignalBatches(1, signalRoot),
           nextClassId: (await syndicate.currentClassId()).toString(),
           claimedVaultRewardMicros: reward.toString(),

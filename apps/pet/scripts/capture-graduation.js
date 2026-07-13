@@ -90,11 +90,31 @@ async function main() {
   await sleep(700);
   await win.webContents.executeJavaScript(`__pet.setPhase("late-noon"); true`, true);
 
+  win.webContents.send("class:over", { classId: 1, currentClassId: 2, detectedAt: Date.now() });
+  const noticeDeadline = Date.now() + 1_000;
+  while (!(await win.webContents.executeJavaScript('document.getElementById("class-over-notice").classList.contains("run")', true))) {
+    if (Date.now() >= noticeDeadline) throw new Error("class-over IPC did not show its LCD notice");
+    await sleep(25);
+  }
+  await sleep(250);
+  if (!PREVIEW) {
+    const notice = await win.webContents.capturePage();
+    fs.writeFileSync(path.join(OUT, "class-over.png"), notice.toPNG());
+  }
+
   win.webContents.send("graduation:available", { ceremony: CEREMONY, state: NEXT_STATE });
-  const startDeadline = Date.now() + 2_000;
+  const startDeadline = Date.now() + 4_000;
   while (!(await win.webContents.executeJavaScript("__pet.graduationRunning()", true))) {
     if (Date.now() >= startDeadline) throw new Error("graduation IPC did not start the ritual");
     await sleep(25);
+  }
+  await sleep(50);
+  const noticeCleared = await win.webContents.executeJavaScript(`({
+    hidden: document.getElementById("class-over-notice").getAttribute("aria-hidden"),
+    running: document.getElementById("class-over-notice").classList.contains("run")
+  })`, true);
+  if (noticeCleared.hidden !== "true" || noticeCleared.running) {
+    throw new Error(`class-over notice overlapped graduation: ${JSON.stringify(noticeCleared)}`);
   }
   const frames = PREVIEW ? 0 : 34;
   const intervalMs = 400;

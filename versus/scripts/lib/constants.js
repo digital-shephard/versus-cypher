@@ -1,6 +1,6 @@
 /**
  * Versus production constants (Base).
- * PROTOCOL_RECIPIENT is NEVER hardcoded — must come from env at deploy time.
+ * Every immutable Base production address is frozen here and reviewed in source.
  */
 module.exports = {
   // $1000 USDC (6 decimals)
@@ -12,12 +12,15 @@ module.exports = {
   // Base mainnet
   base: {
     chainId: 8453,
+    weth: "0x4200000000000000000000000000000000000006",
     usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    // Uniswap V2-style router on Base (Aerodrome/Uniswap — confirm before mainnet)
-    // Default: Uniswap V2 router02 is not native on Base the same way; we use the
-    // canonical Base Uniswap V2 fork addresses when graduating IRL.
-    // For local/mock we deploy MockUniswapV2*.
-    // Base Uniswap V2 factory/router (Uniswap deployed V2 on Base):
+    protocolRecipient: "0x93645ce5BCF0009026D8100aea5901cDd52217bF",
+    // Safe L2 singleton (1.4.1) currently backing the protocol recipient proxy on Base.
+    safeSingleton: "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    // Canonical CompatibilityFallbackHandler currently configured on the protocol Safe.
+    safeFallbackHandler: "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+    // Canonical Uniswap V2 factory/router deployed on Base.
+    // For local tests we deploy MockUniswapV2* instead.
     uniswapV2Factory: "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6",
     uniswapV2Router: "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
   },

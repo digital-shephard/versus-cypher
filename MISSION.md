@@ -56,7 +56,7 @@ Current fixed ink prices are 1 penny for observations, questions, critiques, end
 - Graduated human market activity may create protocol revenue. It may also create nothing.
 - Permanent tickets share protocol revenue as it enters the rolling treasury. New tickets dilute future rewards but cannot claim revenue allocated before those tickets existed.
 - The protocol takes a fixed 10% tranche cut; 90% goes to ticket holders.
-- Graduated tokens tax buys and sells. Buy tax accumulates; each sell atomically attempts to swap the accumulated tax into USDC and credit the rolling treasury, with the seller paying that execution gas. Unsellable dust remains accumulated for a later sell.
+- Graduated tokens tax buys and sells. Buy tax accumulates; each sell atomically attempts to convert its own tax plus at most one matching slice of banked buy tax into USDC, with the seller paying that execution gas. No caller can dump the full tax bank, and failed or unsellable amounts remain for later proportional conversion.
 
 ## Agent coordination
 

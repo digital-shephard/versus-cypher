@@ -23,9 +23,41 @@ The recorded factory `0x8909...8eC70f` had no bytecode and did not match the con
 
 `AgentNFT` previously narrowed credits into `uint128` storage without an explicit pre-transfer bound. Canonical USDC cannot realistically approach that range, but the invariant is now enforced by `VaultOverflow` before funds move.
 
-### Defensive: graduation external calls
+### Defensive: bounded graduated-token conversion
 
-Graduation and tax-harvest entrypoints now use `ReentrancyGuard`. Class-token transfers and approvals use `SafeERC20`. The synchronous sell callback remains intentional and can call only the immutable graduation collector.
+Graduation and sell-triggered conversion use `ReentrancyGuard`. Class-token transfers and approvals use `SafeERC20`. The synchronous sell callback remains intentional and can call only the immutable graduation collector. A sell may convert at most twice its own tax, which clears that tax plus one matching slice of banked buy tax. Conversion uses a nonzero 99% same-transaction quote floor; the permissionless full-bank `harvestTax` entrypoint was removed. Failed conversion cannot block the seller and remains banked for later proportional clearing.
+
+### Defensive: canonical Base deployment dependencies
+
+`deploy:base` now resolves Circle USDC, the official Uniswap V2 factory/router, and the immutable protocol-recipient Safe only from frozen constants. Mismatching environment values and mock flags fail before the first deployment transaction. The deploy command invokes the same chain, bytecode, router binding, WETH, USDC-decimals, recipient, and Safe-policy preflight as the standalone operator check. Base manifest validation and independent post-deploy audit compare all four addresses to those constants instead of trusting internally consistent manifest substitutions.
+
+### Defensive: Treasury fee custody
+
+The unused Arena-only `receiveFee(amount)` path accounted revenue without pulling matching USDC. The deployed Arena had no caller for it, so it was not reachable by users or exploitable in the immutable wiring, but it was unnecessary dangerous surface. It and the stale Arena interface declaration were removed. `depositFees(amount)`, which atomically pulls USDC before allocation, is now the only fee-ingress path.
+
+### High: Treasury fractional-reward solvency
+
+`TrancheTreasury._indexRewards` previously represented fractional ticket entitlement in `accRewardPerTicket` and also reintroduced its apparent whole-unit difference through `rewardRemainder`. Repeated one-unit deposits across three tickets could therefore make aggregate claimable rewards exceed `tranchePot`, allowing early claims while later claims reverted on underflow. `rewardRemainder` is now reserved exclusively for real fees received before the first ticket; ordinary indexed fees are never counted twice. A reproduced micro-deposit regression checks every deposit and multiple claim orders against both accounting and physical USDC custody.
+
+### Medium: post-mint referral ownership
+
+An ERC-721 receiver can transfer a freshly safe-minted Cypher during `onERC721Received`. Arena previously passed the original hatching caller to ReferralPool after that callback, allowing the final owner of both NFTs to evade the same-wallet referral rejection. Arena now re-reads `ownerOf(agentId)` after mint returns and settles referral eligibility against the NFT's current owner. A hostile receiver regression performs the callback transfer and confirms hatching succeeds without an attribution or payout.
+
+The same callback previously left `Hatched.owner` reporting the original caller even when the NFT had already moved. The event now emits that same post-mint `ownerOf(agentId)` value. Indexers and the desktop still reconcile `ownerOf` as canonical state, while the event no longer publishes a contradictory owner.
+
+### Defensive: removed vault pull surface
+
+`AgentNFT.pullFromVault` was callable only by the one-shot-wired Arena, whose immutable bytecode contained no call to it. It was therefore unreachable rather than exploitable, but it remained unnecessary money-moving surface. The function has been removed and its absence is enforced by a contract-interface regression.
+
+### Defensive: bootstrap activation ordering
+
+AgentNFT bootstrap is now the final activation transaction. SyndicateEngine, TrancheTreasury, and ReferralPool are sealed first, so Arena cannot mint during a partially wired deployment window. The stepwise regression proves hatching remains disabled until every dependency is ready and that the first underfunded referred hatch still records its durable attribution.
+
+### High: compiler-input and deployment-evidence binding
+
+Base deployment now performs a clean forced compile and rejects any creation bytecode or compiler-input fingerprint that differs from the committed `deployments/base-build-freeze.json`. The freeze records every imported Solidity source hash, including OpenZeppelin, and every production creation-bytecode hash. Manifest v2 requires a complete sorted source inventory, exact contract/runtime/build key sets, runtime addresses bound to contract addresses, canonical Base dependencies, and the committed build fingerprint. The independent audit compares the manifest source inventory to the local reviewed tree instead of trusting self-consistent manifest substitutions. Schema v2 is executable through AJV and covered alongside the semantic validator.
+
+The immutable Safe check now reads proxy slot zero, the complete module page, guard storage, and fallback-handler storage in addition to owners and threshold. It freezes the Safe L2 singleton `0x29fcB43b46531BcA003ddC8FCB67FFE91900C762`, requires no modules and no guard, and requires the canonical CompatibilityFallbackHandler `0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99` already configured on the recipient Safe.
 
 ### Defensive: Arena safe-mint callback
 
@@ -45,16 +77,23 @@ The original equality check against `block.timestamp / 1 days` concentrated elig
 
 ## Base fork rehearsal
 
-The one-command `npm run test:base-fork` rehearsal passed with the continuous referral pool against Base block `48,552,393`. It independently re-read the deployment, dependency, bytecode, metadata, bootstrap, economic, referral, and Safe-policy invariants; deployed the full ownerless stack locally; manually funded the pool through canonical Base USDC; completed a referred hatch and immediate `$1` NFT-vault reward; then completed a second referred hatch after depletion with durable attribution and zero reward; verified immutable metadata and rolling cadence; replenished runway; committed daily rain and typed signal ink; filled the exact `1_000_000_000` USDC floor; created the canonical V2 pair; completed taxed buy and sell paths; credited and claimed rolling rewards; withdrew the NFT vault; transferred the NFT; and confirmed the former owner lost withdrawal authority. No mainnet state or funds were changed. The machine-readable evidence is `research/base-fork-runs/2026-07-12T22-08-53-915Z/report.json`.
+The one-command `npm run test:base-fork` rehearsal passed with the final reviewed bytecode against Base block `48,560,000`. It ran the integrated production preflight, independently re-read 70 deployment, dependency, bytecode, metadata, bootstrap, economic, referral, recipient, Safe-configuration, and manifest-binding invariants, and deployed the full ownerless stack locally. It manually funded the pool through canonical Base USDC; completed funded and underfunded referral paths; verified immutable metadata and rolling cadence; replenished runway; committed daily rain and typed signal ink; filled the exact `1_000_000_000` USDC floor; precreated the predicted canonical V2 pair; donated one micro-USDC; proved pre-token `sync()` reverted with zero reserves; and then graduated successfully with `1_000_000_001` USDC locked in the pair. A real-router buy banked `49,357,901,670,982,403,763,495` token units; a deliberately small sell authorized and converted exactly its `977,286,453,085,451,594,516` two-tax cap while leaving `48,869,258,444,439,677,966,237` banked. The run then credited and claimed rolling rewards, withdrew the NFT vault, transferred the NFT, and confirmed the former owner lost withdrawal authority. No mainnet state or funds were changed. The machine-readable evidence is `research/base-fork-runs/2026-07-13T02-22-28-241Z/report.json`.
 
 ## Triaged findings
 
 - Per-Cypher `nextCommitAt` cooldowns, UTC voice-day receipts, and escrow timestamps are protocol rules, not randomness or price oracles.
-- Treasury divide-then-multiply is deliberate fixed-point allocation; `rewardRemainder` preserves truncation dust.
+- Treasury fixed-point division is deliberate; sub-precision dust remains excess custody, while `rewardRemainder` represents only real fees received before the first ticket.
 - Ignored `ownerOf` return values are existence checks that revert for nonexistent NFTs.
 - Bootstrap deployer addresses remain visible but have no callable privilege after each one-shot bootstrap flag is sealed. There is no separate ownership-renunciation transaction because no ongoing owner role exists.
 - LP tokens remain held permanently by the ownerless `GraduationModule`; there is no withdrawal path.
-- The zero-minimum tax swap is an accepted economic decision. Failure is caught by `ClassToken` and cannot block the user's sell.
+- Predicted-pair graduation DoS is not viable. Uniswap V2 `sync()` queries both token balances; before the predicted `ClassToken` exists, its `balanceOf` call returns no ABI data and `sync()` reverts. The attacker can pre-create the pair and donate unsynchronized USDC, but reserves remain zero and graduation treats the donation as additional locked liquidity. Unit and canonical Base-fork regressions execute this exact sequence.
+- Spot quotes remain observable and manipulable, but there is no callable full-bank sale: each conversion is bounded to twice the triggering sell tax and uses a nonzero same-transaction floor. An attacker must supply proportional real sell volume, pay token tax and pool fees, and absorb market impact to expose additional banked tax. The Base-fork regression records the enforced cap.
+- Temporary referrer-NFT custody is accepted Sybil behavior, not identity proof. One operator can park a referrer Cypher on another wallet during hatch and later return it, but doing so locks at least `$7` of new runway to receive the fixed `$1` referral reward. Ownership-duration rules would add transfer friction while remaining bypassable through older prepared wallets.
+- Direct token transfer to the canonical pair followed by `skim()` is treated as pair flow by design. The inbound transfer and outbound skim are both taxed; the caller cannot withdraw LP, collector tokens, or treasury USDC. Tax conversion remains bounded by the newly paid inbound tax and the caller sacrifices token inventory while creating protocol revenue.
+- Tickets become active in transaction order. A participant may buy penny tickets before a visible tax-fee transaction and share that future deposit, but cannot claim fees indexed before those tickets exist. Delayed ticket maturity would require a materially different epoch accounting model and is not part of the immutable v1 economics.
+- Graduation is an atomic class boundary. Class-bound signal settlement reverts without spending runway when its declared class has closed; the desktop releases the failed batch, shows `CLASS OVER`, and reconciles the ceremony. Daily and manual rain intentionally follow the currently open class. Their canonical class pot and unique-participant count come from `SyndicateEngine`, not Waku timing.
+- Underfunded referral attribution is deliberately not an IOU. The hatch succeeds, the immutable edge records, payout is skipped, and later pool funding does not retroactively create a liability.
+- The initial `$1,000` Uniswap V2 pool is economically thin and MEV-soft. Locked LP and tax/tranche custody remain intact; this is accepted launch-market behavior rather than an authorization guarantee.
 
 ## Remaining release blockers
 
