@@ -18,6 +18,8 @@
     "preview:graduation": "electron scripts/capture-graduation.js --preview",
     "preview:rain": "electron scripts/preview-rain-ramp.js --preview",
     "waku:electron-smoke": "electron scripts/waku-electron-smoke.js",
+    "waku:public-rain-smoke": "electron scripts/public-rain-smoke.js",
+    "waku:public-rain-live-smoke": "electron scripts/public-rain-smoke.js --live",
     "pack:win": "electron-builder --win --dir",
     "dist:win": "electron-builder --win nsis",
     "dist:win:portable": "electron-builder --win portable --config.artifactName=Versus-Cypher-Portable-${version}-${os}-${arch}.${ext}",

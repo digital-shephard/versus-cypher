@@ -555,7 +555,7 @@ function setSignalFlipped(flipped) {
    Views + modes
    ------------------------------------------------------------------ */
 function hideAll() {
-  ["view-deposit", "view-class"].forEach((id) => $(id).classList.add("hidden"));
+  ["view-boot", "view-deposit", "view-class"].forEach((id) => $(id).classList.add("hidden"));
 }
 
 function show(id) {
@@ -2604,8 +2604,13 @@ async function boot() {
 
     flashLcd(false);
     wallet = await window.versus.ensureWallet();
-    bond = await window.versus.loadBond();
-    await ensureDepositQr();
+    bond = await window.versus.loadLocalBond();
+
+    const localCypherIsActive = bond?.phase === "active" && bond.cypherId != null;
+    if (!localCypherIsActive) {
+      show("view-boot");
+      bond = await window.versus.loadBond();
+    }
 
     if (bond?.phase === "active" && bond.cypherId != null) {
       if (bond.classPotMicros == null) bond.classPotMicros = 0;
@@ -2620,17 +2625,30 @@ async function boot() {
       if (bond.pendingGraduation) {
         setTimeout(() => runGraduationWhenReady({ ceremony: bond.pendingGraduation, state: bond }).catch(console.error), 420);
       }
+      if (localCypherIsActive) {
+        window.versus.loadBond().then((synced) => {
+          if (synced?.phase !== "active" || synced.cypherId == null) return;
+          bond = synced;
+          W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
+          updateModeScreen();
+        }).catch((error) => console.error("Versus background chain sync error:", error));
+      }
     } else if (!bond || !bond.phase || bond.phase === "awaiting_deposit") {
       bond = { phase: "awaiting_deposit", walletAddress: wallet.address };
       await window.versus.saveBond(bond);
       show("view-deposit");
+      ensureDepositQr();
+      refreshHatchQuote();
       startSceneClock();
     } else if (bond.phase === "awaiting_referral") {
       show("view-deposit");
+      ensureDepositQr();
+      refreshHatchQuote();
       setHatchState("referral");
       startSceneClock();
     } else {
       show("view-deposit");
+      ensureDepositQr();
       startSceneClock();
       await runHatchRitual(false);
     }
@@ -2689,17 +2707,26 @@ async function ensureDepositQr() {
   }
 }
 
+let hatchQuotePromise = null;
+
 async function refreshHatchQuote() {
   const title = $("fund-title");
   if (!title || !window.versus?.getHatchQuote) return;
-  try {
-    const quote = await window.versus.getHatchQuote();
-    const wei = BigInt(quote.targetDepositWei);
-    const eth = Number(wei) / 1e18;
-    title.textContent = `FUND ABOUT ${eth.toFixed(5)} BASE ETH`;
-  } catch (_) {
-    title.textContent = "FUND WITH BASE ETH";
-  }
+  if (hatchQuotePromise) return hatchQuotePromise;
+  title.textContent = "CHECKING BASE...";
+  hatchQuotePromise = (async () => {
+    try {
+      const quote = await window.versus.getHatchQuote();
+      const wei = BigInt(quote.targetDepositWei);
+      const eth = Number(wei) / 1e18;
+      title.textContent = `FUND ABOUT ${eth.toFixed(5)} BASE ETH`;
+    } catch (_) {
+      title.textContent = "FUND WITH BASE ETH";
+    }
+  })().finally(() => {
+    hatchQuotePromise = null;
+  });
+  return hatchQuotePromise;
 }
 
 function wakeEgg() {

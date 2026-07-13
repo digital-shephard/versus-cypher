@@ -8,9 +8,34 @@ const {
   normalizeRainPennies,
   applyConfirmedRain,
 } = require("../src/rain");
-const { addGasMargin, loadChainConfig, createChainRainService, waitForAllowance, waitForChainState } = require("../src/chain");
+const {
+  addGasMargin,
+  canonicalRainEvent,
+  loadChainConfig,
+  createChainRainService,
+  waitForAllowance,
+  waitForChainState,
+} = require("../src/chain");
 
 describe("confirmed rain accounting", () => {
+  it("uses the same canonical proof ID for local receipts and later Waku delivery", () => {
+    const transactionHash = `0x${"ab".repeat(32)}`;
+    const event = canonicalRainEvent({
+      chainId: 8453,
+      arenaAddress: "0x7cC994E8b37E7570cCd1aEa22C389f834c98f8a5",
+      type: "rain",
+      receipt: { hash: transactionHash, blockNumber: 123 },
+      event: { args: { agentId: 7n, classId: 2n } },
+      log: { index: 4 },
+      pennies: 8n,
+      classTotalMicros: 80_000n,
+    });
+
+    assert.equal(event.eventId, `8453:0x7cc994e8b37e7570ccd1aea22c389f834c98f8a5:${transactionHash}:4`);
+    assert.equal(event.pennies, 8);
+    assert.equal(event.classTotalMicros, "80000");
+  });
+
   it("moves runway, class, tickets, and rained counters atomically", () => {
     const now = Date.UTC(2026, 6, 9, 12);
     const day = Math.floor(now / 86_400_000);

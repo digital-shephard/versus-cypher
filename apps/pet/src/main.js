@@ -195,6 +195,32 @@ activityBus.on("event", (event) => {
   mainWindow.webContents.send("service:activity", event);
 });
 
+function acceptRainBatch(batch, { channel = "waku", history = false } = {}) {
+  const accepted = rainInbox.acceptBatch(batch);
+  activityBus.record({
+    channel,
+    direction: "in",
+    operation: "verified_rain",
+    destination: "local_device",
+    status: accepted.acceptedPennies ? "ok" : "idle",
+  });
+  if (accepted.acceptedPennies && mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send("rain:available", {
+      pennies: accepted.acceptedPennies,
+      pending: accepted.pending,
+      history,
+    });
+  }
+  return accepted;
+}
+
+function acceptConfirmedLocalRain(event) {
+  if (!event) return { acceptedEvents: 0, acceptedPennies: 0, pending: rainInbox.pending() };
+  return acceptRainBatch({ distributionWindowMs: Math.max(1_000, Number(event.pennies || 1) * 250), events: [event] }, {
+    channel: "base",
+  });
+}
+
 function serviceActivitySnapshot() {
   const settings = loadSettings();
   let transport = null;
@@ -710,21 +736,7 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
         channel: "waku", direction: "in", operation: "store_sync", destination: "versus_mesh", status: "ok",
       }));
       service.node.transport?.on?.("rainBatch", (batch, metadata = {}) => {
-        const accepted = rainInbox.acceptBatch(batch);
-        activityBus.record({
-          channel: "waku",
-          direction: "in",
-          operation: "verified_rain",
-          destination: "local_device",
-          status: accepted.acceptedPennies ? "ok" : "idle",
-        });
-        if (accepted.acceptedPennies && mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
-          mainWindow.webContents.send("rain:available", {
-            pennies: accepted.acceptedPennies,
-            pending: accepted.pending,
-            history: Boolean(metadata.history),
-          });
-        }
+        acceptRainBatch(batch, { channel: "waku", history: Boolean(metadata.history) });
       });
       service.node.transport?.on?.("rainRejected", (error) => {
         activityBus.record({
@@ -924,11 +936,10 @@ async function performDailyRainForAgent() {
     state.classPotMicros = Number(receipt.classTotal);
     state.inCurrentClass = true;
     saveState(state);
-    try {
-      state = await reconcileChainState();
-    } catch (error) {
+    acceptConfirmedLocalRain(receipt.rainEvent);
+    reconcileChainState().catch((error) => {
       console.error("Versus confirmed daily rain refresh error:", error.message);
-    }
+    });
   } else {
     const committedAt = Math.floor(Date.now() / 1000);
     state.runway = Number(state.runway) - 10_000;
@@ -1333,6 +1344,7 @@ registerIpcHandle("bond:load", async () => {
     return loadState();
   }
 });
+registerIpcHandle("bond:loadLocal", () => loadState());
 registerIpcHandle("service:activitySnapshot", () => serviceActivitySnapshot());
 registerIpcHandle("health:snapshot", async () => {
   await reconcileOperationJournal();
@@ -2119,12 +2131,11 @@ registerIpcHandle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
       state.classPotMicros = Number(chain.classPotMicros);
       state.lastRainTxHash = chain.hash;
       saveState(state);
-      try {
-        result.state = await reconcileChainState();
-      } catch (error) {
+      result.state = state;
+      acceptConfirmedLocalRain(chain.rainEvent);
+      reconcileChainState().catch((error) => {
         console.error("Versus confirmed manual rain refresh error:", error.message);
-      }
-      state = result.state;
+      });
       result.hash = chain.hash;
     } else {
       await sleep(520);

@@ -42,7 +42,13 @@
       </header>
 
       <section id="lcd">
-        <main id="view-deposit" class="view" data-hatch-state="dormant">
+        <main id="view-boot" class="view view-boot" aria-live="polite">
+          <div class="boot-sync-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <p>CHECKING CYPHER</p>
+          <small>BASE NETWORK</small>
+        </main>
+
+        <main id="view-deposit" class="view hidden" data-hatch-state="dormant">
           <div class="hatch-world" aria-hidden="true"></div>
           <img class="hatch-frame hatch-frame-one" src="../assets/tamagotchi/hatch-crack-1.png" alt="" draggable="false" />
           <img class="hatch-frame hatch-frame-two" src="../assets/tamagotchi/hatch-crack-2.png" alt="" draggable="false" />

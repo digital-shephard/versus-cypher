@@ -1022,6 +1022,48 @@ body { display: grid; place-items: center; }
 
 .hidden { display: none !important; }
 
+.view-boot {
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #173d32;
+  background:
+    repeating-linear-gradient(0deg, rgba(23, 61, 50, 0.035) 0 1px, transparent 1px 3px),
+    #c9d7a8;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.view-boot p,
+.view-boot small {
+  margin: 0;
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.view-boot small { font-size: 0.48rem; opacity: 0.72; }
+
+.boot-sync-mark {
+  display: flex;
+  gap: 4px;
+  height: 7px;
+}
+
+.boot-sync-mark span {
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  animation: boot-sync-step 900ms steps(1, end) infinite;
+}
+
+.boot-sync-mark span:nth-child(2) { animation-delay: 150ms; }
+.boot-sync-mark span:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes boot-sync-step {
+  0%, 45% { opacity: 0.22; transform: translateY(1px); }
+  46%, 100% { opacity: 1; transform: translateY(0); }
+}
+
 /* onboarding ocean plates — a fixed mini-day: dawn, noon, golden hour */
 #view-deposit::before,
 #view-pick::before,

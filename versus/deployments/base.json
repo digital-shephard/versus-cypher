@@ -24,6 +24,10 @@
   "chainId": 8453,
   "deployer": "0xEA78E0FB02987A602Ae6408B8932F705A982c96A",
   "ownerless": true,
+  "rainAttestors": [
+    "0x00D15C0050871A4D9A4f66Fa465F70D5B70E1dA7",
+    "0x8ee0a1d8dEAf2c19554d88822512D5074487E3f7"
+  ],
   "economics": {
     "graduationFloorUSDC": "1000.00",
     "graduationFloorRaw": "1000000000",

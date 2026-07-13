@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("versus", {
     return () => ipcRenderer.removeListener("health:changed", listener);
   },
   loadBond: () => ipcRenderer.invoke("bond:load"),
+  loadLocalBond: () => ipcRenderer.invoke("bond:loadLocal"),
   saveBond: (state) => ipcRenderer.invoke("bond:save", state),
   ensureWallet: () => ipcRenderer.invoke("wallet:ensure"),
   getWallet: () => ipcRenderer.invoke("wallet:getPublic"),

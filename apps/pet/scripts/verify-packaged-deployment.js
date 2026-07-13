@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const appDir = path.resolve(__dirname, "..");
-const distDir = path.join(appDir, "dist");
+const distDir = path.resolve(appDir, process.argv[2] || process.env.VERSUS_DIST_DIR || "dist");
 const sourcePath = path.resolve(appDir, "..", "..", "versus", "deployments", "base.json");
 
 function findBundledManifests(directory, found = []) {
@@ -23,7 +23,7 @@ assert.ok(fs.existsSync(distDir), `Desktop build output is missing: ${distDir}`)
 
 const expected = fs.readFileSync(sourcePath);
 const manifests = findBundledManifests(distDir);
-assert.ok(manifests.length > 0, "No packaged Base deployment was found under dist");
+assert.ok(manifests.length > 0, `No packaged Base deployment was found under ${distDir}`);
 
 for (const manifestPath of manifests) {
   const actual = fs.readFileSync(manifestPath);

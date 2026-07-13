@@ -88,14 +88,36 @@ const referralPoolAbi = [
   "event ReferralRewardPaid(uint256 indexed referredAgentId, uint256 indexed referrerAgentId, address indexed referredOwner, uint256 amount)",
 ];
 
-function findEvent(contract, receipt, name) {
+function findEventRecord(contract, receipt, name) {
   for (const log of receipt.logs || []) {
     try {
       const parsed = contract.interface.parseLog(log);
-      if (parsed?.name === name) return parsed;
+      if (parsed?.name === name) return { event: parsed, log };
     } catch (_) {}
   }
   throw new Error(`${name} event was missing from the confirmed receipt`);
+}
+
+function findEvent(contract, receipt, name) {
+  return findEventRecord(contract, receipt, name).event;
+}
+
+function canonicalRainEvent({ chainId, arenaAddress, type, receipt, event, log, pennies, classTotalMicros }) {
+  const logIndex = Number(log.index ?? log.logIndex);
+  if (!Number.isInteger(logIndex) || logIndex < 0) throw new Error("confirmed rain log index is invalid");
+  const transactionHash = String(receipt.hash).toLowerCase();
+  const arena = String(arenaAddress).toLowerCase();
+  return {
+    eventId: `${BigInt(chainId)}:${arena}:${transactionHash}:${logIndex}`,
+    type,
+    transactionHash,
+    logIndex,
+    blockNumber: String(receipt.blockNumber),
+    agentId: String(event.args.agentId),
+    classId: String(event.args.classId),
+    classTotalMicros: String(classTotalMicros),
+    pennies: Number(pennies),
+  };
 }
 
 function validateHatchReceipt(arena, receipt, owner, runwayAmount) {
@@ -505,7 +527,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const transaction = await arena.commit(BigInt(agentId));
       if (onSubmitted) await onSubmitted(transaction.hash);
       const receipt = await confirmed(transaction, "daily rain");
-      const event = findEvent(arena, receipt, "Committed");
+      const { event, log } = findEventRecord(arena, receipt, "Committed");
       return {
         hash: receipt.hash,
         blockNumber: receipt.blockNumber,
@@ -513,6 +535,16 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         day: event.args.day,
         amount: event.args.amount,
         classTotal: event.args.classTotal,
+        rainEvent: canonicalRainEvent({
+          chainId: config.deployment.chainId,
+          arenaAddress: addresses.arena,
+          type: "commit",
+          receipt,
+          event,
+          log,
+          pennies: 1,
+          classTotalMicros: event.args.classTotal,
+        }),
       };
     },
 
@@ -644,7 +676,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       if (onSubmitted) await onSubmitted(tx.hash);
       const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) throw new Error("rain transaction did not confirm");
-      const event = findEvent(arena, receipt, "Rained");
+      const { event, log } = findEventRecord(arena, receipt, "Rained");
       if (event.args.agentId !== BigInt(agentId) || event.args.pennies !== BigInt(pennies)) {
         throw new Error("rain event does not match the submitted action");
       }
@@ -656,6 +688,16 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         pennies: event.args.pennies,
         amount: event.args.amount,
         classPotMicros: event.args.classTotal,
+        rainEvent: canonicalRainEvent({
+          chainId: config.deployment.chainId,
+          arenaAddress: addresses.arena,
+          type: "rain",
+          receipt,
+          event,
+          log,
+          pennies: event.args.pennies,
+          classTotalMicros: event.args.classTotal,
+        }),
       };
     },
 
@@ -847,4 +889,5 @@ module.exports = {
   addGasMargin,
   waitForAllowance,
   waitForChainState,
+  canonicalRainEvent,
 };
