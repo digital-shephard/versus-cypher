@@ -633,6 +633,9 @@ function renderSettings(settings) {
   if ($("setting-referral-funding")) $("setting-referral-funding").checked = Boolean(settings?.allowReferralFunding);
   if ($("setting-launch-login")) $("setting-launch-login").checked = Boolean(settings?.launchAtLogin);
   if ($("settings-wallet-address")) $("settings-wallet-address").textContent = wallet?.address || "Wallet not loaded";
+  if ($("btn-backup-wallet")) {
+    $("btn-backup-wallet").textContent = bond?.phase === "active" && bond?.agentId ? "Back up all" : "Back up wallet";
+  }
   updateBrainAdapterFields();
 }
 
@@ -3007,8 +3010,11 @@ function backupPassword() {
 $("btn-backup-wallet")?.addEventListener("click", async () => {
   try {
     setSettingsStatus("BACKING UP");
-    const result = await window.versus.createCypherArchive(backupPassword());
-    setSettingsStatus(result.canceled ? "CANCELED" : "BACKUP SAVED");
+    const activeCypher = bond?.phase === "active" && bond?.agentId;
+    const result = activeCypher
+      ? await window.versus.createCypherArchive(backupPassword())
+      : await window.versus.createWalletBackup(backupPassword());
+    setSettingsStatus(result.canceled ? "CANCELED" : activeCypher ? "ARCHIVE SAVED" : "WALLET SAVED");
   } catch (error) {
     setSettingsStatus(settingsErrorMessage(error), true);
   }
@@ -3017,7 +3023,7 @@ $("btn-backup-wallet")?.addEventListener("click", async () => {
 $("btn-restore-wallet")?.addEventListener("click", async () => {
   try {
     setSettingsStatus("RESTORING");
-    const result = await window.versus.restoreCypherArchive(backupPassword());
+    const result = await window.versus.restoreVersusBackup(backupPassword());
     if (!result.canceled) {
       wallet = await window.versus.getWallet();
       bond = result.state || await window.versus.loadBond();

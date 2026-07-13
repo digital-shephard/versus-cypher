@@ -14,6 +14,7 @@ const {
   createCypherArchive,
   createWalletBackup,
   openCypherArchive,
+  openVersusBackup,
   openWalletBackup,
 } = require("./wallet-backup");
 const {
@@ -1109,7 +1110,6 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
-  let transparentSurfaceRefreshReason = null;
   let transparentSurfaceRefreshing = false;
   let transparentRefreshTimer = null;
 
@@ -1126,28 +1126,8 @@ function createWindow() {
     mainWindow.webContents.invalidate();
   };
 
-  const refreshFocusedTransparentSurface = () => {
-    if (transparentSurfaceRefreshReason !== "focus" || transparentSurfaceRefreshing || transparentRefreshTimer) return;
-    transparentSurfaceRefreshReason = null;
-    mainWindow.webContents.invalidate();
-    transparentRefreshTimer = setTimeout(() => {
-      transparentRefreshTimer = null;
-      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return;
-      transparentSurfaceRefreshing = true;
-      pulseTransparentSurface();
-      mainWindow.hide();
-      mainWindow.show();
-      mainWindow.focus();
-      mainWindow.webContents.invalidate();
-      setTimeout(() => {
-        transparentSurfaceRefreshing = false;
-      }, 0);
-    }, 120);
-  };
-
   const refreshRestoredTransparentSurface = () => {
     cancelTransparentSurfaceRefresh();
-    transparentSurfaceRefreshReason = null;
     transparentSurfaceRefreshing = true;
     mainWindow.hide();
     transparentRefreshTimer = setTimeout(() => {
@@ -1172,19 +1152,9 @@ function createWindow() {
 
   mainWindow.on("minimize", () => {
     cancelTransparentSurfaceRefresh();
-    transparentSurfaceRefreshReason = "restore";
     mainWindow.setOpacity(0);
   });
-  mainWindow.on("blur", () => {
-    if (!transparentSurfaceRefreshing && transparentSurfaceRefreshReason !== "restore" && !mainWindow.isMinimized()) {
-      transparentSurfaceRefreshReason = "focus";
-    }
-  });
   mainWindow.on("restore", refreshRestoredTransparentSurface);
-  mainWindow.on("focus", () => {
-    if (transparentSurfaceRefreshReason === "restore") refreshRestoredTransparentSurface();
-    else refreshFocusedTransparentSurface();
-  });
   mainWindow.loadFile(RENDERER_PATH);
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -1378,6 +1348,64 @@ registerIpcHandle("wallet:copyPrivateKey", () => {
   return true;
 });
 
+async function restoreWalletPayload(payload) {
+  const recovered = new Wallet(payload.privateKey);
+  if (recovered.address.toLowerCase() !== payload.address.toLowerCase()) {
+    throw new Error("backup wallet address does not match its private key");
+  }
+  dailyLifecycleScheduler?.stop();
+  await networkService?.close().catch(() => {});
+  networkService = null;
+  networkStart = null;
+  saveWallet({
+    address: recovered.address,
+    privateKey: recovered.privateKey,
+    createdAt: payload.createdAt || new Date().toISOString(),
+    network: payload.network || "base",
+    chainId: Number(payload.chainId || 8453),
+  });
+  if (payload.bond) saveState(payload.bond);
+  const state = await reconcileChainState();
+  await ensureNetworkService();
+  dailyLifecycleScheduler?.start({ immediate: true });
+  return { canceled: false, address: recovered.address, state };
+}
+
+async function restoreCypherPayload(payload) {
+  const recovered = new Wallet(payload.privateKey);
+  if (recovered.address.toLowerCase() !== payload.address.toLowerCase()) {
+    throw new Error("Cypher archive address does not match its private key");
+  }
+  if (!payload.bond?.agentId) throw new Error("Cypher archive has no registered agent state");
+  if (operationJournal.damaged && !payload.operationJournal) {
+    throw new Error("This older archive cannot recover the damaged economic operation journal");
+  }
+
+  dailyLifecycleScheduler?.stop();
+  await networkService?.close().catch(() => {});
+  networkService = null;
+  networkStart = null;
+  quarantineDatabaseFiles(NETWORK_DATA_DIR);
+  saveWallet({
+    address: recovered.address,
+    privateKey: recovered.privateKey,
+    createdAt: payload.createdAt || new Date().toISOString(),
+    network: payload.network || "base",
+    chainId: Number(payload.chainId || 8453),
+  });
+  saveState(payload.bond);
+  if (payload.operationJournal) operationJournal.importArchive(payload.operationJournal);
+  if (payload.verifiedRain) rainInbox.importArchive(payload.verifiedRain);
+
+  const service = await ensureNetworkService({ suppressAutostart: true });
+  if (!service) throw new Error("restored Cypher could not start its local network service");
+  const imported = service.importLocalArchive(payload.networkState, { replace: true });
+  if (loadSettings().brain.autostart && service.agentRuntime) await service.startAgent();
+  const state = await reconcileChainState();
+  dailyLifecycleScheduler?.start({ immediate: true });
+  return { canceled: false, address: recovered.address, imported, state };
+}
+
 registerIpcHandle("wallet:createBackup", async (_e, { password } = {}) => {
   const wallet = ensureWallet();
   const backup = createWalletBackup({
@@ -1407,21 +1435,7 @@ registerIpcHandle("wallet:restoreBackup", async (_e, { password } = {}) => {
   });
   if (selected.canceled || !selected.filePaths[0]) return { canceled: true };
   const payload = openWalletBackup(JSON.parse(fs.readFileSync(selected.filePaths[0], "utf8")), password);
-  const recovered = new Wallet(payload.privateKey);
-  if (recovered.address.toLowerCase() !== payload.address.toLowerCase()) throw new Error("backup wallet address does not match its private key");
-  await networkService?.close().catch(() => {});
-  networkService = null;
-  saveWallet({
-    address: recovered.address,
-    privateKey: recovered.privateKey,
-    createdAt: payload.createdAt || new Date().toISOString(),
-    network: payload.network || "base",
-    chainId: Number(payload.chainId || 8453),
-  });
-  if (payload.bond) saveState(payload.bond);
-  const state = await reconcileChainState();
-  await ensureNetworkService();
-  return { canceled: false, address: recovered.address, state };
+  return restoreWalletPayload(payload);
 });
 
 registerIpcHandle("cypher:createArchive", async (_e, { password } = {}) => {
@@ -1468,38 +1482,23 @@ registerIpcHandle("cypher:restoreArchive", async (_e, { password } = {}) => {
   });
   if (selected.canceled || !selected.filePaths[0]) return { canceled: true };
   const payload = openCypherArchive(JSON.parse(fs.readFileSync(selected.filePaths[0], "utf8")), password);
-  const recovered = new Wallet(payload.privateKey);
-  if (recovered.address.toLowerCase() !== payload.address.toLowerCase()) {
-    throw new Error("Cypher archive address does not match its private key");
-  }
-  if (!payload.bond?.agentId) throw new Error("Cypher archive has no registered agent state");
-  if (operationJournal.damaged && !payload.operationJournal) {
-    throw new Error("This older archive cannot recover the damaged economic operation journal");
-  }
+  return restoreCypherPayload(payload);
+});
 
-  dailyLifecycleScheduler?.stop();
-  await networkService?.close().catch(() => {});
-  networkService = null;
-  networkStart = null;
-  quarantineDatabaseFiles(NETWORK_DATA_DIR);
-  saveWallet({
-    address: recovered.address,
-    privateKey: recovered.privateKey,
-    createdAt: payload.createdAt || new Date().toISOString(),
-    network: payload.network || "base",
-    chainId: Number(payload.chainId || 8453),
+registerIpcHandle("backup:restore", async (_e, { password } = {}) => {
+  const selected = await dialog.showOpenDialog(mainWindow, {
+    title: "Restore Versus backup",
+    defaultPath: backupDefaultPath(""),
+    properties: ["openFile"],
+    filters: [{ name: "Versus encrypted backup", extensions: ["json"] }],
   });
-  saveState(payload.bond);
-  if (payload.operationJournal) operationJournal.importArchive(payload.operationJournal);
-  if (payload.verifiedRain) rainInbox.importArchive(payload.verifiedRain);
-
-  const service = await ensureNetworkService({ suppressAutostart: true });
-  if (!service) throw new Error("restored Cypher could not start its local network service");
-  const imported = service.importLocalArchive(payload.networkState, { replace: true });
-  if (loadSettings().brain.autostart && service.agentRuntime) await service.startAgent();
-  const state = await reconcileChainState();
-  dailyLifecycleScheduler?.start({ immediate: true });
-  return { canceled: false, address: recovered.address, imported, state };
+  if (selected.canceled || !selected.filePaths[0]) return { canceled: true };
+  const record = JSON.parse(fs.readFileSync(selected.filePaths[0], "utf8"));
+  const opened = openVersusBackup(record, password);
+  const result = opened.format === "versus-cypher-archive"
+    ? await restoreCypherPayload(opened.payload)
+    : await restoreWalletPayload(opened.payload);
+  return { ...result, format: opened.format };
 });
 
 registerIpcHandle("settings:get", () => publicSettings(loadSettings()));

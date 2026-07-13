@@ -5,6 +5,7 @@ const {
   createCypherArchive,
   createWalletBackup,
   openCypherArchive,
+  openVersusBackup,
   openWalletBackup,
 } = require("../src/wallet-backup");
 const { brainEnvironment, normalizeSettings, publicSettings } = require("../src/settings");
@@ -43,6 +44,28 @@ describe("full Cypher archive", () => {
     assert.equal(JSON.stringify(record).includes(wallet.privateKey), false);
     assert.deepEqual(openCypherArchive(record, "archive password"), { version: 1, ...source });
     assert.throws(() => openCypherArchive(record, "wrong password"), /wrong or the file is damaged/);
+  });
+});
+
+describe("unified backup restore", () => {
+  it("detects encrypted wallet backups and full Cypher archives", () => {
+    const wallet = Wallet.createRandom();
+    const identity = { address: wallet.address, privateKey: wallet.privateKey };
+    const walletRecord = createWalletBackup(identity, "restore password");
+    const archiveRecord = createCypherArchive({
+      ...identity,
+      networkState: { localMemory: { postcards: [], peers: [], memories: [] } },
+    }, "restore password");
+
+    assert.deepEqual(openVersusBackup(walletRecord, "restore password"), {
+      format: "versus-wallet-backup",
+      payload: { version: 1, ...identity },
+    });
+    assert.deepEqual(openVersusBackup(archiveRecord, "restore password"), {
+      format: "versus-cypher-archive",
+      payload: { version: 1, ...identity, networkState: { localMemory: { postcards: [], peers: [], memories: [] } } },
+    });
+    assert.throws(() => openVersusBackup({ format: "other", version: 1 }, "restore password"), /unsupported Versus backup/);
   });
 });
 

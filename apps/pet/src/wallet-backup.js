@@ -73,11 +73,22 @@ function openCypherArchive(record, password) {
   return payload;
 }
 
+function openVersusBackup(record, password) {
+  if (record?.format === "versus-wallet-backup") {
+    return { format: record.format, payload: openWalletBackup(record, password) };
+  }
+  if (record?.format === "versus-cypher-archive") {
+    return { format: record.format, payload: openCypherArchive(record, password) };
+  }
+  throw new Error("unsupported Versus backup");
+}
+
 module.exports = {
   BACKUP_VERSION,
   createCypherArchive,
   createWalletBackup,
   openCypherArchive,
+  openVersusBackup,
   openWalletBackup,
   openPayload,
   sealPayload,

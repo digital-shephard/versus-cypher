@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("versus", {
   restoreWalletBackup: (password) => ipcRenderer.invoke("wallet:restoreBackup", { password }),
   createCypherArchive: (password) => ipcRenderer.invoke("cypher:createArchive", { password }),
   restoreCypherArchive: (password) => ipcRenderer.invoke("cypher:restoreArchive", { password }),
+  restoreVersusBackup: (password) => ipcRenderer.invoke("backup:restore", { password }),
   getHatchQuote: () => ipcRenderer.invoke("wallet:getHatchQuote"),
   beginFunding: () => ipcRenderer.invoke("wallet:beginFunding"),
   completeFunding: () => ipcRenderer.invoke("wallet:completeFunding"),
