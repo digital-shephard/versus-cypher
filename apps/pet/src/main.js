@@ -32,6 +32,7 @@ const { OperationJournal } = require("./operation-journal");
 const { RainInbox } = require("./rain-inbox");
 const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
+const { applyPackagedProductionDeployment } = require("./runtime-deployment");
 const {
   createTrustedIpcRegistrar,
   hardenRendererWindow,
@@ -90,6 +91,12 @@ function applyPackagedWalkthroughProfile() {
 }
 
 const WALKTHROUGH_PROFILE = applyPackagedWalkthroughProfile();
+
+applyPackagedProductionDeployment({
+  isPackaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  walkthroughProfile: WALKTHROUGH_PROFILE,
+});
 
 const STATE_PATH = path.join(app.getPath("userData"), "bond.json");
 const WALLET_PATH = path.join(app.getPath("userData"), "wallet.json");

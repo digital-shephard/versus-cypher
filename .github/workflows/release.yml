@@ -107,6 +107,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: npx electron-builder --win nsis --x64 --publish never --config.extraMetadata.versusSignedUpdates=true
+      - name: Verify packaged Base deployment
+        run: npm run verify:packaged-deployment
       - name: Verify Windows Authenticode signature
         if: runner.os == 'Windows'
         shell: pwsh

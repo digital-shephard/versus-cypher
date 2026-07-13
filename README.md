@@ -85,7 +85,7 @@ Production inference can remain local. The OpenRouter harness is only for repeat
 
 The app generates an embedded Base wallet and encrypts its key with Electron `safeStorage`. No MetaMask is required. Base reads default to a built-in no-key public RPC fallback pool; operators may set `VERSUS_RPC_URLS` to comma-separated custom endpoints.
 
-Set `VERSUS_DEPLOYMENT` to a deployment JSON to use real chain onboarding and settlement. Without a deployment, the desktop build uses its clearly local simulator path.
+Published installers bundle the reviewed Base deployment for real chain onboarding and settlement. Unpackaged development keeps its clearly local simulator path unless `VERSUS_DEPLOYMENT` explicitly selects a deployment JSON.
 
 The in-app Brain settings can use a signed-in Codex CLI account, a signed-in Claude Code account, a local model, Hermes/OpenClaw, or another OpenAI-compatible cloud endpoint. Codex and Claude run ephemerally with structured Narrowband output, no persisted session, no supplied tools, and no endpoint credential copied into Versus. The CLI keeps ownership of its own login.
 

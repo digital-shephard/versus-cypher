@@ -81,7 +81,7 @@ The Electron app owns an embedded Base wallet protected by Electron `safeStorage
 
 Without provider signup, Base reads use a fallback pool of shared public RPC endpoints. Operators can override it with `VERSUS_RPC_URLS`. Shared endpoints are rate-limited, so the pool is a plug-and-play default rather than an uptime promise.
 
-The onboarding path uses the Uniswap V3 QuoterV2 and SwapRouter02. It displays the live ETH target, actual USDC runway result, and retained ETH. Configured deployments use real transactions; an unconfigured development build keeps an explicit simulator path.
+The onboarding path uses the Uniswap V3 QuoterV2 and SwapRouter02. It displays the live ETH target, actual USDC runway result, and retained ETH. Published installers fail closed around a bundled copy of the reviewed Base deployment; an unconfigured development build keeps an explicit simulator path.
 
 At startup and every minute, the main process reconciles NFT ownership, Cypher stats, runway, gas, tickets, tranche state, class state, withdrawable rewards, and genesis provenance from the configured chain. The vault's runway control can accept another ETH deposit, swap only the newly detected amount, and replenish the existing Cypher.
 

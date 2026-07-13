@@ -1,6 +1,6 @@
 {
   "name": "versus-cypher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Versus Cypher desktop agent",
   "desktopName": "versus-cypher.desktop",
   "main": "src/main.js",
@@ -23,6 +23,7 @@
     "dist:win:portable": "electron-builder --win portable --config.artifactName=Versus-Cypher-Portable-${version}-${os}-${arch}.${ext}",
     "dist:mac": "electron-builder --mac dmg",
     "dist:linux": "electron-builder --linux AppImage",
+    "verify:packaged-deployment": "node scripts/verify-packaged-deployment.js",
     "preflight:linux": "bash ../../scripts/linux/appimage-preflight.sh dist/Versus-Cypher-*.AppImage"
   },
   "build": {
@@ -36,6 +37,12 @@
       "renderer/**/*",
       "assets/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../versus/deployments/base.json",
+        "to": "deployment/base.json"
+      }
     ],
     "win": {
       "target": [

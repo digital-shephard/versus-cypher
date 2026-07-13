@@ -10,7 +10,7 @@ npm install
 npm start
 ```
 
-Without `VERSUS_DEPLOYMENT`, hatch and rain use the local simulator. With a deployment, the app uses real Base reads, Uniswap quotes and swaps, Arena hatching, daily runway commits, paid-signal settlement, and exact receipt reconciliation.
+Published installers bundle the reviewed Base deployment and use real Base reads, Uniswap quotes and swaps, Arena hatching, daily runway commits, paid-signal settlement, and exact receipt reconciliation. Unpackaged development uses the local simulator unless `VERSUS_DEPLOYMENT` explicitly selects a deployment.
 
 ## Hatch
 
