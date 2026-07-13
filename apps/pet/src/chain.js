@@ -19,6 +19,7 @@ const LOCAL_FIXTURE_DEPOSIT_MICROS = 10_000_000n;
 const MIN_HATCH_RUNWAY_MICROS = 7_000_000n;
 const ALLOWANCE_SYNC_TIMEOUT_MS = 15_000;
 const CHAIN_STATE_SYNC_TIMEOUT_MS = 30_000;
+const HATCH_GAS_MARGIN_BPS = 2_500n;
 
 const arenaAbi = [
   "function hatch(uint256 runwayAmount) returns (uint256 agentId)",
@@ -106,6 +107,14 @@ function validateHatchReceipt(arena, receipt, owner, runwayAmount) {
     throw new Error("hatch event does not match the confirmed on-chain selection");
   }
   return event;
+}
+
+function addGasMargin(estimate, marginBps = HATCH_GAS_MARGIN_BPS) {
+  estimate = BigInt(estimate);
+  marginBps = BigInt(marginBps);
+  if (estimate <= 0n) throw new RangeError("gas estimate must be positive");
+  if (marginBps < 0n) throw new RangeError("gas margin cannot be negative");
+  return (estimate * (10_000n + marginBps) + 9_999n) / 10_000n;
 }
 
 function validateSignalReceipt(arena, receipt, agentId, batch) {
@@ -391,8 +400,10 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         await waitForAllowance(token, owner, addresses.arena, runwayAmount);
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
+      const hatch = arena["hatch(uint256,uint256)"];
+      const gasLimit = addGasMargin(await hatch.estimateGas(runwayAmount, BigInt(referrerAgentId)));
       const hatchReceipt = await confirmed(
-        await arena["hatch(uint256,uint256)"](runwayAmount, BigInt(referrerAgentId)),
+        await hatch(runwayAmount, BigInt(referrerAgentId), { gasLimit }),
         "Cypher hatch"
       );
       const event = validateHatchReceipt(arena, hatchReceipt, owner, runwayAmount);
@@ -420,8 +431,10 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         await waitForAllowance(token, owner, addresses.arena, runwayAmount);
       }
       const arena = new Contract(addresses.arena, arenaAbi, signer);
+      const hatch = arena["hatch(uint256,uint256)"];
+      const gasLimit = addGasMargin(await hatch.estimateGas(runwayAmount, BigInt(referrerAgentId)));
       const receipt = await confirmed(
-        await arena["hatch(uint256,uint256)"](runwayAmount, BigInt(referrerAgentId)),
+        await hatch(runwayAmount, BigInt(referrerAgentId), { gasLimit }),
         "Cypher hatch"
       );
       const event = validateHatchReceipt(arena, receipt, owner, runwayAmount);
@@ -783,6 +796,7 @@ module.exports = {
   missionEscrowAbi,
   loadChainConfig,
   createChainRainService,
+  addGasMargin,
   waitForAllowance,
   waitForChainState,
 };

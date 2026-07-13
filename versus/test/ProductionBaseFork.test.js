@@ -19,6 +19,7 @@ const SAFE = CONSTANTS.base.protocolRecipient;
 const FLOOR = 1_000_000_000n;
 const MIN_RUNWAY = 7_000_000n;
 const REFERRAL_REWARD = 1_000_000n;
+const HATCH_GAS_LIMIT = 500_000n;
 
 describe("Versus Base mainnet fork rehearsal", function () {
   before(function () {
@@ -158,7 +159,9 @@ describe("Versus Base mainnet fork rehearsal", function () {
     expect(await usdc.balanceOf(alice.address)).to.equal(MIN_RUNWAY + REFERRAL_REWARD);
     await (await usdc.connect(alice).approve(await arena.getAddress(), MIN_RUNWAY)).wait();
     expect(await usdc.allowance(alice.address, await arena.getAddress())).to.equal(MIN_RUNWAY);
-    await (await arena.connect(alice).hatch(MIN_RUNWAY)).wait();
+    // The selected species depends on the mined block's prevrandao, so its packed
+    // storage cost can differ from the preceding eth_estimateGas simulation.
+    await (await arena.connect(alice)["hatch(uint256)"](MIN_RUNWAY, { gasLimit: HATCH_GAS_LIMIT })).wait();
     const hatchedAgent = await agents.getAgent(1);
     const hatchedTokenUri = await agents.tokenURI(1);
     expect(hatchedAgent.cypherId).to.be.lessThan(29n);
@@ -168,13 +171,23 @@ describe("Versus Base mainnet fork rehearsal", function () {
     await (await usdc.connect(alice).approve(await referralPool.getAddress(), REFERRAL_REWARD)).wait();
     await (await referralPool.connect(alice).fund(1, ethers.id("base fork referral refill"), REFERRAL_REWARD)).wait();
     await (await usdc.connect(bob).approve(await arena.getAddress(), MIN_RUNWAY + 1_000_000n)).wait();
-    await (await arena.connect(bob)["hatch(uint256,uint256)"](MIN_RUNWAY, 1)).wait();
+    await (await arena.connect(bob)["hatch(uint256,uint256)"](MIN_RUNWAY, 1, { gasLimit: HATCH_GAS_LIMIT })).wait();
     expect(await referralPool.referredBy(2)).to.equal(1n);
     expect((await agents.getAgent(1)).vault).to.equal(REFERRAL_REWARD);
     await (await usdc.connect(carol).approve(await arena.getAddress(), MIN_RUNWAY)).wait();
-    await expect(arena.connect(carol)["hatch(uint256,uint256)"](MIN_RUNWAY, 1))
-      .to.emit(referralPool, "ReferralRewardSkipped")
-      .withArgs(3, 1, carol.address, 0);
+    const skippedReferralReceipt = await (
+      await arena.connect(carol)["hatch(uint256,uint256)"](MIN_RUNWAY, 1, { gasLimit: HATCH_GAS_LIMIT })
+    ).wait();
+    const skippedReferralEvent = skippedReferralReceipt.logs
+      .map((log) => {
+        try {
+          return referralPool.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find((event) => event?.name === "ReferralRewardSkipped");
+    expect(skippedReferralEvent?.args).to.deep.equal([3n, 1n, carol.address, 0n]);
     expect(await agents.ownerOf(3)).to.equal(carol.address);
     expect(await referralPool.referredBy(3)).to.equal(1n);
     const firstCommit = await (await arena.connect(alice).commit(1)).wait();

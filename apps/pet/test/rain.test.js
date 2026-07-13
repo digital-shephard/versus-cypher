@@ -8,7 +8,7 @@ const {
   normalizeRainPennies,
   applyConfirmedRain,
 } = require("../src/rain");
-const { loadChainConfig, createChainRainService, waitForAllowance, waitForChainState } = require("../src/chain");
+const { addGasMargin, loadChainConfig, createChainRainService, waitForAllowance, waitForChainState } = require("../src/chain");
 
 describe("confirmed rain accounting", () => {
   it("moves runway, class, tickets, and rained counters atomically", () => {
@@ -68,6 +68,13 @@ it("renderer precipitation is sourced only from verified penny queues", () => {
 });
 
 describe("chain rain configuration", () => {
+  it("adds a bounded ceiling margin to gas estimates", () => {
+    assert.equal(addGasMargin(295_411n), 369_264n);
+    assert.equal(addGasMargin(100n, 0n), 100n);
+    assert.throws(() => addGasMargin(0n), /positive/);
+    assert.throws(() => addGasMargin(100n, -1n), /negative/);
+  });
+
   it("uses the simulator only when no chain settings are present", () => {
     assert.equal(loadChainConfig({}), null);
     assert.equal(loadChainConfig({ VERSUS_RPC_URL: "http://127.0.0.1:8545" }), null);

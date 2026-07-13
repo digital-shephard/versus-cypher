@@ -53,6 +53,18 @@ npm run freeze:base-build
 
 Run public Base deployment from a clean isolated worktree populated with `npm ci --ignore-scripts` from the committed lockfile so ignored `node_modules` and stale artifacts cannot diverge from the reviewed freeze.
 
+The contract E2E suite imports the sibling network and desktop chain services. Populate all three pinned dependency trees in that clean worktree before running the final suite:
+
+```powershell
+cd packages/network
+npm ci --ignore-scripts
+cd ../../apps/pet
+npm ci --ignore-scripts
+cd ../../versus
+npm ci --ignore-scripts
+git submodule update --init --recursive
+```
+
 Run the disposable Base mainnet fork rehearsal through Docker and Anvil. It uses canonical Base state but spends no real funds:
 
 ```powershell
