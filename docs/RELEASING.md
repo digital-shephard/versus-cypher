@@ -1,6 +1,6 @@
 # Desktop releases
 
-Versus Cypher uses one tagged source commit for every public desktop release. GitHub Actions builds the Windows installer, universal macOS disk image, and Linux AppImage on their native runners. Release assets include updater metadata, SHA-256 checksums, and GitHub build-provenance attestations.
+Versus Cypher uses one tagged source commit for every public desktop release. The current public targets are the signed Windows installer and Linux AppImage, built on their native GitHub runners. macOS is coming soon after Developer ID signing and notarization are configured. Release assets include updater metadata, SHA-256 checksums, and GitHub build-provenance attestations.
 
 ## Release identity
 
@@ -34,7 +34,7 @@ The public Windows artifact is the NSIS installer. `npm run dist:win:portable` c
 5. Confirm the installed version changed and all persistent state survived.
 6. Repeat after Windows signing and macOS signing/notarization are configured.
 
-Development, walkthrough, Linux, and unsigned builds never contact the update provider. Only protected, signed Windows and macOS release builds check after startup and every six hours. Downloads and restarts require explicit owner actions.
+Development, walkthrough, Linux, and unsigned builds never contact the update provider. Only protected, signed Windows release builds check after startup and every six hours. macOS is not currently published. Downloads and restarts require explicit owner actions.
 
 ## Publishing
 
@@ -53,10 +53,10 @@ Unsigned packages are internal test artifacts only. Auto-update is fail-closed i
 - Windows uses the managed Azure Artifact Signing profile `versus-cypher-public` in account
   `versuscyphersigning`. GitHub authenticates without a stored credential through the protected
   `release` environment's OIDC identity, which has signer access only to that certificate profile.
-- Configure Apple Developer ID signing and notarization secrets.
+- Before enabling the macOS release job, configure Apple Developer ID signing and notarization secrets and complete the native Mac release checks.
 - Restrict signing secrets to the protected GitHub `release` environment.
 - Require manual approval for stable releases.
-- Complete an installed signed-to-signed update test on Windows and macOS.
+- Complete an installed signed-to-signed update test on Windows. Repeat the same gate on macOS before enabling that release target.
 
 Never commit certificates, private keys, API tokens, or notarization credentials. The repository ignores common signing-key formats.
 

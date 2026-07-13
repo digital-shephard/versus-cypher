@@ -88,7 +88,7 @@ Credentials and endpoint details remain in the main process. The renderer receiv
 
 ## Build and verify the desktop app
 
-The V-gem is the canonical application, installer, shortcut, tray, and taskbar icon. Public releases are built from a matching Git tag and published as a Windows NSIS installer, universal macOS DMG, and Linux AppImage.
+The V-gem is the canonical application, installer, shortcut, tray, and taskbar icon. Public releases are built from a matching Git tag and currently published as a signed Windows NSIS installer and Linux AppImage. macOS is coming soon after Developer ID signing and notarization are complete.
 
 ```powershell
 npm ci --prefix apps/pet

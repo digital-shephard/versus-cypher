@@ -57,10 +57,6 @@ jobs:
             os: windows-latest
             command: npx electron-builder --win nsis --x64 --publish never --config.extraMetadata.versusSignedUpdates=true
             subject: apps/pet/dist/*.exe
-          - platform: macos
-            os: macos-latest
-            command: npx electron-builder --mac dmg --universal --publish never --config.extraMetadata.versusSignedUpdates=true
-            subject: apps/pet/dist/*.dmg
           - platform: linux-x64
             os: ubuntu-latest
             command: npx electron-builder --linux AppImage --x64 --publish never
@@ -100,12 +96,6 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: ${{ matrix.command }}
-        env:
-          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
       - name: Sign in to Azure with the protected release identity
         if: runner.os == 'Windows'
         uses: Azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a # v3
@@ -130,14 +120,6 @@ jobs:
               throw "Unexpected Authenticode publisher: $($signature.SignerCertificate.Subject)"
             }
           }
-      - name: Verify Apple signature and notarization
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          app_path=$(find dist -type d -name '*.app' -print -quit)
-          test -n "$app_path"
-          codesign --verify --deep --strict --verbose=2 "$app_path"
-          xcrun stapler validate "$app_path"
       - name: Attest build provenance
         uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
         with:
@@ -147,7 +129,6 @@ jobs:
           name: versus-cypher-${{ matrix.platform }}
           path: |
             apps/pet/dist/*.exe
-            apps/pet/dist/*.dmg
             apps/pet/dist/*.AppImage
             apps/pet/dist/*.blockmap
             apps/pet/dist/latest*.yml
