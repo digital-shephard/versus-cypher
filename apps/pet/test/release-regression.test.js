@@ -4,6 +4,42 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.join(__dirname, "..");
+const repositoryRoot = path.join(root, "..", "..");
+
+test("macOS releases stay signed notarized updateable and step scoped", () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const workflow = fs.readFileSync(
+    path.join(repositoryRoot, ".github", "workflows", "release.yml"),
+    "utf8"
+  );
+  const buildStepStart = workflow.indexOf("      - name: Build packages");
+  const nextStepStart = workflow.indexOf("      - name: Sign in to Azure", buildStepStart);
+  const buildStep = workflow.slice(buildStepStart, nextStepStart);
+  const beforeBuildStep = workflow.slice(0, buildStepStart);
+
+  assert.deepEqual(packageJson.build.mac.target, ["dmg", "zip"]);
+  assert.equal(packageJson.build.mac.hardenedRuntime, true);
+  assert.equal(packageJson.build.mac.notarize, true);
+  assert.equal(packageJson.build.mac.entitlements, "entitlements.mac.plist");
+  assert.equal(packageJson.build.mac.entitlementsInherit, "entitlements.mac.inherit.plist");
+
+  assert.match(workflow, /platform: macos-universal/);
+  assert.match(workflow, /electron-builder --mac dmg zip --universal/);
+  assert.match(workflow, /Authority=Developer ID Application: DIGITAL SHEPARD LLC \(HN89TZMX7Z\)/);
+  assert.match(workflow, /TeamIdentifier=HN89TZMX7Z/);
+  assert.match(workflow, /spctl --assess --type execute/);
+  assert.match(workflow, /xcrun stapler validate/);
+  assert.doesNotMatch(beforeBuildStep, /secrets\.(?:MAC_CSC|APPLE_)/);
+  for (const name of [
+    "MAC_CSC_LINK",
+    "MAC_CSC_KEY_PASSWORD",
+    "APPLE_ID",
+    "APPLE_APP_SPECIFIC_PASSWORD",
+    "APPLE_TEAM_ID",
+  ]) {
+    assert.match(buildStep, new RegExp(`secrets\\.${name}`));
+  }
+});
 
 test("Windows uninstall offers an explicit wallet deletion choice but not during updates", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));

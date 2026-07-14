@@ -57,6 +57,12 @@ jobs:
             os: windows-latest
             command: npx electron-builder --win nsis --x64 --publish never --config.extraMetadata.versusSignedUpdates=true
             subject: apps/pet/dist/*.exe
+          - platform: macos-universal
+            os: macos-latest
+            command: npx electron-builder --mac dmg zip --universal --publish never --config.extraMetadata.versusSignedUpdates=true
+            subject: |
+              apps/pet/dist/*.dmg
+              apps/pet/dist/*.zip
           - platform: linux-x64
             os: ubuntu-latest
             command: npx electron-builder --linux AppImage --x64 --publish never
@@ -96,6 +102,12 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: ${{ matrix.command }}
+        env:
+          CSC_LINK: ${{ runner.os == 'macOS' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
       - name: Sign in to Azure with the protected release identity
         if: runner.os == 'Windows'
         uses: Azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a # v3
@@ -122,6 +134,25 @@ jobs:
               throw "Unexpected Authenticode publisher: $($signature.SignerCertificate.Subject)"
             }
           }
+      - name: Verify Apple signature and notarization
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path=$(find dist -type d -name '*.app' -print -quit)
+          dmg_path=$(find dist -maxdepth 1 -type f -name '*.dmg' -print -quit)
+          zip_path=$(find dist -maxdepth 1 -type f -name '*.zip' -print -quit)
+          test -n "$app_path"
+          test -n "$dmg_path"
+          test -n "$zip_path"
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          signature=$(codesign -dv --verbose=4 "$app_path" 2>&1)
+          grep -F 'Authority=Developer ID Application: DIGITAL SHEPARD LLC (HN89TZMX7Z)' <<<"$signature"
+          grep -F 'TeamIdentifier=HN89TZMX7Z' <<<"$signature"
+          grep -E 'flags=.*runtime' <<<"$signature"
+          spctl --assess --type execute --verbose=4 "$app_path"
+          xcrun stapler validate "$app_path"
       - name: Attest build provenance
         uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
         with:
@@ -131,6 +162,8 @@ jobs:
           name: versus-cypher-${{ matrix.platform }}
           path: |
             apps/pet/dist/*.exe
+            apps/pet/dist/*.dmg
+            apps/pet/dist/*.zip
             apps/pet/dist/*.AppImage
             apps/pet/dist/*.blockmap
             apps/pet/dist/latest*.yml

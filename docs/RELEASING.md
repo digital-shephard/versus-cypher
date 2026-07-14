@@ -1,6 +1,6 @@
 # Desktop releases
 
-Versus Cypher uses one tagged source commit for every public desktop release. The current public targets are the signed Windows installer and Linux AppImage, built on their native GitHub runners. macOS is coming soon after Developer ID signing and notarization are configured. Release assets include updater metadata, SHA-256 checksums, and GitHub build-provenance attestations.
+Versus Cypher uses one tagged source commit for every public desktop release. GitHub Actions builds the signed Windows installer, notarized universal macOS disk image and update ZIP, and Linux AppImage on their native runners. The macOS target must not be approved for its first public tag until the protected manual build and installed signed-to-signed update proof below pass. Release assets include updater metadata, SHA-256 checksums, and GitHub build-provenance attestations.
 
 ## Release identity
 
@@ -34,7 +34,7 @@ The public Windows artifact is the NSIS installer. `npm run dist:win:portable` c
 5. Confirm the installed version changed and all persistent state survived.
 6. Repeat after Windows signing and macOS signing/notarization are configured.
 
-Development, walkthrough, Linux, and unsigned builds never contact the update provider. Only protected, signed Windows release builds check after startup and every six hours. macOS is not currently published. Downloads and restarts require explicit owner actions.
+Development, walkthrough, Linux, and unsigned builds never contact the update provider. Only protected, signed Windows and macOS release builds check after startup and every six hours. Downloads and restarts require explicit owner actions.
 
 ## Publishing
 
@@ -53,10 +53,12 @@ Unsigned packages are internal test artifacts only. Auto-update is fail-closed i
 - Windows uses the managed Azure Artifact Signing profile `versus-cypher-public` in account
   `versuscyphersigning`. GitHub authenticates without a stored credential through the protected
   `release` environment's OIDC identity, which has signer access only to that certificate profile.
-- Before enabling the macOS release job, configure Apple Developer ID signing and notarization secrets and complete the native Mac release checks.
+- macOS uses the protected `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` environment secrets only during the package-build step. The workflow requires the `DIGITAL SHEPARD LLC` Developer ID identity with Team ID `HN89TZMX7Z`, Hardened Runtime, a stapled notarization ticket, and Gatekeeper acceptance.
 - Restrict signing secrets to the protected GitHub `release` environment.
 - Require manual approval for stable releases.
-- Complete an installed signed-to-signed update test on Windows. Repeat the same gate on macOS before enabling that release target.
+- Complete an installed signed-to-signed update test on Windows. Repeat the same gate on macOS before approving its first public release.
+
+Before approving the first public macOS tag, run the workflow manually from `main` and retain the successful `macos-universal` attestation. Install the DMG on a clean Mac account, confirm Gatekeeper identifies `DIGITAL SHEPARD LLC` without an override, then prove an update to a higher signed version preserves wallet, Cypher, settings, and network memory. A successful build alone does not satisfy this release gate.
 
 Never commit certificates, private keys, API tokens, or notarization credentials. The repository ignores common signing-key formats.
 

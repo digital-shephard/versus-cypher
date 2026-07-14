@@ -70,11 +70,15 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "icon": "assets/brand/v_gem.png",
       "category": "public.app-category.lifestyle",
       "artifactName": "Versus-Cypher-${version}-${os}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.inherit.plist",
       "notarize": true
     },
     "linux": {
