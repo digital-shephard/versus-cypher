@@ -129,6 +129,7 @@ let networkService = null;
 let networkStart = null;
 let networkUnavailableReason = null;
 let updateService = null;
+let pendingRestoreRecovery = null;
 const activityBus = new ServiceActivityBus({ limit: 128 });
 const activityStates = new Map();
 const healthMonitor = new HealthMonitor();
@@ -279,10 +280,13 @@ function refreshHealthSnapshot() {
         channel: "waku", operation: "store_sync", store: true,
       });
     }
-    if (status?.localDatabase?.integrity === "failed") {
+    const databaseIntegrity = status?.localDatabase?.integrity;
+    if (databaseIntegrity === "failed") {
       healthMonitor.report(Object.assign(new Error("Local database integrity check failed"), { code: "DATABASE_DAMAGED" }), {
         channel: "disk", operation: "database_check",
       });
+    } else if (!operationJournal.damaged && databaseIntegrity === "ok") {
+      healthMonitor.resolve("database_damaged");
     }
   } catch (error) {
     healthMonitor.report(error, { channel: "disk", operation: "database_check" });
@@ -1400,6 +1404,39 @@ registerIpcHandle("wallet:copyPrivateKey", () => {
   return true;
 });
 
+async function resumePendingRestoreRecovery() {
+  const recovery = pendingRestoreRecovery;
+  pendingRestoreRecovery = null;
+  if (!recovery) return { status: "idle" };
+  try {
+    await recovery();
+    return { status: "ready" };
+  } catch (error) {
+    console.error("Versus restored service recovery error:", error.message);
+    healthMonitor.report(error, { channel: "disk", operation: "restore_services" });
+    return { status: "degraded" };
+  }
+}
+
+function reloadRendererAfterRestore() {
+  const restoredWindow = mainWindow;
+  if (!restoredWindow || restoredWindow.isDestroyed()) return;
+  restoredWindow.webContents.once("did-finish-load", () => {
+    restoredWindow.show();
+    restoredWindow.focus();
+    restoredWindow.setOpacity(1);
+    restoredWindow.webContents.invalidate();
+    setTimeout(() => resumePendingRestoreRecovery(), 1_000);
+  });
+  setTimeout(() => {
+    if (restoredWindow.isDestroyed()) return;
+    restoredWindow.loadFile(RENDERER_PATH).catch((error) => {
+      console.error("Versus restored renderer load error:", error.message);
+      resumePendingRestoreRecovery();
+    });
+  }, 75);
+}
+
 async function restoreWalletPayload(payload) {
   const recovered = new Wallet(payload.privateKey);
   if (recovered.address.toLowerCase() !== payload.address.toLowerCase()) {
@@ -1417,9 +1454,13 @@ async function restoreWalletPayload(payload) {
     chainId: Number(payload.chainId || 8453),
   });
   if (payload.bond) saveState(payload.bond);
-  const state = await reconcileChainState();
-  await ensureNetworkService();
-  dailyLifecycleScheduler?.start({ immediate: true });
+  const state = structuredClone(loadState() || {});
+  pendingRestoreRecovery = async () => {
+    await reconcileChainState();
+    await ensureNetworkService();
+    dailyLifecycleScheduler?.start({ immediate: true });
+  };
+  reloadRendererAfterRestore();
   return { canceled: false, address: recovered.address, state };
 }
 
@@ -1434,10 +1475,6 @@ async function restoreCypherPayload(payload) {
   }
 
   dailyLifecycleScheduler?.stop();
-  await networkService?.close().catch(() => {});
-  networkService = null;
-  networkStart = null;
-  quarantineDatabaseFiles(NETWORK_DATA_DIR);
   saveWallet({
     address: recovered.address,
     privateKey: recovered.privateKey,
@@ -1448,14 +1485,21 @@ async function restoreCypherPayload(payload) {
   saveState(payload.bond);
   if (payload.operationJournal) operationJournal.importArchive(payload.operationJournal);
   if (payload.verifiedRain) rainInbox.importArchive(payload.verifiedRain);
-
-  const service = await ensureNetworkService({ suppressAutostart: true });
-  if (!service) throw new Error("restored Cypher could not start its local network service");
-  const imported = service.importLocalArchive(payload.networkState, { replace: true });
-  if (loadSettings().brain.autostart && service.agentRuntime) await service.startAgent();
-  const state = await reconcileChainState();
-  dailyLifecycleScheduler?.start({ immediate: true });
-  return { canceled: false, address: recovered.address, imported, state };
+  const state = structuredClone(loadState());
+  pendingRestoreRecovery = async () => {
+    await networkService?.close().catch(() => {});
+    networkService = null;
+    networkStart = null;
+    quarantineDatabaseFiles(NETWORK_DATA_DIR);
+    const service = await ensureNetworkService({ suppressAutostart: true });
+    if (!service) throw new Error("restored Cypher could not start its local network service");
+    service.importLocalArchive(payload.networkState, { replace: true });
+    if (loadSettings().brain.autostart && service.agentRuntime) await service.startAgent();
+    await reconcileChainState();
+    dailyLifecycleScheduler?.start({ immediate: true });
+  };
+  reloadRendererAfterRestore();
+  return { canceled: false, address: recovered.address, state };
 }
 
 registerIpcHandle("wallet:createBackup", async (_e, { password } = {}) => {

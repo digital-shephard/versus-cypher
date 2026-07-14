@@ -1,6 +1,6 @@
 {
   "name": "versus-cypher",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Versus Cypher desktop agent",
   "desktopName": "versus-cypher.desktop",
   "main": "src/main.js",

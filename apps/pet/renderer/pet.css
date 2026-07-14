@@ -2460,8 +2460,6 @@ body { display: grid; place-items: center; }
   transform-origin: 50px 48px;
 }
 
-#shell[data-mode="cypher"] .radar-shape { animation: radar-reveal 420ms steps(5, end) both; }
-
 .cypher-radar text {
   fill: var(--ink-dim);
   font-family: inherit;
@@ -2803,7 +2801,7 @@ body { display: grid; place-items: center; }
 
 .cypher-field-note {
   display: grid;
-  align-content: center;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 78px;
   margin-top: 6px;
   padding: 5px 6px;
@@ -2821,6 +2819,18 @@ body { display: grid; place-items: center; }
   font-size: 0.49rem;
   text-transform: uppercase;
 }
+
+.cypher-field-note-copy {
+  position: relative;
+  display: block;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.cypher-field-note-copy::-webkit-scrollbar { display: none; }
 
 .cypher-card-back .cypher-description {
   display: block;

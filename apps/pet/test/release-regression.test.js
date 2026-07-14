@@ -39,6 +39,63 @@ test("startup does not expose the hatch screen before Cypher identity is known",
   assert.match(main, /registerIpcHandle\("bond:loadLocal", \(\) => loadState\(\)\)/);
 });
 
+test("archive restore reveals the local Cypher while remote recovery continues", () => {
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const preload = fs.readFileSync(path.join(root, "src", "preload.js"), "utf8");
+  const rendererHandler = renderer.slice(
+    renderer.indexOf('$("btn-restore-wallet")?.addEventListener'),
+    renderer.indexOf('$("btn-copy-key")?.addEventListener')
+  );
+  const restoreHandler = main.slice(
+    main.indexOf("async function restoreCypherPayload"),
+    main.indexOf('registerIpcHandle("wallet:createBackup"')
+  );
+
+  assert.match(restoreHandler, /saveState\(payload\.bond\)[\s\S]*const state = structuredClone\(loadState\(\)\)/);
+  assert.match(restoreHandler, /pendingRestoreRecovery = async \(\) =>/);
+  assert.match(restoreHandler, /reloadRendererAfterRestore\(\)/);
+  assert.match(restoreHandler, /return \{ canceled: false, address: recovered\.address, state \}/);
+  assert.match(main, /async function resumePendingRestoreRecovery\(\)[\s\S]*await recovery\(\)/);
+  assert.match(main, /function reloadRendererAfterRestore\(\)[\s\S]*did-finish-load[\s\S]*resumePendingRestoreRecovery\(\)[\s\S]*loadFile\(RENDERER_PATH\)/);
+  assert.match(preload, /loadLocalBond: \(\) => ipcRenderer\.invoke\("bond:loadLocal"\)/);
+  assert.match(renderer, /function activateRestoredBond[\s\S]*showClass\(\)/);
+  assert.match(renderer, /bond = await window\.versus\.loadLocalBond\(\)[\s\S]*activateRestoredBond\(bond\)/);
+  assert.match(rendererHandler, /const result = await window\.versus\.restoreVersusBackup/);
+  assert.match(rendererHandler, /bond = result\.state \|\| await window\.versus\.loadBond\(\)/);
+  assert.match(rendererHandler, /if \(bond\?\.phase === "active"\)[\s\S]*showClass\(\)/);
+});
+
+test("a healthy restored journal and SQLite database clear stale recovery health", () => {
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const healthRefresh = main.slice(
+    main.indexOf("function refreshHealthSnapshot"),
+    main.indexOf("async function exportDiagnostics")
+  );
+
+  assert.match(healthRefresh, /const databaseIntegrity = status\?\.localDatabase\?\.integrity/);
+  assert.match(healthRefresh, /databaseIntegrity === "failed"[\s\S]*DATABASE_DAMAGED/);
+  assert.match(healthRefresh, /!operationJournal\.damaged && databaseIntegrity === "ok"[\s\S]*healthMonitor\.resolve\("database_damaged"\)/);
+});
+
+test("Cypher card reveals its graph on first flip and wheel-scrolls overflowing field notes", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
+
+  assert.match(html, /id="cypher-field-note-copy"[\s\S]*id="cypher-card-description"/);
+  assert.match(renderer, /const pending = Boolean\(!profile \|\| profile\.archivePending\)/);
+  assert.match(renderer, /const nextFieldNote = fieldNoteText\(profile\?\.description\)/);
+  assert.match(renderer, /if \(description\.textContent !== nextFieldNote\)/);
+  assert.match(renderer, /\$\("cypher-field-note-copy"\)\?\.addEventListener\("wheel"/);
+  assert.match(renderer, /viewport\.scrollTop \+= clamp\(rawDelta \* 0\.45, -30, 30\)/);
+  assert.match(renderer, /if \(!cypherFlipped\) resetFieldNoteScroll\(\)/);
+  assert.doesNotMatch(css, /#shell\[data-mode="cypher"\] \.radar-shape/);
+  assert.match(css, /\.cypher-flip-card\.is-flipped \.radar-shape/);
+  assert.match(css, /\.cypher-field-note-copy[\s\S]*overflow-y: auto/);
+  assert.doesNotMatch(css, /@keyframes field-note-pan/);
+});
+
 test("confirmed manual rain returns from its receipt before background reconciliation", () => {
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
   const handler = main.slice(

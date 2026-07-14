@@ -514,10 +514,13 @@ function rarityLabel(value) {
   return ["Archive", "Common", "Rare", "Epic", "Legendary"][Number(value)] || "Archive";
 }
 
-function firstLoreSentence(text) {
-  const clean = String(text || "Field record unavailable.").trim();
-  const match = clean.match(/^.*?[.!?](?:\s|$)/);
-  return (match?.[0] || clean).trim();
+function fieldNoteText(text) {
+  return String(text || "Field record unavailable.").trim();
+}
+
+function resetFieldNoteScroll() {
+  const viewport = $("cypher-field-note-copy");
+  if (viewport) viewport.scrollTop = 0;
 }
 
 function radarPoints(profile) {
@@ -543,6 +546,7 @@ function setCypherFlipped(flipped) {
   const card = $("cypher-card-flip");
   card?.classList.toggle("is-flipped", cypherFlipped);
   card?.setAttribute("aria-pressed", cypherFlipped ? "true" : "false");
+  if (!cypherFlipped) resetFieldNoteScroll();
 }
 
 function setSignalFlipped(flipped) {
@@ -1060,7 +1064,7 @@ function updateModeScreen() {
   if (level) level.textContent = String(bond.level || 1);
 
   const profile = profileCatalog.profileOf(c.name);
-  const pending = !profile || profile.archivePending;
+  const pending = Boolean(!profile || profile.archivePending);
   const typeName = profile?.type || "Unknown";
   const rarityName = rarityLabel(profile?.rarity);
   const cardType = typeName.toLowerCase();
@@ -1081,7 +1085,13 @@ function updateModeScreen() {
   const backLevel = $("cypher-card-back-level");
   if (backLevel) backLevel.textContent = String(bond.level || 1);
   const description = $("cypher-card-description");
-  if (description) description.textContent = firstLoreSentence(profile?.description);
+  if (description) {
+    const nextFieldNote = fieldNoteText(profile?.description);
+    if (description.textContent !== nextFieldNote) {
+      description.textContent = nextFieldNote;
+      resetFieldNoteScroll();
+    }
+  }
   const radar = document.querySelector(".cypher-radar");
   radar?.classList.toggle("hidden", pending);
   $("cypher-archive-pending")?.classList.toggle("hidden", !pending);
@@ -2598,6 +2608,22 @@ function flashLcd(short) {
   flash.classList.add(short ? "run-short" : "run");
 }
 
+function activateRestoredBond(restored) {
+  if (restored?.phase !== "active" || restored.cypherId == null) return false;
+  bond = restored;
+  if (bond.classPotMicros == null) bond.classPotMicros = 0;
+  if (bond.classAgents == null) bond.classAgents = 0;
+  if (bond.tickets == null) bond.tickets = 0;
+  if (bond.totalTickets == null) bond.totalTickets = Math.max(bond.tickets, bond.classAgents);
+  if (bond.trancheClaimableMicros == null) bond.trancheClaimableMicros = 0;
+  if (bond.tranchePreviewMicros == null) bond.tranchePreviewMicros = 0;
+  W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
+  startSceneClock();
+  showClass();
+  if (currentSettings) renderSettings(currentSettings);
+  return true;
+}
+
 async function boot() {
   try {
     if (!window.versus) throw new Error("preload bridge missing");
@@ -2613,15 +2639,7 @@ async function boot() {
     }
 
     if (bond?.phase === "active" && bond.cypherId != null) {
-      if (bond.classPotMicros == null) bond.classPotMicros = 0;
-      if (bond.classAgents == null) bond.classAgents = 0;
-      if (bond.tickets == null) bond.tickets = 0;
-      if (bond.totalTickets == null) bond.totalTickets = Math.max(bond.tickets, bond.classAgents);
-      if (bond.trancheClaimableMicros == null) bond.trancheClaimableMicros = 0;
-      if (bond.tranchePreviewMicros == null) bond.tranchePreviewMicros = 0;
-      W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
-      startSceneClock();
-      showClass();
+      activateRestoredBond(bond);
       if (bond.pendingGraduation) {
         setTimeout(() => runGraduationWhenReady({ ceremony: bond.pendingGraduation, state: bond }).catch(console.error), 420);
       }
@@ -3143,6 +3161,16 @@ $("cypher-card-flip")?.addEventListener("click", () => {
   if (activeMode !== "cypher") return;
   setCypherFlipped(!cypherFlipped);
 });
+
+$("cypher-field-note-copy")?.addEventListener("wheel", (event) => {
+  const viewport = event.currentTarget;
+  if (activeMode !== "cypher" || !cypherFlipped || viewport.scrollHeight <= viewport.clientHeight) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  const rawDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 12 : event.deltaY;
+  viewport.scrollTop += clamp(rawDelta * 0.45, -30, 30);
+}, { passive: false });
 
 $("btn-signal-flip")?.addEventListener("click", () => {
   if (activeMode !== "network") return;
