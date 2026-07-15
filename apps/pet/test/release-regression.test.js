@@ -94,6 +94,14 @@ test("Windows uninstall offers an explicit wallet deletion choice but not during
   assert.match(script, /RMDir \/r "\$APPDATA\\Versus Cypher"/);
 });
 
+test("Windows launch on login uses the product name and documented acceptance state", () => {
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  assert.match(main, /name: WALKTHROUGH_PROFILE \? "Versus Cypher Walkthrough" : "Versus Cypher"/);
+  assert.match(main, /\["Versus", "fun\.versus\.pet"\]/);
+  assert.match(main, /launchAtLoginAccepted\(process\.platform, options\.openAtLogin, observed\)/);
+  assert.doesNotMatch(main, /matchingItems\.some\(\(item\) => item\.enabled\)/);
+});
+
 test("hatch funding uses dynamic Base ETH copy and never exposes broken QR alt text", () => {
   const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");

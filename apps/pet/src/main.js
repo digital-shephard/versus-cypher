@@ -35,6 +35,7 @@ const { RainInbox } = require("./rain-inbox");
 const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
 const { applyPackagedProductionDeployment } = require("./runtime-deployment");
+const { launchAtLoginAccepted } = require("./login-item");
 const {
   createTrustedIpcRegistrar,
   hardenRendererWindow,
@@ -468,7 +469,7 @@ function applyLaunchAtLogin(openAtLogin) {
     openAsHidden: false,
     ...(process.platform === "win32" ? {
       enabled: Boolean(openAtLogin),
-      name: WALKTHROUGH_PROFILE ? "Versus Walkthrough" : "Versus",
+      name: WALKTHROUGH_PROFILE ? "Versus Cypher Walkthrough" : "Versus Cypher",
     } : {}),
   };
   const identity = process.platform === "win32"
@@ -476,8 +477,8 @@ function applyLaunchAtLogin(openAtLogin) {
     : {};
   if (process.platform === "win32") {
     const legacyNames = WALKTHROUGH_PROFILE
-      ? ["fun.versus.pet.walkthrough", "fun.versus.pet"]
-      : ["fun.versus.pet"];
+      ? ["Versus Walkthrough", "fun.versus.pet.walkthrough", "fun.versus.pet"]
+      : ["Versus", "fun.versus.pet"];
     for (const name of legacyNames) {
       if (name === options.name) continue;
       app.setLoginItemSettings({ openAtLogin: false, enabled: false, name, ...identity });
@@ -488,11 +489,7 @@ function applyLaunchAtLogin(openAtLogin) {
   const matchingItems = process.platform === "win32"
     ? (observed.launchItems || []).filter((item) => path.resolve(item.path) === path.resolve(process.execPath))
     : [];
-  const accepted = process.platform === "win32"
-    ? options.openAtLogin
-      ? Boolean(observed.executableWillLaunchAtLogin && matchingItems.some((item) => item.enabled))
-      : !observed.executableWillLaunchAtLogin && !matchingItems.some((item) => item.enabled)
-    : Boolean(observed.openAtLogin) === options.openAtLogin;
+  const accepted = launchAtLoginAccepted(process.platform, options.openAtLogin, observed);
   if (WALKTHROUGH_PROFILE && process.env.VERSUS_WALKTHROUGH_EVIDENCE_DIR) {
     fs.appendFileSync(path.join(process.env.VERSUS_WALKTHROUGH_EVIDENCE_DIR, "login-item-events.jsonl"), `${JSON.stringify({
       at: Date.now(),
