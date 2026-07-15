@@ -35,7 +35,11 @@ const { RainInbox } = require("./rain-inbox");
 const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
 const { applyPackagedProductionDeployment } = require("./runtime-deployment");
-const { launchAtLoginAccepted } = require("./login-item");
+const {
+  launchAtLoginAccepted,
+  readWindowsRunValue,
+  windowsRunEntryAccepted,
+} = require("./login-item");
 const {
   createTrustedIpcRegistrar,
   hardenRendererWindow,
@@ -486,10 +490,15 @@ function applyLaunchAtLogin(openAtLogin) {
   }
   app.setLoginItemSettings({ ...options, ...identity });
   const observed = app.getLoginItemSettings(identity);
+  const windowsRunValue = process.platform === "win32"
+    ? readWindowsRunValue(options.name)
+    : null;
   const matchingItems = process.platform === "win32"
     ? (observed.launchItems || []).filter((item) => path.resolve(item.path) === path.resolve(process.execPath))
     : [];
-  const accepted = launchAtLoginAccepted(options.openAtLogin, observed);
+  const accepted = process.platform === "win32"
+    ? windowsRunEntryAccepted(options.openAtLogin, windowsRunValue, process.execPath)
+    : launchAtLoginAccepted(options.openAtLogin, observed);
   if (WALKTHROUGH_PROFILE && process.env.VERSUS_WALKTHROUGH_EVIDENCE_DIR) {
     fs.appendFileSync(path.join(process.env.VERSUS_WALKTHROUGH_EVIDENCE_DIR, "login-item-events.jsonl"), `${JSON.stringify({
       at: Date.now(),
@@ -497,6 +506,7 @@ function applyLaunchAtLogin(openAtLogin) {
       accepted,
       openAtLogin: Boolean(observed.openAtLogin),
       executableWillLaunchAtLogin: Boolean(observed.executableWillLaunchAtLogin),
+      windowsRunValue,
       launchItems: matchingItems.map((item) => ({
         name: item.name,
         path: item.path,
@@ -507,7 +517,7 @@ function applyLaunchAtLogin(openAtLogin) {
     })}\n`);
   }
   if (!accepted) {
-    throw new Error("Windows did not accept the launch-on-login setting");
+    throw new Error(`${process.platform === "win32" ? "Windows" : "The operating system"} did not accept the launch-on-login setting`);
   }
   return observed;
 }
@@ -602,14 +612,27 @@ function saveSettings(input) {
   });
   if (merged.brain.apiKey && !safeStorage.isEncryptionAvailable()) throw new Error("OS credential encryption is unavailable");
   const { apiKey, ...brain } = merged.brain;
-  saveJson(SETTINGS_PATH, {
+  const persisted = {
     version: merged.version,
     launchAtLogin: merged.launchAtLogin,
     allowReferralFunding: merged.allowReferralFunding,
     brain,
     encryptedApiKey: apiKey ? safeStorage.encryptString(apiKey).toString("base64") : null,
-  });
-  applyLaunchAtLogin(merged.launchAtLogin);
+  };
+  const launchAtLoginChanged = merged.launchAtLogin !== previous.launchAtLogin;
+  if (launchAtLoginChanged) applyLaunchAtLogin(merged.launchAtLogin);
+  try {
+    saveJson(SETTINGS_PATH, persisted);
+  } catch (error) {
+    if (launchAtLoginChanged) {
+      try {
+        applyLaunchAtLogin(previous.launchAtLogin);
+      } catch (rollbackError) {
+        console.error("Versus launch-on-login rollback failed:", rollbackError.message);
+      }
+    }
+    throw error;
+  }
   return merged;
 }
 

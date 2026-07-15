@@ -1,6 +1,6 @@
 {
   "name": "versus-cypher",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Versus Cypher desktop agent",
   "desktopName": "versus-cypher.desktop",
   "main": "src/main.js",
@@ -11,6 +11,8 @@
     "start": "electron .",
     "dev": "electron .",
     "test": "node --test test/*.test.js",
+    "test:login-item:win": "electron scripts/windows-login-item-smoke.js",
+    "test:login-item-ui:win": "node scripts/windows-installed-login-ui-smoke.js",
     "shots": "electron scripts/capture-views.js",
     "shots:graduation": "electron scripts/capture-graduation.js",
     "shots:graduation-roster": "electron scripts/capture-graduation-roster.js",

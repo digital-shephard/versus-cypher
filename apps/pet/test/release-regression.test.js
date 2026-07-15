@@ -94,11 +94,12 @@ test("Windows uninstall offers an explicit wallet deletion choice but not during
   assert.match(script, /RMDir \/r "\$APPDATA\\Versus Cypher"/);
 });
 
-test("Windows launch on login uses the product name and documented acceptance state", () => {
+test("Windows launch on login verifies the named Run entry instead of Electron readback", () => {
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
   assert.match(main, /name: WALKTHROUGH_PROFILE \? "Versus Cypher Walkthrough" : "Versus Cypher"/);
   assert.match(main, /\["Versus", "fun\.versus\.pet"\]/);
-  assert.match(main, /launchAtLoginAccepted\(options\.openAtLogin, observed\)/);
+  assert.match(main, /readWindowsRunValue\(options\.name\)/);
+  assert.match(main, /windowsRunEntryAccepted\(options\.openAtLogin, windowsRunValue, process\.execPath\)/);
   assert.doesNotMatch(main, /matchingItems\.some\(\(item\) => item\.enabled\)/);
 });
 
