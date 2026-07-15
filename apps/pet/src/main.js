@@ -489,7 +489,7 @@ function applyLaunchAtLogin(openAtLogin) {
   const matchingItems = process.platform === "win32"
     ? (observed.launchItems || []).filter((item) => path.resolve(item.path) === path.resolve(process.execPath))
     : [];
-  const accepted = launchAtLoginAccepted(process.platform, options.openAtLogin, observed);
+  const accepted = launchAtLoginAccepted(options.openAtLogin, observed);
   if (WALKTHROUGH_PROFILE && process.env.VERSUS_WALKTHROUGH_EVIDENCE_DIR) {
     fs.appendFileSync(path.join(process.env.VERSUS_WALKTHROUGH_EVIDENCE_DIR, "login-item-events.jsonl"), `${JSON.stringify({
       at: Date.now(),

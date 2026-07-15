@@ -98,7 +98,7 @@ test("Windows launch on login uses the product name and documented acceptance st
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
   assert.match(main, /name: WALKTHROUGH_PROFILE \? "Versus Cypher Walkthrough" : "Versus Cypher"/);
   assert.match(main, /\["Versus", "fun\.versus\.pet"\]/);
-  assert.match(main, /launchAtLoginAccepted\(process\.platform, options\.openAtLogin, observed\)/);
+  assert.match(main, /launchAtLoginAccepted\(options\.openAtLogin, observed\)/);
   assert.doesNotMatch(main, /matchingItems\.some\(\(item\) => item\.enabled\)/);
 });
 
