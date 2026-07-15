@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      macos_notarization_run_id:
+        description: Existing release run ID whose macOS notarization state should be resumed
+        required: false
+        type: string
 
 permissions: {}
 
@@ -165,32 +170,32 @@ jobs:
             packages/network/package-lock.json
             versus/package-lock.json
       - name: Install contract dependencies
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         run: npm ci
         working-directory: versus
       - name: Install network dependencies
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         run: npm ci
         working-directory: packages/network
       - name: Install desktop dependencies
         run: npm ci
       - name: Match tag to desktop version
-        if: github.run_attempt == 1 && startsWith(github.ref, 'refs/tags/v')
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == '' && startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./package.json').version")"
       - name: Test repository
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         run: npm test
         working-directory: ${{ github.workspace }}
       - name: Build and sign resumable app
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         shell: bash
         run: npx electron-builder --mac --dir --universal --publish never --config.mac.notarize=false --config.extraMetadata.versusSignedUpdates=true
         env:
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
       - name: Verify Developer ID signature before submission
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         shell: bash
         run: |
           set -euo pipefail
@@ -202,7 +207,7 @@ jobs:
           grep -F 'TeamIdentifier=HN89TZMX7Z' <<<"$signature"
           grep -E 'flags=.*runtime' <<<"$signature"
       - name: Submit app to Apple notarization service
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         shell: bash
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -220,7 +225,7 @@ jobs:
             --output-format json > dist/notarization/submission.json
           node -e 'const fs=require("fs");const value=JSON.parse(fs.readFileSync("dist/notarization/submission.json","utf8"));if(!/^[0-9a-f-]{36}$/i.test(value.id||""))throw new Error("Apple did not return a notarization submission ID")'
       - name: Preserve resumable notarization state
-        if: github.run_attempt == 1
+        if: github.run_attempt == 1 && inputs.macos_notarization_run_id == ''
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: macos-notarization-state
@@ -231,16 +236,16 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Restore notarization state from the previous attempt
-        if: github.run_attempt > 1
+        if: github.run_attempt > 1 || inputs.macos_notarization_run_id != ''
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           name: macos-notarization-state
           path: apps/pet/dist/notarization
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.run_id }}
+          run-id: ${{ inputs.macos_notarization_run_id || github.run_id }}
       - name: Restore signed app from the previous attempt
-        if: github.run_attempt > 1
+        if: github.run_attempt > 1 || inputs.macos_notarization_run_id != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -263,19 +268,31 @@ jobs:
           submission_id=$(node -e 'const fs=require("fs");const value=JSON.parse(fs.readFileSync("dist/notarization/submission.json","utf8"));if(!/^[0-9a-f-]{36}$/i.test(value.id||""))process.exit(1);process.stdout.write(value.id)')
           deadline=$((SECONDS + NOTARY_POLL_TIMEOUT_SECONDS))
           while (( SECONDS < deadline )); do
-            xcrun notarytool info "$submission_id" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --output-format json > dist/notarization/status.json
+            if ! xcrun notarytool info "$submission_id" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" \
+                --output-format json > dist/notarization/status.tmp.json; then
+              rm -f dist/notarization/status.tmp.json
+              echo "Apple status check failed transiently; retrying without creating a new submission."
+              sleep 120
+              continue
+            fi
+            mv dist/notarization/status.tmp.json dist/notarization/status.json
             status=$(node -e 'const fs=require("fs");process.stdout.write(JSON.parse(fs.readFileSync("dist/notarization/status.json","utf8")).status||"")')
             case "$status" in
               Accepted)
-                xcrun notarytool log "$submission_id" \
-                  --apple-id "$APPLE_ID" \
-                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-                  --team-id "$APPLE_TEAM_ID" \
-                  dist/notarization/log.json
+                for attempt in {1..5}; do
+                  if xcrun notarytool log "$submission_id" \
+                      --apple-id "$APPLE_ID" \
+                      --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                      --team-id "$APPLE_TEAM_ID" \
+                      dist/notarization/log.json; then
+                    break
+                  fi
+                  echo "Apple log download failed transiently; retrying ($attempt/5)."
+                  sleep 30
+                done
                 exit 0
                 ;;
               Invalid|Rejected)
@@ -309,7 +326,16 @@ jobs:
           set -euo pipefail
           app_path=$(find dist -type d -name '*.app' -print -quit)
           test -n "$app_path"
-          xcrun stapler staple "$app_path"
+          stapled=false
+          for attempt in {1..10}; do
+            if xcrun stapler staple "$app_path"; then
+              stapled=true
+              break
+            fi
+            echo "Apple ticket stapling failed transiently; retrying ($attempt/10)."
+            sleep 30
+          done
+          test "$stapled" = true
           npx electron-builder --mac dmg zip --universal --prepackaged "$app_path" --publish never --config.mac.notarize=false --config.extraMetadata.versusSignedUpdates=true
       - name: Verify packaged Base deployment
         run: npm run verify:packaged-deployment

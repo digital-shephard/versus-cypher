@@ -40,6 +40,11 @@ test("macOS releases stay signed notarized updateable and step scoped", () => {
   assert.match(macJob, /notarytool info/);
   assert.doesNotMatch(macJob, /notarytool submit[^\n]*--wait/);
   assert.match(macJob, /github\.run_attempt > 1/);
+  assert.match(workflow, /macos_notarization_run_id:/);
+  assert.match(macJob, /github\.run_attempt > 1 \|\| inputs\.macos_notarization_run_id != ''/);
+  assert.match(macJob, /run-id: \$\{\{ inputs\.macos_notarization_run_id \|\| github\.run_id \}\}/);
+  assert.match(macJob, /if ! xcrun notarytool info/);
+  assert.match(macJob, /Apple status check failed transiently; retrying without creating a new submission/);
   assert.match(macJob, /name: macos-notarization-state/);
   assert.match(macJob, /electron-builder --mac dmg zip --universal --prepackaged/);
   assert.match(workflow, /Authority=Developer ID Application: DIGITAL SHEPARD LLC \(HN89TZMX7Z\)/);
