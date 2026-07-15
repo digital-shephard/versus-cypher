@@ -337,6 +337,10 @@ jobs:
           done
           test "$stapled" = true
           npx electron-builder --mac dmg zip --universal --prepackaged "$app_path" --publish never --config.mac.notarize=false --config.extraMetadata.versusSignedUpdates=true
+          zip_path=$(find dist -maxdepth 1 -type f -name '*.zip' -print -quit)
+          test -n "$zip_path"
+          mkdir -p dist/verification
+          ditto -x -k "$zip_path" dist/verification
       - name: Verify packaged Base deployment
         run: npm run verify:packaged-deployment
       - name: Verify Apple signature and notarization

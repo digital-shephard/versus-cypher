@@ -11,7 +11,9 @@ function findBundledManifests(directory, found = []) {
     const candidate = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       findBundledManifests(candidate, found);
-    } else if (candidate.endsWith(path.join("resources", "deployment", "base.json"))) {
+    } else if (
+      candidate.toLowerCase().endsWith(path.join("resources", "deployment", "base.json"))
+    ) {
       found.push(candidate);
     }
   }

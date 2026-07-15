@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
@@ -47,6 +49,7 @@ test("macOS releases stay signed notarized updateable and step scoped", () => {
   assert.match(macJob, /Apple status check failed transiently; retrying without creating a new submission/);
   assert.match(macJob, /name: macos-notarization-state/);
   assert.match(macJob, /electron-builder --mac dmg zip --universal --prepackaged/);
+  assert.match(macJob, /mkdir -p dist\/verification[\s\S]*ditto -x -k "\$zip_path" dist\/verification/);
   assert.match(workflow, /Authority=Developer ID Application: DIGITAL SHEPARD LLC \(HN89TZMX7Z\)/);
   assert.match(workflow, /TeamIdentifier=HN89TZMX7Z/);
   assert.match(workflow, /spctl --assess --type execute/);
@@ -59,6 +62,26 @@ test("macOS releases stay signed notarized updateable and step scoped", () => {
     assert.match(waitStep, new RegExp(`secrets\\.${name}`));
   }
   assert.doesNotMatch(macJob.slice(0, macJob.indexOf("      - name: Build and sign resumable app")), /secrets\.(?:MAC_CSC|APPLE_)/);
+});
+
+test("packaged deployment verification accepts macOS Resources casing", (t) => {
+  const dist = fs.mkdtempSync(path.join(os.tmpdir(), "versus-macos-deployment-"));
+  t.after(() => fs.rmSync(dist, { recursive: true, force: true }));
+  const bundled = path.join(
+    dist,
+    "Versus Cypher.app",
+    "Contents",
+    "Resources",
+    "deployment",
+    "base.json"
+  );
+  fs.mkdirSync(path.dirname(bundled), { recursive: true });
+  fs.copyFileSync(path.join(repositoryRoot, "versus", "deployments", "base.json"), bundled);
+
+  execFileSync(process.execPath, [
+    path.join(root, "scripts", "verify-packaged-deployment.js"),
+    dist,
+  ]);
 });
 
 test("Windows uninstall offers an explicit wallet deletion choice but not during updates", () => {
