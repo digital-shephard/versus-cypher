@@ -57,12 +57,6 @@ jobs:
             os: windows-latest
             command: npx electron-builder --win nsis --x64 --publish never --config.extraMetadata.versusSignedUpdates=true
             subject: apps/pet/dist/*.exe
-          - platform: macos-universal
-            os: macos-latest
-            command: npx electron-builder --mac dmg zip --universal --publish never --config.extraMetadata.versusSignedUpdates=true
-            subject: |
-              apps/pet/dist/*.dmg
-              apps/pet/dist/*.zip
           - platform: linux-x64
             os: ubuntu-latest
             command: npx electron-builder --linux AppImage --x64 --publish never
@@ -102,12 +96,6 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: ${{ matrix.command }}
-        env:
-          CSC_LINK: ${{ runner.os == 'macOS' && secrets.MAC_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
       - name: Sign in to Azure with the protected release identity
         if: runner.os == 'Windows'
         uses: Azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a # v3
@@ -134,25 +122,6 @@ jobs:
               throw "Unexpected Authenticode publisher: $($signature.SignerCertificate.Subject)"
             }
           }
-      - name: Verify Apple signature and notarization
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euo pipefail
-          app_path=$(find dist -type d -name '*.app' -print -quit)
-          dmg_path=$(find dist -maxdepth 1 -type f -name '*.dmg' -print -quit)
-          zip_path=$(find dist -maxdepth 1 -type f -name '*.zip' -print -quit)
-          test -n "$app_path"
-          test -n "$dmg_path"
-          test -n "$zip_path"
-
-          codesign --verify --deep --strict --verbose=2 "$app_path"
-          signature=$(codesign -dv --verbose=4 "$app_path" 2>&1)
-          grep -F 'Authority=Developer ID Application: DIGITAL SHEPARD LLC (HN89TZMX7Z)' <<<"$signature"
-          grep -F 'TeamIdentifier=HN89TZMX7Z' <<<"$signature"
-          grep -E 'flags=.*runtime' <<<"$signature"
-          spctl --assess --type execute --verbose=4 "$app_path"
-          xcrun stapler validate "$app_path"
       - name: Attest build provenance
         uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
         with:
@@ -169,10 +138,221 @@ jobs:
             apps/pet/dist/latest*.yml
           if-no-files-found: error
 
+  macos:
+    name: Build macos-universal
+    needs: security
+    environment: release
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+    runs-on: macos-latest
+    timeout-minutes: 355
+    defaults:
+      run:
+        working-directory: apps/pet
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/pet/package-lock.json
+            packages/network/package-lock.json
+            versus/package-lock.json
+      - name: Install contract dependencies
+        if: github.run_attempt == 1
+        run: npm ci
+        working-directory: versus
+      - name: Install network dependencies
+        if: github.run_attempt == 1
+        run: npm ci
+        working-directory: packages/network
+      - name: Install desktop dependencies
+        run: npm ci
+      - name: Match tag to desktop version
+        if: github.run_attempt == 1 && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./package.json').version")"
+      - name: Test repository
+        if: github.run_attempt == 1
+        run: npm test
+        working-directory: ${{ github.workspace }}
+      - name: Build and sign resumable app
+        if: github.run_attempt == 1
+        shell: bash
+        run: npx electron-builder --mac --dir --universal --publish never --config.mac.notarize=false --config.extraMetadata.versusSignedUpdates=true
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+      - name: Verify Developer ID signature before submission
+        if: github.run_attempt == 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path=$(find dist -type d -name '*.app' -print -quit)
+          test -n "$app_path"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          signature=$(codesign -dv --verbose=4 "$app_path" 2>&1)
+          grep -F 'Authority=Developer ID Application: DIGITAL SHEPARD LLC (HN89TZMX7Z)' <<<"$signature"
+          grep -F 'TeamIdentifier=HN89TZMX7Z' <<<"$signature"
+          grep -E 'flags=.*runtime' <<<"$signature"
+      - name: Submit app to Apple notarization service
+        if: github.run_attempt == 1
+        shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          app_path=$(find dist -type d -name '*.app' -print -quit)
+          mkdir -p dist/notarization
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" dist/notarization/Versus-Cypher-signed-app.zip
+          xcrun notarytool submit dist/notarization/Versus-Cypher-signed-app.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json > dist/notarization/submission.json
+          node -e 'const fs=require("fs");const value=JSON.parse(fs.readFileSync("dist/notarization/submission.json","utf8"));if(!/^[0-9a-f-]{36}$/i.test(value.id||""))throw new Error("Apple did not return a notarization submission ID")'
+      - name: Preserve resumable notarization state
+        if: github.run_attempt == 1
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: macos-notarization-state
+          path: |
+            apps/pet/dist/notarization/Versus-Cypher-signed-app.zip
+            apps/pet/dist/notarization/submission.json
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+      - name: Restore notarization state from the previous attempt
+        if: github.run_attempt > 1
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: macos-notarization-state
+          path: apps/pet/dist/notarization
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
+      - name: Restore signed app from the previous attempt
+        if: github.run_attempt > 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/notarization/Versus-Cypher-signed-app.zip
+          test -f dist/notarization/submission.json
+          mkdir -p dist/mac-universal
+          ditto -x -k dist/notarization/Versus-Cypher-signed-app.zip dist/mac-universal
+          app_path=$(find dist/mac-universal -type d -name '*.app' -print -quit)
+          test -n "$app_path"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+      - name: Wait for the existing Apple submission
+        shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          NOTARY_POLL_TIMEOUT_SECONDS: 18000
+        run: |
+          set -euo pipefail
+          submission_id=$(node -e 'const fs=require("fs");const value=JSON.parse(fs.readFileSync("dist/notarization/submission.json","utf8"));if(!/^[0-9a-f-]{36}$/i.test(value.id||""))process.exit(1);process.stdout.write(value.id)')
+          deadline=$((SECONDS + NOTARY_POLL_TIMEOUT_SECONDS))
+          while (( SECONDS < deadline )); do
+            xcrun notarytool info "$submission_id" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json > dist/notarization/status.json
+            status=$(node -e 'const fs=require("fs");process.stdout.write(JSON.parse(fs.readFileSync("dist/notarization/status.json","utf8")).status||"")')
+            case "$status" in
+              Accepted)
+                xcrun notarytool log "$submission_id" \
+                  --apple-id "$APPLE_ID" \
+                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                  --team-id "$APPLE_TEAM_ID" \
+                  dist/notarization/log.json
+                exit 0
+                ;;
+              Invalid|Rejected)
+                xcrun notarytool log "$submission_id" \
+                  --apple-id "$APPLE_ID" \
+                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                  --team-id "$APPLE_TEAM_ID" \
+                  dist/notarization/log.json || true
+                echo "Apple rejected notarization; inspect the saved notarization log."
+                exit 1
+                ;;
+              "In Progress") sleep 120 ;;
+              *) echo "Unexpected notarization status: $status"; exit 1 ;;
+            esac
+          done
+          echo "Apple notarization remains in progress. Re-run failed jobs to resume this submission."
+          exit 75
+      - name: Preserve Apple rejection diagnostics
+        if: failure() && hashFiles('apps/pet/dist/notarization/log.json') != ''
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: macos-notarization-diagnostics-attempt-${{ github.run_attempt }}
+          path: |
+            apps/pet/dist/notarization/status.json
+            apps/pet/dist/notarization/log.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Staple ticket and build distributable packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path=$(find dist -type d -name '*.app' -print -quit)
+          test -n "$app_path"
+          xcrun stapler staple "$app_path"
+          npx electron-builder --mac dmg zip --universal --prepackaged "$app_path" --publish never --config.mac.notarize=false --config.extraMetadata.versusSignedUpdates=true
+      - name: Verify packaged Base deployment
+        run: npm run verify:packaged-deployment
+      - name: Verify Apple signature and notarization
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path=$(find dist -type d -name '*.app' -print -quit)
+          dmg_path=$(find dist -maxdepth 1 -type f -name '*.dmg' -print -quit)
+          zip_path=$(find dist -maxdepth 1 -type f -name '*.zip' ! -path '*/notarization/*' -print -quit)
+          test -n "$app_path"
+          test -n "$dmg_path"
+          test -n "$zip_path"
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          signature=$(codesign -dv --verbose=4 "$app_path" 2>&1)
+          grep -F 'Authority=Developer ID Application: DIGITAL SHEPARD LLC (HN89TZMX7Z)' <<<"$signature"
+          grep -F 'TeamIdentifier=HN89TZMX7Z' <<<"$signature"
+          grep -E 'flags=.*runtime' <<<"$signature"
+          spctl --assess --type execute --verbose=4 "$app_path"
+          xcrun stapler validate "$app_path"
+      - name: Attest build provenance
+        uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # v4
+        with:
+          subject-path: |
+            apps/pet/dist/*.dmg
+            apps/pet/dist/*.zip
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: versus-cypher-macos-universal
+          path: |
+            apps/pet/dist/*.dmg
+            apps/pet/dist/*.zip
+            apps/pet/dist/*.blockmap
+            apps/pet/dist/latest*.yml
+          if-no-files-found: error
+
   publish:
     name: Publish GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs:
+      - build
+      - macos
     runs-on: ubuntu-latest
     environment: release
     permissions:

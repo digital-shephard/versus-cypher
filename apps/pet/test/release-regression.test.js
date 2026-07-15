@@ -12,10 +12,21 @@ test("macOS releases stay signed notarized updateable and step scoped", () => {
     path.join(repositoryRoot, ".github", "workflows", "release.yml"),
     "utf8"
   );
-  const buildStepStart = workflow.indexOf("      - name: Build packages");
-  const nextStepStart = workflow.indexOf("      - name: Sign in to Azure", buildStepStart);
-  const buildStep = workflow.slice(buildStepStart, nextStepStart);
-  const beforeBuildStep = workflow.slice(0, buildStepStart);
+  const macJobStart = workflow.indexOf("  macos:");
+  const publishJobStart = workflow.indexOf("  publish:", macJobStart);
+  const macJob = workflow.slice(macJobStart, publishJobStart);
+  const signedAppStep = macJob.slice(
+    macJob.indexOf("      - name: Build and sign resumable app"),
+    macJob.indexOf("      - name: Verify Developer ID signature before submission")
+  );
+  const submitStep = macJob.slice(
+    macJob.indexOf("      - name: Submit app to Apple notarization service"),
+    macJob.indexOf("      - name: Preserve resumable notarization state")
+  );
+  const waitStep = macJob.slice(
+    macJob.indexOf("      - name: Wait for the existing Apple submission"),
+    macJob.indexOf("      - name: Staple ticket and build distributable packages")
+  );
 
   assert.deepEqual(packageJson.build.mac.target, ["dmg", "zip"]);
   assert.equal(packageJson.build.mac.hardenedRuntime, true);
@@ -23,22 +34,26 @@ test("macOS releases stay signed notarized updateable and step scoped", () => {
   assert.equal(packageJson.build.mac.entitlements, "entitlements.mac.plist");
   assert.equal(packageJson.build.mac.entitlementsInherit, "entitlements.mac.inherit.plist");
 
-  assert.match(workflow, /platform: macos-universal/);
-  assert.match(workflow, /electron-builder --mac dmg zip --universal/);
+  assert.match(workflow, /name: Build macos-universal/);
+  assert.match(macJob, /electron-builder --mac --dir --universal[\s\S]*--config\.mac\.notarize=false/);
+  assert.match(macJob, /notarytool submit[\s\S]*--output-format json/);
+  assert.match(macJob, /notarytool info/);
+  assert.doesNotMatch(macJob, /notarytool submit[^\n]*--wait/);
+  assert.match(macJob, /github\.run_attempt > 1/);
+  assert.match(macJob, /name: macos-notarization-state/);
+  assert.match(macJob, /electron-builder --mac dmg zip --universal --prepackaged/);
   assert.match(workflow, /Authority=Developer ID Application: DIGITAL SHEPARD LLC \(HN89TZMX7Z\)/);
   assert.match(workflow, /TeamIdentifier=HN89TZMX7Z/);
   assert.match(workflow, /spctl --assess --type execute/);
   assert.match(workflow, /xcrun stapler validate/);
-  assert.doesNotMatch(beforeBuildStep, /secrets\.(?:MAC_CSC|APPLE_)/);
-  for (const name of [
-    "MAC_CSC_LINK",
-    "MAC_CSC_KEY_PASSWORD",
-    "APPLE_ID",
-    "APPLE_APP_SPECIFIC_PASSWORD",
-    "APPLE_TEAM_ID",
-  ]) {
-    assert.match(buildStep, new RegExp(`secrets\\.${name}`));
+  assert.match(signedAppStep, /secrets\.MAC_CSC_LINK/);
+  assert.match(signedAppStep, /secrets\.MAC_CSC_KEY_PASSWORD/);
+  assert.doesNotMatch(signedAppStep, /secrets\.APPLE_/);
+  for (const name of ["APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD", "APPLE_TEAM_ID"]) {
+    assert.match(submitStep, new RegExp(`secrets\\.${name}`));
+    assert.match(waitStep, new RegExp(`secrets\\.${name}`));
   }
+  assert.doesNotMatch(macJob.slice(0, macJob.indexOf("      - name: Build and sign resumable app")), /secrets\.(?:MAC_CSC|APPLE_)/);
 });
 
 test("Windows uninstall offers an explicit wallet deletion choice but not during updates", () => {
