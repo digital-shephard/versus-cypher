@@ -13,7 +13,7 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       300
     ],
     "cardCenterX": 92.66,
-    "raftZoom": 0.7
+    "raftZoom": 0.875
   },
   "AncientOne": {
     "baseline": 248.0,
@@ -42,7 +42,7 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       300
     ],
     "cardCenterX": 174.3,
-    "raftZoom": 1.3
+    "raftZoom": 1.105
   },
   "Buff": {
     "baseline": 242.5,
@@ -71,7 +71,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       284,
       300
     ],
-    "cardCenterX": 126.7
+    "cardCenterX": 126.7,
+    "raftZoom": 1.25
   },
   "Chesare": {
     "baseline": 261.0,
@@ -185,7 +186,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       229,
       300
     ],
-    "cardCenterX": 114.5
+    "cardCenterX": 114.5,
+    "raftZoom": 1.15
   },
   "Flexseed": {
     "baseline": 278.0,
@@ -242,7 +244,7 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       300
     ],
     "cardCenterX": 194.65,
-    "raftZoom": 1.3
+    "raftZoom": 1.495
   },
   "Metadash": {
     "baseline": 263.0,
@@ -299,7 +301,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       360,
       300
     ],
-    "cardCenterX": 164.38
+    "cardCenterX": 164.38,
+    "raftZoom": 1.3
   },
   "Oritori": {
     "baseline": 236.5,
