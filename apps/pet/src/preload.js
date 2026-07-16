@@ -14,6 +14,16 @@ contextBridge.exposeInMainWorld("versus", {
     ipcRenderer.on("health:changed", listener);
     return () => ipcRenderer.removeListener("health:changed", listener);
   },
+  onBondChanged: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on("bond:changed", listener);
+    return () => ipcRenderer.removeListener("bond:changed", listener);
+  },
+  onHatchProgress: (callback) => {
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on("hatch:progress", listener);
+    return () => ipcRenderer.removeListener("hatch:progress", listener);
+  },
   loadBond: () => ipcRenderer.invoke("bond:load"),
   loadLocalBond: () => ipcRenderer.invoke("bond:loadLocal"),
   saveBond: (state) => ipcRenderer.invoke("bond:save", state),

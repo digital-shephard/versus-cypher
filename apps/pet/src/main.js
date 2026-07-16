@@ -135,12 +135,47 @@ let networkStart = null;
 let networkUnavailableReason = null;
 let updateService = null;
 let pendingRestoreRecovery = null;
+let hatchQuoteCache = null;
+let hatchQuoteInFlight = null;
+const HATCH_QUOTE_MAX_AGE_MS = 120_000;
 const activityBus = new ServiceActivityBus({ limit: 128 });
 const activityStates = new Map();
 const healthMonitor = new HealthMonitor();
 const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE) ? process.env.VERSUS_FAULTS : "");
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
+
+function sendRenderer(channel, payload) {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
+  mainWindow.webContents.send(channel, payload);
+}
+
+function publishHatchProgress(stage) {
+  sendRenderer("hatch:progress", { stage: String(stage || "working").slice(0, 32), at: Date.now() });
+}
+
+function publishBondState(state) {
+  sendRenderer("bond:changed", structuredClone(state));
+}
+
+async function getCachedHatchQuote() {
+  if (!chainRainService) return null;
+  const now = Date.now();
+  if (hatchQuoteCache && now - hatchQuoteCache.at < HATCH_QUOTE_MAX_AGE_MS) {
+    return hatchQuoteCache.quote;
+  }
+  if (!hatchQuoteInFlight) {
+    hatchQuoteInFlight = chainRainService.quoteHatchTarget()
+      .then((quote) => {
+        hatchQuoteCache = { quote, at: Date.now() };
+        return quote;
+      })
+      .finally(() => {
+        hatchQuoteInFlight = null;
+      });
+  }
+  return hatchQuoteInFlight;
+}
 
 function publishHealth(snapshot = healthMonitor.snapshot()) {
   if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
@@ -657,6 +692,7 @@ function applyChainState(state, chain) {
   state.classId = Number(chain.classId);
   state.classPotMicros = Number(chain.classPotMicros);
   state.classAgents = Number(chain.classAgents);
+  state.inCurrentClass = Boolean(chain.inCurrentClass);
   state.graduationFloorMicros = Number(chain.graduationFloorMicros || 1_000_000_000);
   state.referralRewardMicros = Number(chain.referralRewardMicros || 0);
   state.referralRewardsAvailable = Number(chain.referralRewardsAvailable || 0);
@@ -678,6 +714,7 @@ async function reconcileChainState() {
     const pendingBefore = Number(state.pendingGraduation?.classId || 0);
     applyChainState(state, chain);
     saveState(state);
+    publishBondState(state);
     if (
       Number(state.pendingGraduation?.classId || 0) > pendingBefore &&
       mainWindow && !mainWindow.isDestroyed()
@@ -956,8 +993,10 @@ async function performDailyRainForAgent() {
     state.nextCommitAt = committedAt + DAY_SECONDS;
     state.tickets = Number(state.tickets || 0) + 1;
     state.totalTickets = Number(state.totalTickets || 0) + 1;
+    const alreadyInClass = Boolean(state.inCurrentClass) && Number(state.classId) === Number(receipt.classId);
     state.classId = Number(receipt.classId);
     state.classPotMicros = Number(receipt.classTotal);
+    state.classAgents = Math.max(0, Number(state.classAgents || 0)) + (alreadyInClass ? 0 : 1);
     state.inCurrentClass = true;
     saveState(state);
     acceptConfirmedLocalRain(receipt.rainEvent);
@@ -1303,6 +1342,11 @@ app.whenReady().then(() => {
   applyLaunchAtLogin(settings.launchAtLogin);
   createWindow();
   createTray();
+  if (chainRainService && loadState()?.phase !== "active") {
+    getCachedHatchQuote().catch((error) => {
+      console.error("Versus hatch quote prefetch error:", error.message);
+    });
+  }
   updateService = createUpdateService({
     app,
     autoUpdater,
@@ -1697,7 +1741,7 @@ registerIpcHandle("wallet:getHatchQuote", async () => {
         demo: true,
       };
     }
-    const quote = await chainRainService.quoteHatchTarget();
+    const quote = await getCachedHatchQuote();
     return Object.fromEntries(Object.entries({ ...quote, targetDepositWei: quote.depositWei }).map(
       ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
     ));
@@ -2004,8 +2048,11 @@ registerIpcHandle("wallet:simulateDeposit", async () => {
     delete state.cypherId;
     if (chainRainService) {
       const wallet = ensureWallet();
-      const quote = await chainRainService.quoteHatchTarget();
-      const balance = await chainRainService.getEthBalance(wallet.address);
+      publishHatchProgress("checking_funds");
+      const [quote, balance] = await Promise.all([
+        getCachedHatchQuote(),
+        chainRainService.getEthBalance(wallet.address),
+      ]);
       if (balance < quote.depositWei) {
         throw new Error("deposit has not reached the Cypher wallet yet");
       }
@@ -2014,6 +2061,7 @@ registerIpcHandle("wallet:simulateDeposit", async () => {
         ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
       ));
       state.demoDeposit = false;
+      publishHatchProgress("funds_confirmed");
     } else {
       state.depositWei = DEMO_DEPOSIT_WEI;
       state.demoDeposit = true;
@@ -2219,6 +2267,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
 }, async () => {
   const w = ensureWallet();
   let state = loadState() || {};
+  publishHatchProgress("preparing");
   if (chainRainService && isInterruptedHatch(state)) {
     state = await recoverInterruptedHatch();
     if (state.phase === "active" && state.agentId) return state;
@@ -2234,6 +2283,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
     const result = await chainRainService.hatchWithEth({
       privateKey: w.privateKey,
       depositWei: state.depositWei,
+      hatchQuote: state.hatchQuote,
       referrerAgentId,
       onPhase: async (phase, details) => {
         state.phase = phase;
@@ -2241,6 +2291,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
           ([key, value]) => [key, typeof value === "bigint" ? value.toString() : value]
         ));
         saveState(state);
+        publishHatchProgress(phase === "minting" ? "minting" : "preparing_runway");
       },
       onCheckpoint: async (checkpoint, details) => {
         if (checkpoint === "swap_submitted" || checkpoint === "swap_confirmed") {
@@ -2254,6 +2305,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
         }
         state.hatchCheckpoint = checkpoint;
         saveState(state);
+        publishHatchProgress(checkpoint);
       },
     });
     cypherId = Number(result.cypherId);
@@ -2295,6 +2347,30 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
   delete state.pendingReferrerAgentId;
   saveState(state);
 
+  publishHatchProgress("joining_class");
+  if (chainRainService) {
+    let joinedState = null;
+    try {
+      const firstRain = await ensureDailyRainForAgent();
+      if (firstRain?.status === "rained") joinedState = firstRain.state;
+    } catch (error) {
+      console.error("Versus first class penny error:", error.message);
+    }
+    try {
+      state = await reconcileChainState();
+    } catch (error) {
+      console.error("Versus post-hatch class sync error:", error.message);
+      state = loadState() || state;
+    }
+    if (joinedState && Number(joinedState.classId) === Number(state.classId)) {
+      state.classPotMicros = Math.max(Number(state.classPotMicros || 0), Number(joinedState.classPotMicros || 0));
+      state.classAgents = Math.max(Number(state.classAgents || 0), Number(joinedState.classAgents || 0));
+      state.inCurrentClass = true;
+      saveState(state);
+      publishBondState(state);
+    }
+  }
+
   ensureNetworkService().catch((error) => {
     console.error("Versus network start error:", error.message);
   });
@@ -2302,6 +2378,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
     console.error("Versus hatch lifecycle error:", error.message);
   });
 
+  publishHatchProgress("ready");
   return state;
 }));
 

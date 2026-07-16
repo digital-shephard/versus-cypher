@@ -102,6 +102,7 @@ function stubIpc() {
   }));
   ipcMain.handle("health:snapshot", () => HEALTH_FIXTURE);
   ipcMain.handle("diagnostics:export", () => ({ canceled: false }));
+  ipcMain.handle("bond:loadLocal", () => null);
   ipcMain.handle("bond:load", () => null); // start at deposit view
   ipcMain.handle("bond:save", () => true);
   ipcMain.handle("wallet:ensure", () => ({ address: STUB_ADDR, network: "base", chainId: 8453 }));
@@ -147,7 +148,10 @@ function stubIpc() {
     };
     return { state: claimState, amount };
   });
-  ipcMain.handle("wallet:runOnboardPipeline", () => ACTIVE_BOND);
+  ipcMain.handle("wallet:runOnboardPipeline", async () => {
+    await sleep(2400);
+    return ACTIVE_BOND;
+  });
   ipcMain.handle("rain:next", () => ({ drop: null, pending: 0, nextAt: null }));
   ipcMain.handle("network:status", () => ({
     active: true,
@@ -463,20 +467,20 @@ async function main() {
   await sleep(350);
   await shoot(win, "01c-deposit-referral");
 
-  for (const [state, name, delay] of [
-    ["crack-one", "02-hatch-crack-one", 300],
-    ["crack-two", "03-hatch-crack-two", 420],
-    ["burst", "04-hatch-burst", 360],
-  ]) {
-    await exec(win, `document.getElementById("view-deposit").dataset.hatchState = "${state}";`);
-    await sleep(delay);
-    await shoot(win, name);
-  }
+  await exec(win, `setHatchState("lifting");`);
+  await sleep(450);
+  await shoot(win, "01d-hatch-lifting");
+
+  await exec(win, `setHatchState("incubating");`);
+  await sleep(600);
+  await shoot(win, "02-hatch-incubating");
 
   await exec(win, `document.getElementById("view-deposit").dataset.hatchState = "funding"; __pet.runHatchRitual(false);`);
-  await sleep(2260);
+  await sleep(900);
+  await shoot(win, "03-hatch-waiting");
+  await sleep(1800);
   await shoot(win, "05-hatch-whiteout");
-  await sleep(1250);
+  await sleep(1200);
   await shoot(win, "06-hatch-reveal");
 
   // Active class scene, per time-of-day, with rain falling.

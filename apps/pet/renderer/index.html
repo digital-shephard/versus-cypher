@@ -49,13 +49,24 @@
         </main>
 
         <main id="view-deposit" class="view hidden" data-hatch-state="dormant">
+          <img class="hatch-scene-layer hatch-backplate" src="../assets/tamagotchi/hatch-layers/hatch-backplate.png" alt="" draggable="false" aria-hidden="true" />
           <div class="hatch-world" aria-hidden="true"></div>
+          <img class="hatch-scene-layer hatch-ground" src="../assets/tamagotchi/hatch-layers/hatch-ground.png" alt="" draggable="false" aria-hidden="true" />
+          <img id="hatch-egg-asset" class="hatch-egg-asset" src="../assets/tamagotchi/hatch-layers/hatch-egg.png" alt="" draggable="false" aria-hidden="true" />
+          <img class="hatch-scene-layer hatch-foreground" src="../assets/tamagotchi/hatch-layers/hatch-foreground.png" alt="" draggable="false" aria-hidden="true" />
           <img class="hatch-frame hatch-frame-one" src="../assets/tamagotchi/hatch-crack-1.png" alt="" draggable="false" />
           <img class="hatch-frame hatch-frame-two" src="../assets/tamagotchi/hatch-crack-2.png" alt="" draggable="false" />
           <div class="hatch-burst" aria-hidden="true"></div>
           <button type="button" id="btn-wake-egg" class="egg-hotspot" aria-label="Wake the sleeping Cypher">
             <span class="egg-aura"></span>
           </button>
+
+          <section id="hatch-incubation" class="hatch-incubation" aria-hidden="true" aria-live="polite">
+            <div class="incubation-sparkles" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <p>A CYPHER IS HATCHING HERE SOON...</p>
+          </section>
 
           <div class="hatch-intro">
             <p class="hatch-kicker">A CYPHER IS SLEEPING</p>

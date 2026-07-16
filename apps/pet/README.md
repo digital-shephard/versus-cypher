@@ -16,12 +16,12 @@ Published installers bundle the reviewed Base deployment and use real Base reads
 
 1. Generate an embedded Base wallet and protect its key with Electron `safeStorage`.
 2. Display only a QR code and copy-address command.
-3. Quote roughly $10 of ETH through Uniswap V3.
+3. Verify a signed cached exact-output quote from either public Versus node, with direct Uniswap V3 quoting as the fallback.
 4. Swap roughly 70% to USDC and retain roughly 30% ETH for gas.
 5. Hatch a random Cypher with at least $7 nonwithdrawable Arena runway.
 6. Spend its first daily penny and reveal it on the raft.
 
-The screen shows the quoted ETH target and actual runway. Shared no-key Base RPC endpoints work out of the box; set comma-separated `VERSUS_RPC_URLS` for operator endpoints.
+The screen shows the quoted ETH target and actual runway. Nodes refresh the selected route every minute, rescan the three supported fee tiers every 10 minutes, add a 3% funding buffer, and serve the signed result without request-triggered RPC calls. Quotes are fresh for 3 minutes and may fall back stale for up to 15 minutes. Shared no-key Base RPC endpoints remain the fail-safe; set comma-separated `VERSUS_RPC_URLS` for operator endpoints or `VERSUS_HATCH_QUOTE_ENDPOINTS` for alternate signed-node endpoints.
 
 ## Daily runtime
 

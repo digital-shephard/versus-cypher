@@ -8,10 +8,13 @@ const {
   BASE_USDC,
   BASE_WETH,
   createBaseProvider,
+  fetchNodeHatchQuote,
+  hatchQuoteEndpointsFromEnv,
   quoteDepositPlan,
   quoteUsdDepositTarget,
   runwaySafeTargetMicros,
   splitDepositWei,
+  validateNodeHatchQuote,
 } = require("./base-rpc");
 
 const LOCAL_FIXTURE_DEPOSIT_WEI = 3_000_000_000_000_000n;
@@ -57,6 +60,7 @@ const treasuryAbi = [
 const syndicateAbi = [
   "function currentClassId() view returns (uint256)",
   "function graduationFloor() view returns (uint256)",
+  "function commitOf(uint256 classId,uint256 agentId) view returns (uint256)",
   "function getClass(uint256 classId) view returns (uint256 totalCommitted, uint32 participantCount, uint32 openedDay, bool graduated)",
   "function isParticipant(uint256 classId, uint256 agentId) view returns (bool)",
   "function isGenesisAgent(uint256 agentId) view returns (bool)",
@@ -246,7 +250,36 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       : new JsonRpcProvider(config.rpcUrl, chainId, { staticNetwork: true, cacheTimeout: -1 }));
   const addresses = config.deployment.contracts;
   const localFixture = Boolean(config.deployment.usedMockUsdc && config.deployment.usedMockRouter);
+  const trustedQuoteSigners = config.deployment.rainAttestors || [];
+  const quoteEndpoints = hatchQuoteEndpointsFromEnv(config.env || process.env);
+  const nodeQuotesEnabled = chainId === 8453 && config.env?.VERSUS_HATCH_QUOTE_ENABLED !== "0" && trustedQuoteSigners.length > 0;
   const signalSigners = new Map();
+
+  function verifyNodeQuote(value) {
+    return validateNodeHatchQuote(value, {
+      trustedSigners: trustedQuoteSigners,
+      chainId,
+      arena: addresses.arena,
+    });
+  }
+
+  function fundedPlanFromNodeQuote(value, depositWei) {
+    const quote = verifyNodeQuote(value);
+    depositWei = BigInt(depositWei);
+    if (depositWei < quote.depositWei) throw new Error("funding is below the signed hatch quote");
+    const split = splitDepositWei(depositWei, BigInt(quote.runwayBps));
+    return {
+      ...split,
+      fee: quote.fee,
+      quotedRunwayMicros: quote.minimumRunwayMicros,
+      minimumRunwayMicros: quote.minimumRunwayMicros,
+      slippageBps: quote.slippageBps,
+      quoteGasEstimate: 0n,
+      nodeQuote: true,
+      quoteSigner: quote.signer,
+      quoteValidUntil: quote.validUntil,
+    };
+  }
 
   function signalSigner(privateKey) {
     const wallet = new Wallet(privateKey, provider);
@@ -272,9 +305,20 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
     },
 
     async quoteHatchTarget({ targetMicros = 10_000_000n, requiredRunwayMicros = MIN_HATCH_RUNWAY_MICROS } = {}) {
-      return localFixture
-        ? localFixtureTargetPlan(targetMicros, requiredRunwayMicros)
-        : quoteUsdDepositTarget(provider, targetMicros, { requiredRunwayMicros });
+      if (localFixture) return localFixtureTargetPlan(targetMicros, requiredRunwayMicros);
+      if (nodeQuotesEnabled && BigInt(targetMicros) === 10_000_000n && BigInt(requiredRunwayMicros) === MIN_HATCH_RUNWAY_MICROS) {
+        try {
+          return await fetchNodeHatchQuote({
+            endpoints: quoteEndpoints,
+            trustedSigners: trustedQuoteSigners,
+            chainId,
+            arena: addresses.arena,
+          });
+        } catch (error) {
+          console.error("Versus node hatch quote unavailable; using direct Base quote:", error.message);
+        }
+      }
+      return quoteUsdDepositTarget(provider, targetMicros, { requiredRunwayMicros });
     },
 
     async quoteHatch({ depositWei }) {
@@ -332,7 +376,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, provider);
       const classId = await syndicate.currentClassId();
       const chainDay = await arena.currentDay();
-      const [ethBalance, usdcBalance, agent, runway, nextCommitAt, tickets, totalTickets, claimable, tranchePot, currentClass, genesis, graduationFloor, referralRewardMicros, referralRewardsAvailable, referredBy, referralFundedToday] = await Promise.all([
+      const [ethBalance, usdcBalance, agent, runway, nextCommitAt, tickets, totalTickets, claimable, tranchePot, currentClass, currentClassCommit, genesis, graduationFloor, referralRewardMicros, referralRewardsAvailable, referredBy, referralFundedToday] = await Promise.all([
         provider.getBalance(address),
         token.balanceOf(address),
         agents.getAgent(BigInt(agentId)),
@@ -343,6 +387,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         treasury.claimable(BigInt(agentId)),
         treasury.tranchePot(),
         syndicate.getClass(classId),
+        syndicate.commitOf(classId, BigInt(agentId)),
         syndicate.isGenesisAgent(BigInt(agentId)),
         syndicate.graduationFloor(),
         referralPool.rewardPerReferral(),
@@ -371,6 +416,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         classId,
         classPotMicros: currentClass.totalCommitted,
         classAgents: currentClass.participantCount,
+        inCurrentClass: currentClassCommit > 0n,
         classOpenedDay: currentClass.openedDay,
         classGraduated: currentClass.graduated,
         graduationFloorMicros: graduationFloor,
@@ -382,13 +428,19 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       };
     },
 
-    async hatchWithEth({ privateKey, depositWei, referrerAgentId = 0n, onPhase = null, onCheckpoint = null }) {
+    async hatchWithEth({ privateKey, depositWei, hatchQuote = null, referrerAgentId = 0n, onPhase = null, onCheckpoint = null }) {
       const wallet = new Wallet(privateKey, provider);
       const signer = new NonceManager(wallet);
       const owner = wallet.address;
-      const plan = localFixture
-        ? localFixtureDepositPlan(depositWei)
-        : await quoteDepositPlan(provider, depositWei);
+      let plan = localFixture ? localFixtureDepositPlan(depositWei) : null;
+      if (!plan && hatchQuote?.nodeQuote) {
+        try {
+          plan = fundedPlanFromNodeQuote(hatchQuote, depositWei);
+        } catch (error) {
+          console.error("Stored Versus node hatch quote cannot be reused; refreshing directly:", error.message);
+        }
+      }
+      if (!plan) plan = await quoteDepositPlan(provider, depositWei);
       if (onPhase) await onPhase("swapping", plan);
       const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, signer);
       let swapReceipt;

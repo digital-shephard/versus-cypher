@@ -2628,6 +2628,20 @@ async function boot() {
   try {
     if (!window.versus) throw new Error("preload bridge missing");
 
+    window.versus.onHatchProgress?.((progress) => {
+      const view = $("view-deposit");
+      if (view && progress?.stage) view.dataset.hatchProgress = progress.stage;
+    });
+    window.versus.onBondChanged?.((next) => {
+      if (next?.phase !== "active" || next.cypherId == null) return;
+      bond = next;
+      W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
+      if (!$("view-class").classList.contains("hidden")) {
+        updateReadout();
+        updateModeScreen();
+      }
+    });
+
     flashLcd(false);
     wallet = await window.versus.ensureWallet();
     bond = await window.versus.loadLocalBond();
@@ -2705,6 +2719,7 @@ function setHatchState(state) {
   view.dataset.hatchState = state;
   $("hatch-funding").setAttribute("aria-hidden", state === "funding" ? "false" : "true");
   $("hatch-referral").setAttribute("aria-hidden", state === "referral" ? "false" : "true");
+  $("hatch-incubation").setAttribute("aria-hidden", ["lifting", "incubating"].includes(state) ? "false" : "true");
 }
 
 async function ensureDepositQr() {
@@ -2764,11 +2779,30 @@ $("btn-close-funding").onclick = () => setHatchState("dormant");
 
 let hatchLock = false;
 
+async function revealHatchedCypher() {
+  W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
+  const whiteout = $("hatch-whiteout");
+  whiteout.classList.remove("run");
+  void whiteout.offsetWidth;
+  whiteout.classList.add("run");
+  await sleep(480);
+  showClass();
+  setTimeout(() => whiteout.classList.remove("run"), 1600);
+}
+
 async function runHatchRitual(simulateDeposit = true) {
   if (hatchLock) return;
   hatchLock = true;
   const confirm = $("btn-sim-deposit");
-  if (confirm) confirm.disabled = true;
+  const depositStatus = $("deposit-status");
+  if (confirm) {
+    confirm.disabled = true;
+    confirm.textContent = "CHECKING...";
+  }
+  if (simulateDeposit && depositStatus) {
+    depositStatus.textContent = "Checking Base for your funds...";
+    depositStatus.classList.remove("hidden");
+  }
 
   try {
     if (simulateDeposit) {
@@ -2781,39 +2815,37 @@ async function runHatchRitual(simulateDeposit = true) {
         $("referral-status").classList.add("hidden");
         setHatchState("referral");
         hatchLock = false;
-        if (confirm) confirm.disabled = false;
+        if (confirm) {
+          confirm.disabled = false;
+          confirm.textContent = "I SENT IT";
+        }
         setTimeout(() => $("referral-code").focus(), 80);
         return;
       }
       await window.versus.setReferralCode(null);
     }
 
-    setHatchState("crack-one");
-    const pipeline = window.versus.runOnboardPipeline(CYPHERS.length);
-    await sleep(620);
-    setHatchState("crack-two");
-    await sleep(720);
-    setHatchState("burst");
-    await sleep(760);
-
-    bond = await pipeline;
-    W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
-
-    const whiteout = $("hatch-whiteout");
-    whiteout.classList.remove("run");
-    void whiteout.offsetWidth;
-    whiteout.classList.add("run");
-    await sleep(260);
-    showClass();
-    setTimeout(() => whiteout.classList.remove("run"), 1100);
+    const onboardPipeline = window.versus.runOnboardPipeline(CYPHERS.length).then(
+      (value) => ({ value }),
+      (error) => ({ error })
+    );
+    setHatchState("lifting");
+    await sleep(920);
+    setHatchState("incubating");
+    const onboardResult = await onboardPipeline;
+    if (onboardResult.error) throw onboardResult.error;
+    bond = onboardResult.value;
+    await revealHatchedCypher();
   } catch (err) {
     console.error(err);
     hatchLock = false;
-    if (confirm) confirm.disabled = false;
+    if (confirm) {
+      confirm.disabled = false;
+      confirm.textContent = "I SENT IT";
+    }
     bond = await window.versus.loadBond();
     if (bond?.phase === "active" && bond.cypherId != null) {
-      W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
-      showClass();
+      await revealHatchedCypher();
       return;
     }
     const referralPending = Boolean(bond?.pendingReferrerAgentId);

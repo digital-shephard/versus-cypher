@@ -1,4 +1,4 @@
-const { Contract, FallbackProvider, JsonRpcProvider } = require("ethers");
+const { Contract, FallbackProvider, JsonRpcProvider, getAddress, verifyMessage } = require("ethers");
 
 const BASE_CHAIN_ID = 8453;
 const BASE_PUBLIC_RPCS = Object.freeze([
@@ -11,6 +11,11 @@ const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const BASE_UNISWAP_QUOTER_V2 = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 const BASE_UNISWAP_SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481";
 const FEE_TIERS = Object.freeze([500, 3000, 10000]);
+const BASE_HATCH_QUOTE_ENDPOINTS = Object.freeze([
+  "https://relay-a.versuscypher.com/v1/hatch-quote",
+  "https://relay-b.versuscypher.com/v1/hatch-quote",
+]);
+const HATCH_QUOTE_DOMAIN = "VERSUS_HATCH_QUOTE_V1";
 const BPS = 10_000n;
 const DEFAULT_RUNWAY_BPS = 7_000n;
 const DEFAULT_SWAP_MIN_BPS = 9_900n;
@@ -32,6 +37,100 @@ function rpcUrlsFromEnv(env = process.env) {
     .map((value) => value.trim())
     .filter(Boolean);
   return [...new Set(configured.length ? configured : BASE_PUBLIC_RPCS)];
+}
+
+function hatchQuoteEndpointsFromEnv(env = process.env) {
+  const configured = String(env.VERSUS_HATCH_QUOTE_ENDPOINTS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return [...new Set(configured.length ? configured : BASE_HATCH_QUOTE_ENDPOINTS)];
+}
+
+function canonicalHatchQuote(value) {
+  return {
+    version: 1,
+    chainId: String(value.chainId),
+    arena: getAddress(value.arena),
+    targetUsdMicros: String(value.targetUsdMicros),
+    requiredRunwayMicros: String(value.requiredRunwayMicros),
+    runwayBps: Number(value.runwayBps),
+    bufferBps: Number(value.bufferBps),
+    feeTier: Number(value.feeTier),
+    depositWei: String(value.depositWei),
+    swapWei: String(value.swapWei),
+    gasReserveWei: String(value.gasReserveWei),
+    quotedAt: Number(value.quotedAt),
+    validUntil: Number(value.validUntil),
+    staleUntil: Number(value.staleUntil),
+  };
+}
+
+function hatchQuoteMessage(value) {
+  return `${HATCH_QUOTE_DOMAIN}\n${JSON.stringify(canonicalHatchQuote(value))}`;
+}
+
+function validateNodeHatchQuote(value, { trustedSigners, chainId, arena, now = Date.now() }) {
+  if (!value || typeof value !== "object") throw new TypeError("hatch quote is invalid");
+  if (Number(value.version) !== 1) throw new Error("hatch quote version is invalid");
+  const payload = canonicalHatchQuote(value);
+  const signer = getAddress(verifyMessage(hatchQuoteMessage(payload), value.signature));
+  const trusted = new Set((trustedSigners || []).map((address) => getAddress(address).toLowerCase()));
+  const nowSeconds = Math.floor(now / 1000);
+  if (!trusted.has(signer.toLowerCase())) throw new Error("hatch quote signer is not trusted");
+  if (payload.chainId !== String(chainId) || payload.arena !== getAddress(arena)) throw new Error("hatch quote deployment mismatch");
+  if (payload.quotedAt > nowSeconds + 30 || payload.staleUntil < nowSeconds) throw new Error("hatch quote is expired");
+  if (payload.validUntil < payload.quotedAt || payload.staleUntil < payload.validUntil) throw new Error("hatch quote timing is invalid");
+  if (payload.validUntil - payload.quotedAt > 180 || payload.staleUntil - payload.quotedAt > 900) throw new Error("hatch quote lifetime is invalid");
+  if (payload.targetUsdMicros !== "10000000" || payload.requiredRunwayMicros !== "7000000") throw new Error("hatch quote target is invalid");
+  if (payload.runwayBps !== 7000 || payload.bufferBps < 200 || payload.bufferBps > 300) throw new Error("hatch quote safety policy is invalid");
+  if (!FEE_TIERS.includes(payload.feeTier)) throw new Error("hatch quote fee tier is invalid");
+  const depositWei = BigInt(payload.depositWei);
+  const swapWei = BigInt(payload.swapWei);
+  const gasReserveWei = BigInt(payload.gasReserveWei);
+  if (depositWei <= 0n || swapWei <= 0n || swapWei + gasReserveWei !== depositWei) throw new Error("hatch quote split is invalid");
+  if ((depositWei * BigInt(payload.runwayBps)) / BPS !== swapWei) throw new Error("hatch quote runway split is invalid");
+  return {
+    ...payload,
+    signer,
+    signature: value.signature,
+    depositWei,
+    swapWei,
+    gasReserveWei,
+    fee: payload.feeTier,
+    quotedRunwayMicros: BigInt(payload.requiredRunwayMicros),
+    minimumRunwayMicros: BigInt(payload.requiredRunwayMicros),
+    slippageBps: BPS - BigInt(payload.bufferBps),
+    quoteGasEstimate: 0n,
+    nodeQuote: true,
+    freshness: nowSeconds <= payload.validUntil ? "fresh" : "stale",
+  };
+}
+
+async function fetchNodeHatchQuote({
+  endpoints = BASE_HATCH_QUOTE_ENDPOINTS,
+  trustedSigners,
+  chainId = BASE_CHAIN_ID,
+  arena,
+  fetchImpl = globalThis.fetch,
+  timeoutMs = 2_500,
+  now = Date.now(),
+} = {}) {
+  if (typeof fetchImpl !== "function") throw new Error("hatch quote fetch is unavailable");
+  const attempts = endpoints.map(async (endpoint) => {
+    const response = await fetchImpl(endpoint, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) throw new Error(`hatch quote endpoint returned ${response.status}`);
+    return {
+      ...validateNodeHatchQuote(await response.json(), { trustedSigners, chainId, arena, now }),
+      sourceEndpoint: endpoint,
+    };
+  });
+  if (!attempts.length) throw new Error("no hatch quote endpoints are configured");
+  return Promise.any(attempts);
 }
 
 function createBaseProvider(env = process.env) {
@@ -146,6 +245,7 @@ async function quoteUsdDepositTarget(provider, targetMicros = 10_000_000n, optio
 
 module.exports = {
   BASE_CHAIN_ID,
+  BASE_HATCH_QUOTE_ENDPOINTS,
   BASE_PUBLIC_RPCS,
   BASE_RPC_PROVIDER_OPTIONS,
   BASE_UNISWAP_QUOTER_V2,
@@ -154,10 +254,14 @@ module.exports = {
   BASE_WETH,
   FEE_TIERS,
   createBaseProvider,
+  fetchNodeHatchQuote,
+  hatchQuoteEndpointsFromEnv,
+  hatchQuoteMessage,
   quoteDepositPlan,
   quoteEthToUsdc,
   quoteUsdDepositTarget,
   rpcUrlsFromEnv,
   runwaySafeTargetMicros,
   splitDepositWei,
+  validateNodeHatchQuote,
 };

@@ -113,6 +113,43 @@ test("hatch funding uses dynamic Base ETH copy and never exposes broken QR alt t
   assert.match(renderer, /QR unavailable\. Copy the address instead\./);
 });
 
+test("hatch waits in a black incubation scene until confirmed class state is ready", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const preload = fs.readFileSync(path.join(root, "src", "preload.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const preview = fs.readFileSync(path.join(root, "scripts", "preview-hatch.js"), "utf8");
+  const onboard = main.slice(
+    main.indexOf('registerIpcHandle("wallet:runOnboardPipeline"'),
+    main.indexOf('registerIpcHandle("window:close"')
+  );
+
+  assert.match(html, /id="hatch-incubation"[\s\S]*A CYPHER IS HATCHING HERE SOON\.\.\./);
+  assert.match(html, /hatch-layers\/hatch-backplate\.png/);
+  assert.match(html, /id="hatch-egg-asset"[\s\S]*hatch-layers\/hatch-egg\.png/);
+  assert.match(html, /hatch-layers\/hatch-ground\.png/);
+  assert.match(html, /hatch-layers\/hatch-foreground\.png/);
+  assert.match(css, /data-hatch-state="incubating"[\s\S]*\.hatch-incubation/);
+  assert.match(css, /\.incubation-sparkles i[\s\S]*incubation-sparkle-fall/);
+  assert.match(css, /data-hatch-state="lifting"[\s\S]*\.hatch-egg-asset/);
+  assert.match(css, /@keyframes incubation-egg-twitch/);
+  assert.match(renderer, /confirm\.textContent = "CHECKING\.\.\."/);
+  assert.match(renderer, /const onboardPipeline = window\.versus\.runOnboardPipeline[\s\S]*setHatchState\("lifting"\)[\s\S]*setHatchState\("incubating"\)[\s\S]*await onboardPipeline/);
+  assert.match(preview, /wallet:simulateDeposit[\s\S]*await sleep\(3_400\)/);
+  assert.match(renderer, /await sleep\(480\)[\s\S]*showClass\(\)/);
+  assert.match(preload, /onHatchProgress:[\s\S]*hatch:progress/);
+  assert.match(preload, /onBondChanged:[\s\S]*bond:changed/);
+  assert.match(onboard, /publishHatchProgress\("joining_class"\)[\s\S]*await ensureDailyRainForAgent\(\)[\s\S]*state = await reconcileChainState\(\)[\s\S]*publishHatchProgress\("ready"\)/);
+});
+
+test("hatch quote checks share a warm quote and fetch balance in parallel", () => {
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  assert.match(main, /const HATCH_QUOTE_MAX_AGE_MS = 120_000/);
+  assert.match(main, /async function getCachedHatchQuote\(\)[\s\S]*hatchQuoteInFlight/);
+  assert.match(main, /Promise\.all\(\[\s*getCachedHatchQuote\(\),\s*chainRainService\.getEthBalance/);
+});
+
 test("startup does not expose the hatch screen before Cypher identity is known", () => {
   const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
