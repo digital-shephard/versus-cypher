@@ -164,6 +164,55 @@ test("startup does not expose the hatch screen before Cypher identity is known",
   assert.match(main, /registerIpcHandle\("bond:loadLocal", \(\) => loadState\(\)\)/);
 });
 
+test("foreground recovery reconciles Base and replays missed verified rain", () => {
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const preload = fs.readFileSync(path.join(root, "src", "preload.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const network = fs.readFileSync(path.join(root, "src", "network.js"), "utf8");
+  const foreground = main.slice(
+    main.indexOf("function refreshForegroundServices"),
+    main.indexOf("function startStateSync")
+  );
+
+  assert.match(network, /async catchUpRain\(\)[\s\S]*transport\.catchUpRain\(\)/);
+  assert.match(foreground, /Promise\.allSettled\(\[[\s\S]*reconcileChainState\(\)[\s\S]*catchUpRain/);
+  assert.match(foreground, /rainInbox\.pending\(\)[\s\S]*rain:available/);
+  assert.match(main, /mainWindow\.on\("restore"[\s\S]*refreshForegroundServices\(\)/);
+  assert.match(main, /powerMonitor\.on\("resume"[\s\S]*refreshForegroundServices\(\)/);
+  assert.match(main, /registerIpcHandle\("service:foreground", \(\) => refreshForegroundServices\(\)\)/);
+  assert.match(preload, /refreshForeground: \(\) => ipcRenderer\.invoke\("service:foreground"\)/);
+  assert.match(renderer, /visibilitychange[\s\S]*refreshForegroundState\(\)/);
+  assert.match(renderer, /function networkNowMs\(\)[\s\S]*networkClockOffsetMs/);
+  assert.match(renderer, /Math\.floor\(networkNowMs\(\) \/ 86_400_000\)/);
+  assert.match(renderer, /nextCommitAt \|\| 0\) - networkNowMs\(\) \/ 1000/);
+});
+
+test("public weather is signed cached and private state is one block-pinned Multicall", () => {
+  const chain = fs.readFileSync(path.join(root, "src", "chain.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const readState = chain.slice(
+    chain.indexOf("async readState"),
+    chain.indexOf("async hatchWithEth")
+  );
+  const reconcile = main.slice(
+    main.indexOf("async function reconcileChainStateOnce"),
+    main.indexOf("function refreshForegroundServices")
+  );
+
+  assert.match(chain, /readPublicClassState[\s\S]*fetchNodeClassState/);
+  assert.match(chain, /readBatchedBaseState[\s\S]*aggregate3/);
+  assert.match(chain, /provider\.call\(\{ to: BASE_MULTICALL3, data, blockTag: Number\(classState\.blockNumber\) \}\)/);
+  assert.match(readState, /nodeClassStateEnabled[\s\S]*readPublicClassState\(\)[\s\S]*readBatchedBaseState/);
+  assert.match(main, /function startStateSync\(\)[\s\S]*refreshPublicClassState\(\)/);
+  assert.doesNotMatch(main.slice(main.indexOf("function startStateSync"), main.indexOf("async function ensureNetworkService")), /reconcileChainState\(\)/);
+  assert.match(main, /transportNow: networkNowMs/);
+  assert.match(main, /app\.whenReady\(\)\.then\(\(\) => \{\s*updateNetworkClockOffset\(loadState\(\)\?\.networkClockOffsetMs\)/);
+  assert.match(reconcile, /if \(chainReconcileInFlight\) return chainReconcileInFlight/);
+  assert.match(reconcile, /chain\.blockNumber[\s\S]*state\.chainBlockNumber[\s\S]*return state/);
+  assert.match(main, /state\.chainBlockNumber = Math\.max[\s\S]*receipt\.blockNumber/);
+  assert.match(main, /state\.chainBlockNumber = Math\.max[\s\S]*chain\.blockNumber/);
+});
+
 test("archive restore reveals the local Cypher while remote recovery continues", () => {
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");

@@ -67,6 +67,7 @@ class WakuPostcardTransport extends EventEmitter {
     sdkLoader = () => import("@waku/sdk"),
     nodeFactory = null,
     allowInsecureWebSockets = false,
+    now = () => Date.now(),
   }) {
     super();
     if (!Number.isInteger(storeHistoryMs) || storeHistoryMs < 0) {
@@ -115,6 +116,7 @@ class WakuPostcardTransport extends EventEmitter {
     this.sdkLoader = sdkLoader;
     this.nodeFactory = nodeFactory;
     this.allowInsecureWebSockets = Boolean(allowInsecureWebSockets);
+    this.now = now;
     this.node = null;
     this.encoder = null;
     this.decoder = null;
@@ -390,7 +392,7 @@ class WakuPostcardTransport extends EventEmitter {
     if (payload.byteLength > this.maxPayloadBytes) throw new RangeError("Waku postcard payload is too large");
     const message = {
       payload,
-      timestamp: new Date(),
+      timestamp: new Date(this.now()),
     };
     let protocol = "v3";
     let result = await this.node.lightPush.send(this.encoder, message, { autoRetry: false });
@@ -440,7 +442,7 @@ class WakuPostcardTransport extends EventEmitter {
     const launchId = this.launchId;
     const contentTopic = this.contentTopic;
     const decoder = this.decoder;
-    const timeEnd = new Date();
+    const timeEnd = new Date(this.now());
     const timeStart = new Date(timeEnd.getTime() - this.storeHistoryMs);
     let received = 0;
     try {
@@ -480,7 +482,7 @@ class WakuPostcardTransport extends EventEmitter {
     }
     const decoder = this.rainDecoder;
     const contentTopic = this.rainContentTopic;
-    const timeEnd = new Date();
+    const timeEnd = new Date(this.now());
     const timeStart = new Date(timeEnd.getTime() - this.storeHistoryMs);
     let received = 0;
     try {

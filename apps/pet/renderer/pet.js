@@ -238,6 +238,11 @@ const SUBMERGE = 27; // px of log below the waterline
 
 let bond = null;
 let wallet = null;
+
+function networkNowMs() {
+  return Date.now() + Number(bond?.networkClockOffsetMs || 0);
+}
+
 const MODES = ["raft", "cypher", "vault", "network"];
 let activeMode = "raft";
 let modeLock = false;
@@ -911,7 +916,7 @@ function renderNetworkScreen() {
     status: "off",
     model: null,
   };
-  const utcDay = Math.floor(Date.now() / 86_400_000);
+  const utcDay = Math.floor(networkNowMs() / 86_400_000);
   const hasVoice = Number(bond?.lastCommitDay) === utcDay;
   const active = Boolean(status.active);
   const transportState = String(status.transportStatus?.state || (active ? "live" : "offline"));
@@ -1030,7 +1035,7 @@ async function refreshNetworkScreen() {
 function updateNextRainCountdown() {
   const label = $("vault-today");
   if (!label || !bond) return;
-  const remaining = Math.ceil(Number(bond.nextCommitAt || 0) - Date.now() / 1000);
+  const remaining = Math.ceil(Number(bond.nextCommitAt || 0) - networkNowMs() / 1000);
   if (remaining <= 0) {
     label.textContent = "Ready";
     return;
@@ -2624,6 +2629,21 @@ function activateRestoredBond(restored) {
   return true;
 }
 
+async function refreshForegroundState() {
+  scheduleVerifiedRainPump(0);
+  refreshNetworkScreen();
+  try {
+    const synced = await window.versus.refreshForeground();
+    if (synced?.phase !== "active" || synced.cypherId == null) return;
+    bond = synced;
+    W.targetFill = clamp((bond.classPotMicros || 0) / FLOOR_MICROS, 0, 1);
+    updateReadout();
+    updateModeScreen();
+  } catch (error) {
+    console.error("Versus foreground state refresh error:", error);
+  }
+}
+
 async function boot() {
   try {
     if (!window.versus) throw new Error("preload bridge missing");
@@ -2700,6 +2720,7 @@ async function boot() {
         flashLcd(true);
         W.lastT = performance.now();
         startLoop();
+        refreshForegroundState();
       }
     });
   } catch (err) {

@@ -92,6 +92,24 @@ it("renderer precipitation is sourced only from verified penny queues", () => {
   assert.match(renderer, /nextVerifiedRain/);
 });
 
+it("restoring a hidden client immediately drains rain and refreshes Base state", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "..", "renderer", "pet.js"), "utf8");
+  const foregroundRefresh = renderer.slice(
+    renderer.indexOf("async function refreshForegroundState"),
+    renderer.indexOf("async function boot()")
+  );
+  const visibilityHandler = renderer.slice(
+    renderer.indexOf('document.addEventListener("visibilitychange"'),
+    renderer.indexOf("} catch (err)", renderer.indexOf('document.addEventListener("visibilitychange"'))
+  );
+
+  assert.match(foregroundRefresh, /scheduleVerifiedRainPump\(0\)/);
+  assert.match(foregroundRefresh, /refreshNetworkScreen\(\)/);
+  assert.match(foregroundRefresh, /await window\.versus\.refreshForeground\(\)/);
+  assert.match(foregroundRefresh, /updateReadout\(\)/);
+  assert.match(visibilityHandler, /refreshForegroundState\(\)/);
+});
+
 describe("chain rain configuration", () => {
   it("adds a bounded ceiling margin to gas estimates", () => {
     assert.equal(addGasMargin(295_411n), 369_264n);

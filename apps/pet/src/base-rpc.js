@@ -15,7 +15,12 @@ const BASE_HATCH_QUOTE_ENDPOINTS = Object.freeze([
   "https://relay-a.versuscypher.com/v1/hatch-quote",
   "https://relay-b.versuscypher.com/v1/hatch-quote",
 ]);
+const BASE_CLASS_STATE_ENDPOINTS = Object.freeze([
+  "https://relay-a.versuscypher.com/v1/class-state",
+  "https://relay-b.versuscypher.com/v1/class-state",
+]);
 const HATCH_QUOTE_DOMAIN = "VERSUS_HATCH_QUOTE_V1";
+const CLASS_STATE_DOMAIN = "VERSUS_CLASS_STATE_V1";
 const BPS = 10_000n;
 const DEFAULT_RUNWAY_BPS = 7_000n;
 const DEFAULT_SWAP_MIN_BPS = 9_900n;
@@ -26,6 +31,7 @@ const BASE_RPC_PROVIDER_OPTIONS = Object.freeze({
   // request independent and let FallbackProvider handle endpoint failover.
   batchMaxCount: 1,
 });
+const MAX_NODE_CLOCK_DISAGREEMENT_MS = 120_000;
 
 const quoterAbi = [
   "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
@@ -45,6 +51,133 @@ function hatchQuoteEndpointsFromEnv(env = process.env) {
     .map((value) => value.trim())
     .filter(Boolean);
   return [...new Set(configured.length ? configured : BASE_HATCH_QUOTE_ENDPOINTS)];
+}
+
+function classStateEndpointsFromEnv(env = process.env) {
+  const configured = String(env.VERSUS_CLASS_STATE_ENDPOINTS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return [...new Set(configured.length ? configured : BASE_CLASS_STATE_ENDPOINTS)];
+}
+
+function canonicalClassState(value) {
+  return {
+    version: 1,
+    chainId: String(value.chainId),
+    arena: getAddress(value.arena),
+    syndicate: getAddress(value.syndicate),
+    classId: String(value.classId),
+    totalCommittedMicros: String(value.totalCommittedMicros),
+    participantCount: Number(value.participantCount),
+    openedDay: Number(value.openedDay),
+    chainDay: Number(value.chainDay),
+    graduated: Boolean(value.graduated),
+    graduationFloorMicros: String(value.graduationFloorMicros),
+    blockNumber: String(value.blockNumber),
+    observedAt: Number(value.observedAt),
+    validUntil: Number(value.validUntil),
+    staleUntil: Number(value.staleUntil),
+  };
+}
+
+function classStateMessage(value) {
+  return `${CLASS_STATE_DOMAIN}\n${JSON.stringify(canonicalClassState(value))}`;
+}
+
+function responseClock(response, startedAt, finishedAt) {
+  const header = response?.headers?.get?.("date");
+  const serverTimeMs = header ? Date.parse(header) : NaN;
+  if (!Number.isFinite(serverTimeMs)) return { serverTimeMs: null, clockOffsetMs: 0 };
+  const midpoint = startedAt + Math.max(0, finishedAt - startedAt) / 2;
+  return { serverTimeMs, clockOffsetMs: Math.round(serverTimeMs - midpoint) };
+}
+
+function validateNodeClassState(value, { trustedSigners, chainId, arena, syndicate, now = Date.now() }) {
+  if (!value || typeof value !== "object") throw new TypeError("class state is invalid");
+  if (Number(value.version) !== 1) throw new Error("class state version is invalid");
+  const payload = canonicalClassState(value);
+  const signer = getAddress(verifyMessage(classStateMessage(payload), value.signature));
+  const trusted = new Set((trustedSigners || []).map((address) => getAddress(address).toLowerCase()));
+  const nowSeconds = Math.floor(now / 1000);
+  if (!trusted.has(signer.toLowerCase())) throw new Error("class state signer is not trusted");
+  if (
+    payload.chainId !== String(chainId) ||
+    payload.arena !== getAddress(arena) ||
+    payload.syndicate !== getAddress(syndicate)
+  ) throw new Error("class state deployment mismatch");
+  if (payload.observedAt > nowSeconds + 30 || payload.staleUntil < nowSeconds) throw new Error("class state is expired");
+  if (payload.validUntil < payload.observedAt || payload.staleUntil < payload.validUntil) throw new Error("class state timing is invalid");
+  if (payload.validUntil - payload.observedAt > 180 || payload.staleUntil - payload.observedAt > 900) {
+    throw new Error("class state lifetime is invalid");
+  }
+  for (const name of ["classId", "totalCommittedMicros", "graduationFloorMicros", "blockNumber"]) {
+    if (!/^\d+$/.test(payload[name])) throw new Error(`class state ${name} is invalid`);
+  }
+  for (const name of ["participantCount", "openedDay", "chainDay"]) {
+    if (!Number.isSafeInteger(payload[name]) || payload[name] < 0) throw new Error(`class state ${name} is invalid`);
+  }
+  if (BigInt(payload.graduationFloorMicros) !== 1_000_000_000n) throw new Error("class state graduation floor is invalid");
+  return {
+    ...payload,
+    signer,
+    signature: value.signature,
+    classId: BigInt(payload.classId),
+    totalCommittedMicros: BigInt(payload.totalCommittedMicros),
+    graduationFloorMicros: BigInt(payload.graduationFloorMicros),
+    blockNumber: BigInt(payload.blockNumber),
+    freshness: nowSeconds <= payload.validUntil ? "fresh" : "stale",
+  };
+}
+
+async function fetchNodeClassState({
+  endpoints = BASE_CLASS_STATE_ENDPOINTS,
+  trustedSigners,
+  chainId = BASE_CHAIN_ID,
+  arena,
+  syndicate,
+  fetchImpl = globalThis.fetch,
+  timeoutMs = 2_500,
+  now = Date.now(),
+} = {}) {
+  if (typeof fetchImpl !== "function") throw new Error("class state fetch is unavailable");
+  const settled = await Promise.allSettled(endpoints.map(async (endpoint) => {
+    const startedAt = Date.now();
+    const response = await fetchImpl(endpoint, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const clock = responseClock(response, startedAt, Date.now());
+    if (!response.ok) throw new Error(`class state endpoint returned ${response.status}`);
+    return {
+      ...validateNodeClassState(await response.json(), {
+        trustedSigners,
+        chainId,
+        arena,
+        syndicate,
+        now: clock.serverTimeMs ?? now,
+      }),
+      sourceEndpoint: endpoint,
+      ...clock,
+    };
+  }));
+  const valid = settled.filter((result) => result.status === "fulfilled").map((result) => result.value);
+  if (!valid.length) throw new AggregateError(
+    settled.filter((result) => result.status === "rejected").map((result) => result.reason),
+    "no signed class state endpoint was available",
+  );
+  const serverTimes = valid.map((value) => value.serverTimeMs).filter(Number.isFinite);
+  if (serverTimes.length > 1 && Math.max(...serverTimes) - Math.min(...serverTimes) > MAX_NODE_CLOCK_DISAGREEMENT_MS) {
+    throw new Error("Versus nodes disagree about network time");
+  }
+  valid.sort((left, right) => left.blockNumber > right.blockNumber ? -1 : left.blockNumber < right.blockNumber ? 1 : 0);
+  const offsets = valid.map((value) => value.clockOffsetMs).filter(Number.isFinite).sort((a, b) => a - b);
+  valid[0].clockOffsetMs = serverTimes.length > 1 && offsets.length > 1
+    ? offsets[Math.floor(offsets.length / 2)]
+    : null;
+  valid[0].clockQuorum = serverTimes.length > 1 ? serverTimes.length : 0;
+  return valid[0];
 }
 
 function canonicalHatchQuote(value) {
@@ -118,15 +251,23 @@ async function fetchNodeHatchQuote({
 } = {}) {
   if (typeof fetchImpl !== "function") throw new Error("hatch quote fetch is unavailable");
   const attempts = endpoints.map(async (endpoint) => {
+    const startedAt = Date.now();
     const response = await fetchImpl(endpoint, {
       method: "GET",
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
     });
+    const clock = responseClock(response, startedAt, Date.now());
     if (!response.ok) throw new Error(`hatch quote endpoint returned ${response.status}`);
     return {
-      ...validateNodeHatchQuote(await response.json(), { trustedSigners, chainId, arena, now }),
+      ...validateNodeHatchQuote(await response.json(), {
+        trustedSigners,
+        chainId,
+        arena,
+        now: clock.serverTimeMs ?? now,
+      }),
       sourceEndpoint: endpoint,
+      ...clock,
     };
   });
   if (!attempts.length) throw new Error("no hatch quote endpoints are configured");
@@ -245,6 +386,7 @@ async function quoteUsdDepositTarget(provider, targetMicros = 10_000_000n, optio
 
 module.exports = {
   BASE_CHAIN_ID,
+  BASE_CLASS_STATE_ENDPOINTS,
   BASE_HATCH_QUOTE_ENDPOINTS,
   BASE_PUBLIC_RPCS,
   BASE_RPC_PROVIDER_OPTIONS,
@@ -254,6 +396,9 @@ module.exports = {
   BASE_WETH,
   FEE_TIERS,
   createBaseProvider,
+  classStateEndpointsFromEnv,
+  classStateMessage,
+  fetchNodeClassState,
   fetchNodeHatchQuote,
   hatchQuoteEndpointsFromEnv,
   hatchQuoteMessage,
@@ -264,4 +409,5 @@ module.exports = {
   runwaySafeTargetMicros,
   splitDepositWei,
   validateNodeHatchQuote,
+  validateNodeClassState,
 };

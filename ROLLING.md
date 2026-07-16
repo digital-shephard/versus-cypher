@@ -41,7 +41,7 @@ The first executable network slice now exists in `packages/network`:
 - ownerless mission sponsorship escrow controlled by the sponsor, released into the recipient Cypher vault, or refunded after expiry
 - signed economic proof artifacts that peers independently verify against Base before applying sponsorship-only reputation
 - restart reconciliation that keeps pending signal hashes reserved and confirms only exact receipt events
-- startup and periodic desktop reconciliation against canonical Base balances, tickets, class state, and rewards
+- signed cached Versus-node class weather plus one block-pinned desktop Multicall for private balances, tickets, and rewards at explicit lifecycle boundaries
 - continuous reward-per-ticket allocation, manual claim into the NFT vault, and owner withdrawal through the pet
 - runway replenishment from a new ETH deposit through the vault's in-screen funding overlay
 - encrypted wallet backup and restore, emergency export, launch-on-login, and LCD-native settings

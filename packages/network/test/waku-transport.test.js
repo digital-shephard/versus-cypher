@@ -375,6 +375,30 @@ test("Waku Store catch-up replays bounded history through Cypher verification", 
   assert.equal(fakeWaku.storeQueries[0].options.paginationForward, true);
 });
 
+test("Waku Store history windows use calibrated network time", async (t) => {
+  const correctedNow = Date.UTC(2026, 6, 16, 15, 0, 0);
+  const fakeWaku = createFakeWaku();
+  const transport = new WakuPostcardTransport({
+    chainId: 8453,
+    contractAddress: CONTRACT,
+    launchId: 44,
+    storeHistoryMs: 90_000,
+    now: () => correctedNow,
+    sdkLoader: async () => ({ Protocols: { LightPush: "lightpush", Filter: "filter" } }),
+    nodeFactory: async () => fakeWaku,
+  });
+  t.after(async () => transport.close());
+
+  await transport.listen();
+  await transport.storeCatchUp;
+
+  assert.equal(fakeWaku.storeQueries.length, 1);
+  assert.equal(fakeWaku.storeQueries[0].options.timeEnd.getTime(), correctedNow);
+  assert.equal(fakeWaku.storeQueries[0].options.timeStart.getTime(), correctedNow - 90_000);
+  await transport.broadcast({ launchId: "44", id: `0x${"c".repeat(64)}` });
+  assert.equal(fakeWaku.sent[0].message.timestamp.getTime(), correctedNow);
+});
+
 test("Waku launch rollover replaces the topic and rejects stale launch traffic", async (t) => {
   const fakeWaku = createFakeWaku();
   const transport = new WakuPostcardTransport({

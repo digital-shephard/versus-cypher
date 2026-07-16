@@ -72,6 +72,7 @@ test("structured brain output can express proposal goals and the bounded referra
   const postcard = variants.find((variant) => variant.properties?.body);
   const referral = variants.find((variant) => variant.properties?.proposalId);
   assert.equal(postcard.properties.amountMicros.pattern, "^[0-9]+$");
+  assert.deepEqual(postcard.required, ["type", "body", "replyTo", "amountMicros"]);
   assert.deepEqual(referral.properties.type.enum, ["fund_referrals"]);
   assert.equal(referral.properties.proposalId.pattern, "^0x[0-9a-f]{64}$");
 });

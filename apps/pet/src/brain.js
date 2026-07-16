@@ -43,7 +43,7 @@ const NARROWBAND_DECISION_SCHEMA = {
             replyTo: { type: ["string", "null"] },
             amountMicros: { type: ["string", "null"], pattern: "^[0-9]+$" },
           },
-          required: ["type", "body", "replyTo"],
+          required: ["type", "body", "replyTo", "amountMicros"],
         },
         {
           type: "object",

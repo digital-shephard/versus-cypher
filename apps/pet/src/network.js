@@ -342,6 +342,14 @@ class PetNetworkService {
     return result;
   }
 
+  async catchUpRain() {
+    const transport = this.node.transport;
+    if (!this.started || typeof transport?.catchUpRain !== "function") {
+      return { attempted: false, received: 0 };
+    }
+    return transport.catchUpRain();
+  }
+
   async connect(peerUrl) {
     await this.node.connect(peerUrl);
     return this.status();
@@ -743,6 +751,7 @@ async function createPetNetworkService({
   onAgentAction = null,
   agentContextProvider = null,
   now = null,
+  transportNow = null,
 }) {
   const port = Number(env.VERSUS_P2P_PORT || 0);
   if (!Number.isInteger(port) || port < 0 || port > 65_535) {
@@ -800,6 +809,7 @@ async function createPetNetworkService({
         storeHistoryMs: Number(env.VERSUS_WAKU_STORE_HISTORY_MS || 24 * 60 * 60 * 1000),
         storeMessageLimit: Number(env.VERSUS_WAKU_STORE_MESSAGE_LIMIT || 256),
         storePageSize: Number(env.VERSUS_WAKU_STORE_PAGE_SIZE || 64),
+        ...(transportNow ? { now: transportNow } : {}),
       });
     } else {
       throw new RangeError("VERSUS_P2P_TRANSPORT must be tcp or waku");

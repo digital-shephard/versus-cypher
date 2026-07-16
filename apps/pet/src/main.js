@@ -124,6 +124,7 @@ let mainWindow = null;
 let tray = null;
 let pollTimer = null;
 let stateSyncTimer = null;
+let chainReconcileInFlight = null;
 let rainLock = Promise.resolve();
 let dailyRainInFlight = null;
 let dailyLifecycleScheduler = null;
@@ -137,6 +138,9 @@ let updateService = null;
 let pendingRestoreRecovery = null;
 let hatchQuoteCache = null;
 let hatchQuoteInFlight = null;
+let foregroundRefreshInFlight = null;
+let publicClassRefreshInFlight = null;
+let networkClockOffsetMs = 0;
 const HATCH_QUOTE_MAX_AGE_MS = 120_000;
 const activityBus = new ServiceActivityBus({ limit: 128 });
 const activityStates = new Map();
@@ -144,6 +148,18 @@ const healthMonitor = new HealthMonitor();
 const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE) ? process.env.VERSUS_FAULTS : "");
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
+
+function updateNetworkClockOffset(value) {
+  if (value == null) return networkClockOffsetMs;
+  const offset = Number(value);
+  if (!Number.isFinite(offset) || Math.abs(offset) > 24 * 60 * 60 * 1000) return networkClockOffsetMs;
+  networkClockOffsetMs = Math.round(offset);
+  return networkClockOffsetMs;
+}
+
+function networkNowMs() {
+  return Date.now() + networkClockOffsetMs;
+}
 
 function sendRenderer(channel, payload) {
   if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
@@ -167,6 +183,7 @@ async function getCachedHatchQuote() {
   if (!hatchQuoteInFlight) {
     hatchQuoteInFlight = chainRainService.quoteHatchTarget()
       .then((quote) => {
+        updateNetworkClockOffset(quote.clockOffsetMs);
         hatchQuoteCache = { quote, at: Date.now() };
         return quote;
       })
@@ -250,6 +267,27 @@ function acceptRainBatch(batch, { channel = "waku", history = false } = {}) {
       pennies: accepted.acceptedPennies,
       pending: accepted.pending,
       history,
+    });
+  }
+  if (accepted.acceptedPennies) {
+    const state = loadState() || {};
+    if (state.phase === "active") {
+      let changed = false;
+      for (const event of batch.events || []) {
+        if (Number(event.classId) !== Number(state.classId)) continue;
+        const total = Number(event.classTotalMicros || 0);
+        if (total > Number(state.classPotMicros || 0)) {
+          state.classPotMicros = total;
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveState(state);
+        publishBondState(state);
+      }
+    }
+    refreshPublicClassState().catch((error) => {
+      console.error("Versus signed class state refresh error:", error.message);
     });
   }
   return accepted;
@@ -672,6 +710,9 @@ function saveSettings(input) {
 }
 
 function applyChainState(state, chain) {
+  const previousClassId = Number(state.classId || 0);
+  const previousClassPot = Number(state.classPotMicros || 0);
+  const previousClassAgents = Number(state.classAgents || 0);
   recordGraduationTransition(state, chain);
   state.walletAddress = chain.address;
   state.walletOwner = chain.owner;
@@ -690,8 +731,12 @@ function applyChainState(state, chain) {
   state.tranchePreviewMicros = Number(chain.tranchePreview);
   state.tranchePotMicros = Number(chain.tranchePot);
   state.classId = Number(chain.classId);
-  state.classPotMicros = Number(chain.classPotMicros);
-  state.classAgents = Number(chain.classAgents);
+  state.classPotMicros = state.classId === previousClassId
+    ? Math.max(previousClassPot, Number(chain.classPotMicros))
+    : Number(chain.classPotMicros);
+  state.classAgents = state.classId === previousClassId
+    ? Math.max(previousClassAgents, Number(chain.classAgents))
+    : Number(chain.classAgents);
   state.inCurrentClass = Boolean(chain.inCurrentClass);
   state.graduationFloorMicros = Number(chain.graduationFloorMicros || 1_000_000_000);
   state.referralRewardMicros = Number(chain.referralRewardMicros || 0);
@@ -699,17 +744,75 @@ function applyChainState(state, chain) {
   state.referredBy = Number(chain.referredBy || 0);
   state.referralFundedToday = Boolean(chain.referralFundedToday);
   state.genesis = Boolean(chain.genesis);
+  state.networkClockOffsetMs = networkClockOffsetMs;
+  state.chainBlockNumber = Number(chain.blockNumber || state.chainBlockNumber || 0);
   state.chainSyncedAt = Date.now();
   return state;
 }
 
-async function reconcileChainState() {
+function applyPublicClassState(state, snapshot) {
+  const nextClassId = Number(snapshot.classId);
+  const currentClassId = Number(state.classId || 0);
+  const snapshotBlock = Number(snapshot.blockNumber || 0);
+  if (nextClassId < currentClassId) return false;
+  if (nextClassId === currentClassId && snapshotBlock < Number(state.classStateBlockNumber || 0)) return false;
+  recordGraduationTransition(state, {
+    classId: nextClassId,
+    graduationFloorMicros: snapshot.graduationFloorMicros,
+  });
+  const changedClass = nextClassId > currentClassId;
+  state.classId = nextClassId;
+  state.classPotMicros = changedClass
+    ? Number(snapshot.totalCommittedMicros)
+    : Math.max(Number(state.classPotMicros || 0), Number(snapshot.totalCommittedMicros));
+  state.classAgents = changedClass
+    ? Number(snapshot.participantCount)
+    : Math.max(Number(state.classAgents || 0), Number(snapshot.participantCount));
+  state.graduationFloorMicros = Number(snapshot.graduationFloorMicros);
+  state.classStateBlockNumber = snapshotBlock;
+  state.classSyncedAt = Date.now();
+  return true;
+}
+
+function refreshPublicClassState() {
+  if (!chainRainService?.readPublicClassState) return Promise.resolve(loadState());
+  if (publicClassRefreshInFlight) return publicClassRefreshInFlight;
+  publicClassRefreshInFlight = chainRainService.readPublicClassState()
+    .then((snapshot) => {
+      if (!snapshot) return loadState();
+      updateNetworkClockOffset(snapshot.clockOffsetMs);
+      const state = loadState() || {};
+      if (state.phase !== "active") return state;
+      const pendingBefore = Number(state.pendingGraduation?.classId || 0);
+      if (!applyPublicClassState(state, snapshot)) return state;
+      saveState(state);
+      publishBondState(state);
+      if (
+        Number(state.pendingGraduation?.classId || 0) > pendingBefore &&
+        mainWindow && !mainWindow.isDestroyed()
+      ) {
+        mainWindow.webContents.send("graduation:available", {
+          ceremony: state.pendingGraduation,
+          state: structuredClone(state),
+        });
+      }
+      return state;
+    })
+    .finally(() => {
+      publicClassRefreshInFlight = null;
+    });
+  return publicClassRefreshInFlight;
+}
+
+async function reconcileChainStateOnce() {
   const state = loadState() || {};
   if (!chainRainService || state.phase !== "active" || !state.agentId) return state;
   return observeActivity({ channel: "base", operation: "state_sync", destination: "base_rpc" }, async () => {
     faultInjector.throwIf("rpc");
     const wallet = ensureWallet();
     const chain = await chainRainService.readState({ address: wallet.address, agentId: state.agentId });
+    updateNetworkClockOffset(chain.clockOffsetMs);
+    if (Number(chain.blockNumber || 0) < Number(state.chainBlockNumber || 0)) return state;
     state.ownershipLost = chain.owner.toLowerCase() !== wallet.address.toLowerCase();
     const pendingBefore = Number(state.pendingGraduation?.classId || 0);
     applyChainState(state, chain);
@@ -728,10 +831,40 @@ async function reconcileChainState() {
   });
 }
 
+function reconcileChainState() {
+  if (chainReconcileInFlight) return chainReconcileInFlight;
+  chainReconcileInFlight = reconcileChainStateOnce().finally(() => {
+    chainReconcileInFlight = null;
+  });
+  return chainReconcileInFlight;
+}
+
+function refreshForegroundServices() {
+  if (foregroundRefreshInFlight) return foregroundRefreshInFlight;
+  foregroundRefreshInFlight = (async () => {
+    const [chainResult] = await Promise.allSettled([reconcileChainState()]);
+    const [networkResult] = await Promise.allSettled([
+      ensureNetworkService().then((service) => service?.catchUpRain?.() || { attempted: false, received: 0 }),
+    ]);
+    if (chainResult.status === "rejected") {
+      console.error("Versus foreground chain reconciliation error:", chainResult.reason?.message || chainResult.reason);
+    }
+    if (networkResult.status === "rejected") {
+      console.error("Versus foreground rain catch-up error:", networkResult.reason?.message || networkResult.reason);
+    }
+    const pending = rainInbox.pending();
+    if (pending > 0) sendRenderer("rain:available", { pending });
+    return chainResult.status === "fulfilled" ? chainResult.value : loadState();
+  })().finally(() => {
+    foregroundRefreshInFlight = null;
+  });
+  return foregroundRefreshInFlight;
+}
+
 function startStateSync() {
   if (stateSyncTimer) clearInterval(stateSyncTimer);
   stateSyncTimer = setInterval(() => {
-    reconcileChainState().catch((error) => console.error("Versus chain reconciliation error:", error.message));
+    refreshPublicClassState().catch((error) => console.error("Versus public class refresh error:", error.message));
   }, 60_000);
   stateSyncTimer.unref?.();
 }
@@ -751,6 +884,8 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
         privateKey: wallet.privateKey,
         agentId: state.agentId,
         dataDir: NETWORK_DATA_DIR,
+        now: () => Math.floor(networkNowMs() / 1000),
+        transportNow: networkNowMs,
         beforeAgentTick: ensureDailyRainForAgent,
         onAgentAction: (action, service) => handleAgentAction(action, service),
         agentContextProvider: () => {
@@ -760,7 +895,7 @@ async function ensureNetworkService({ suppressAutostart = false } = {}) {
             runwayPennies: Math.floor(Number(current.runway || 0) / 10_000),
             gasReserveWei: String(current.ethGasReserveWei || "0"),
             tickets: Number(current.tickets || 0),
-            rainedToday: Number(current.lastCommitDay) === Math.floor(Date.now() / 86_400_000),
+            rainedToday: Number(current.lastCommitDay) === Math.floor(networkNowMs() / 86_400_000),
             referralPool: {
               rewardMicros: Number(current.referralRewardMicros || 0),
               availableRewards: Number(current.referralRewardsAvailable || 0),
@@ -905,7 +1040,7 @@ async function handleAgentAction(action, service) {
   const state = loadState() || {};
   if (state.phase !== "active" || !state.agentId) throw new Error("no active Cypher");
   if (Number(state.runway || 0) < 10_000) throw new Error("Cypher runway is empty");
-  const day = Math.floor(Date.now() / 86_400_000);
+  const day = Math.floor(networkNowMs() / 86_400_000);
   if (state.referralFundedToday && Number(state.referralFundedDay) === day) {
     throw new Error("the Cypher already funded referrals today");
   }
@@ -963,7 +1098,7 @@ async function performDailyRainForAgent() {
     error.code = "OWNERSHIP_LOST";
     throw error;
   }
-  const now = Date.now();
+  const now = networkNowMs();
   const day = Math.floor(now / 86_400_000);
   const dueAt = nextCommitAtFor(state, now);
   if (!commitIsDue(state, now)) return { status: "not_due", day, nextCommitAt: dueAt, state };
@@ -985,7 +1120,7 @@ async function performDailyRainForAgent() {
       })
     );
     hash = receipt.hash;
-    const committedAt = Math.floor(Date.now() / 1000);
+    const committedAt = Math.floor(networkNowMs() / 1000);
     state.runway = Math.max(0, Number(state.runway || 0) - Number(receipt.amount || 10_000));
     state.lastCommitDay = Number(receipt.day);
     state.level = Number(state.level || 0) + 1;
@@ -996,6 +1131,7 @@ async function performDailyRainForAgent() {
     const alreadyInClass = Boolean(state.inCurrentClass) && Number(state.classId) === Number(receipt.classId);
     state.classId = Number(receipt.classId);
     state.classPotMicros = Number(receipt.classTotal);
+    state.chainBlockNumber = Math.max(Number(state.chainBlockNumber || 0), Number(receipt.blockNumber || 0));
     state.classAgents = Math.max(0, Number(state.classAgents || 0)) + (alreadyInClass ? 0 : 1);
     state.inCurrentClass = true;
     saveState(state);
@@ -1004,7 +1140,7 @@ async function performDailyRainForAgent() {
       console.error("Versus confirmed daily rain refresh error:", error.message);
     });
   } else {
-    const committedAt = Math.floor(Date.now() / 1000);
+    const committedAt = Math.floor(networkNowMs() / 1000);
     state.runway = Number(state.runway) - 10_000;
     state.lastCommitDay = day;
     state.level = Number(state.level || 0) + 1;
@@ -1038,6 +1174,7 @@ function startDailyLifecycle() {
     loadState,
     saveState,
     reconcile: reconcileChainState,
+    now: networkNowMs,
     rain: ensureDailyRainForAgent,
     shouldThink: () => {
       const settings = loadSettings();
@@ -1268,7 +1405,12 @@ function createWindow() {
     cancelTransparentSurfaceRefresh();
     mainWindow.setOpacity(0);
   });
-  mainWindow.on("restore", refreshRestoredTransparentSurface);
+  mainWindow.on("restore", () => {
+    refreshRestoredTransparentSurface();
+    refreshForegroundServices().catch((error) => {
+      console.error("Versus restored foreground refresh error:", error.message);
+    });
+  });
   mainWindow.loadFile(RENDERER_PATH);
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -1324,6 +1466,7 @@ function startDepositPoll() {
 }
 
 app.whenReady().then(() => {
+  updateNetworkClockOffset(loadState()?.networkClockOffsetMs);
   const settings = loadSettings();
   activityBus.record({
     channel: "brain",
@@ -1381,6 +1524,9 @@ app.whenReady().then(() => {
     });
   startStateSync();
   powerMonitor.on("resume", () => {
+    refreshForegroundServices().catch((error) => {
+      console.error("Versus resumed foreground refresh error:", error.message);
+    });
     dailyLifecycleScheduler?.wake("resume", { ignoreBackoff: true }).catch((error) => {
       console.error("Versus resume lifecycle error:", error.message);
     });
@@ -1413,6 +1559,7 @@ registerIpcHandle("bond:load", async () => {
   }
 });
 registerIpcHandle("bond:loadLocal", () => loadState());
+registerIpcHandle("service:foreground", () => refreshForegroundServices());
 registerIpcHandle("service:activitySnapshot", () => serviceActivitySnapshot());
 registerIpcHandle("health:snapshot", async () => {
   await reconcileOperationJournal();
@@ -2241,6 +2388,7 @@ registerIpcHandle("wallet:rainFromRunway", (_e, { pennies } = {}) => {
       result = applyConfirmedRain(state, pennies);
       state.classId = Number(chain.classId);
       state.classPotMicros = Number(chain.classPotMicros);
+      state.chainBlockNumber = Math.max(Number(state.chainBlockNumber || 0), Number(chain.blockNumber || 0));
       state.lastRainTxHash = chain.hash;
       saveState(state);
       result.state = state;
@@ -2328,8 +2476,8 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
   state.cypherId = cypherId;
   state.level = chainRainService ? Number(state.level || 0) : 1;
   state.streak = chainRainService ? Number(state.streak || 0) : 1;
-  state.lastCommitDay = chainRainService ? Number(state.lastCommitDay || 0) : Math.floor(Date.now() / 86_400_000);
-  state.nextCommitAt = chainRainService ? Number(state.nextCommitAt || Math.floor(Date.now() / 1000)) : Math.floor(Date.now() / 1000) + DAY_SECONDS;
+  state.lastCommitDay = chainRainService ? Number(state.lastCommitDay || 0) : Math.floor(networkNowMs() / 86_400_000);
+  state.nextCommitAt = chainRainService ? Number(state.nextCommitAt || Math.floor(networkNowMs() / 1000)) : Math.floor(networkNowMs() / 1000) + DAY_SECONDS;
   state.vault = 0;
   state.tickets = chainRainService ? Number(state.tickets || 0) : 1;
   state.totalTickets = chainRainService ? Number(state.totalTickets || 0) : 1;
@@ -2337,7 +2485,7 @@ registerIpcHandle("wallet:runOnboardPipeline", async (_e, { cypherCount = 29 } =
   state.tranchePreviewMicros = 0;
   state.classPotMicros = chainRainService ? Number(state.classPotMicros || 0) : 10_000;
   state.rainPenniesToday = chainRainService ? Number(state.rainPenniesToday || 0) : 1;
-  state.todayRainDay = Math.floor(Date.now() / 86_400_000);
+  state.todayRainDay = Math.floor(networkNowMs() / 86_400_000);
   state.lifetimeRainPennies = chainRainService ? Number(state.lifetimeRainPennies || 0) : 1;
   state.classAgents = chainRainService ? Number(state.classAgents || 0) : 1;
   state.inCurrentClass = chainRainService ? Boolean(state.inCurrentClass) : true;

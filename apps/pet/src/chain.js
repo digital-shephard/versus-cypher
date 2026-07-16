@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { AbiCoder, Contract, JsonRpcProvider, MaxUint256, NonceManager, Wallet, keccak256 } = require("ethers");
+const { AbiCoder, Contract, Interface, JsonRpcProvider, MaxUint256, NonceManager, Wallet, keccak256 } = require("ethers");
 const { normalizeSignalBatch } = require("@versus/network");
 const { parseReferralCode, referralCodeFor } = require("./referrals");
 const { classOverError, isWrongClassError } = require("./class-transition");
@@ -7,7 +7,9 @@ const {
   BASE_UNISWAP_SWAP_ROUTER_02,
   BASE_USDC,
   BASE_WETH,
+  classStateEndpointsFromEnv,
   createBaseProvider,
+  fetchNodeClassState,
   fetchNodeHatchQuote,
   hatchQuoteEndpointsFromEnv,
   quoteDepositPlan,
@@ -23,6 +25,7 @@ const MIN_HATCH_RUNWAY_MICROS = 7_000_000n;
 const ALLOWANCE_SYNC_TIMEOUT_MS = 15_000;
 const CHAIN_STATE_SYNC_TIMEOUT_MS = 30_000;
 const HATCH_GAS_MARGIN_BPS = 2_500n;
+const BASE_MULTICALL3 = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
 const arenaAbi = [
   "function hatch(uint256 runwayAmount) returns (uint256 agentId)",
@@ -90,6 +93,10 @@ const referralPoolAbi = [
   "function referredBy(uint256 referredAgentId) view returns (uint256)",
   "event ReferralPoolFunded(uint256 indexed sponsorAgentId, bytes32 indexed proposalId, address indexed funder, uint256 amount, uint256 balance)",
   "event ReferralRewardPaid(uint256 indexed referredAgentId, uint256 indexed referrerAgentId, address indexed referredOwner, uint256 amount)",
+];
+const multicallAbi = [
+  "function aggregate3(tuple(address target,bool allowFailure,bytes callData)[] calls) payable returns (tuple(bool success,bytes returnData)[] returnData)",
+  "function getEthBalance(address account) view returns (uint256 balance)",
 ];
 
 function findEventRecord(contract, receipt, name) {
@@ -252,8 +259,115 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
   const localFixture = Boolean(config.deployment.usedMockUsdc && config.deployment.usedMockRouter);
   const trustedQuoteSigners = config.deployment.rainAttestors || [];
   const quoteEndpoints = hatchQuoteEndpointsFromEnv(config.env || process.env);
+  const classStateEndpoints = classStateEndpointsFromEnv(config.env || process.env);
   const nodeQuotesEnabled = chainId === 8453 && config.env?.VERSUS_HATCH_QUOTE_ENABLED !== "0" && trustedQuoteSigners.length > 0;
+  const nodeClassStateEnabled = chainId === 8453 && config.env?.VERSUS_CLASS_STATE_ENABLED !== "0" && trustedQuoteSigners.length > 0;
   const signalSigners = new Map();
+
+  async function readPublicClassState() {
+    if (!nodeClassStateEnabled) return null;
+    return fetchNodeClassState({
+      endpoints: classStateEndpoints,
+      trustedSigners: trustedQuoteSigners,
+      chainId,
+      arena: addresses.arena,
+      syndicate: addresses.syndicate,
+    });
+  }
+
+  async function readBatchedBaseState({ address, agentId, classState }) {
+    const interfaces = {
+      agent: new Interface(agentAbi),
+      arena: new Interface(arenaAbi),
+      treasury: new Interface(treasuryAbi),
+      syndicate: new Interface(syndicateAbi),
+      referral: new Interface(referralPoolAbi),
+      usdc: new Interface(usdcAbi),
+      multicall: new Interface(multicallAbi),
+    };
+    const id = BigInt(agentId);
+    const specs = [
+      [BASE_MULTICALL3, interfaces.multicall, "getEthBalance", [address]],
+      [addresses.usdc || BASE_USDC, interfaces.usdc, "balanceOf", [address]],
+      [addresses.agents, interfaces.agent, "getAgent", [id]],
+      [addresses.arena, interfaces.arena, "runway", [id]],
+      [addresses.arena, interfaces.arena, "nextCommitAt", [id]],
+      [addresses.treasury, interfaces.treasury, "tickets", [id]],
+      [addresses.treasury, interfaces.treasury, "totalTickets", []],
+      [addresses.treasury, interfaces.treasury, "claimable", [id]],
+      [addresses.treasury, interfaces.treasury, "tranchePot", []],
+      [addresses.syndicate, interfaces.syndicate, "commitOf", [classState.classId, id]],
+      [addresses.syndicate, interfaces.syndicate, "isGenesisAgent", [id]],
+      [addresses.referralPool, interfaces.referral, "rewardPerReferral", []],
+      [addresses.referralPool, interfaces.referral, "availableRewards", []],
+      [addresses.referralPool, interfaces.referral, "referredBy", [id]],
+      [addresses.arena, interfaces.arena, "referralFundedDays", [id, classState.chainDay]],
+    ];
+    const calls = specs.map(([target, iface, name, args]) => ({
+      target,
+      allowFailure: false,
+      callData: iface.encodeFunctionData(name, args),
+    }));
+    const data = interfaces.multicall.encodeFunctionData("aggregate3", [calls]);
+    const encoded = await provider.call({ to: BASE_MULTICALL3, data, blockTag: Number(classState.blockNumber) });
+    const [results] = interfaces.multicall.decodeFunctionResult("aggregate3", encoded);
+    const decoded = results.map((result, index) => {
+      if (!result.success) throw new Error(`Base state Multicall item ${index} failed`);
+      const [, iface, name] = specs[index];
+      return iface.decodeFunctionResult(name, result.returnData);
+    });
+    const [
+      ethBalanceResult,
+      usdcBalanceResult,
+      agent,
+      runwayResult,
+      nextCommitAtResult,
+      ticketsResult,
+      totalTicketsResult,
+      claimableResult,
+      tranchePotResult,
+      currentClassCommitResult,
+      genesisResult,
+      referralRewardResult,
+      referralAvailableResult,
+      referredByResult,
+      referralFundedResult,
+    ] = decoded;
+    const scalar = (result) => result[0];
+    return {
+      blockNumber: classState.blockNumber,
+      clockOffsetMs: classState.clockOffsetMs,
+      address,
+      owner: agent.owner,
+      agentId: id,
+      cypherId: agent.cypherId,
+      level: agent.level,
+      streak: agent.streak,
+      lastCommitDay: agent.lastCommitDay,
+      nextCommitAt: scalar(nextCommitAtResult),
+      vault: agent.vault,
+      runway: scalar(runwayResult),
+      ethBalance: scalar(ethBalanceResult),
+      usdcBalance: scalar(usdcBalanceResult),
+      tickets: scalar(ticketsResult),
+      totalTickets: scalar(totalTicketsResult),
+      claimable: scalar(claimableResult),
+      tranchePreview: scalar(claimableResult),
+      tranchePot: scalar(tranchePotResult),
+      classId: classState.classId,
+      classPotMicros: classState.totalCommittedMicros,
+      classAgents: classState.participantCount,
+      inCurrentClass: scalar(currentClassCommitResult) > 0n,
+      classOpenedDay: classState.openedDay,
+      classGraduated: classState.graduated,
+      graduationFloorMicros: classState.graduationFloorMicros,
+      genesis: scalar(genesisResult),
+      referralRewardMicros: scalar(referralRewardResult),
+      referralRewardsAvailable: scalar(referralAvailableResult),
+      referredBy: scalar(referredByResult),
+      referralFundedToday: scalar(referralFundedResult),
+    };
+  }
 
   function verifyNodeQuote(value) {
     return validateNodeHatchQuote(value, {
@@ -289,6 +403,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
   }
 
   return {
+    readPublicClassState,
     async transactionStatus(transactionHash) {
       if (!/^0x[a-f0-9]{64}$/i.test(String(transactionHash || ""))) throw new RangeError("transaction hash is invalid");
       const receipt = await provider.getTransactionReceipt(transactionHash);
@@ -368,34 +483,41 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
     },
 
     async readState({ address, agentId }) {
+      if (nodeClassStateEnabled) {
+        const classState = await readPublicClassState();
+        return readBatchedBaseState({ address, agentId, classState });
+      }
       const agents = new Contract(addresses.agents, agentAbi, provider);
       const arena = new Contract(addresses.arena, arenaAbi, provider);
       const treasury = new Contract(addresses.treasury, treasuryAbi, provider);
       const syndicate = new Contract(addresses.syndicate, syndicateAbi, provider);
       const referralPool = new Contract(addresses.referralPool, referralPoolAbi, provider);
       const token = new Contract(addresses.usdc || BASE_USDC, usdcAbi, provider);
-      const classId = await syndicate.currentClassId();
-      const chainDay = await arena.currentDay();
+      const blockNumber = await provider.getBlockNumber();
+      const block = { blockTag: blockNumber };
+      const classId = await syndicate.currentClassId(block);
+      const chainDay = await arena.currentDay(block);
       const [ethBalance, usdcBalance, agent, runway, nextCommitAt, tickets, totalTickets, claimable, tranchePot, currentClass, currentClassCommit, genesis, graduationFloor, referralRewardMicros, referralRewardsAvailable, referredBy, referralFundedToday] = await Promise.all([
-        provider.getBalance(address),
-        token.balanceOf(address),
-        agents.getAgent(BigInt(agentId)),
-        arena.runway(BigInt(agentId)),
-        arena.nextCommitAt(BigInt(agentId)),
-        treasury.tickets(BigInt(agentId)),
-        treasury.totalTickets(),
-        treasury.claimable(BigInt(agentId)),
-        treasury.tranchePot(),
-        syndicate.getClass(classId),
-        syndicate.commitOf(classId, BigInt(agentId)),
-        syndicate.isGenesisAgent(BigInt(agentId)),
-        syndicate.graduationFloor(),
-        referralPool.rewardPerReferral(),
-        referralPool.availableRewards(),
-        referralPool.referredBy(BigInt(agentId)),
-        arena.referralFundedDays(BigInt(agentId), chainDay),
+        provider.getBalance(address, blockNumber),
+        token.balanceOf(address, block),
+        agents.getAgent(BigInt(agentId), block),
+        arena.runway(BigInt(agentId), block),
+        arena.nextCommitAt(BigInt(agentId), block),
+        treasury.tickets(BigInt(agentId), block),
+        treasury.totalTickets(block),
+        treasury.claimable(BigInt(agentId), block),
+        treasury.tranchePot(block),
+        syndicate.getClass(classId, block),
+        syndicate.commitOf(classId, BigInt(agentId), block),
+        syndicate.isGenesisAgent(BigInt(agentId), block),
+        syndicate.graduationFloor(block),
+        referralPool.rewardPerReferral(block),
+        referralPool.availableRewards(block),
+        referralPool.referredBy(BigInt(agentId), block),
+        arena.referralFundedDays(BigInt(agentId), chainDay, block),
       ]);
       return {
+        blockNumber,
         address,
         owner: agent.owner,
         agentId: BigInt(agentId),
