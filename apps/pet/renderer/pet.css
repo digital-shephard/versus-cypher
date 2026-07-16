@@ -3589,6 +3589,7 @@ body { display: grid; place-items: center; }
 }
 .signal-action:disabled { opacity: 0.35; cursor: default; }
 .signal-action:not(:disabled):active { transform: translateY(1px); background: #265744; }
+.signal-test-action { min-width: 52px; }
 
 /* ---------------- dock: cream plastic hardware ---------------- */
 

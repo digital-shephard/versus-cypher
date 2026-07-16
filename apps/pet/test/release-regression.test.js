@@ -213,6 +213,26 @@ test("public weather is signed cached and private state is one block-pinned Mult
   assert.match(main, /state\.chainBlockNumber = Math\.max[\s\S]*chain\.blockNumber/);
 });
 
+test("paid test postcards are hidden behind an explicit local launch flag", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const preload = fs.readFileSync(path.join(root, "src", "preload.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+
+  assert.match(html, /id="btn-test-signal"[^>]*class="[^"]*hidden/);
+  assert.match(main, /buildMetadata\.versusSignedUpdates !== true/);
+  assert.match(main, /buildMetadata\.versusTestSignal === true/);
+  assert.match(main, /app\.commandLine\.hasSwitch\("versus-test-signal"\)/);
+  assert.match(main, /if \(!TEST_SIGNAL_ENABLED\) throw new Error\("test signal mode is disabled"\)/);
+  assert.match(main, /body: "can another cypher hear this signal"/);
+  assert.match(main, /queueSignalSettlement\(service, launchId, 1, \[postcard\]\)/);
+  assert.match(main, /SIGNAL_PUBLICATION_RETRY_DELAYS_MS = \[5_000, 15_000, 45_000, 120_000\]/);
+  assert.match(main, /scheduleSignalPublicationRetry\(service, confirmed\.batch\.root\)/);
+  assert.match(main, /service\.unpublishedSignalBatches\(\)\.find/);
+  assert.match(preload, /agentSendTestSignal: \(\) => ipcRenderer\.invoke\("agent:sendTestSignal"\)/);
+  assert.match(renderer, /classList\.toggle\("hidden", !status\.testSignalEnabled\)/);
+});
+
 test("archive restore reveals the local Cypher while remote recovery continues", () => {
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");

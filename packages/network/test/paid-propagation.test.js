@@ -87,6 +87,34 @@ test("a strict receiver admits only an exact Base-paid postcard", async (t) => {
   assert.equal(node.paymentProofs.get(postcard.id).batch.root, paymentProof.batch.root);
 });
 
+test("a Base-paid signal requires Cypher ownership but not a separate daily voice", async (t) => {
+  const { receiver, postcard, paymentProof } = await fixture();
+  const eligibilityChecks = [];
+  const node = new VersusNode({
+    identity: receiver,
+    eligibilityVerifier: {
+      async verify(identity) {
+        eligibilityChecks.push(identity);
+        return {
+          ...identity,
+          eligible: identity.voiceDay === null,
+          reason: identity.voiceDay === null ? null : "daily_voice_not_earned",
+        };
+      },
+    },
+    transport: new MemoryTransport(),
+    economicVerifier: { async verifySignalSettlement() { return { verified: true }; } },
+  });
+  t.after(() => node.close());
+
+  const accepted = await node.accept(postcard, { paymentProof });
+  assert.equal(accepted.accepted, true);
+  assert.equal(eligibilityChecks.length, 1);
+  assert.equal(eligibilityChecks[0].address, postcard.author);
+  assert.equal(eligibilityChecks[0].cypherId, postcard.cypherId);
+  assert.equal(eligibilityChecks[0].voiceDay, null);
+});
+
 test("a proof for another signed postcard cannot buy influence for this one", async (t) => {
   const { sender, receiver, registry, postcard, paymentProof } = await fixture();
   const createdAt = postcard.createdAt + 1;
@@ -137,4 +165,57 @@ test("a paid postcard can be durably staged before its first network send", asyn
   await node.publishPaid(postcard, paymentProof);
   assert.equal(transport.sent.length, 1);
   assert.equal(transport.sent[0].postcard.id, postcard.id);
+});
+
+test("prepared paid postcards reserve distinct local sequences before acceptance", async (t) => {
+  const identity = CypherIdentity.createRandom(903);
+  const node = new VersusNode({
+    identity,
+    eligibilityVerifier: new StaticCypherVerifier([
+      { address: identity.address, cypherId: identity.cypherId },
+    ]),
+    transport: new MemoryTransport(),
+  });
+  t.after(() => node.close());
+  const createdAt = Math.floor(Date.now() / 1000);
+
+  const first = await node.prepare({
+    type: "question",
+    launchId: "77",
+    body: "can another cypher hear this signal",
+    createdAt,
+  });
+  const second = await node.prepare({
+    type: "observation",
+    launchId: "77",
+    body: "another signal follows without equivocation",
+    createdAt,
+  });
+
+  assert.equal(first.sequence, 0);
+  assert.equal(second.sequence, 1);
+  assert.notEqual(first.id, second.id);
+});
+
+test("restored signal queues can reserve their signed sequences", async (t) => {
+  const identity = CypherIdentity.createRandom(904);
+  const node = new VersusNode({
+    identity,
+    eligibilityVerifier: new StaticCypherVerifier([
+      { address: identity.address, cypherId: identity.cypherId },
+    ]),
+    transport: new MemoryTransport(),
+  });
+  t.after(() => node.close());
+  const createdAt = Math.floor(Date.now() / 1000);
+  node.reserveLocalSequence(7);
+
+  const postcard = await node.prepare({
+    type: "question",
+    launchId: "77",
+    body: "restored queues keep sequence ownership",
+    createdAt,
+  });
+
+  assert.equal(postcard.sequence, 8);
 });

@@ -54,6 +54,10 @@ function configureStableIdentity() {
 
 configureStableIdentity();
 
+const TEST_SIGNAL_ENABLED = buildMetadata.versusSignedUpdates !== true && (
+  buildMetadata.versusTestSignal === true || app.commandLine.hasSwitch("versus-test-signal")
+);
+
 const { autoUpdater } = require("electron-updater");
 
 function applyPackagedWalkthroughProfile() {
@@ -129,6 +133,8 @@ let rainLock = Promise.resolve();
 let dailyRainInFlight = null;
 let dailyLifecycleScheduler = null;
 let signalSettlementLock = Promise.resolve();
+const signalPublicationRetryTimers = new Map();
+const SIGNAL_PUBLICATION_RETRY_DELAYS_MS = [5_000, 15_000, 45_000, 120_000];
 let chainRainService = null;
 let chainConfigError = null;
 let networkService = null;
@@ -1206,6 +1212,39 @@ function queueSignalSettlement(service, launchId = null, limit = 100, postcards 
   return operation;
 }
 
+function scheduleSignalPublicationRetry(service, batchRoot, attempt = 0) {
+  batchRoot = String(batchRoot || "");
+  if (!service || !batchRoot || signalPublicationRetryTimers.has(batchRoot)) return false;
+  const delay = SIGNAL_PUBLICATION_RETRY_DELAYS_MS[attempt];
+  if (delay === undefined) return false;
+  const timer = setTimeout(async () => {
+    signalPublicationRetryTimers.delete(batchRoot);
+    const record = service.unpublishedSignalBatches().find((candidate) => candidate.batch.root === batchRoot);
+    if (!record) return;
+    try {
+      await service.publishPaidBatch(record);
+      activityBus.record({
+        channel: "waku",
+        direction: "out",
+        operation: "paid_postcard_recovery",
+        destination: "versus_mesh",
+        status: "ok",
+      });
+    } catch (error) {
+      console.error("Versus paid postcard retry error:", error.message);
+      scheduleSignalPublicationRetry(service, batchRoot, attempt + 1);
+    }
+  }, delay);
+  timer.unref?.();
+  signalPublicationRetryTimers.set(batchRoot, timer);
+  return true;
+}
+
+function stopSignalPublicationRetries() {
+  for (const timer of signalPublicationRetryTimers.values()) clearTimeout(timer);
+  signalPublicationRetryTimers.clear();
+}
+
 async function announceClassOver(classId, currentClassId) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("class:over", {
@@ -1253,6 +1292,7 @@ async function settlePreparedSignals(service, launchId = null, limit = 100, post
       return { record: confirmed, published, deliveryPending: false };
     } catch (error) {
       console.error("Versus paid postcard delivery pending:", error.message);
+      scheduleSignalPublicationRetry(service, confirmed.batch.root);
       return {
         record: confirmed,
         published: [],
@@ -1302,6 +1342,7 @@ async function reconcileSubmittedSignalBatches(service) {
         await service.publishPaidBatch(confirmed);
       } catch (error) {
         console.error("Versus reconciled paid postcard publication error:", error.message);
+        scheduleSignalPublicationRetry(service, confirmed.batch.root);
       }
       outcomes.push({ root: record.batch.root, status: "confirmed" });
     } catch (error) {
@@ -1315,6 +1356,7 @@ async function reconcileSubmittedSignalBatches(service) {
       outcomes.push({ root: record.batch.root, status: "published" });
     } catch (error) {
       console.error("Versus paid postcard recovery error:", error.message);
+      scheduleSignalPublicationRetry(service, record.batch.root);
       outcomes.push({ root: record.batch.root, status: "publish_failed", error: error.message });
     }
   }
@@ -1544,6 +1586,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   if (stateSyncTimer) clearInterval(stateSyncTimer);
+  stopSignalPublicationRetries();
   dailyLifecycleScheduler?.stop();
   networkService?.close().catch(() => {});
   updateService?.stop();
@@ -1946,12 +1989,18 @@ registerIpcHandle("wallet:reconcile", () => reconcileChainState());
 registerIpcHandle("network:status", async () => {
   const service = await ensureNetworkService();
   if (!service) {
-    return applyWalkthroughNetworkStateFixture({
+    return {
+      ...applyWalkthroughNetworkStateFixture({
       active: false,
       reason: networkUnavailableReason || "cypher_not_hatched",
-    });
+      }),
+      testSignalEnabled: TEST_SIGNAL_ENABLED,
+    };
   }
-  return applyWalkthroughNetworkStateFixture(service.status());
+  return {
+    ...applyWalkthroughNetworkStateFixture(service.status()),
+    testSignalEnabled: TEST_SIGNAL_ENABLED,
+  };
 });
 
 registerIpcHandle("agent:status", async () => {
@@ -1965,6 +2014,28 @@ registerIpcHandle("agent:tick", async () => {
   const service = await ensureNetworkService();
   if (!service) throw new Error("hatch a Cypher before waking its brain");
   return observeActivity({ channel: "brain", operation: "agent_tick", destination: "owner_brain" }, () => service.runAgentTick());
+});
+
+registerIpcHandle("agent:sendTestSignal", async () => {
+  if (!TEST_SIGNAL_ENABLED) throw new Error("test signal mode is disabled");
+  const service = await ensureNetworkService();
+  if (!service) throw new Error("hatch a Cypher before sending a test signal");
+  const launchId = String(service.status().launchId || "0");
+  if (launchId === "0") throw new Error("current class is unavailable");
+  const postcard = await service.node.prepare({
+    type: "question",
+    launchId,
+    body: "can another cypher hear this signal",
+    createdAt: service.node.now(),
+  });
+  const result = await observeActivity(
+    { channel: "brain", operation: "test_signal", destination: "versus_mesh" },
+    () => queueSignalSettlement(service, launchId, 1, [postcard])
+  );
+  return {
+    id: postcard.id,
+    deliveryPending: Boolean(result.deliveryPending),
+  };
 });
 
 registerIpcHandle("agent:start", async () => {

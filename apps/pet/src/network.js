@@ -117,6 +117,11 @@ class PetNetworkService {
           filePath: path.join(dataDir, "signal-settlements.json"),
         })
       : null;
+    for (const record of this.signalQueue?.list() || []) {
+      for (const postcard of record.postcards || []) {
+        this.node.reserveLocalSequence(postcard.sequence);
+      }
+    }
     this.economicVerifier = economicVerifier;
     this.thoughts = new ThoughtQueue({ filePath: path.join(dataDir, "thoughts.json") });
     this.referralDrive = new ReferralDriveSlot({ filePath: path.join(dataDir, "referral-drive.json") });

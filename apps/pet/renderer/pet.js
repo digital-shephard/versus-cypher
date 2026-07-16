@@ -1004,11 +1004,13 @@ function renderNetworkScreen() {
   }
   const think = $("btn-brain-think");
   const auto = $("btn-brain-auto");
+  const testSignal = $("btn-test-signal");
   if (think) think.disabled = !agent.configured || brainStatus === "thinking";
   if (auto) {
     auto.disabled = !agent.configured || brainStatus === "thinking";
     auto.textContent = brainStatus === "listening" ? "STOP" : "AUTO";
   }
+  testSignal?.classList.toggle("hidden", !status.testSignalEnabled);
 }
 
 async function refreshNetworkScreen() {
@@ -3253,6 +3255,23 @@ $("btn-brain-think")?.addEventListener("click", async () => {
     toast(signalSentence(error.message, "brain unavailable", 32));
   }
   await refreshNetworkScreen();
+});
+
+$("btn-test-signal")?.addEventListener("click", async () => {
+  const button = $("btn-test-signal");
+  if (!window.versus?.agentSendTestSignal || button?.disabled) return;
+  button.disabled = true;
+  button.textContent = "SEND";
+  try {
+    const result = await window.versus.agentSendTestSignal();
+    toast(result.deliveryPending ? "signal paid delivery pending" : "test signal sent");
+    await refreshNetworkScreen();
+  } catch (error) {
+    toast(signalSentence(error.message, "signal failed", 32));
+  } finally {
+    button.disabled = false;
+    button.textContent = "PING";
+  }
 });
 
 $("btn-brain-auto")?.addEventListener("click", async () => {

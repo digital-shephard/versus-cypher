@@ -90,6 +90,7 @@ class VersusNode extends EventEmitter {
       filePath: outcomeFilePath,
     });
     this.ratePolicy.seed(this.store.list({ limit: 100_000 }));
+    this.nextLocalSequence = this.store.nextSequence(this.identity.address);
     this.localEligibility = null;
     this.wantedArtifacts = new Set();
 
@@ -380,10 +381,15 @@ class VersusNode extends EventEmitter {
     createdAt = null,
   }) {
     createdAt = createdAt ?? this.now();
+    const sequence = Math.max(
+      this.nextLocalSequence,
+      this.store.nextSequence(this.identity.address)
+    );
+    this.nextLocalSequence = sequence + 1;
     return this.identity.signPostcard({
       type,
       launchId,
-      sequence: this.store.nextSequence(this.identity.address),
+      sequence,
       createdAt,
       expiresAt: createdAt + lifetimeSeconds,
       body,
@@ -391,6 +397,15 @@ class VersusNode extends EventEmitter {
       artifact,
       amountMicros,
     });
+  }
+
+  reserveLocalSequence(sequence) {
+    sequence = Number(sequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 0) {
+      throw new TypeError("local postcard sequence must be a non-negative safe integer");
+    }
+    this.nextLocalSequence = Math.max(this.nextLocalSequence, sequence + 1);
+    return this.nextLocalSequence;
   }
 
   async publishPaid(postcard, paymentProof) {
@@ -563,10 +578,13 @@ class VersusNode extends EventEmitter {
       this.transport.validatePostcard(verified);
     }
     if (this.store.has(verified.id)) return { accepted: false, duplicate: true, postcard: verified };
+    const paidSignal = SIGNAL_TYPES.includes(verified.type) && this.requirePaidSignals;
     const eligibility = await this.eligibilityVerifier.verify({
       address: verified.author,
       cypherId: verified.cypherId,
-      voiceDay: verified.voiceDay,
+      // The settled signal buys voice for this postcard. Ownership is still
+      // checked here, and the exact on-chain payment is verified below.
+      voiceDay: paidSignal ? null : verified.voiceDay,
     });
     if (!eligibility.eligible) {
       throw new NetworkPolicyError(
@@ -575,7 +593,7 @@ class VersusNode extends EventEmitter {
       );
     }
     let verifiedPayment = null;
-    if (SIGNAL_TYPES.includes(verified.type) && this.requirePaidSignals) {
+    if (paidSignal) {
       verifiedPayment = await this.verifyPostcardPayment(verified, paymentProof);
     }
     const sequenceId = this.store.idForSequence(verified.author, verified.sequence);

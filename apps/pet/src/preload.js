@@ -102,6 +102,7 @@ contextBridge.exposeInMainWorld("versus", {
   networkPutMemory: (memory) => ipcRenderer.invoke("network:putMemory", memory),
   agentStatus: () => ipcRenderer.invoke("agent:status"),
   agentTick: () => ipcRenderer.invoke("agent:tick"),
+  agentSendTestSignal: () => ipcRenderer.invoke("agent:sendTestSignal"),
   agentStart: () => ipcRenderer.invoke("agent:start"),
   agentStop: () => ipcRenderer.invoke("agent:stop"),
   agentNextThought: () => ipcRenderer.invoke("agent:nextThought"),
