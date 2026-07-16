@@ -233,6 +233,14 @@ test("paid test postcards are hidden behind an explicit local launch flag", () =
   assert.match(renderer, /classList\.toggle\("hidden", !status\.testSignalEnabled\)/);
 });
 
+test("manual brain ticks lock their controls before invoking the brain", () => {
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  assert.match(renderer, /if \(brainThinkPending \|\| button\?\.disabled\) return/);
+  assert.match(renderer, /brainThinkPending = true;\s+renderNetworkScreen\(\);\s+try \{\s+await window\.versus\.agentTick\(\)/);
+  assert.match(renderer, /think\.textContent = brainThinkPending \? "THINKING" : "THINK"/);
+  assert.match(renderer, /finally \{\s+brainThinkPending = false;\s+renderNetworkScreen\(\)/);
+});
+
 test("archive restore reveals the local Cypher while remote recovery continues", () => {
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");

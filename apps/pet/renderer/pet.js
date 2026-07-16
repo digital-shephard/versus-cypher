@@ -269,6 +269,7 @@ let fundingOpen = false;
 let signalFlipped = false;
 let networkSnapshot = null;
 let networkRefreshLock = false;
+let brainThinkPending = false;
 let graduationRunning = false;
 let classOverUntil = 0;
 let classOverTimer = null;
@@ -986,7 +987,9 @@ function renderNetworkScreen() {
   renderSignalGraph(active ? (status.neighborhood || []) : []);
   $("signal-card")?.classList.toggle("has-traffic", active && (peers > 0 || notes > 0));
 
-  const brainStatus = String(agent.status || (agent.configured ? "sleeping" : "off"));
+  const brainStatus = brainThinkPending
+    ? "thinking"
+    : String(agent.status || (agent.configured ? "sleeping" : "off"));
   $("brain-status").textContent = brainStatus.toUpperCase();
   $("brain-model").textContent = agent.configured
     ? signalSentence(agent.model, "Owner supplied brain", 30)
@@ -1005,7 +1008,11 @@ function renderNetworkScreen() {
   const think = $("btn-brain-think");
   const auto = $("btn-brain-auto");
   const testSignal = $("btn-test-signal");
-  if (think) think.disabled = !agent.configured || brainStatus === "thinking";
+  if (think) {
+    think.disabled = !agent.configured || brainStatus === "thinking";
+    think.textContent = brainThinkPending ? "THINKING" : "THINK";
+    think.setAttribute("aria-busy", brainThinkPending ? "true" : "false");
+  }
   if (auto) {
     auto.disabled = !agent.configured || brainStatus === "thinking";
     auto.textContent = brainStatus === "listening" ? "STOP" : "AUTO";
@@ -3244,15 +3251,22 @@ $("btn-signal-copy-code")?.addEventListener("click", async () => {
 });
 
 $("btn-brain-think")?.addEventListener("click", async () => {
+  const button = $("btn-brain-think");
+  if (brainThinkPending || button?.disabled) return;
   const agent = networkSnapshot?.status?.agent;
   if (!agent?.configured) {
     toast("configure a local brain");
     return;
   }
+  brainThinkPending = true;
+  renderNetworkScreen();
   try {
     await window.versus.agentTick();
   } catch (error) {
     toast(signalSentence(error.message, "brain unavailable", 32));
+  } finally {
+    brainThinkPending = false;
+    renderNetworkScreen();
   }
   await refreshNetworkScreen();
 });
