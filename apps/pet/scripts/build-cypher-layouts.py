@@ -17,7 +17,7 @@ ALPHA_THRESHOLD = 32
 # Named art-direction exceptions can live here without touching runtime code.
 # raftZoom, x, and y affect the raft; zoom and cardX affect the collectible card.
 TUNING = {
-    "Akitash": {"raftZoom": 0.875},
+    "Akitash": {"raftZoom": 0.875, "y": 13},
     "Aralass": {"raftZoom": 1.105},
     "Buff": {"raftZoom": 0.70},
     "Calfire": {"raftZoom": 1.25},

@@ -13,7 +13,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       300
     ],
     "cardCenterX": 92.66,
-    "raftZoom": 0.875
+    "raftZoom": 0.875,
+    "y": 13
   },
   "AncientOne": {
     "baseline": 248.0,

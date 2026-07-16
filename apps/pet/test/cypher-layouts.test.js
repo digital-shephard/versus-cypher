@@ -18,6 +18,7 @@ function loadLayouts() {
 test("raft art-direction tuning remains separate from collectible card layout", () => {
   const layouts = loadLayouts();
   assert.equal(layouts.Akitash.raftZoom, 0.875);
+  assert.equal(layouts.Akitash.y, 13);
   assert.equal(layouts.Aralass.raftZoom, 1.105);
   assert.equal(layouts.Buff.raftZoom, 0.7);
   assert.equal(layouts.Calfire.raftZoom, 1.25);
