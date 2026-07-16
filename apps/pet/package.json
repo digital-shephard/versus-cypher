@@ -19,6 +19,7 @@
     "shots:rain": "electron scripts/preview-rain-ramp.js",
     "preview:graduation": "electron scripts/capture-graduation.js --preview",
     "preview:hatch": "electron scripts/preview-hatch.js",
+    "preview:roster": "electron scripts/preview-hatch.js --roster",
     "preview:rain": "electron scripts/preview-rain-ramp.js --preview",
     "waku:electron-smoke": "electron scripts/waku-electron-smoke.js",
     "waku:public-rain-smoke": "electron scripts/public-rain-smoke.js",

@@ -7,6 +7,7 @@ const { fetchNodeHatchQuote, hatchQuoteEndpointsFromEnv } = require("../src/base
 const BASE_DEPLOYMENT = require(path.join(__dirname, "..", "..", "..", "versus", "deployments", "base.json"));
 
 const STUB_ADDRESS = "0xA11CE00000000000000000000000000000000BEE";
+const REVIEW_ROSTER = process.argv.includes("--roster");
 const ACTIVE_BOND = {
   phase: "active",
   agentId: 44,
@@ -28,7 +29,9 @@ const ACTIVE_BOND = {
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-let bond = { phase: "awaiting_deposit", walletAddress: STUB_ADDRESS };
+let bond = REVIEW_ROSTER
+  ? { ...ACTIVE_BOND }
+  : { phase: "awaiting_deposit", walletAddress: STUB_ADDRESS };
 let win = null;
 let liveQuotePromise = null;
 
@@ -110,6 +113,124 @@ function installPreviewIpc() {
   handle("window:quit", () => app.quit());
 }
 
+async function installCypherReviewControls() {
+  await win.webContents.executeJavaScript(`(() => {
+    if (document.getElementById("hatch-preview-roster")) return true;
+
+    const cyphers = window.VERSUS_CYPHERS?.CYPHERS || [];
+    if (!cyphers.length) return false;
+
+    const style = document.createElement("style");
+    style.textContent = \`
+      #hatch-preview-roster {
+        position: fixed;
+        top: 5px;
+        left: 50%;
+        z-index: 10000;
+        display: grid;
+        grid-template-columns: 28px minmax(0, 176px) 28px;
+        width: 240px;
+        height: 28px;
+        transform: translateX(-50%);
+        overflow: hidden;
+        border: 1px solid rgba(197, 231, 190, 0.8);
+        border-radius: 4px;
+        background: rgba(4, 19, 19, 0.92);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.42);
+        color: #d9f1d8;
+        font: 10px/1 "IBM Plex Mono", Consolas, monospace;
+        letter-spacing: 0;
+        -webkit-app-region: no-drag;
+      }
+      #hatch-preview-roster button {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 0;
+        background: rgba(129, 169, 117, 0.22);
+        color: #efffe7;
+        font: 700 16px/1 Consolas, monospace;
+        cursor: pointer;
+      }
+      #hatch-preview-roster button:hover { background: rgba(155, 199, 137, 0.4); }
+      #hatch-preview-roster button:disabled { opacity: 0.35; cursor: default; }
+      #hatch-preview-cypher-name {
+        display: block;
+        overflow: hidden;
+        padding: 8px 5px 0;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    \`;
+    document.head.appendChild(style);
+
+    const controls = document.createElement("div");
+    controls.id = "hatch-preview-roster";
+    controls.setAttribute("aria-label", "Preview Cypher selector");
+    const previous = document.createElement("button");
+    previous.type = "button";
+    previous.textContent = "<";
+    previous.title = "Previous Cypher (Left or A)";
+    const label = document.createElement("span");
+    label.id = "hatch-preview-cypher-name";
+    const next = document.createElement("button");
+    next.type = "button";
+    next.textContent = ">";
+    next.title = "Next Cypher (Right or D)";
+    controls.append(previous, label, next);
+    document.body.appendChild(controls);
+
+    let index = Math.max(0, cyphers.findIndex((cypher) => cypher.id === bond?.cypherId));
+
+    const renderLabel = () => {
+      const active = bond?.phase === "active";
+      const cypher = cyphers[index];
+      previous.disabled = !active;
+      next.disabled = !active;
+      label.textContent = active
+        ? \`\${String(index + 1).padStart(2, "0")}/\${cyphers.length} | \${cypher.name}\`
+        : "HATCH TO REVIEW ROSTER";
+    };
+
+    const selectCypher = async (delta) => {
+      if (bond?.phase !== "active") return false;
+      index = (index + delta + cyphers.length) % cyphers.length;
+      const cypher = cyphers[index];
+      bond = { ...bond, cypherId: cypher.id };
+      setCypherFace(cypher.id);
+      updateModeScreen();
+      await window.versus.saveBond({ ...bond });
+      renderLabel();
+      console.log(\`Preview Cypher \${index + 1}/\${cyphers.length}: \${cypher.name} (#\${cypher.id})\`);
+      return true;
+    };
+
+    previous.addEventListener("click", () => selectCypher(-1));
+    next.addEventListener("click", () => selectCypher(1));
+    document.addEventListener("keydown", (event) => {
+      if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        selectCypher(-1);
+      } else if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        selectCypher(1);
+      }
+    });
+    window.versus.onBondChanged?.((nextBond) => {
+      if (nextBond?.phase !== "active") return;
+      index = Math.max(0, cyphers.findIndex((cypher) => cypher.id === nextBond.cypherId));
+      queueMicrotask(renderLabel);
+    });
+    window.__versusPreviewSelectCypher = selectCypher;
+    renderLabel();
+    return true;
+  })()`, true);
+}
+
 async function main() {
   app.setPath("userData", path.join(app.getPath("temp"), "versus-hatch-preview"));
   await app.whenReady();
@@ -130,16 +251,31 @@ async function main() {
   });
   await win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   await sleep(500);
-  await win.webContents.executeJavaScript(`(async () => {
-    setHatchState("funding");
-    ensureDepositQr();
-    const quote = await window.versus.getHatchQuote();
-    await refreshHatchQuote();
-    const status = document.getElementById("deposit-status");
-    status.textContent = "LIVE NODE QUOTE: " + (Number(quote.previewQuoteMs) / 1000).toFixed(2) + "S | CLICK I SENT IT";
-    status.classList.remove("hidden");
-    return true;
-  })()`, true);
+  await installCypherReviewControls();
+  if (REVIEW_ROSTER) {
+    console.log("Roster review ready: use the selector, Left/Right, or A/D.");
+    const autoCycleMs = Number(process.env.VERSUS_HATCH_PREVIEW_AUTO_CYCLE_MS || 0);
+    if (Number.isFinite(autoCycleMs) && autoCycleMs >= 500) {
+      setInterval(() => {
+        win?.webContents.executeJavaScript("window.__versusPreviewSelectCypher?.(1)", true)
+          .then((changed) => {
+            if (changed) console.log(`Roster auto-cycle selected Cypher #${bond.cypherId}.`);
+          })
+          .catch(console.error);
+      }, autoCycleMs).unref?.();
+    }
+  } else {
+    await win.webContents.executeJavaScript(`(async () => {
+      setHatchState("funding");
+      ensureDepositQr();
+      const quote = await window.versus.getHatchQuote();
+      await refreshHatchQuote();
+      const status = document.getElementById("deposit-status");
+      status.textContent = "LIVE NODE QUOTE: " + (Number(quote.previewQuoteMs) / 1000).toFixed(2) + "S | CLICK I SENT IT";
+      status.classList.remove("hidden");
+      return true;
+    })()`, true);
+  }
   const autoCloseMs = Number(process.env.VERSUS_HATCH_PREVIEW_AUTO_CLOSE_MS || 0);
   if (Number.isFinite(autoCloseMs) && autoCloseMs > 0) {
     setTimeout(() => app.quit(), autoCloseMs).unref?.();
