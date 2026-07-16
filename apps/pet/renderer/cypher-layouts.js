@@ -12,7 +12,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       235,
       300
     ],
-    "cardCenterX": 92.66
+    "cardCenterX": 92.66,
+    "raftZoom": 0.7
   },
   "AncientOne": {
     "baseline": 248.0,
@@ -40,7 +41,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       406,
       300
     ],
-    "cardCenterX": 174.3
+    "cardCenterX": 174.3,
+    "raftZoom": 1.3
   },
   "Buff": {
     "baseline": 242.5,
@@ -54,7 +56,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       300,
       300
     ],
-    "cardCenterX": 147.75
+    "cardCenterX": 147.75,
+    "raftZoom": 0.7
   },
   "Calfire": {
     "baseline": 284.0,
@@ -96,7 +99,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       251,
       300
     ],
-    "cardCenterX": 141.73
+    "cardCenterX": 141.73,
+    "y": 13
   },
   "Crescient": {
     "baseline": 226.0,
@@ -152,7 +156,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       424,
       300
     ],
-    "cardCenterX": 233.81
+    "cardCenterX": 233.81,
+    "x": -7
   },
   "Espiritu": {
     "baseline": 278.25,
@@ -236,7 +241,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       380,
       300
     ],
-    "cardCenterX": 194.65
+    "cardCenterX": 194.65,
+    "raftZoom": 1.3
   },
   "Metadash": {
     "baseline": 263.0,
@@ -264,7 +270,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       300,
       300
     ],
-    "cardCenterX": 146.69
+    "cardCenterX": 146.69,
+    "raftZoom": 1.5
   },
   "Octopunch": {
     "baseline": 285.0,
@@ -334,7 +341,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       424,
       300
     ],
-    "cardCenterX": 207.79
+    "cardCenterX": 207.79,
+    "raftZoom": 1.5
   },
   "Snek": {
     "baseline": 286.0,
@@ -362,7 +370,8 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       533,
       300
     ],
-    "cardCenterX": 258.18
+    "cardCenterX": 258.18,
+    "raftZoom": 1.2
   },
   "Velocirock": {
     "baseline": 270.0,
@@ -404,6 +413,7 @@ window.VERSUS_CYPHER_LAYOUTS = Object.freeze({
       327,
       300
     ],
-    "cardCenterX": 148.91
+    "cardCenterX": 148.91,
+    "y": 20
   }
 });

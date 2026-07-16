@@ -15,8 +15,19 @@ OUTPUT = ROOT / "renderer" / "cypher-layouts.js"
 ALPHA_THRESHOLD = 32
 
 # Named art-direction exceptions can live here without touching runtime code.
-# Values are optional: zoom, x, y, and cardX. Card offsets do not affect the raft.
-TUNING = {}
+# raftZoom, x, and y affect the raft; zoom and cardX affect the collectible card.
+TUNING = {
+    "Akitash": {"raftZoom": 0.70},
+    "Aralass": {"raftZoom": 1.30},
+    "Buff": {"raftZoom": 0.70},
+    "Chonk": {"y": 13},
+    "Emberion": {"x": -7},
+    "Kamakasu": {"raftZoom": 1.30},
+    "Nyx": {"raftZoom": 1.50},
+    "Shibachu": {"raftZoom": 1.50},
+    "Somnowing": {"raftZoom": 1.20},
+    "Xaldin": {"y": 20},
+}
 
 
 def percentile(values, amount):

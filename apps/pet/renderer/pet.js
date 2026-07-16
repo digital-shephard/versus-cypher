@@ -471,7 +471,7 @@ function applyRaftSpriteLayout(img, layout) {
   const [left, top, right, bottom] = layout.bounds;
   const visibleWidth = Math.max(1, right - left);
   const visibleHeight = Math.max(1, bottom - top);
-  const rawZoom = Math.min(targetWidth / visibleWidth, targetHeight / visibleHeight) * (layout.zoom || 1);
+  const rawZoom = Math.min(targetWidth / visibleWidth, targetHeight / visibleHeight) * (layout.raftZoom || 1);
   const zoom = Math.round(rawZoom * 64) / 64;
   const visibleCenterX = (left + right) / 2;
   const translateX = Math.round(box / 2 + (layout.x || 0) - zoom * visibleCenterX);
@@ -2364,7 +2364,7 @@ function raftCypherVisibleCenter() {
   const visibleWidth = Math.max(1, right - left);
   const visibleHeight = Math.max(1, bottom - top);
   const zoom = Math.round(
-    Math.min(140 / visibleWidth, 130 / visibleHeight) * (layout.zoom || 1) * 64
+    Math.min(140 / visibleWidth, 130 / visibleHeight) * (layout.raftZoom || 1) * 64
   ) / 64;
   return {
     x: 75 + Number(layout.x || 0),
