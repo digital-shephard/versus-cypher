@@ -31,6 +31,7 @@ test("macOS releases stay signed notarized updateable and step scoped", () => {
   );
 
   assert.deepEqual(packageJson.build.mac.target, ["dmg", "zip"]);
+  assert.equal(packageJson.build.copyright, "Copyright © 2026 Digital Shepard");
   assert.equal(packageJson.build.mac.hardenedRuntime, true);
   assert.equal(packageJson.build.mac.notarize, true);
   assert.equal(packageJson.build.mac.entitlements, "entitlements.mac.plist");

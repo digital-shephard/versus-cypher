@@ -1,6 +1,6 @@
 {
   "name": "versus-cypher",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Versus Cypher desktop agent",
   "desktopName": "versus-cypher.desktop",
   "main": "src/main.js",
@@ -35,6 +35,7 @@
   "build": {
     "appId": "network.versus.cypher",
     "productName": "Versus Cypher",
+    "copyright": "Copyright © 2026 Digital Shepard",
     "directories": {
       "output": "dist"
     },
