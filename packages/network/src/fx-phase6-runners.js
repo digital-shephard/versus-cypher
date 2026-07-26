@@ -108,8 +108,10 @@ class FxDeterministicDealer extends EventEmitter {
 
   async reconcileHistory() {
     for (const rfq of this.historicalRfqs.values()) {
+      const snapshot = this.session.journal.snapshot(rfq.tradeId);
       if (
         rfq.payload.quoteDeadline >= this.now() &&
+        snapshot?.settlementState === "rfq_open" &&
         !this.quotes.has(rfq.tradeId)
       ) {
         await this.onEnvelope(rfq, { recoveredFromStore: true });
@@ -136,6 +138,12 @@ class FxDeterministicDealer extends EventEmitter {
   async quote(rfq) {
     if (this.now() > rfq.payload.quoteDeadline) {
       this.emit("skipped", rfq, { reason: "quote_deadline_elapsed" });
+      return null;
+    }
+    if (
+      this.session.journal.snapshot(rfq.tradeId)?.settlementState !== "rfq_open"
+    ) {
+      this.emit("skipped", rfq, { reason: "rfq_no_longer_open" });
       return null;
     }
     const payload = await this.quotePolicy(rfq);

@@ -565,6 +565,97 @@ test("a restarted dealer recovers the active RFQ from Store without a live repla
   assert.equal(dealerSession.transport.status().state, "caught_up");
 });
 
+test("a late dealer does not quote an RFQ already reserved with another dealer", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-late-dealer-"));
+  const now = { value: 1_800_325_000 };
+  const bus = new FakeWakuBus();
+  const requesterWallet = Wallet.createRandom();
+  const selectedDealerWallet = Wallet.createRandom();
+  const lateDealerWallet = Wallet.createRandom();
+  const requesterJournal = createJournal(directory, "requester", now);
+  const selectedDealerJournal = createJournal(directory, "selected-dealer", now);
+  const requesterSession = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: requesterWallet,
+    role: "requester",
+    journal: requesterJournal,
+    transport: createTransport(bus, now),
+    now: () => now.value,
+  });
+  const selectedDealerSession = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: selectedDealerWallet,
+    role: "dealer",
+    journal: selectedDealerJournal,
+    transport: createTransport(bus, now),
+    now: () => now.value,
+  });
+  const requester = new FxRequesterBroker({
+    session: requesterSession,
+    observationWindowMs: 0,
+    now: () => now.value,
+  });
+  const selectedDealer = new FxDeterministicDealer({
+    session: selectedDealerSession,
+    quotePolicy: dealerPolicy(now),
+    sourceClaimAddress: selectedDealerWallet.address,
+    destinationRefundAddress: selectedDealerWallet.address,
+    observationWindowMs: 0,
+    now: () => now.value,
+  });
+  t.after(async () => {
+    await Promise.allSettled([requester.close(), selectedDealer.close()]);
+    requesterJournal.close();
+    selectedDealerJournal.close();
+  });
+  await Promise.all([requester.start(), selectedDealer.start()]);
+  const quoteReady = once(requester, "quote");
+  const rfq = await requester.openRfq({ payload: rfqPayload(now) });
+  await quoteReady;
+  const route = requester.selectRoute(rfq.tradeId);
+  const reserved = once(requester, "reserved");
+  await requester.accept({
+    tradeId: rfq.tradeId,
+    route,
+    secretHash: "0x" + "61".repeat(32),
+    sourceRefundAddress: requesterWallet.address,
+    destinationClaimAddress: requesterWallet.address,
+  });
+  await reserved;
+
+  const lateDealerJournal = createJournal(directory, "late-dealer", now);
+  const lateDealerSession = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: lateDealerWallet,
+    role: "dealer",
+    journal: lateDealerJournal,
+    transport: createTransport(bus, now),
+    now: () => now.value,
+  });
+  let policyCalls = 0;
+  const lateDealer = new FxDeterministicDealer({
+    session: lateDealerSession,
+    quotePolicy: async () => {
+      policyCalls += 1;
+      return dealerPolicy(now)();
+    },
+    sourceClaimAddress: lateDealerWallet.address,
+    destinationRefundAddress: lateDealerWallet.address,
+    observationWindowMs: 0,
+    now: () => now.value,
+  });
+  t.after(async () => {
+    await lateDealer.close();
+    lateDealerJournal.close();
+  });
+  await lateDealer.start();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  assert.equal(lateDealerJournal.snapshot(rfq.tradeId).settlementState, "quote_accepted");
+  assert.equal(policyCalls, 0);
+  assert.equal(lateDealer.quotes.has(rfq.tradeId), false);
+});
+
 test("suppressed acceptance recovers through Store and produces one reservation", async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-suppressed-"));
   const now = { value: 1_800_350_000 };

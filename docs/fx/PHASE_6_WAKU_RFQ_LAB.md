@@ -59,6 +59,22 @@ swap secret appears in Waku messages or this report. The complete run took
 admissions; the late Store recovery completed 5.855 seconds after the RFQ's
 second-resolution creation timestamp.
 
+### Relay independence
+
+The late-join coordination campaign was then repeated sequentially with each
+client configured to exactly one bootstrap relay and chain settlement disabled:
+
+| Bootstrap | Trade | Converged state hash | Store recovery |
+| --- | --- | --- | --- |
+| `relay-a.versuscypher.com` | `0xbd81a0a9defbbcaf921372607bb23fe537d50df259de974ccf7abf4c7ae084f2` | `0x50ba442e7a5201e8d5f3b4adc775b2995e69f5188ab74cb779a594fd26389f64` | yes |
+| `relay-b.versuscypher.com` | `0x29dc4f3c58fde2463cacf78c86257c9c6ccedc9c3536263f9f07b9d7ceb4d29d` | `0x33feb8bc93ed2cc82d24a6e9ae5de78dfa2b14fc44906fd4321bcfd003c9c2c9` | yes |
+
+Each requester and dealer observed exactly one LightPush, Filter, Store, and
+Relay peer. The smoke gate also required the accepted quote signer to equal
+that campaign's generated dealer identity, preventing another active test
+dealer on the shared discovery topic from satisfying the proof accidentally.
+Neither relay is individually required for recovery.
+
 ## Headless roles
 
 The headless runner accepts either an encrypted keystore or a dedicated
@@ -94,6 +110,7 @@ Automated coverage includes:
 - bounded fake-RFQ floods;
 - third-party acceptance hijacking;
 - selected-dealer reservation binding;
+- a late dealer refusing to quote an RFQ already reserved with another dealer;
 - peer loss and subscription reconstruction after resume;
 - settlement completion after all Waku notifications stop.
 

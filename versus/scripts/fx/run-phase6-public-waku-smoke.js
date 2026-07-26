@@ -72,10 +72,17 @@ function sourceState(repositoryRoot) {
   };
 }
 
-function transport(deploymentId) {
+function bootstrapPeers() {
+  return String(process.env.FX_PHASE6_WAKU_PEERS || BOOTSTRAPS.join(","))
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function transport(deploymentId, peers) {
   return new FxWakuTransport({
     deploymentId,
-    bootstrapPeers: BOOTSTRAPS,
+    bootstrapPeers: peers,
     peerTimeoutMs: 30_000,
     storeHistoryMs: 15 * 60 * 1000,
     storeMessageLimit: 512,
@@ -119,6 +126,8 @@ async function main() {
   ]);
   const requesterCoordinationWallet = Wallet.createRandom();
   const dealerCoordinationWallet = Wallet.createRandom();
+  const peers = bootstrapPeers();
+  if (peers.length < 1) throw new Error("Phase 6 smoke requires at least one Waku bootstrap peer");
   const runDirectory = path.join(
     identityDirectory,
     "phase6-waku-runs",
@@ -138,14 +147,14 @@ async function main() {
     signer: requesterCoordinationWallet,
     role: "requester",
     journal: requesterJournal,
-    transport: transport(bundle.deploymentId),
+    transport: transport(bundle.deploymentId, peers),
   });
   const dealerSession = new FxCoordinationSession({
     deploymentId: bundle.deploymentId,
     signer: dealerCoordinationWallet,
     role: "dealer",
     journal: dealerJournal,
-    transport: transport(bundle.deploymentId),
+    transport: transport(bundle.deploymentId, peers),
   });
   const requester = new FxRequesterBroker({
     session: requesterSession,
@@ -218,6 +227,13 @@ async function main() {
     await dealer.start();
     await quoteReady;
     const selected = requester.selectRoute(rfq.tradeId);
+    if (
+      selected.dealer !== dealerCoordinationWallet.address.toLowerCase()
+    ) {
+      throw new Error(
+        `Phase 6 selected an unexpected dealer ${selected.dealer}`
+      );
+    }
     const reserved = waitFor(requester, "reserved");
     const secret = randomBytes(32);
     await requester.accept({
@@ -332,9 +348,14 @@ async function main() {
       tradeId: rfq.tradeId,
       testnetFundsOnly: true,
       productionWaku: true,
+      configuredBootstrapPeers: peers.map((peer) => {
+        const match = peer.match(/\/dns4\/([^/]+)/);
+        return match ? match[1] : "non-dns-bootstrap";
+      }),
       ephemeralCoordinationIdentities: true,
       requesterCoordinationAddress: requesterCoordinationWallet.address.toLowerCase(),
       dealerCoordinationAddress: dealerCoordinationWallet.address.toLowerCase(),
+      selectedDealerCoordinationAddress: selected.dealer,
       requesterSettlementAddress: requesterWallet.address.toLowerCase(),
       dealerSettlementAddress: dealerWallet.address.toLowerCase(),
       storeRecoveryExercised,
