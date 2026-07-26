@@ -230,6 +230,17 @@ async function main() {
     await reserved;
     const requesterSnapshot = requesterJournal.snapshot(rfq.tradeId);
     const dealerSnapshot = dealerJournal.snapshot(rfq.tradeId);
+    const storeRecoveryExercised = events.some(
+      (event) => event.actor === "dealer" && event.history
+    );
+    if (!storeRecoveryExercised) {
+      throw new Error("Phase 6 dealer did not recover the RFQ through Waku Store");
+    }
+    if (requesterSnapshot.stateHash !== dealerSnapshot.stateHash) {
+      throw new Error("Phase 6 journals diverged before settlement");
+    }
+    const requesterTransportEvidence = requesterSession.transport.status();
+    const dealerTransportEvidence = dealerSession.transport.status();
     if (process.env.FX_PHASE6_SETTLE === "1") {
       await Promise.all([requester.close(), dealer.close()]);
       const providers = {
@@ -319,13 +330,13 @@ async function main() {
       dealerCoordinationAddress: dealerCoordinationWallet.address.toLowerCase(),
       requesterSettlementAddress: requesterWallet.address.toLowerCase(),
       dealerSettlementAddress: dealerWallet.address.toLowerCase(),
-      storeRecoveryExercised: events.some((event) => event.actor === "dealer" && event.history),
+      storeRecoveryExercised,
       requesterStateHash: requesterSnapshot.stateHash,
       dealerStateHash: dealerSnapshot.stateHash,
       stateHashesMatch: requesterSnapshot.stateHash === dealerSnapshot.stateHash,
       chainSettlement,
-      requesterTransport: requesterSession.transport.status(),
-      dealerTransport: dealerSession.transport.status(),
+      requesterTransport: requesterTransportEvidence,
+      dealerTransport: dealerTransportEvidence,
       events,
       latency: {
         observedMessages: events.filter((event) => event.propagationLatencyMs !== null).length,
@@ -341,9 +352,6 @@ async function main() {
       mode: 0o600,
     });
     process.stdout.write(`${JSON.stringify({ reportPath, ...report }, null, 2)}\n`);
-    if (!report.storeRecoveryExercised || !report.stateHashesMatch) {
-      throw new Error("Phase 6 public Waku smoke did not converge through Store");
-    }
   } finally {
     await Promise.allSettled([requester.close(), dealer.close()]);
     requesterJournal.close();

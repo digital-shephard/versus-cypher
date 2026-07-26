@@ -613,7 +613,7 @@ class FxTradeJournal {
     const messages = this.db.prepare(`
       SELECT id, type, sender, sequence FROM fx_messages
       WHERE deployment_id = ? AND trade_id = ?
-      ORDER BY received_at, id
+      ORDER BY id
     `).all(this.deploymentId, tradeId).map((row) => ({
       id: row.id,
       type: row.type,

@@ -217,6 +217,10 @@ test("real signed requester and deterministic dealer coordinate over isolated Wa
   assert.equal(reservation.payload.quoteId, route.quoteId);
   assert.equal(requesterSession.journal.snapshot(rfq.tradeId).settlementState, "quote_accepted");
   assert.equal(dealerSession.journal.snapshot(rfq.tradeId).stateHash, requesterSession.journal.snapshot(rfq.tradeId).stateHash);
+  const snapshotMessageIds = requesterSession.journal
+    .snapshot(rfq.tradeId)
+    .messages.map((message) => message.id);
+  assert.deepEqual(snapshotMessageIds, [...snapshotMessageIds].sort());
 
   const rfqWire = bus.history.find((entry) => entry.topic.includes("/rfq-"));
   const publicRfq = JSON.parse(new TextDecoder().decode(rfqWire.message.payload));
