@@ -230,8 +230,15 @@ async function main() {
     await reserved;
     const requesterSnapshot = requesterJournal.snapshot(rfq.tradeId);
     const dealerSnapshot = dealerJournal.snapshot(rfq.tradeId);
+    const currentTradeEvents = events.filter(
+      (event) => event.tradeId === rfq.tradeId
+    );
     const storeRecoveryExercised = events.some(
-      (event) => event.actor === "dealer" && event.history
+      (event) =>
+        event.tradeId === rfq.tradeId &&
+        event.actor === "dealer" &&
+        event.type === "fx_rfq" &&
+        event.history
     );
     if (!storeRecoveryExercised) {
       throw new Error("Phase 6 dealer did not recover the RFQ through Waku Store");
@@ -337,12 +344,14 @@ async function main() {
       chainSettlement,
       requesterTransport: requesterTransportEvidence,
       dealerTransport: dealerTransportEvidence,
-      events,
+      events: currentTradeEvents,
       latency: {
-        observedMessages: events.filter((event) => event.propagationLatencyMs !== null).length,
+        observedMessages: currentTradeEvents.filter(
+          (event) => event.propagationLatencyMs !== null
+        ).length,
         maximumPropagationLatencyMs: Math.max(
           0,
-          ...events.map((event) => event.propagationLatencyMs || 0)
+          ...currentTradeEvents.map((event) => event.propagationLatencyMs || 0)
         ),
       },
     };
