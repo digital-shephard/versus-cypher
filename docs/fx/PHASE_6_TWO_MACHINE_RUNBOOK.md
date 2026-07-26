@@ -32,7 +32,11 @@ $env:FX_PHASE6_INPUT_TOKEN = "0xcba3d9354dd4c30bb6961abb4473a6340486e01b"
 $env:FX_PHASE6_MAX_INPUT_ATOMIC = "11000"
 $env:FX_PHASE6_SOURCE_REFUND_ADDRESS = "0xa4ac9532bf09d1992663b031e2ee15847f4f0a50"
 $env:FX_PHASE6_DESTINATION_CLAIM_ADDRESS = "0xa4ac9532bf09d1992663b031e2ee15847f4f0a50"
-$env:FX_PHASE6_SECRET_HASH = node -e "const {keccak256,randomBytes}=require('ethers');process.stdout.write(keccak256(randomBytes(32)))"
+$bytes = New-Object byte[] 32
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$rng.Dispose()
+$env:FX_PHASE6_SECRET_HASH = "0x" + (($bytes | ForEach-Object { $_.ToString("x2") }) -join "")
 npm run fx:phase6:headless --prefix packages/network
 ```
 
@@ -68,7 +72,9 @@ The run passes only when:
 3. macOS logs `dealer:quoted` and `dealer:reserved`;
 4. Windows logs `requester:reserved`;
 5. both machines retain encrypted coordination identities and SQLite journals;
-6. neither metrics file contains a raw secret, private key, mnemonic, keystore,
+6. `requester:reserved` and `dealer:reserved` report the same journal state
+   hash;
+7. neither metrics file contains a raw secret, private key, mnemonic, keystore,
    balance, or inventory field.
 
 Preserve both `phase6-events.ndjson` files and the two journal state hashes as

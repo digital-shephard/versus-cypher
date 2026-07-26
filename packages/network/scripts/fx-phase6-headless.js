@@ -188,6 +188,7 @@ async function main() {
       event: "dealer:reserved",
       id: reserve.id,
       tradeId: reserve.tradeId,
+      stateHash: journal.snapshot(reserve.tradeId).stateHash,
     }));
     dealer.on("error", (error) => appendMetric(metricsFile, {
       event: "dealer:error",
