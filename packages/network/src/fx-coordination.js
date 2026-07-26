@@ -62,6 +62,7 @@ class FxCoordinationSession extends EventEmitter {
     maxMessagesPerSenderPerMinute = 60,
     maxMessagesPerMinuteGlobal = 600,
     maxRfqsPerSenderPerMinute = 6,
+    maxQuotesPerSenderPerMinute = 12,
     maxActiveRfqs = 32,
     maxPendingMessages = 256,
     maxSeenMessages = 10_000,
@@ -93,6 +94,9 @@ class FxCoordinationSession extends EventEmitter {
     });
     this.rfqLimit = new SlidingWindowLimit({
       maximum: maxRfqsPerSenderPerMinute,
+    });
+    this.quoteLimit = new SlidingWindowLimit({
+      maximum: maxQuotesPerSenderPerMinute,
     });
     this.started = false;
     this.address = null;
@@ -155,6 +159,15 @@ class FxCoordinationSession extends EventEmitter {
     ) {
       const error = new Error("FX sender RFQ rate exceeded");
       error.code = "FX_RFQ_RATE_LIMIT";
+      throw error;
+    }
+    if (
+      !history &&
+      verified.type === "fx_quote" &&
+      !this.quoteLimit.accept(verified.sender)
+    ) {
+      const error = new Error("FX sender quote rate exceeded");
+      error.code = "FX_QUOTE_RATE_LIMIT";
       throw error;
     }
     this.pruneActiveRfqs();

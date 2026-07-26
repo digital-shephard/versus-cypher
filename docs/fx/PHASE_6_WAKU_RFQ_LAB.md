@@ -15,8 +15,9 @@ fleet. It does not make Waku, a relay, or a broker economic truth.
   than the settlement wallet. Restart reuses the active encrypted identity;
   expiration fails closed instead of silently rotating an active trade.
 - Store recovery is bounded to 15 minutes and 512 messages by default.
-- Per-sender, global, active-RFQ, pending-dependency, and replay-memory limits
-  fail closed.
+- Per-sender, global, RFQ, dealer-quote, active-RFQ, pending-dependency, and
+  replay-memory limits fail closed. Live dealers default to at most 12 signed
+  quotes per minute, independently of the broader message ceiling.
 - The relay does not inspect payloads, select quotes, hold secrets, or attest
   completion.
 - Phase 5 chain adapters and receipts remain settlement truth.

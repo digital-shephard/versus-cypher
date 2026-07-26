@@ -358,6 +358,71 @@ test("duplicate delivery is idempotent and RFQ floods are rejected before journa
   assert.equal(journal.snapshot(messages[2].tradeId), null);
 });
 
+test("dealer quote floods hit their dedicated limit before journaling", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-quote-flood-"));
+  const now = { value: 1_800_225_000 };
+  const bus = new FakeWakuBus();
+  const requester = Wallet.createRandom();
+  const dealer = Wallet.createRandom();
+  const journal = createJournal(directory, "receiver", now);
+  const session = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: Wallet.createRandom(),
+    role: "broker",
+    journal,
+    transport: createTransport(bus, now),
+    now: () => now.value,
+    maxQuotesPerSenderPerMinute: 2,
+  });
+  t.after(async () => {
+    await session.close();
+    journal.close();
+  });
+  await session.start();
+  const tradeId = "0x" + "35".repeat(32);
+  const rfq = await signFxMessage({
+    protocol: "versus-fx",
+    version: 1,
+    deploymentId: DEPLOYMENT_ID,
+    type: "fx_rfq",
+    tradeId,
+    role: "requester",
+    sequence: "1",
+    createdAt: now.value,
+    expiresAt: now.value + 60,
+    payload: rfqPayload(now),
+  }, requester);
+  assert.equal(session.ingest(rfq).status, "accepted");
+
+  const quotes = [];
+  for (let index = 0; index < 3; index += 1) {
+    quotes.push(await signFxMessage({
+      protocol: "versus-fx",
+      version: 1,
+      deploymentId: DEPLOYMENT_ID,
+      type: "fx_quote",
+      tradeId,
+      role: "dealer",
+      sequence: String(index + 1),
+      createdAt: now.value + index + 1,
+      expiresAt: now.value + 45,
+      payload: {
+        ...(await dealerPolicy(now)()),
+        rfqId: rfq.id,
+        outputChainId: rfq.payload.outputChainId,
+        outputToken: rfq.payload.outputToken,
+        outputAmountAtomic: rfq.payload.outputAmountAtomic,
+        quoteType: "fixed_exact_output",
+      },
+    }, dealer));
+  }
+
+  assert.equal(session.ingest(quotes[0]).status, "accepted");
+  assert.equal(session.ingest(quotes[1]).status, "accepted");
+  assert.equal(session.ingest(quotes[2]).error, "FX_QUOTE_RATE_LIMIT");
+  assert.equal(journal.message(quotes[2].id), null);
+});
+
 test("a third party cannot race the requester acceptance or selected dealer reservation", async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-hijack-"));
   const now = { value: 1_800_250_000 };

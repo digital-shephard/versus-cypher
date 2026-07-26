@@ -111,6 +111,7 @@ async function main() {
     maxMessagesPerSenderPerMinute: integer("FX_PHASE6_MAX_MESSAGES_PER_MINUTE", 60),
     maxMessagesPerMinuteGlobal: integer("FX_PHASE6_MAX_GLOBAL_MESSAGES_PER_MINUTE", 600),
     maxRfqsPerSenderPerMinute: integer("FX_PHASE6_MAX_RFQS_PER_MINUTE", 6),
+    maxQuotesPerSenderPerMinute: integer("FX_PHASE6_MAX_QUOTES_PER_MINUTE", 12),
     maxActiveRfqs: integer("FX_PHASE6_MAX_ACTIVE_RFQS", 32),
   });
   for (const event of ["state", "historySynced", "published"]) {
