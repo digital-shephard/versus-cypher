@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const { JsonRpcProvider, Wallet, hexlify, keccak256, randomBytes } = require("ethers");
 const {
   FxCoordinationSession,
@@ -25,6 +26,50 @@ function waitFor(emitter, event, timeoutMs = 90_000) {
       resolve(args);
     });
   });
+}
+
+function sourceState(repositoryRoot) {
+  const run = (...args) => execFileSync("git", args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  const differs = (args) => {
+    try {
+      execFileSync("git", args, {
+        cwd: repositoryRoot,
+        stdio: "ignore",
+      });
+      return false;
+    } catch (_) {
+      return true;
+    }
+  };
+  const implementationPaths = [
+    "packages/network/scripts/fx-phase6-headless.js",
+    "packages/network/src/fx-coordination.js",
+    "packages/network/src/fx-ephemeral-identity.js",
+    "packages/network/src/fx-journal.js",
+    "packages/network/src/fx-phase6-runners.js",
+    "packages/network/src/fx-waku-transport.js",
+    "versus/scripts/fx/run-phase6-public-waku-smoke.js",
+  ];
+  const workingTreeDirty = differs(["diff", "--quiet"]) ||
+    differs(["diff", "--cached", "--quiet"]);
+  const phase6ImplementationDirty = differs([
+    "diff",
+    "--quiet",
+    "HEAD",
+    "--",
+    ...implementationPaths,
+  ]);
+  return {
+    commit: run("rev-parse", "HEAD"),
+    branch: run("branch", "--show-current"),
+    workingTreeDirty,
+    phase6ImplementationDirty,
+    protocolVersion: 1,
+  };
 }
 
 function transport(deploymentId) {
@@ -72,6 +117,8 @@ async function main() {
     identity(identityDirectory, "dealer", password),
     identity(identityDirectory, "relayer", password),
   ]);
+  const requesterCoordinationWallet = Wallet.createRandom();
+  const dealerCoordinationWallet = Wallet.createRandom();
   const runDirectory = path.join(
     identityDirectory,
     "phase6-waku-runs",
@@ -88,14 +135,14 @@ async function main() {
   });
   const requesterSession = new FxCoordinationSession({
     deploymentId: bundle.deploymentId,
-    signer: requesterWallet,
+    signer: requesterCoordinationWallet,
     role: "requester",
     journal: requesterJournal,
     transport: transport(bundle.deploymentId),
   });
   const dealerSession = new FxCoordinationSession({
     deploymentId: bundle.deploymentId,
-    signer: dealerWallet,
+    signer: dealerCoordinationWallet,
     role: "dealer",
     journal: dealerJournal,
     transport: transport(bundle.deploymentId),
@@ -125,15 +172,24 @@ async function main() {
     }),
   });
   const events = [];
-  const record = (actor, event) => (envelope, metadata = {}) => events.push({
-    at: new Date().toISOString(),
-    actor,
-    event,
-    id: envelope?.id || null,
-    type: envelope?.type || null,
-    tradeId: envelope?.tradeId || null,
-    history: Boolean(metadata.history),
-  });
+  const record = (actor, event) => (envelope, metadata = {}) => {
+    const observedAtMs = Date.now();
+    events.push({
+      at: new Date(observedAtMs).toISOString(),
+      actor,
+      event,
+      id: envelope?.id || null,
+      type: envelope?.type || null,
+      tradeId: envelope?.tradeId || null,
+      sender: envelope?.sender || null,
+      history: Boolean(metadata.history),
+      local: Boolean(metadata.local),
+      recoveredDependency: Boolean(metadata.recoveredDependency),
+      propagationLatencyMs: envelope?.createdAt
+        ? Math.max(0, observedAtMs - envelope.createdAt * 1000)
+        : null,
+    });
+  };
   requesterSession.on("accepted", record("requester", "accepted"));
   dealerSession.on("accepted", record("dealer", "accepted"));
   const startedAt = Date.now();
@@ -250,6 +306,7 @@ async function main() {
     const report = {
       schema: "versus-fx-phase6-public-waku-smoke",
       schemaVersion: 1,
+      source: sourceState(repositoryRoot),
       startedAt: new Date(startedAt).toISOString(),
       completedAt: new Date().toISOString(),
       durationMs: Date.now() - startedAt,
@@ -257,8 +314,11 @@ async function main() {
       tradeId: rfq.tradeId,
       testnetFundsOnly: true,
       productionWaku: true,
-      requester: requesterWallet.address.toLowerCase(),
-      dealer: dealerWallet.address.toLowerCase(),
+      ephemeralCoordinationIdentities: true,
+      requesterCoordinationAddress: requesterCoordinationWallet.address.toLowerCase(),
+      dealerCoordinationAddress: dealerCoordinationWallet.address.toLowerCase(),
+      requesterSettlementAddress: requesterWallet.address.toLowerCase(),
+      dealerSettlementAddress: dealerWallet.address.toLowerCase(),
       storeRecoveryExercised: events.some((event) => event.actor === "dealer" && event.history),
       requesterStateHash: requesterSnapshot.stateHash,
       dealerStateHash: dealerSnapshot.stateHash,
@@ -267,6 +327,13 @@ async function main() {
       requesterTransport: requesterSession.transport.status(),
       dealerTransport: dealerSession.transport.status(),
       events,
+      latency: {
+        observedMessages: events.filter((event) => event.propagationLatencyMs !== null).length,
+        maximumPropagationLatencyMs: Math.max(
+          0,
+          ...events.map((event) => event.propagationLatencyMs || 0)
+        ),
+      },
     };
     const reportPath = path.join(runDirectory, "report.json");
     fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, {

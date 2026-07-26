@@ -11,6 +11,9 @@ fleet. It does not make Waku, a relay, or a broker economic truth.
 - FX traffic never enters postcard memory or model context.
 - Every message is signed, role bound, deployment bound, trade bound,
   sequenced, expiring, and journaled.
+- RFQs are signed by encrypted, short-lived coordination identities rather
+  than the settlement wallet. Restart reuses the active encrypted identity;
+  expiration fails closed instead of silently rotating an active trade.
 - Store recovery is bounded to 15 minutes and 512 messages by default.
 - Per-sender, global, active-RFQ, pending-dependency, and replay-memory limits
   fail closed.
@@ -63,6 +66,12 @@ Required settings are documented by the fail-closed `FX_PHASE6_*` environment
 validation in `packages/network/scripts/fx-phase6-headless.js`. Use dedicated
 testnet identities. Do not put a Cypher owner key or production funds into a
 shell command.
+
+When no operator coordination key is supplied, the runner creates an encrypted
+24-hour coordination identity inside its data directory. Settlement addresses
+are separate required inputs and do not appear in the public RFQ. The
+independent Windows/macOS procedure is documented in
+`docs/fx/PHASE_6_TWO_MACHINE_RUNBOOK.md`.
 
 The dealer defaults to a 15-second observation window. Quote policy is
 deterministic: exact input, route manifest, reference timestamp, spread,

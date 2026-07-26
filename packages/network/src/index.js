@@ -8,6 +8,7 @@ module.exports = {
   ...require("./economic-verifier"),
   ...require("./fx-protocol"),
   ...require("./fx-coordination"),
+  ...require("./fx-ephemeral-identity"),
   ...require("./fx-journal"),
   ...require("./fx-waku-transport"),
   ...require("./fx-phase5-coordinator"),

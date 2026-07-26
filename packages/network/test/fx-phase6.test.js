@@ -206,7 +206,7 @@ test("real signed requester and deterministic dealer coordinate over isolated Wa
 
   const reserved = once(requester, "reserved");
   const secretHash = keccak256(toUtf8Bytes("phase-6-secret"));
-  await requester.accept({
+  const accepted = await requester.accept({
     tradeId: rfq.tradeId,
     route,
     secretHash,
@@ -218,6 +218,11 @@ test("real signed requester and deterministic dealer coordinate over isolated Wa
   assert.equal(requesterSession.journal.snapshot(rfq.tradeId).settlementState, "quote_accepted");
   assert.equal(dealerSession.journal.snapshot(rfq.tradeId).stateHash, requesterSession.journal.snapshot(rfq.tradeId).stateHash);
 
+  const rfqWire = bus.history.find((entry) => entry.topic.includes("/rfq-"));
+  const publicRfq = JSON.parse(new TextDecoder().decode(rfqWire.message.payload));
+  assert.equal(publicRfq.payload.sourceRefundAddress, undefined);
+  assert.equal(publicRfq.payload.destinationClaimAddress, undefined);
+
   const wirePayload = JSON.stringify(bus.history);
   for (const forbiddenKey of ["secret", "privateKey", "mnemonic", "keystore", "balance", "inventory"]) {
     assert.doesNotMatch(
@@ -226,6 +231,25 @@ test("real signed requester and deterministic dealer coordinate over isolated Wa
       `${forbiddenKey} must never appear in FX Waku payloads`
     );
   }
+
+  const conflicting = await signFxMessage({
+    ...accepted,
+    id: undefined,
+    signature: undefined,
+    sequence: "2",
+    createdAt: now.value + 1,
+    payload: {
+      ...accepted.payload,
+      destinationClaimAddress: Wallet.createRandom().address,
+    },
+  }, requesterWallet);
+  assert.equal(requesterSession.ingest(conflicting).status, "rejected");
+  assert.equal(
+    requesterSession.journal.snapshot(rfq.tradeId).messages.filter(
+      (message) => message.type === "fx_accept"
+    ).length,
+    1
+  );
 });
 
 test("out-of-order dependencies are bounded and replayed after their RFQ arrives", async (t) => {

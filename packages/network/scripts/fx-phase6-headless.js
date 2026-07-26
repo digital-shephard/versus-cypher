@@ -7,6 +7,7 @@ const {
   FxRequesterBroker,
   FxTradeJournal,
   FxWakuTransport,
+  loadOrCreateFxEphemeralIdentity,
 } = require("../src");
 
 const DEFAULT_BOOTSTRAPS = [
@@ -46,15 +47,35 @@ function waitFor(emitter, event, timeoutMs) {
   });
 }
 
-async function loadWallet() {
-  if (process.env.FX_PHASE6_KEYSTORE) {
+async function loadCoordinationIdentity(dataDirectory) {
+  if (process.env.FX_PHASE6_COORDINATION_KEYSTORE || process.env.FX_PHASE6_KEYSTORE) {
     const password = required("FX_PHASE6_KEYSTORE_PASSWORD");
-    return Wallet.fromEncryptedJson(
-      fs.readFileSync(path.resolve(process.env.FX_PHASE6_KEYSTORE), "utf8"),
+    const wallet = await Wallet.fromEncryptedJson(
+      fs.readFileSync(path.resolve(
+        process.env.FX_PHASE6_COORDINATION_KEYSTORE ||
+        process.env.FX_PHASE6_KEYSTORE
+      ), "utf8"),
       password
     );
+    return { wallet, created: false, expiresAt: null, source: "operator_keystore" };
   }
-  return new Wallet(required("FX_PHASE6_PRIVATE_KEY"));
+  if (process.env.FX_PHASE6_PRIVATE_KEY) {
+    return {
+      wallet: new Wallet(process.env.FX_PHASE6_PRIVATE_KEY),
+      created: false,
+      expiresAt: null,
+      source: "operator_private_key",
+    };
+  }
+  const identity = await loadOrCreateFxEphemeralIdentity({
+    filePath: path.join(dataDirectory, "phase6-coordination-identity.json"),
+    password: required("FX_PHASE6_COORDINATION_PASSWORD"),
+    lifetimeSeconds: integer(
+      "FX_PHASE6_COORDINATION_LIFETIME_SECONDS",
+      24 * 60 * 60
+    ),
+  });
+  return { ...identity, source: "encrypted_ephemeral" };
 }
 
 async function main() {
@@ -66,7 +87,8 @@ async function main() {
   const dataDirectory = path.resolve(required("FX_PHASE6_DATA_DIR"));
   fs.mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
   const metricsFile = path.join(dataDirectory, "phase6-events.ndjson");
-  const wallet = await loadWallet();
+  const coordinationIdentity = await loadCoordinationIdentity(dataDirectory);
+  const wallet = coordinationIdentity.wallet;
   const transport = new FxWakuTransport({
     deploymentId,
     bootstrapPeers: String(process.env.FX_PHASE6_WAKU_PEERS || DEFAULT_BOOTSTRAPS.join(","))
@@ -126,11 +148,13 @@ async function main() {
   process.once("SIGTERM", () => stop().finally(() => process.exit(0)));
 
   if (role === "dealer") {
+    const sourceClaimAddress = required("FX_PHASE6_SOURCE_CLAIM_ADDRESS");
+    const destinationRefundAddress = required("FX_PHASE6_DESTINATION_REFUND_ADDRESS");
     const dealer = new FxDeterministicDealer({
       session,
       observationWindowMs: integer("FX_PHASE6_OBSERVATION_WINDOW_MS", 15_000),
-      sourceClaimAddress: process.env.FX_PHASE6_SOURCE_CLAIM_ADDRESS || wallet.address,
-      destinationRefundAddress: process.env.FX_PHASE6_DESTINATION_REFUND_ADDRESS || wallet.address,
+      sourceClaimAddress,
+      destinationRefundAddress,
       quotePolicy: async (rfq) => {
         const option = rfq.payload.inputOptions.find((candidate) =>
           candidate.chainId === required("FX_PHASE6_INPUT_CHAIN_ID") &&
@@ -172,6 +196,8 @@ async function main() {
     appendMetric(metricsFile, {
       event: "dealer:listening",
       address: wallet.address.toLowerCase(),
+      identitySource: coordinationIdentity.source,
+      identityExpiresAt: coordinationIdentity.expiresAt,
       status: dealer.status(),
     });
     await new Promise(() => {});
@@ -215,8 +241,8 @@ async function main() {
     tradeId,
     route,
     secretHash: required("FX_PHASE6_SECRET_HASH"),
-    sourceRefundAddress: process.env.FX_PHASE6_SOURCE_REFUND_ADDRESS || wallet.address,
-    destinationClaimAddress: process.env.FX_PHASE6_DESTINATION_CLAIM_ADDRESS || wallet.address,
+    sourceRefundAddress: required("FX_PHASE6_SOURCE_REFUND_ADDRESS"),
+    destinationClaimAddress: required("FX_PHASE6_DESTINATION_CLAIM_ADDRESS"),
   });
   appendMetric(metricsFile, {
     event: "requester:accepted",
