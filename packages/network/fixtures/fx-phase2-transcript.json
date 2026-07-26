@@ -1,0 +1,362 @@
+{
+  "schema": "versus-fx-phase2-transcript",
+  "version": 1,
+  "seed": "phase-two-parity",
+  "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+  "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+  "messages": [
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_rfq",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+      "role": "requester",
+      "sequence": "1",
+      "createdAt": 1800100000,
+      "expiresAt": 1800100050,
+      "payload": {
+        "outputChainId": "42161",
+        "outputToken": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "outputAmountAtomic": "100000",
+        "inputOptions": [
+          {
+            "chainId": "8453",
+            "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "maxInputAtomic": "105000"
+          }
+        ],
+        "quoteDeadline": 1800100040,
+        "settlementDeadline": 1800103600,
+        "quotePolicy": "lowest_all_in",
+        "x402Commitment": null
+      },
+      "signature": "0x44a26651ea0beb94826b5c18d47d585102fa4d78e8d48e916e3289b76c42206e0f651e2c2635b8c4d7e4d6650860e16d81503ae7dee95103a5698fea56c7beab1c",
+      "id": "0x7c9943a3845fa89719afdf626ec692203666abf6d7b074e83a8637fd46513a88"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_quote",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+      "role": "dealer",
+      "sequence": "1",
+      "createdAt": 1800100000,
+      "expiresAt": 1800100040,
+      "payload": {
+        "rfqId": "0x7c9943a3845fa89719afdf626ec692203666abf6d7b074e83a8637fd46513a88",
+        "inputChainId": "8453",
+        "inputToken": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "inputAmountAtomic": "101000",
+        "outputChainId": "42161",
+        "outputToken": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "outputAmountAtomic": "100000",
+        "quoteType": "fixed_exact_output",
+        "referenceSource": "simulated:stablecoin-parity",
+        "referencePriceMicros": "1000000",
+        "referenceTimestamp": 1800100000,
+        "spreadBps": 25,
+        "dealerSettlementCostAtomic": "750",
+        "estimatedCompletionSeconds": 30,
+        "adapterId": "sim-htlc-v1",
+        "adapterVersion": 1
+      },
+      "signature": "0xd5f482b1bc0b0d59c00014a6d0ebe1768a0b00f7ebe68a94602a639f0cef0252568f0d6fc34ec33f864b1a4a205c6d297e68fb7cfc5a963016bb1803b3e4e7af1c",
+      "id": "0x129380a71391edd67e4d5b50634881f4ce0fa481570b56c5d590d85629e869dc"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_accept",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+      "role": "requester",
+      "sequence": "2",
+      "createdAt": 1800100000,
+      "expiresAt": 1800100300,
+      "payload": {
+        "rfqId": "0x7c9943a3845fa89719afdf626ec692203666abf6d7b074e83a8637fd46513a88",
+        "quoteId": "0x129380a71391edd67e4d5b50634881f4ce0fa481570b56c5d590d85629e869dc",
+        "routeId": "0x1b7155a604fc3cf694a58601b151260bf2df1046ed5a2b2dc10adf0c7fc73841",
+        "dealerInputAmountAtomic": "101000",
+        "brokerFeeAtomic": "250",
+        "totalInputAtomic": "101250",
+        "outputAmountAtomic": "100000",
+        "secretHash": "0x4faf306e7ba666a445db74f0798545cc19ea117f3d2a7cd9d0105d9cf1e632ec",
+        "sourceRefundAddress": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "destinationClaimAddress": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "sourceAdapterId": "sim-htlc-v1",
+        "sourceAdapterVersion": 1,
+        "destinationAdapterId": "sim-htlc-v1",
+        "destinationAdapterVersion": 1
+      },
+      "signature": "0x27e52a13cb9d3cffdbe84e5ad7f94179dd8517eb55cd4482b568add84f994cfe2a5427edfbf4fa8af18c0df3c2182682f5f07f0e381e4c5efdf545d0981160061c",
+      "id": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_reserve",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+      "role": "dealer",
+      "sequence": "2",
+      "createdAt": 1800100000,
+      "expiresAt": 1800100300,
+      "payload": {
+        "acceptId": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a",
+        "quoteId": "0x129380a71391edd67e4d5b50634881f4ce0fa481570b56c5d590d85629e869dc",
+        "dealerSourceClaimAddress": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "dealerDestinationRefundAddress": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "reservationDeadline": 1800100240
+      },
+      "signature": "0x1754fc0e9b99448bb0459b485b92539a79d50ec0a072f6a9a1ef89876c077a340965fec7dac3e6b961a0800b43127ee3eae792b12ddf5affde8faa57c80706631b",
+      "id": "0x8cca8023e0a8a7f82d84df5a4be6256156e72632765c3b7969da0818a31a1e56"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_lock_source",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+      "role": "requester",
+      "sequence": "3",
+      "createdAt": 1800100000,
+      "expiresAt": 1800186400,
+      "payload": {
+        "acceptId": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a",
+        "chainId": "8453",
+        "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "amountAtomic": "101250",
+        "lockAddress": "0xd48be6e4bc26dd5618e8279154df60f7847cf14e",
+        "beneficiary": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "refundAddress": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "secretHash": "0x4faf306e7ba666a445db74f0798545cc19ea117f3d2a7cd9d0105d9cf1e632ec",
+        "timeout": 1800103600,
+        "transactionHash": "0xaa52b5a9002af8f8677a7a120fdc6ae98b92691f3e5977190c79cd23a4dab5ce",
+        "blockNumber": "1001"
+      },
+      "signature": "0x7407a5db2bd277ac79b496abaadc4d7539c5dd0a07cf1b59505ca95f10f61bf078bcf6140f092ebc63b000cf21c8908ec79baf35b2c54b92becdb448fb7d07b51c",
+      "id": "0xeab3d311b29aa2d644ac07d9a8916284daab794b4b5a959200cd2a46158b3767"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_lock_destination",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+      "role": "dealer",
+      "sequence": "3",
+      "createdAt": 1800100000,
+      "expiresAt": 1800186400,
+      "payload": {
+        "acceptId": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a",
+        "chainId": "42161",
+        "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "amountAtomic": "100000",
+        "lockAddress": "0x87bbe38430e809c88a94ddd1f0cdf4308b932ac0",
+        "beneficiary": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "refundAddress": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "secretHash": "0x4faf306e7ba666a445db74f0798545cc19ea117f3d2a7cd9d0105d9cf1e632ec",
+        "timeout": 1800101800,
+        "transactionHash": "0x0b041da43ef76fef77e06f54a137fe45241841c1bd7fe577ce5dd43615dd457e",
+        "blockNumber": "1001"
+      },
+      "signature": "0x9d4058752754581784a4a3feb354db5366d98d4a1d1c3c81b1cfc1eaf72290717b7188fe745f9ef9362da6bec40e2c77061b03f558a818f3ef175b16bafc56dd1c",
+      "id": "0xb9436273e7328c29e9a2ff33d778f6a74224fd4d50d0b94dccd313b7bc534f0b"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_claim",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+      "role": "relayer",
+      "sequence": "1",
+      "createdAt": 1800100000,
+      "expiresAt": 1800186400,
+      "payload": {
+        "lockMessageId": "0xb9436273e7328c29e9a2ff33d778f6a74224fd4d50d0b94dccd313b7bc534f0b",
+        "chainId": "42161",
+        "transactionHash": "0x55638ba8c8ea3372efd96080e1df690dd7ccf820074553ef565a808565a80328",
+        "blockNumber": "1003",
+        "secretHash": "0x4faf306e7ba666a445db74f0798545cc19ea117f3d2a7cd9d0105d9cf1e632ec",
+        "beneficiary": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d"
+      },
+      "signature": "0x432d8469bdf68795b31a7b3a379d8cf258f8fdae6f598abe3340a3a99873e01a787d485177cd77fb4b1afb555857efd14fb3c200a8bf8afaa58ec0107fb495291b",
+      "id": "0xe6a144e0e2a98e817ab4bef66c21080df5a8d8309aced1d7b3f02a4e71e903bb"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_claim",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+      "role": "relayer",
+      "sequence": "2",
+      "createdAt": 1800100000,
+      "expiresAt": 1800186400,
+      "payload": {
+        "lockMessageId": "0xeab3d311b29aa2d644ac07d9a8916284daab794b4b5a959200cd2a46158b3767",
+        "chainId": "8453",
+        "transactionHash": "0x046814d5f53971f3e65ebad3a6e5984001bb3e0e127c21c9e736eedc9e3dc40b",
+        "blockNumber": "1003",
+        "secretHash": "0x4faf306e7ba666a445db74f0798545cc19ea117f3d2a7cd9d0105d9cf1e632ec",
+        "beneficiary": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad"
+      },
+      "signature": "0xa3f1e72b01433085bd46b46359965883d9e427c0a0421c8854f5c8dbfccc27ab066dbdb39f12337f8f9d419350b8a3a9733847137b9e35a2cc09eacb1ada86411c",
+      "id": "0x10e2495b14cb16c139175974bf538b94d5dedb97e6ea8e0063a60607521d4cac"
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+      "type": "fx_complete",
+      "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+      "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+      "role": "relayer",
+      "sequence": "3",
+      "createdAt": 1800100000,
+      "expiresAt": 1800186400,
+      "payload": {
+        "acceptId": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a",
+        "sourceClaimMessageId": "0x10e2495b14cb16c139175974bf538b94d5dedb97e6ea8e0063a60607521d4cac",
+        "destinationClaimMessageId": "0xe6a144e0e2a98e817ab4bef66c21080df5a8d8309aced1d7b3f02a4e71e903bb"
+      },
+      "signature": "0xe920c95535977b1f5ff81a54d53e111abf82219610e64f73ff4ee2f8a2f8dedb57011c7f02bdd39d7fe3f022307a4350043341552d1bb26f3d4ee0314b04ef301b",
+      "id": "0x891a16a487c46c55c4523a8b0db20b0a0dbbb906ff4fedd17a1ba4013a393b77"
+    }
+  ],
+  "expectedSnapshot": {
+    "version": 1,
+    "deploymentId": "0xdb237bf747cc51c67bb05da03b0028728ba24723fd64fb9a7fe571c199c001d0",
+    "tradeId": "0x92bba61c35a7999d6c77f1c9ed4210fbf629d7782adbebe5385ff255c4585053",
+    "settlementState": "complete",
+    "caseState": "none",
+    "messages": [
+      {
+        "id": "0x10e2495b14cb16c139175974bf538b94d5dedb97e6ea8e0063a60607521d4cac",
+        "type": "fx_claim",
+        "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+        "sequence": "2"
+      },
+      {
+        "id": "0x129380a71391edd67e4d5b50634881f4ce0fa481570b56c5d590d85629e869dc",
+        "type": "fx_quote",
+        "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "sequence": "1"
+      },
+      {
+        "id": "0x7c9943a3845fa89719afdf626ec692203666abf6d7b074e83a8637fd46513a88",
+        "type": "fx_rfq",
+        "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "sequence": "1"
+      },
+      {
+        "id": "0x891a16a487c46c55c4523a8b0db20b0a0dbbb906ff4fedd17a1ba4013a393b77",
+        "type": "fx_complete",
+        "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+        "sequence": "3"
+      },
+      {
+        "id": "0x8cca8023e0a8a7f82d84df5a4be6256156e72632765c3b7969da0818a31a1e56",
+        "type": "fx_reserve",
+        "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "sequence": "2"
+      },
+      {
+        "id": "0xb9436273e7328c29e9a2ff33d778f6a74224fd4d50d0b94dccd313b7bc534f0b",
+        "type": "fx_lock_destination",
+        "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "sequence": "3"
+      },
+      {
+        "id": "0xe6a144e0e2a98e817ab4bef66c21080df5a8d8309aced1d7b3f02a4e71e903bb",
+        "type": "fx_claim",
+        "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+        "sequence": "1"
+      },
+      {
+        "id": "0xeab3d311b29aa2d644ac07d9a8916284daab794b4b5a959200cd2a46158b3767",
+        "type": "fx_lock_source",
+        "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "sequence": "3"
+      },
+      {
+        "id": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a",
+        "type": "fx_accept",
+        "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "sequence": "2"
+      }
+    ],
+    "actions": [
+      {
+        "nullifier": "0x7074ce52b2eaf273678b13db68eb139b9c0bf1f5a21516bd2fcc46d4f3f3fc61",
+        "slot": "lock:destination",
+        "messageId": "0xb9436273e7328c29e9a2ff33d778f6a74224fd4d50d0b94dccd313b7bc534f0b"
+      },
+      {
+        "nullifier": "0x963658d86a206f12d9c6162a355d73cb6201570b25c29abe697eb0153724c4b0",
+        "slot": "lock:source",
+        "messageId": "0xeab3d311b29aa2d644ac07d9a8916284daab794b4b5a959200cd2a46158b3767"
+      },
+      {
+        "nullifier": "0x49e75a67956c48993418137d9fdc14674a474916a827a075d55866144a3d3e8f",
+        "slot": "settle-lock:0xb9436273e7328c29e9a2ff33d778f6a74224fd4d50d0b94dccd313b7bc534f0b",
+        "messageId": "0xe6a144e0e2a98e817ab4bef66c21080df5a8d8309aced1d7b3f02a4e71e903bb"
+      },
+      {
+        "nullifier": "0xd35ff3faa251c302eaf392cdafa2ee93766048cbb2126c27dbe4fa97a0b2b2bd",
+        "slot": "settle-lock:0xeab3d311b29aa2d644ac07d9a8916284daab794b4b5a959200cd2a46158b3767",
+        "messageId": "0x10e2495b14cb16c139175974bf538b94d5dedb97e6ea8e0063a60607521d4cac"
+      },
+      {
+        "nullifier": "0xf3a1257b8064a9aa32c4a6fc05a2685dd4f2dddbb2f4bf9cc0c7dc59fc3ef55f",
+        "slot": "trade:accept",
+        "messageId": "0xff0b8a2c40ada54ab0ea1587a29a0a1297fdbfb71f46e2dba18761620a828c5a"
+      },
+      {
+        "nullifier": "0xfe47946ee55835aa19c64a617dac961726680fbbfb8d2d62a24af17503414534",
+        "slot": "trade:complete",
+        "messageId": "0x891a16a487c46c55c4523a8b0db20b0a0dbbb906ff4fedd17a1ba4013a393b77"
+      },
+      {
+        "nullifier": "0x0b7e20f6eea8a218cf2f9dec7e8ccfc580a2aaca0980b162377e053281a56edd",
+        "slot": "trade:open",
+        "messageId": "0x7c9943a3845fa89719afdf626ec692203666abf6d7b074e83a8637fd46513a88"
+      },
+      {
+        "nullifier": "0xc0c9df05160e829a67ef55cf20622e6af1a8a2492861ab533d4ed31c9e861478",
+        "slot": "trade:reserve",
+        "messageId": "0x8cca8023e0a8a7f82d84df5a4be6256156e72632765c3b7969da0818a31a1e56"
+      }
+    ],
+    "sequences": [
+      {
+        "sender": "0x7385cffda29e9f9ac3d038bcd3455fa15280e56d",
+        "lastSequence": "3",
+        "lastMessageId": "0xeab3d311b29aa2d644ac07d9a8916284daab794b4b5a959200cd2a46158b3767"
+      },
+      {
+        "sender": "0xc044b15db77c3d00dd551fb4cc262715febd7177",
+        "lastSequence": "3",
+        "lastMessageId": "0x891a16a487c46c55c4523a8b0db20b0a0dbbb906ff4fedd17a1ba4013a393b77"
+      },
+      {
+        "sender": "0xd89b9c3f614c7225f8345cfa2142131d130a90ad",
+        "lastSequence": "3",
+        "lastMessageId": "0xb9436273e7328c29e9a2ff33d778f6a74224fd4d50d0b94dccd313b7bc534f0b"
+      }
+    ],
+    "stateHash": "0xeb6b70cbb04b304b9153bb18a52369c694ecf952d6687d39476186aad33673ba"
+  }
+}

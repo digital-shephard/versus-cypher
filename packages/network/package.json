@@ -15,6 +15,9 @@
     "eval:sanity": "node scripts/eval-model-sanity.js",
     "cluster:demo": "node scripts/cluster-demo.js",
     "eval:small-models": "node scripts/eval-small-models.js",
+    "fx:fixture": "node scripts/generate-fx-phase2-fixture.js",
+    "fx:benchmark": "node scripts/fx-benchmark.js",
+    "fx:simulate": "node scripts/fx-simulate.js",
     "demo": "node scripts/demo.js",
     "waku:smoke": "node scripts/waku-smoke.js",
     "test": "node --test test/*.test.js"
