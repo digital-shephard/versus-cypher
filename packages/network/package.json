@@ -18,6 +18,7 @@
     "fx:fixture": "node scripts/generate-fx-phase2-fixture.js",
     "fx:benchmark": "node scripts/fx-benchmark.js",
     "fx:simulate": "node scripts/fx-simulate.js",
+    "fx:phase6:headless": "node scripts/fx-phase6-headless.js",
     "demo": "node scripts/demo.js",
     "waku:smoke": "node scripts/waku-smoke.js",
     "test": "node --test test/*.test.js"

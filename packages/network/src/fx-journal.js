@@ -286,6 +286,7 @@ class FxTradeJournal {
           { now: message.createdAt, policy: rfq.payload.quotePolicy }
         );
         if (
+          message.sender !== rfq.sender ||
           route.routeId !== message.payload.routeId ||
           route.totalInputAtomic !== message.payload.totalInputAtomic ||
           quote.payload.inputAmountAtomic !== message.payload.dealerInputAmountAtomic ||
@@ -300,8 +301,25 @@ class FxTradeJournal {
         break;
       }
       case "fx_reserve": {
-        this.requireMessage(message.payload.acceptId, "fx_accept", message.tradeId);
-        this.requireMessage(message.payload.quoteId, "fx_quote", message.tradeId);
+        const accept = this.requireMessage(
+          message.payload.acceptId,
+          "fx_accept",
+          message.tradeId
+        );
+        const quote = this.requireMessage(
+          message.payload.quoteId,
+          "fx_quote",
+          message.tradeId
+        );
+        if (
+          message.sender !== quote.sender ||
+          accept.payload.quoteId !== quote.id
+        ) {
+          throw new FxJournalError(
+            "reservation signer does not match the accepted dealer",
+            "COUNTERPARTY_MISMATCH"
+          );
+        }
         if (settlementState !== "quote_accepted") {
           throw new FxJournalError("reservation arrived outside acceptance", "INVALID_STATE");
         }
@@ -319,8 +337,14 @@ class FxTradeJournal {
           message.tradeId
         );
         const reserve = this.findType(message.tradeId, "fx_reserve");
+        const rfq = this.requireMessage(
+          accept.payload.rfqId,
+          "fx_rfq",
+          message.tradeId
+        );
         if (
           !reserve ||
+          message.sender !== rfq.sender ||
           message.payload.chainId !== quote.payload.inputChainId ||
           message.payload.token !== quote.payload.inputToken ||
           message.payload.amountAtomic !== accept.payload.totalInputAtomic ||
@@ -352,6 +376,7 @@ class FxTradeJournal {
         if (
           !reserve ||
           !sourceLock ||
+          message.sender !== quote.sender ||
           message.payload.chainId !== quote.payload.outputChainId ||
           message.payload.token !== quote.payload.outputToken ||
           message.payload.amountAtomic !== accept.payload.outputAmountAtomic ||

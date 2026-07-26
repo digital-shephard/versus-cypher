@@ -865,7 +865,11 @@ function refreshForegroundServices() {
   foregroundRefreshInFlight = (async () => {
     const [chainResult] = await Promise.allSettled([reconcileChainState()]);
     const [networkResult] = await Promise.allSettled([
-      ensureNetworkService().then((service) => service?.catchUpRain?.() || { attempted: false, received: 0 }),
+      ensureNetworkService().then(async (service) => {
+        if (!service) return { attempted: false, received: 0 };
+        await service.resumeTransport?.();
+        return service.catchUpRain?.() || { attempted: false, received: 0 };
+      }),
     ]);
     if (chainResult.status === "rejected") {
       console.error("Versus foreground chain reconciliation error:", chainResult.reason?.message || chainResult.reason);

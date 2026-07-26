@@ -129,6 +129,7 @@ class WakuPostcardTransport extends EventEmitter {
     this.protocolCounts = { lightPush: 0, filter: 0, store: 0, relay: 0 };
     this.storeCatchUp = null;
     this.launchSwitch = Promise.resolve();
+    this.reconnectInFlight = null;
     this.lastHistorySync = null;
     this.connectionState = "offline";
     this.connectionStateChangedAt = Date.now();
@@ -278,6 +279,33 @@ class WakuPostcardTransport extends EventEmitter {
       this.setConnectionState("offline", error.message);
       throw error;
     }
+  }
+
+  async ensureConnected({ force = false } = {}) {
+    if (this.reconnectInFlight) return this.reconnectInFlight;
+    this.reconnectInFlight = (async () => {
+      if (!force && this.started && this.node) {
+        try {
+          await this.refreshPeerDiagnostics();
+          if (
+            this.protocolCounts.lightPush >= this.minimumPeerCount &&
+            this.protocolCounts.filter >= this.minimumPeerCount
+          ) {
+            this.storeCatchUp = this.catchUp();
+            if (this.rainDecoder) this.rainStoreCatchUp = this.catchUpRain();
+            return { restarted: false, status: this.status() };
+          }
+        } catch (error) {
+          this.connectionError = error.message;
+        }
+      }
+      await this.close();
+      await this.start();
+      return { restarted: true, status: this.status() };
+    })().finally(() => {
+      this.reconnectInFlight = null;
+    });
+    return this.reconnectInFlight;
   }
 
   onRainMessage(message, { history = false, contentTopic = this.rainContentTopic } = {}) {
