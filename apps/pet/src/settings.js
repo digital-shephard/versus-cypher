@@ -2,7 +2,7 @@ const BRAIN_KINDS = new Set(["off", "codex", "claude", "cloud", "local", "extern
 const HTTP_BRAIN_KINDS = new Set(["cloud", "local", "external"]);
 const CLI_BRAIN_KINDS = new Set(["codex", "claude"]);
 
-function normalizeSettings(input = {}) {
+function normalizeSettings(input = {}, { fxDevelopmentAvailable = false } = {}) {
   const brain = input.brain || {};
   const kind = BRAIN_KINDS.has(brain.kind) ? brain.kind : "off";
   let endpoint = String(brain.endpoint || "").trim();
@@ -22,6 +22,8 @@ function normalizeSettings(input = {}) {
     version: 1,
     launchAtLogin: Boolean(input.launchAtLogin),
     allowReferralFunding: Boolean(input.allowReferralFunding),
+    fxDevelopmentEnabled:
+      fxDevelopmentAvailable && input.fxDevelopmentEnabled === true,
     brain: {
       kind,
       provider: String(brain.provider || kind).trim().slice(0, 40),
@@ -53,6 +55,8 @@ function publicSettings(settings) {
     version: settings.version,
     launchAtLogin: settings.launchAtLogin,
     allowReferralFunding: settings.allowReferralFunding,
+    fxDevelopmentAvailable: settings.fxDevelopmentAvailable === true,
+    fxDevelopmentEnabled: settings.fxDevelopmentEnabled === true,
     brain: { ...settings.brain, apiKey: "", hasApiKey: Boolean(settings.brain.apiKey) },
   };
 }

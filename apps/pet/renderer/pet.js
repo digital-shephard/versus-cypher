@@ -642,6 +642,13 @@ function renderSettings(settings) {
   if ($("setting-brain-auto")) $("setting-brain-auto").checked = brain.autostart !== false;
   if ($("setting-referral-funding")) $("setting-referral-funding").checked = Boolean(settings?.allowReferralFunding);
   if ($("setting-launch-login")) $("setting-launch-login").checked = Boolean(settings?.launchAtLogin);
+  $("setting-fx-development-row")?.classList.toggle(
+    "hidden",
+    settings?.fxDevelopmentAvailable !== true
+  );
+  if ($("setting-fx-development")) {
+    $("setting-fx-development").checked = Boolean(settings?.fxDevelopmentEnabled);
+  }
   if ($("settings-wallet-address")) $("settings-wallet-address").textContent = wallet?.address || "Wallet not loaded";
   if ($("btn-backup-wallet")) {
     $("btn-backup-wallet").textContent = bond?.phase === "active" && bond?.agentId ? "Back up all" : "Back up wallet";
@@ -772,6 +779,7 @@ function settingsInput() {
   return {
     launchAtLogin: Boolean($("setting-launch-login")?.checked),
     allowReferralFunding: Boolean($("setting-referral-funding")?.checked),
+    fxDevelopmentEnabled: Boolean($("setting-fx-development")?.checked),
     brain: {
       kind: $("setting-brain-kind")?.value || "off",
       provider: $("setting-brain-kind")?.value || "off",
@@ -3075,6 +3083,17 @@ $("settings-brain-panel")?.addEventListener("submit", async (event) => {
 });
 
 $("setting-launch-login")?.addEventListener("change", async () => {
+  setSettingsStatus("SAVING");
+  try {
+    currentSettings = await window.versus.saveSettings(settingsInput());
+    renderSettings(currentSettings);
+    setSettingsStatus("SAVED");
+  } catch (error) {
+    setSettingsStatus(settingsErrorMessage(error), true);
+  }
+});
+
+$("setting-fx-development")?.addEventListener("change", async () => {
   setSettingsStatus("SAVING");
   try {
     currentSettings = await window.versus.saveSettings(settingsInput());

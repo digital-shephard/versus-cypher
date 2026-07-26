@@ -1,6 +1,6 @@
 {
   "kind": "versus-base-build-freeze",
-  "generatedAt": "2026-07-26T01:44:34.579Z",
+  "generatedAt": "2026-07-26T02:45:25.906Z",
   "note": "Compare against freshly compiled artifacts before the first Base deployment transaction.",
   "solidity": "0.8.26",
   "compiler": {
@@ -34,10 +34,14 @@
       }
     }
   },
-  "compilerInputSha256": "5c746cd06b4f41f73a7fea6127146f94537f4efc118c5efe51af39c987eb43ae",
+  "compilerInputSha256": "fa45fe3021b8d013abc2316d6fad7db97f6f5c21e4c115b648d1901bf78415ec",
   "importedSources": {
-    "treeSha256": "8c53bba213cadbb49eae0d08909efebe948525c9bda2f6d76d47cfcab01a1b2d",
+    "treeSha256": "799cfdaecd4af06d77b0654998753e67565062e600365a18fc8eb4a4cd6193a7",
     "files": [
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC1271.sol",
+        "sha256": "2d17bba201aa2f9c55e317315b872272a60361848dfceb6b1e77081265c79a27"
+      },
       {
         "path": "@openzeppelin/contracts/interfaces/IERC1363.sol",
         "sha256": "9c3a75a925a6dac9e88b03cddc58d42fe3131b0aaaad84408521f3f7af2f991b"
@@ -49,6 +53,14 @@
       {
         "path": "@openzeppelin/contracts/interfaces/IERC20.sol",
         "sha256": "0158e2d3e0e28bedd99eec13dcf1a8aa3a70a5b7e4bb2ad709609c95fcc740d1"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC5267.sol",
+        "sha256": "f89772d2d4fafcbef8b73bb10ee9a3373edec2eedb2f1b302320915b351dc3d1"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC7913.sol",
+        "sha256": "f66aad4249885b0f11369bfa825dded60aa4baa0d76d9becdac9daa48c350350"
       },
       {
         "path": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
@@ -107,12 +119,32 @@
         "sha256": "94e409e8f6e3184236651a6cc2b1a6a3ea0f0a25eb85b71e524ad5791bb2fbc8"
       },
       {
+        "path": "@openzeppelin/contracts/utils/ShortStrings.sol",
+        "sha256": "1cfa08d3c551e9ec0b9cd249b09987f04e7e90f352e1a5e3b0d6a3bc426b3de7"
+      },
+      {
         "path": "@openzeppelin/contracts/utils/StorageSlot.sol",
         "sha256": "75704538dcb223239280c6726d9a31cf769a7816718517c997fc7d63bdb70778"
       },
       {
         "path": "@openzeppelin/contracts/utils/Strings.sol",
         "sha256": "e318709bbe73a7831d64c1351e8bdc43780b245f25191234e361e6ab9b98c67b"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+        "sha256": "ba7c2d314fcd61c9783e0b3f0c664d004b76b408fda6a84edc8267d17c5012d6"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/EIP712.sol",
+        "sha256": "2845caaaf70757b6cce612ae4ffbec2c382cb3d1cb9765c98fa649c0f5f1c794"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol",
+        "sha256": "538a0d7c4f0ec5a8562f58561890f7b49d14580674ecf58bc5f505b45c73df65"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol",
+        "sha256": "acc520422fac0a9edb85d7268085a63219a0db9e4406cd155d5c74c94e35f590"
       },
       {
         "path": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
@@ -161,6 +193,10 @@
       {
         "path": "contracts/fx/EvmHtlcV1.sol",
         "sha256": "eecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9"
+      },
+      {
+        "path": "contracts/fx/SameChainSettlementV1.sol",
+        "sha256": "5581ccb170e3e4961a8b0e859ea0b8a06c8bb8f19c685f7539491f0cede4a4c4"
       },
       {
         "path": "contracts/launch/ClassToken.sol",

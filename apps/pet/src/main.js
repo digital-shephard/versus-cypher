@@ -651,6 +651,7 @@ function ensureWallet() {
 }
 
 function loadSettings() {
+  const fxDevelopmentAvailable = process.env.VERSUS_FX_DEVELOPMENT === "1";
   const stored = loadJson(SETTINGS_PATH, null);
   if (stored) {
     let apiKey = "";
@@ -658,10 +659,17 @@ function loadSettings() {
       if (!safeStorage.isEncryptionAvailable()) throw new Error("OS credential encryption is unavailable");
       apiKey = safeStorage.decryptString(Buffer.from(stored.encryptedApiKey, "base64"));
     }
-    return normalizeSettings({ ...stored, brain: { ...(stored.brain || {}), apiKey } });
+    return {
+      ...normalizeSettings(
+        { ...stored, brain: { ...(stored.brain || {}), apiKey } },
+        { fxDevelopmentAvailable }
+      ),
+      fxDevelopmentAvailable,
+    };
   }
   const envConfig = loadAgentBrainConfig(process.env);
-  return normalizeSettings({
+  return {
+    ...normalizeSettings({
     launchAtLogin: false,
     brain: envConfig ? {
       kind: new Set(["codex", "claude"]).has(envConfig.mode)
@@ -673,14 +681,18 @@ function loadSettings() {
       apiKey: envConfig.apiKey,
       autostart: envConfig.autostart,
     } : { kind: "off" },
-  });
+    }, { fxDevelopmentAvailable }),
+    fxDevelopmentAvailable,
+  };
 }
 
 function saveSettings(input) {
   const previous = loadSettings();
   const submittedKey = input.brain && Object.hasOwn(input.brain, "apiKey") ? input.brain.apiKey : undefined;
   const resolvedApiKey = submittedKey === "" && input.brain?.hasApiKey ? previous.brain.apiKey : submittedKey;
-  const merged = normalizeSettings({
+  const fxDevelopmentAvailable = process.env.VERSUS_FX_DEVELOPMENT === "1";
+  const merged = {
+    ...normalizeSettings({
     ...previous,
     ...input,
     brain: {
@@ -688,13 +700,16 @@ function saveSettings(input) {
       ...(input.brain || {}),
       apiKey: resolvedApiKey === undefined ? previous.brain.apiKey : resolvedApiKey,
     },
-  });
+    }, { fxDevelopmentAvailable }),
+    fxDevelopmentAvailable,
+  };
   if (merged.brain.apiKey && !safeStorage.isEncryptionAvailable()) throw new Error("OS credential encryption is unavailable");
   const { apiKey, ...brain } = merged.brain;
   const persisted = {
     version: merged.version,
     launchAtLogin: merged.launchAtLogin,
     allowReferralFunding: merged.allowReferralFunding,
+    fxDevelopmentEnabled: merged.fxDevelopmentEnabled,
     brain,
     encryptedApiKey: apiKey ? safeStorage.encryptString(apiKey).toString("base64") : null,
   };
@@ -1896,6 +1911,8 @@ registerIpcHandle("settings:testBrain", async (_e, input = null) => {
       ...(input.brain || {}),
       apiKey: input.brain?.apiKey || (input.brain?.hasApiKey ? previous.brain.apiKey : ""),
     },
+  }, {
+    fxDevelopmentAvailable: process.env.VERSUS_FX_DEVELOPMENT === "1",
   }) : previous;
   if (settings.brain.kind === "off") return { ok: true, status: "off" };
   const config = loadAgentBrainConfig(brainEnvironment(settings, process.env));

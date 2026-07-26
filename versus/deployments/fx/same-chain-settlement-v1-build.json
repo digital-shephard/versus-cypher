@@ -1,0 +1,29 @@
+{
+  "schema": "versus-fx-settlement-build-freeze",
+  "schemaVersion": 1,
+  "settlement": {
+    "id": "same-chain-exact-output",
+    "version": 1,
+    "contract": "SameChainSettlementV1",
+    "sourcePath": "versus/contracts/fx/SameChainSettlementV1.sol"
+  },
+  "sourceControl": {
+    "tag": "agentic-fx-phase4-v1"
+  },
+  "compiler": {
+    "version": "0.8.26",
+    "longVersion": "0.8.26+commit.8a97fa7a",
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 1
+    }
+  },
+  "sourceSha256": "0x5581ccb170e3e4961a8b0e859ea0b8a06c8bb8f19c685f7539491f0cede4a4c4",
+  "compilerInputSourceSha256": "0x5581ccb170e3e4961a8b0e859ea0b8a06c8bb8f19c685f7539491f0cede4a4c4",
+  "creationCodeHash": "0xca6673e77d32b193161c3e916ad7c37031fe0fd96cbad9e13fc0c237b2b671f3",
+  "runtimeTemplateHash": "0x4cf0ab959c8010225c3bd4ff3a2ca42f5ce04a8f8666424b68c9dbd7fdedd574",
+  "creationCodeBytes": 7847,
+  "runtimeTemplateBytes": 6005
+}

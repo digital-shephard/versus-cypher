@@ -1,0 +1,30 @@
+{
+  "schema": "versus-fx-phase4-measurement",
+  "schemaVersion": 1,
+  "environment": {
+    "chain": "Hardhat local",
+    "chainId": "31337",
+    "productionFunds": false,
+    "productionWaku": false
+  },
+  "route": {
+    "input": "0.515000 EURC maximum and charged",
+    "dealerCompensation": "0.510000 EURC",
+    "brokerFee": "0.005000 EURC",
+    "exactOutput": "0.500000 USDC",
+    "fixtureDealerPremiumBps": 200,
+    "fixtureBrokerFeeBps": 100,
+    "fixtureAllInPremiumBps": 300,
+    "note": "Illustrative stablecoin fixture pricing, not a live market quote."
+  },
+  "gas": {
+    "settlementGasUnits": "207641",
+    "deploymentGasUnits": "1405281",
+    "payer": "execution relayer or requester, selected before submission",
+    "note": "Gas units are reproducible locally; fiat cost depends on Base fee and ETH price."
+  },
+  "custody": {
+    "settlementInputBalance": "0",
+    "settlementOutputBalance": "0"
+  }
+}
