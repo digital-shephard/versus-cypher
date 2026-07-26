@@ -30,28 +30,33 @@ phase.
 
 ## Public proof
 
-On 2026-07-26 a requester published while the deterministic dealer was offline.
-The dealer later joined through the two public relays, recovered the RFQ from
-Waku Store, published a quote, and completed signed acceptance and reservation.
-Both journals converged to:
+On 2026-07-26 commit `0c772f2` ran a requester with a fresh coordination
+identity while the deterministic dealer was offline. The dealer later joined
+through the two public relays, recovered the RFQ from Waku Store, published a
+quote, and completed signed acceptance and reservation. Both light clients
+observed two LightPush, Filter, Store, and Relay peers. Both journals converged
+to:
 
-`0x630d7062d7655cf6a67c44fbe15c87c38d0b58a10a6e3e902b2c2e128fae4ee7`
+`0xcabefafed80d1e38d1887f0cdc4ef25feb0f389f5f204b14eacb4901d9b3a635`
 
 Waku was then deliberately closed before settlement. The same trade ID,
-`0xf3a9f5b111aaa1bcb213c10ef931185271fecd0d537d7e11086e40e650b32c7b`,
+`0x2403c514cea4021abda3afd80d3149b2f501ea7807173cedcddf9e97576cc2b8`,
 completed through the Phase 5 adapters on Base Sepolia and Arbitrum Sepolia:
 
 | Action | Chain | Transaction |
 | --- | --- | --- |
-| Source approval | Base Sepolia | `0x4b199c2a3d0c91a7d7183610a5f28a84c89b4af03366c0304ae9ed9915a2b6c0` |
-| Source lock | Base Sepolia | `0x9aa4cb30a660ec71989c661c35b697943c3f68f38a620f82575ac287231513c4` |
-| Destination approval | Arbitrum Sepolia | `0xa26a35dba4ac34a4cf6cab9c15b1c791bb4ccb64dceda4887ceba7b0694b62ee` |
-| Destination lock | Arbitrum Sepolia | `0xd93df6480f131274f8280a87e26e0bdc748c155d99590c7f3cd37c90dfcbd596` |
-| Destination claim | Arbitrum Sepolia | `0xcb22ee12b28f7135244e2f5c3d3931f47b6e3dc4db17302383f2afa3da48edf1` |
-| Source claim | Base Sepolia | `0x452f668e10a9ebf6e00ddac3402527f2acda79ff23fefa62dac178f004d8ecbd` |
+| Source approval | Base Sepolia | `0x08ffa3df16240f49d93236c9fd7fa1220fd55ff7e1bde126bd703cf45226f1c4` |
+| Source lock | Base Sepolia | `0xbca758a69d8e83a14d9d11be850cda86e0e7e5e162e6e422b18c10c776ae71ab` |
+| Destination approval | Arbitrum Sepolia | `0x867cf75c0fa0da5001a3fb1e1951e5f4b94b47fded2a0bea45d46bd49493dd98` |
+| Destination lock | Arbitrum Sepolia | `0xf6c5b948db0ec3b88b4681b3cf62defe5b3a468821500d441b19097a05d2a2f8` |
+| Destination claim | Arbitrum Sepolia | `0x0529856b889afc75b70ebd94240d18c3f4395c1ed0bd3d9835832e0755b2a7ec` |
+| Source claim | Base Sepolia | `0xec3040115f781977ca9e7dd166f951322cef5cd6ae6f3ebd791c70abae2bf825` |
 
 The encrypted recovery packet was written before either lock transaction. No
-swap secret appears in Waku messages or this report.
+swap secret appears in Waku messages or this report. The complete run took
+69.3 seconds. Current-trade-only instrumentation observed eight local/remote
+admissions; the late Store recovery completed 5.855 seconds after the RFQ's
+second-resolution creation timestamp.
 
 ## Headless roles
 
