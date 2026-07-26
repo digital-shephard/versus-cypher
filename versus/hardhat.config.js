@@ -16,12 +16,12 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      chainId: 31337,
+      chainId: Number(process.env.LOCAL_CHAIN_ID || 31337),
       hardfork: "cancun",
     },
     localhost: {
       url: process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545",
-      chainId: 31337,
+      chainId: Number(process.env.LOCAL_CHAIN_ID || 31337),
     },
     baseFork: {
       url: process.env.VERSUS_BASE_FORK_RPC_URL || "http://127.0.0.1:8546",
@@ -31,6 +31,13 @@ module.exports = {
       url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 84532,
+    },
+    arbitrumSepolia: {
+      url:
+        process.env.ARBITRUM_SEPOLIA_RPC_URL ||
+        "https://sepolia-rollup.arbitrum.io/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 421614,
     },
     base: {
       url: process.env.BASE_RPC_URL || "https://mainnet.base.org",
