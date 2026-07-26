@@ -1,0 +1,48 @@
+{
+  "schema": "versus-fx-adapter-capabilities",
+  "schemaVersion": 1,
+  "adapter": {
+    "id": "evm-htlc",
+    "version": 1,
+    "contract": "EvmHtlcV1",
+    "sourcePath": "versus/contracts/fx/EvmHtlcV1.sol"
+  },
+  "build": {
+    "compiler": "0.8.26",
+    "evmVersion": "cancun",
+    "sourceTag": "agentic-fx-phase3-v1",
+    "optimizerRuns": 1,
+    "viaIR": true,
+    "sourceSha256": "0xeecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9",
+    "creationCodeHash": "0x3c4cee1b9c7037826031d76fb13c3f8947042cbd446d4f3ede4010fff8116096"
+  },
+  "capabilities": [
+    {
+      "chainId": "31337",
+      "adapterAddress": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+      "runtimeCodeHash": "0x381104f0ca5e742b4d1cbd8d8555ccdcb258a64c48c8e0ac008957e104c8a110",
+      "asset": {
+        "address": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+        "runtimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b",
+        "symbol": "USDC",
+        "decimals": 6,
+        "standard": "ERC20",
+        "features": {
+          "feeOnTransfer": false,
+          "rebasing": false,
+          "callbacks": false,
+          "issuerControls": "none"
+        }
+      },
+      "confirmationPolicy": {
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 6
+      },
+      "timeoutPolicy": {
+        "minimumSeconds": 60,
+        "maximumSeconds": 604800,
+        "minimumCrossChainDeltaSeconds": 120
+      }
+    }
+  ]
+}

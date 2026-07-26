@@ -1,6 +1,6 @@
 {
   "kind": "versus-base-build-freeze",
-  "generatedAt": "2026-07-13T12:20:50.170Z",
+  "generatedAt": "2026-07-26T01:44:34.579Z",
   "note": "Compare against freshly compiled artifacts before the first Base deployment transaction.",
   "solidity": "0.8.26",
   "compiler": {
@@ -34,9 +34,9 @@
       }
     }
   },
-  "compilerInputSha256": "8ac9aed7a69947a23130393b6622962d72b60d0a8a543afb765a8e700802ea60",
+  "compilerInputSha256": "5c746cd06b4f41f73a7fea6127146f94537f4efc118c5efe51af39c987eb43ae",
   "importedSources": {
-    "treeSha256": "ab6178f8e68c7ad731f9a4721785bc11653de796a15f43b5fb37493ef3c4cdf5",
+    "treeSha256": "8c53bba213cadbb49eae0d08909efebe948525c9bda2f6d76d47cfcab01a1b2d",
     "files": [
       {
         "path": "@openzeppelin/contracts/interfaces/IERC1363.sol",
@@ -159,12 +159,20 @@
         "sha256": "8a0091ccefc04dc11b3363ad84e54618f3d295237977682a027ffaaabb1441e3"
       },
       {
+        "path": "contracts/fx/EvmHtlcV1.sol",
+        "sha256": "eecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9"
+      },
+      {
         "path": "contracts/launch/ClassToken.sol",
         "sha256": "1c7fc3193ae2756e015d40bf409188d1aa9191d22533d95fade1af1991892761"
       },
       {
         "path": "contracts/launch/GraduationModule.sol",
         "sha256": "753e13a405d444c6ff388c84279d96888329b0648f70f47f8ce3126639cd1604"
+      },
+      {
+        "path": "contracts/test/FxTestTokens.sol",
+        "sha256": "c68b0a639042e5a864d4d73d22e27bf6e678dc0f0731cb620bf2afbebb1d9399"
       },
       {
         "path": "contracts/test/MockUSDC.sol",
