@@ -1,0 +1,314 @@
+{
+  "decisionId": "FX0-2026-07-25",
+  "protocol": "versus-fx",
+  "version": 1,
+  "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+  "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+  "addresses": {
+    "requester": "0x1000000000000000000000000000000000000001",
+    "dealer": "0x2000000000000000000000000000000000000002",
+    "relayer": "0x3000000000000000000000000000000000000003",
+    "baseUsdc": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "arbitrumUsdc": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+    "sourceRefund": "0x4000000000000000000000000000000000000004",
+    "destinationClaim": "0x5000000000000000000000000000000000000005",
+    "dealerSourceClaim": "0x6000000000000000000000000000000000000006",
+    "dealerDestinationRefund": "0x7000000000000000000000000000000000000007",
+    "sourceLock": "0x8000000000000000000000000000000000000008",
+    "destinationLock": "0x9000000000000000000000000000000000000009"
+  },
+  "hashes": {
+    "rfqId": "0x3333333333333333333333333333333333333333333333333333333333333333",
+    "quoteId": "0x4444444444444444444444444444444444444444444444444444444444444444",
+    "acceptId": "0x5555555555555555555555555555555555555555555555555555555555555555",
+    "sourceLockMessageId": "0x6666666666666666666666666666666666666666666666666666666666666666",
+    "destinationLockMessageId": "0x7777777777777777777777777777777777777777777777777777777777777777",
+    "sourceClaimMessageId": "0x8888888888888888888888888888888888888888888888888888888888888888",
+    "destinationClaimMessageId": "0x9999999999999999999999999999999999999999999999999999999999999999",
+    "defaultId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "secretHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "sourceTx": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "destinationTx": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "claimTx": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "refundTx": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "messages": [
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_rfq",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x1000000000000000000000000000000000000001",
+      "role": "requester",
+      "sequence": "1",
+      "createdAt": 1785024000,
+      "expiresAt": 1785024050,
+      "payload": {
+        "outputChainId": "42161",
+        "outputToken": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "outputAmountAtomic": "100000",
+        "inputOptions": [
+          {
+            "chainId": "8453",
+            "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "maxInputAtomic": "105000"
+          }
+        ],
+        "quoteDeadline": 1785024040,
+        "settlementDeadline": 1785027600,
+        "quotePolicy": "lowest_all_in",
+        "x402Commitment": null
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_quote",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x2000000000000000000000000000000000000002",
+      "role": "dealer",
+      "sequence": "1",
+      "createdAt": 1785024005,
+      "expiresAt": 1785024045,
+      "payload": {
+        "rfqId": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "inputChainId": "8453",
+        "inputToken": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "inputAmountAtomic": "101000",
+        "outputChainId": "42161",
+        "outputToken": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "outputAmountAtomic": "100000",
+        "quoteType": "fixed_exact_output",
+        "referenceSource": "chainlink:usdc-usd",
+        "referencePriceMicros": "1000000",
+        "referenceTimestamp": 1785024004,
+        "spreadBps": 25,
+        "dealerSettlementCostAtomic": "750",
+        "estimatedCompletionSeconds": 45,
+        "adapterId": "evm-htlc-v1",
+        "adapterVersion": 1
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_accept",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x1000000000000000000000000000000000000001",
+      "role": "requester",
+      "sequence": "2",
+      "createdAt": 1785024010,
+      "expiresAt": 1785024300,
+      "payload": {
+        "rfqId": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "quoteId": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "routeId": "0x1212121212121212121212121212121212121212121212121212121212121212",
+        "dealerInputAmountAtomic": "101000",
+        "brokerFeeAtomic": "250",
+        "totalInputAtomic": "101250",
+        "outputAmountAtomic": "100000",
+        "secretHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sourceRefundAddress": "0x4000000000000000000000000000000000000004",
+        "destinationClaimAddress": "0x5000000000000000000000000000000000000005",
+        "sourceAdapterId": "evm-htlc-v1",
+        "sourceAdapterVersion": 1,
+        "destinationAdapterId": "evm-htlc-v1",
+        "destinationAdapterVersion": 1
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_reserve",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x2000000000000000000000000000000000000002",
+      "role": "dealer",
+      "sequence": "2",
+      "createdAt": 1785024011,
+      "expiresAt": 1785024300,
+      "payload": {
+        "acceptId": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "quoteId": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "dealerSourceClaimAddress": "0x6000000000000000000000000000000000000006",
+        "dealerDestinationRefundAddress": "0x7000000000000000000000000000000000000007",
+        "reservationDeadline": 1785024200
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_lock_source",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x1000000000000000000000000000000000000001",
+      "role": "requester",
+      "sequence": "3",
+      "createdAt": 1785024100,
+      "expiresAt": 1785027700,
+      "payload": {
+        "acceptId": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "chainId": "8453",
+        "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "amountAtomic": "101000",
+        "lockAddress": "0x8000000000000000000000000000000000000008",
+        "beneficiary": "0x6000000000000000000000000000000000000006",
+        "refundAddress": "0x4000000000000000000000000000000000000004",
+        "secretHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "timeout": 1785031200,
+        "transactionHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "blockNumber": "12345678"
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_lock_destination",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x2000000000000000000000000000000000000002",
+      "role": "dealer",
+      "sequence": "3",
+      "createdAt": 1785024200,
+      "expiresAt": 1785027800,
+      "payload": {
+        "acceptId": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "chainId": "42161",
+        "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "amountAtomic": "100000",
+        "lockAddress": "0x9000000000000000000000000000000000000009",
+        "beneficiary": "0x5000000000000000000000000000000000000005",
+        "refundAddress": "0x7000000000000000000000000000000000000007",
+        "secretHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "timeout": 1785029400,
+        "transactionHash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "blockNumber": "23456789"
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_claim",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x3000000000000000000000000000000000000003",
+      "role": "relayer",
+      "sequence": "1",
+      "createdAt": 1785024300,
+      "expiresAt": 1785027900,
+      "payload": {
+        "lockMessageId": "0x7777777777777777777777777777777777777777777777777777777777777777",
+        "chainId": "42161",
+        "transactionHash": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "blockNumber": "23456800",
+        "secretHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "beneficiary": "0x5000000000000000000000000000000000000005"
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_refund",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x3000000000000000000000000000000000000003",
+      "role": "relayer",
+      "sequence": "2",
+      "createdAt": 1785031300,
+      "expiresAt": 1785034900,
+      "payload": {
+        "lockMessageId": "0x6666666666666666666666666666666666666666666666666666666666666666",
+        "chainId": "8453",
+        "transactionHash": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "blockNumber": "12346000",
+        "beneficiary": "0x4000000000000000000000000000000000000004"
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_complete",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x3000000000000000000000000000000000000003",
+      "role": "relayer",
+      "sequence": "3",
+      "createdAt": 1785024500,
+      "expiresAt": 1785028100,
+      "payload": {
+        "acceptId": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "sourceClaimMessageId": "0x8888888888888888888888888888888888888888888888888888888888888888",
+        "destinationClaimMessageId": "0x9999999999999999999999999999999999999999999999999999999999999999"
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_default",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x1000000000000000000000000000000000000001",
+      "role": "requester",
+      "sequence": "4",
+      "createdAt": 1785031400,
+      "expiresAt": 1785035000,
+      "payload": {
+        "acceptId": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "reason": "dealer_abandoned",
+        "missingLeg": "destination_lock",
+        "observedAt": 1785031400,
+        "evidenceIds": [
+          "0x6666666666666666666666666666666666666666666666666666666666666666",
+          "0x5555555555555555555555555555555555555555555555555555555555555555"
+        ]
+      }
+    },
+    {
+      "protocol": "versus-fx",
+      "version": 1,
+      "deploymentId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "type": "fx_dispute",
+      "tradeId": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "sender": "0x2000000000000000000000000000000000000002",
+      "role": "dealer",
+      "sequence": "4",
+      "createdAt": 1785031450,
+      "expiresAt": 1785035050,
+      "payload": {
+        "defaultId": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "reason": "destination-lock-was-published",
+        "evidenceIds": [
+          "0x7777777777777777777777777777777777777777777777777777777777777777",
+          "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ]
+      }
+    }
+  ],
+  "stateTransitions": {
+    "happyPath": [
+      ["idle", "publish_rfq", "rfq_open"],
+      ["rfq_open", "accept_quote", "quote_accepted"],
+      ["quote_accepted", "confirm_source_lock", "source_locked"],
+      ["source_locked", "confirm_destination_lock", "destination_locked"],
+      ["destination_locked", "confirm_destination_claim", "destination_claimed"],
+      ["destination_claimed", "confirm_source_claim", "complete"]
+    ],
+    "refundPath": [
+      ["destination_locked", "confirm_destination_refund", "destination_refunded"],
+      ["destination_refunded", "confirm_source_refund", "refunded"]
+    ],
+    "casePath": [
+      ["none", "report_default", "reported"],
+      ["reported", "open_dispute", "disputed"],
+      ["disputed", "resolve_rejected", "resolved_rejected"]
+    ]
+  },
+  "interop": {
+    "messageIndex": 0,
+    "canonical": "{\"createdAt\":1785024000,\"deploymentId\":\"0x1111111111111111111111111111111111111111111111111111111111111111\",\"expiresAt\":1785024050,\"payload\":{\"inputOptions\":[{\"chainId\":\"8453\",\"maxInputAtomic\":\"105000\",\"token\":\"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913\"}],\"outputAmountAtomic\":\"100000\",\"outputChainId\":\"42161\",\"outputToken\":\"0xaf88d065e77c8cc2239327c5edb3a432268e5831\",\"quoteDeadline\":1785024040,\"quotePolicy\":\"lowest_all_in\",\"settlementDeadline\":1785027600,\"x402Commitment\":null},\"protocol\":\"versus-fx\",\"role\":\"requester\",\"sender\":\"0x1000000000000000000000000000000000000001\",\"sequence\":\"1\",\"tradeId\":\"0x2222222222222222222222222222222222222222222222222222222222222222\",\"type\":\"fx_rfq\",\"version\":1}",
+    "id": "0xa79ffb683f60b819beac7a9e07adf69c7d154b9d2642f41bee651fe011cc9fac"
+  }
+}

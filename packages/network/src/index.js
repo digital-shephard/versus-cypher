@@ -6,6 +6,7 @@ module.exports = {
   ...require("./cluster"),
   ...require("./eligibility"),
   ...require("./economic-verifier"),
+  ...require("./fx-protocol"),
   ...require("./identity"),
   ...require("./local-database"),
   ...require("./node"),
