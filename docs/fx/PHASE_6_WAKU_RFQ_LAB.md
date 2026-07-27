@@ -75,6 +75,29 @@ that campaign's generated dealer identity, preventing another active test
 dealer on the shared discovery topic from satisfying the proof accidentally.
 Neither relay is individually required for recovery.
 
+### Independent Windows and macOS proof
+
+On 2026-07-27 commit `121bd53` completed the coordination campaign across two
+physical machines. A Windows requester published the RFQ through both public
+relays while every macOS dealer process was offline. The macOS dealer started
+20 seconds later with a fresh encrypted coordination identity and admitted the
+exact RFQ from Store with `history: true`.
+
+| Record | Identifier |
+| --- | --- |
+| Trade | `0xf73dc5f0c17626dc67f8794c9b54a622da88e237fd18f008d1b96611e40a0409` |
+| RFQ | `0x080652ecef83f0f3b2ff7fc379c533532e085af9a7086afb65521e07184e497e` |
+| Quote | `0x5876cc454793d0c3513cb16e6c41ebf7ed322c68c2e4e7bdc3c00906a370725c` |
+| Acceptance | `0x6cd9724a72042a2ff9ea143897e797cc31a2b61e0daaa6ab69ea96e0c5d96795` |
+| Reservation | `0xfa3613509c0eb3952a841db88e2960d9870ce211b858551b18dbe5fcc2b5d7c4` |
+| Converged state hash | `0x4d272cf792b1cb8639ba199a3eb050058786a862721520fd299795945921b68c` |
+
+The RFQ was published at `02:12:06.699Z`; macOS admitted it from Store at
+`02:12:30.286Z`. After the required 15-second dealer and requester observation
+windows, both independently persisted the same reservation and state hash.
+Settlement was disabled for this coordination-only proof. The separate public
+proof above establishes Phase 5 settlement after Waku shutdown.
+
 ## Headless roles
 
 The headless runner accepts either an encrypted keystore or a dedicated
