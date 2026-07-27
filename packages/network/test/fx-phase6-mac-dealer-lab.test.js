@@ -7,6 +7,7 @@ const {
   TEST_TOKEN,
   delayFromEnvironment,
   labEnvironment,
+  signalExitCode,
 } = require("../scripts/fx-phase6-mac-dealer-lab");
 
 test("Mac dealer lab launcher is delayed, ephemeral, and testnet only", () => {
@@ -46,4 +47,6 @@ test("Mac dealer lab launcher is delayed, ephemeral, and testnet only", () => {
   );
   assert.equal(environment.FX_PHASE6_SETTLE, undefined);
   assert.equal(environment.FX_PHASE6_PRIVATE_KEY, undefined);
+  assert.equal(signalExitCode("SIGINT"), 130);
+  assert.equal(signalExitCode("SIGTERM"), 143);
 });

@@ -59,12 +59,30 @@ function labEnvironment({
   return result;
 }
 
+function signalExitCode(signal) {
+  return signal === "SIGINT" ? 130 : 143;
+}
+
 async function main() {
   if (process.platform !== "darwin") {
     throw new Error("the Phase 6 Mac dealer launcher only runs on macOS");
   }
   const delayMs = delayFromEnvironment();
   const environment = labEnvironment();
+  let child = null;
+  let cancelDelay = () => {};
+  let stopping = false;
+  const stop = (signal) => {
+    if (stopping) return;
+    stopping = true;
+    process.exitCode = signalExitCode(signal);
+    cancelDelay();
+    if (child && child.exitCode === null && !child.killed) {
+      child.kill(signal);
+    }
+  };
+  process.once("SIGINT", () => stop("SIGINT"));
+  process.once("SIGTERM", () => stop("SIGTERM"));
   process.stdout.write(`${JSON.stringify({
     event: "mac-dealer:armed",
     delayMs,
@@ -73,8 +91,15 @@ async function main() {
     testnetOnly: true,
     settlementEnabled: false,
   })}\n`);
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
-  const child = spawn(
+  const shouldStart = await new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(true), delayMs);
+    cancelDelay = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+  });
+  if (!shouldStart || stopping) return;
+  child = spawn(
     process.execPath,
     [path.join(__dirname, "fx-phase6-headless.js")],
     {
@@ -88,7 +113,7 @@ async function main() {
   });
   child.once("exit", (code, signal) => {
     if (signal) {
-      process.kill(process.pid, signal);
+      process.exitCode = signalExitCode(signal);
       return;
     }
     process.exitCode = code ?? 1;
@@ -108,4 +133,5 @@ module.exports = {
   TEST_TOKEN,
   delayFromEnvironment,
   labEnvironment,
+  signalExitCode,
 };

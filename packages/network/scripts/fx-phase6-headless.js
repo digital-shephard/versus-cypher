@@ -225,7 +225,8 @@ async function main() {
         token: required("FX_PHASE6_INPUT_TOKEN"),
         maxInputAtomic: required("FX_PHASE6_MAX_INPUT_ATOMIC"),
       }],
-      quoteDeadline: now + 60,
+      quoteDeadline:
+        now + integer("FX_PHASE6_QUOTE_DEADLINE_SECONDS", 60),
       settlementDeadline: now + integer("FX_PHASE6_SETTLEMENT_DEADLINE_SECONDS", 3600),
       quotePolicy: process.env.FX_PHASE6_QUOTE_POLICY || "lowest_all_in",
       x402Commitment: null,
