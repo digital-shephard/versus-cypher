@@ -24,8 +24,6 @@ $env:FX_PHASE6_ROLE = "requester"
 $env:FX_PHASE6_DEPLOYMENT_ID = "0xd0935aa32dc4d37e33180ac9409c993b7bf39749ff375df4da033bd106c0983e"
 $env:FX_PHASE6_DATA_DIR = "$env:LOCALAPPDATA\Versus Cypher\fx-phase6-requester"
 $env:FX_PHASE6_COORDINATION_PASSWORD = "<new local lab password>"
-$env:FX_PHASE6_REQUEST_TIMEOUT_MS = "600000"
-$env:FX_PHASE6_QUOTE_DEADLINE_SECONDS = "600"
 $env:FX_PHASE6_OUTPUT_CHAIN_ID = "421614"
 $env:FX_PHASE6_OUTPUT_TOKEN = "0xcba3d9354dd4c30bb6961abb4473a6340486e01b"
 $env:FX_PHASE6_OUTPUT_AMOUNT_ATOMIC = "10000"
@@ -50,14 +48,23 @@ dealer. This intentionally proves late-join Store recovery.
 Pull the same branch, install dependencies, and run from the repository root:
 
 ```bash
-npm run fx:phase6:mac-dealer-lab --prefix packages/network
+FX_PHASE6_ARM_DELAY_MS=0 npm run fx:phase6:mac-dealer-lab --prefix packages/network
 ```
 
-The lab launcher prints `mac-dealer:armed`, waits 30 seconds, then starts the
-dealer with a fresh encrypted identity and the frozen testnet-only settings
-below. It removes settlement and operator-key variables from the child
-environment. The expanded settings are retained here for auditability and
-manual runs:
+The lab launcher prints `mac-dealer:armed`, then starts the dealer with a fresh
+encrypted identity and the frozen testnet-only settings below. It removes
+settlement and operator-key variables from the child environment.
+
+When coordinating through a slow human channel, arm macOS five minutes ahead:
+
+```bash
+FX_PHASE6_ARM_DELAY_MS=300000 npm run fx:phase6:mac-dealer-lab --prefix packages/network
+```
+
+Use the printed `startsAt` timestamp to schedule the requester 25 seconds
+earlier. This preserves the protocol's intentional 60-second RFQ lifetime while
+making Store recovery deterministic. The expanded settings are retained here
+for auditability and manual runs:
 
 ```bash
 export FX_PHASE6_ROLE="dealer"
