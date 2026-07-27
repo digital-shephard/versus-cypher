@@ -537,6 +537,32 @@ test("requester queries brokers concurrently and rejects a bad response locally"
   assert.equal(result.attempts.filter((attempt) => !attempt.ok).length, 1);
 });
 
+test("requester validates broker responses against arrival time", async () => {
+  const context = await fixture();
+  const proposal = await createBrokerRouteProposal({
+    signer: context.broker,
+    rfq: context.rfq,
+    quotes: [context.quote],
+    brokerFeeAtomic: "500",
+    now: NOW + 20,
+  });
+  let currentTime = NOW + 3;
+  const result = await queryBrokerRoutes({
+    endpoints: ["https://broker.example"],
+    rfq: context.rfq,
+    now: () => currentTime,
+    fetchImpl: async () => {
+      currentTime = NOW + 20;
+      return new Response(JSON.stringify({ proposal }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+  assert.equal(result.selected.proposalId, proposal.proposalId);
+  assert.equal(result.attempts[0].ok, true);
+});
+
 test("optional x402 data API is paywalled and route ingress is bounded", async (t) => {
   const context = await fixture();
   const requirement = {

@@ -398,7 +398,7 @@ async function queryBrokerRoutes({
   rfq,
   fetchImpl = fetch,
   timeoutMs = 20_000,
-  now = Math.floor(Date.now() / 1000),
+  now = () => Math.floor(Date.now() / 1000),
   maxReferenceAgeSeconds,
   inputChainId,
   inputToken,
@@ -410,7 +410,12 @@ async function queryBrokerRoutes({
   ) {
     throw new FxBrokerError(`broker query requires 1 to ${FX_BROKER_MAX_ENDPOINTS} endpoints`);
   }
-  const verifiedRfq = verifyFxEnvelope(rfq, { now, clockSkewSeconds: 0 });
+  const currentTime = () =>
+    typeof now === "function" ? now() : now;
+  const verifiedRfq = verifyFxEnvelope(rfq, {
+    now: currentTime(),
+    clockSkewSeconds: 0,
+  });
   const attempts = await Promise.all(endpoints.map(async (endpoint) => {
     const startedAt = Date.now();
     let url;
@@ -436,7 +441,7 @@ async function queryBrokerRoutes({
       }
       const body = await response.json();
       const proposal = verifyBrokerRouteProposal(body.proposal, {
-        now,
+        now: currentTime(),
         deploymentId: verifiedRfq.deploymentId,
         rfqId: verifiedRfq.id,
         maxReferenceAgeSeconds,
@@ -458,10 +463,15 @@ async function queryBrokerRoutes({
   }));
   const valid = attempts.filter((attempt) => attempt.ok).map((attempt) => attempt.proposal);
   if (valid.length === 0) {
-    throw new FxBrokerError("no broker returned a valid route", "NO_VALID_BROKER");
+    const error = new FxBrokerError(
+      "no broker returned a valid route",
+      "NO_VALID_BROKER"
+    );
+    error.attempts = attempts;
+    throw error;
   }
   const comparison = compareBrokerRouteProposals(valid, {
-    now,
+    now: currentTime(),
     deploymentId: verifiedRfq.deploymentId,
     rfqId: verifiedRfq.id,
     maxReferenceAgeSeconds,

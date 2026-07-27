@@ -218,7 +218,7 @@ async function main() {
       endpoints: [serviceUrl],
       rfq,
       timeoutMs: configuration.requestTimeoutMs,
-      now,
+      now: networkNow,
       inputChainId: "84532",
       inputToken: TEST_TOKEN,
     });
@@ -289,6 +289,7 @@ async function main() {
         name: error?.name || "Error",
         code: error?.code || null,
         message: error?.message || String(error),
+        attempts: error?.attempts || [],
       },
     };
     fs.writeFileSync(evidencePath, `${JSON.stringify(failure, null, 2)}\n`, {
