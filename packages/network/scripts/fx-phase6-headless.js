@@ -7,6 +7,8 @@ const {
   FxRequesterBroker,
   FxTradeJournal,
   FxWakuTransport,
+  calibrateFxNetworkClock,
+  createFxNetworkNow,
   loadOrCreateFxEphemeralIdentity,
 } = require("../src");
 
@@ -25,6 +27,24 @@ function integer(name, fallback) {
   const value = Number(process.env[name] || fallback);
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be an unsigned integer`);
   return value;
+}
+
+async function networkClockFromEnvironment(environment = process.env) {
+  const rpcUrls = String(environment.FX_PHASE6_CLOCK_RPCS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (rpcUrls.length === 0) {
+    return {
+      clock: null,
+      now: () => Math.floor(Date.now() / 1000),
+    };
+  }
+  const clock = await calibrateFxNetworkClock({ rpcUrls });
+  return {
+    clock,
+    now: createFxNetworkNow(clock),
+  };
 }
 
 function appendMetric(filePath, record) {
@@ -87,6 +107,8 @@ async function main() {
   const dataDirectory = path.resolve(required("FX_PHASE6_DATA_DIR"));
   fs.mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
   const metricsFile = path.join(dataDirectory, "phase6-events.ndjson");
+  const networkClock = await networkClockFromEnvironment();
+  const networkNow = networkClock.now;
   const coordinationIdentity = await loadCoordinationIdentity(dataDirectory);
   const wallet = coordinationIdentity.wallet;
   const transport = new FxWakuTransport({
@@ -97,6 +119,7 @@ async function main() {
       .filter(Boolean),
     storeHistoryMs: integer("FX_PHASE6_STORE_HISTORY_MS", 15 * 60 * 1000),
     storeMessageLimit: integer("FX_PHASE6_STORE_MESSAGE_LIMIT", 512),
+    now: () => networkNow() * 1000,
   });
   const journal = new FxTradeJournal({
     filePath: path.join(dataDirectory, "phase6-coordination.sqlite"),
@@ -113,6 +136,13 @@ async function main() {
     maxRfqsPerSenderPerMinute: integer("FX_PHASE6_MAX_RFQS_PER_MINUTE", 6),
     maxQuotesPerSenderPerMinute: integer("FX_PHASE6_MAX_QUOTES_PER_MINUTE", 12),
     maxActiveRfqs: integer("FX_PHASE6_MAX_ACTIVE_RFQS", 32),
+    now: networkNow,
+  });
+  appendMetric(metricsFile, {
+    event: "network:clock",
+    source: networkClock.clock ? "evm_rpc_quorum" : "system",
+    offsetSeconds: networkClock.clock?.offsetSeconds || 0,
+    observations: networkClock.clock?.sources || [],
   });
   for (const event of ["state", "historySynced", "published"]) {
     transport.on(event, (value) => appendMetric(metricsFile, { event: `transport:${event}`, value }));
@@ -156,6 +186,7 @@ async function main() {
       observationWindowMs: integer("FX_PHASE6_OBSERVATION_WINDOW_MS", 15_000),
       sourceClaimAddress,
       destinationRefundAddress,
+      now: networkNow,
       quotePolicy: async (rfq) => {
         const option = rfq.payload.inputOptions.find((candidate) =>
           candidate.chainId === required("FX_PHASE6_INPUT_CHAIN_ID") &&
@@ -170,7 +201,7 @@ async function main() {
           inputAmountAtomic,
           referenceSource: process.env.FX_PHASE6_REFERENCE_SOURCE || "phase6:testnet-manifest",
           referencePriceMicros: process.env.FX_PHASE6_REFERENCE_PRICE_MICROS || "1000000",
-          referenceTimestamp: Math.floor(Date.now() / 1000),
+          referenceTimestamp: networkNow(),
           spreadBps: integer("FX_PHASE6_SPREAD_BPS", 25),
           dealerSettlementCostAtomic: process.env.FX_PHASE6_SETTLEMENT_COST_ATOMIC || "0",
           estimatedCompletionSeconds: integer("FX_PHASE6_ESTIMATED_SECONDS", 60),
@@ -208,12 +239,13 @@ async function main() {
   const requester = new FxRequesterBroker({
     session,
     observationWindowMs: integer("FX_PHASE6_OBSERVATION_WINDOW_MS", 15_000),
+    now: networkNow,
   });
   await requester.start();
   const timeoutMs = integer("FX_PHASE6_REQUEST_TIMEOUT_MS", 120_000);
   const quoted = waitFor(requester, "quote", timeoutMs);
   const tradeId = (process.env.FX_PHASE6_TRADE_ID || hexlify(randomBytes(32))).toLowerCase();
-  const now = Math.floor(Date.now() / 1000);
+  const now = networkNow();
   const rfq = await requester.openRfq({
     tradeId,
     payload: {

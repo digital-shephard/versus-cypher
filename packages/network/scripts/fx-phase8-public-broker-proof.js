@@ -10,6 +10,9 @@ const {
   FxPublicBroker,
   FxTradeJournal,
   FxWakuTransport,
+  DEFAULT_FX_CLOCK_RPCS,
+  calibrateFxNetworkClock,
+  createFxNetworkNow,
   createFxBrokerHttpService,
   queryBrokerRoutes,
   signFxMessage,
@@ -23,6 +26,7 @@ const DEFAULT_BOOTSTRAPS = [
   "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
   "/dns4/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
 ];
+const DEFAULT_CLOCK_RPCS = DEFAULT_FX_CLOCK_RPCS;
 
 function integer(value, fallback, label) {
   const normalized = Number(value ?? fallback);
@@ -53,8 +57,13 @@ function proofConfiguration(environment = process.env) {
     bootstrapPeers: String(
       environment.FX_PHASE8_WAKU_PEERS || DEFAULT_BOOTSTRAPS.join(",")
     ).split(",").map((value) => value.trim()).filter(Boolean),
+    clockRpcUrls: String(
+      environment.FX_PHASE8_CLOCK_RPCS || DEFAULT_CLOCK_RPCS.join(",")
+    ).split(",").map((value) => value.trim()).filter(Boolean),
   };
 }
+
+const calibrateNetworkClock = calibrateFxNetworkClock;
 
 async function signedRfq(requester, {
   tradeId,
@@ -90,6 +99,10 @@ async function signedRfq(requester, {
 
 async function main() {
   const configuration = proofConfiguration();
+  const clock = await calibrateNetworkClock({
+    rpcUrls: configuration.clockRpcUrls,
+  });
+  const networkNow = createFxNetworkNow(clock);
   fs.mkdirSync(configuration.dataDirectory, {
     recursive: true,
     mode: 0o700,
@@ -105,6 +118,7 @@ async function main() {
     bootstrapPeers: configuration.bootstrapPeers,
     storeHistoryMs: 15 * 60 * 1000,
     storeMessageLimit: 512,
+    now: () => networkNow() * 1000,
   });
   const session = new FxCoordinationSession({
     deploymentId: configuration.deploymentId,
@@ -117,12 +131,14 @@ async function main() {
     maxRfqsPerSenderPerMinute: 6,
     maxQuotesPerSenderPerMinute: 12,
     maxActiveRfqs: 32,
+    now: networkNow,
   });
   const broker = new FxPublicBroker({
     session,
     signer: brokerSigner,
     brokerFeeAtomic: "0",
     observationWindowMs: configuration.brokerObservationWindowMs,
+    now: networkNow,
   });
   const service = createFxBrokerHttpService({
     broker,
@@ -130,6 +146,7 @@ async function main() {
     port: 0,
   });
   let serviceUrl;
+  const coordinationEvents = [];
   let attempt = {
     phase: 8,
     proof: "external-requester-http-broker-public-waku-independent-dealer",
@@ -139,12 +156,46 @@ async function main() {
     productionFunds: false,
     requester: requester.address.toLowerCase(),
     broker: brokerSigner.address.toLowerCase(),
+    networkClock: clock,
+    coordinationEvents,
   };
+  session.on("accepted", (envelope, metadata) => {
+    coordinationEvents.push({
+      event: "accepted",
+      id: envelope.id,
+      type: envelope.type,
+      tradeId: envelope.tradeId,
+      sender: envelope.sender,
+      history: Boolean(metadata?.history),
+    });
+  });
+  session.on("pending", (envelope, metadata) => {
+    coordinationEvents.push({
+      event: "pending",
+      id: envelope.id,
+      type: envelope.type,
+      tradeId: envelope.tradeId,
+      sender: envelope.sender,
+      error: metadata?.error?.code || metadata?.error?.message || null,
+      history: Boolean(metadata?.history),
+    });
+  });
+  session.on("rejected", (error, metadata, envelope) => {
+    coordinationEvents.push({
+      event: "rejected",
+      id: envelope?.id || null,
+      type: envelope?.type || null,
+      tradeId: envelope?.tradeId || null,
+      sender: envelope?.sender || null,
+      error: error?.code || error?.message || String(error),
+      history: Boolean(metadata?.history),
+    });
+  });
   try {
     await broker.start();
     serviceUrl = await service.listen();
     const tradeId = hexlify(randomBytes(32)).toLowerCase();
-    const now = Math.floor(Date.now() / 1000);
+    const now = networkNow();
     const rfq = await signedRfq(requester, { tradeId, now });
     attempt = {
       ...attempt,
@@ -172,7 +223,7 @@ async function main() {
       inputToken: TEST_TOKEN,
     });
     const proposal = verifyBrokerRouteProposal(comparison.selected, {
-      now: Math.floor(Date.now() / 1000),
+      now: networkNow(),
       deploymentId: configuration.deploymentId,
       rfqId: rfq.id,
     });
@@ -268,8 +319,10 @@ if (require.main === module) {
 
 module.exports = {
   DEFAULT_BOOTSTRAPS,
+  DEFAULT_CLOCK_RPCS,
   DEPLOYMENT_ID,
   TEST_TOKEN,
+  calibrateNetworkClock,
   proofConfiguration,
   signedRfq,
 };

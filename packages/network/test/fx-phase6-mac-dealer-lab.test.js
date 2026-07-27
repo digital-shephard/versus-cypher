@@ -30,6 +30,10 @@ test("Mac dealer lab launcher is delayed, ephemeral, and testnet only", () => {
   assert.equal(environment.FX_PHASE6_DEPLOYMENT_ID, DEPLOYMENT_ID);
   assert.equal(environment.FX_PHASE6_INPUT_CHAIN_ID, "84532");
   assert.equal(environment.FX_PHASE6_INPUT_TOKEN, TEST_TOKEN);
+  assert.equal(
+    environment.FX_PHASE6_CLOCK_RPCS,
+    "https://mainnet.base.org,https://base-rpc.publicnode.com"
+  );
   assert.equal(environment.FX_PHASE6_SOURCE_CLAIM_ADDRESS, DEALER_SETTLEMENT_ADDRESS);
   assert.equal(
     environment.FX_PHASE6_DESTINATION_REFUND_ADDRESS,

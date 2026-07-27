@@ -47,6 +47,9 @@ function labEnvironment({
     FX_PHASE6_REFERENCE_SOURCE: "phase6:public-testnet-manifest",
     FX_PHASE6_REFERENCE_PRICE_MICROS: "1000000",
     FX_PHASE6_SPREAD_BPS: "0",
+    FX_PHASE6_CLOCK_RPCS:
+      environment.FX_PHASE6_CLOCK_RPCS ||
+      "https://mainnet.base.org,https://base-rpc.publicnode.com",
   };
   for (const name of [
     "FX_PHASE6_SETTLE",

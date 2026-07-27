@@ -21,6 +21,13 @@ adjudicator.
 A broker statement, requester callback, Waku message, or transaction hash by
 itself never firms a trade.
 
+FX message timestamps do not trust a laptop's wall clock. Physical lab roles
+calibrate one network clock from at least two agreeing Base block timestamps,
+then use that same clock for message admission, quote references, and signed
+deadlines. Calibration fails closed if fewer than two sources answer, if their
+timestamps disagree beyond the safety bound, or if the local offset is
+implausible. Expiry tolerance is not widened to hide clock skew.
+
 ## Refund asymmetry
 
 The EVM laboratory policy uses:
@@ -129,6 +136,8 @@ cmd /c npm run fx:phase8:public-proof --prefix packages/network
 The requester calls localhost HTTP and never joins Waku. The broker publishes
 the RFQ to the public Versus Waku fleet, collects the remote dealer quote, and
 writes a locally ignored evidence bundle. Settlement remains disabled.
+Both lab machines derive message time from the same RPC quorum, so a stale or
+incorrect OS clock cannot turn a fresh RFQ into `EXPIRED_MESSAGE`.
 
 ## Explicit exclusions
 

@@ -12,6 +12,7 @@ module.exports = {
   ...require("./fx-coordination"),
   ...require("./fx-ephemeral-identity"),
   ...require("./fx-journal"),
+  ...require("./fx-network-clock"),
   ...require("./fx-waku-transport"),
   ...require("./fx-phase5-coordinator"),
   ...require("./fx-phase5-journal"),
