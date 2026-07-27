@@ -48,6 +48,16 @@ dealer. This intentionally proves late-join Store recovery.
 Pull the same branch, install dependencies, and run from the repository root:
 
 ```bash
+npm run fx:phase6:mac-dealer-lab --prefix packages/network
+```
+
+The lab launcher prints `mac-dealer:armed`, waits 30 seconds, then starts the
+dealer with a fresh encrypted identity and the frozen testnet-only settings
+below. It removes settlement and operator-key variables from the child
+environment. The expanded settings are retained here for auditability and
+manual runs:
+
+```bash
 export FX_PHASE6_ROLE="dealer"
 export FX_PHASE6_DEPLOYMENT_ID="0xd0935aa32dc4d37e33180ac9409c993b7bf39749ff375df4da033bd106c0983e"
 export FX_PHASE6_DATA_DIR="$HOME/Library/Application Support/Versus Cypher/fx-phase6-dealer"
