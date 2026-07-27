@@ -22,6 +22,7 @@
     "fx:phase6:mac-dealer-lab": "node scripts/fx-phase6-mac-dealer-lab.js",
     "fx:phase7:broker": "node scripts/fx-phase7-broker.js",
     "fx:phase7:compare": "node scripts/fx-phase7-compare.js",
+    "fx:phase8:public-proof": "node scripts/fx-phase8-public-broker-proof.js",
     "demo": "node scripts/demo.js",
     "waku:smoke": "node scripts/waku-smoke.js",
     "test": "node --test test/*.test.js"

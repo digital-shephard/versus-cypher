@@ -1,5 +1,6 @@
 const { EventEmitter } = require("node:events");
 const { verifyFxEnvelope } = require("./fx-protocol");
+const { verifyPhase8EvidenceAttestation } = require("./fx-phase8-policy");
 
 const FX_WAKU_TOPIC_VERSION = 1;
 const DEFAULT_FX_WAKU_SHARD_COUNT = 4;
@@ -44,6 +45,10 @@ function createFxContentTopics({
     coordination: Object.freeze(Array.from(
       { length: shardCount },
       (_, index) => `/versus-fx/${FX_WAKU_TOPIC_VERSION}/trade-${scope}-${index}/json`
+    )),
+    evidence: Object.freeze(Array.from(
+      { length: shardCount },
+      (_, index) => `/versus-fx/${FX_WAKU_TOPIC_VERSION}/evidence-${scope}-${index}/json`
     )),
   });
 }
@@ -175,7 +180,11 @@ class FxWakuTransport extends EventEmitter {
       ) {
         throw new Error("FX Waku transport did not find the required peers");
       }
-      for (const topic of [this.topics.discovery, ...this.topics.coordination]) {
+      for (const topic of [
+        this.topics.discovery,
+        ...this.topics.coordination,
+        ...this.topics.evidence,
+      ]) {
         const encoder = this.node.createEncoder({ contentTopic: topic, ephemeral: false });
         const decoder = this.node.createDecoder({ contentTopic: topic });
         const subscribed = await this.node.filter.subscribe(decoder, (message) => {
@@ -200,13 +209,35 @@ class FxWakuTransport extends EventEmitter {
     return this.topics.coordination[fxTradeShard(envelope.tradeId, this.shardCount)];
   }
 
+  topicForEvidence(evidence) {
+    return this.topics.evidence[
+      fxTradeShard(evidence.tradeId, this.shardCount)
+    ];
+  }
+
   onMessage(message, { topic, history }) {
     try {
       const payload = message?.payload;
       if (!(payload instanceof Uint8Array)) throw new Error("FX Waku message has no byte payload");
       if (payload.byteLength > this.maxPayloadBytes) throw new Error("FX Waku payload is too large");
+      const decoded = JSON.parse(new TextDecoder().decode(payload));
+      if (this.topics.evidence.includes(topic)) {
+        const evidence = verifyPhase8EvidenceAttestation(decoded);
+        if (evidence.deploymentId !== this.deploymentId) {
+          throw new Error("FX evidence belongs to another deployment");
+        }
+        if (this.topicForEvidence(evidence) !== topic) {
+          throw new Error("FX evidence used the wrong topic");
+        }
+        this.emit("evidence", evidence, {
+          topic,
+          history: Boolean(history),
+          hash: message.hashStr || null,
+        });
+        return true;
+      }
       const envelope = verifyFxEnvelope(
-        JSON.parse(new TextDecoder().decode(payload)),
+        decoded,
         { now: Math.floor(this.now() / 1000) }
       );
       if (envelope.deploymentId !== this.deploymentId) {
@@ -253,6 +284,38 @@ class FxWakuTransport extends EventEmitter {
       successCount: result.successes.length,
     });
     return { envelope: verified, topic, result };
+  }
+
+  async publishEvidence(input) {
+    await this.start();
+    const evidence = verifyPhase8EvidenceAttestation(input);
+    if (evidence.deploymentId !== this.deploymentId) {
+      throw new Error("FX evidence belongs to another deployment");
+    }
+    const topic = this.topicForEvidence(evidence);
+    const payload = new TextEncoder().encode(JSON.stringify(input));
+    if (payload.byteLength > this.maxPayloadBytes) {
+      throw new Error("FX Waku evidence payload is too large");
+    }
+    const result = await this.node.lightPush.send(
+      this.encoders.get(topic),
+      { payload, timestamp: new Date(this.now()) },
+      { autoRetry: false }
+    );
+    if (!result?.successes?.length) {
+      const reason =
+        result?.failures?.map((failure) => failure.error).join(", ") ||
+        "no relay accepted it";
+      throw new Error(`FX Waku evidence LightPush failed: ${reason}`);
+    }
+    this.emit("evidencePublished", {
+      evidenceId: evidence.evidenceId,
+      schema: evidence.schema,
+      tradeId: evidence.tradeId,
+      topic,
+      successCount: result.successes.length,
+    });
+    return { evidence, topic, result };
   }
 
   async catchUp() {
