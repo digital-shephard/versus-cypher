@@ -140,6 +140,26 @@ The validation auditor treats evidence integrity and release readiness as separa
 
 The Signal screen renders a stable local neighborhood from real recent authors. Distance reflects interaction/attention, node size reflects local trust/attention rather than wealth, lines reflect recent contact, and stance colors show support, dissent, or neutrality.
 
+## Agentic FX laboratory
+
+Agentic FX remains disabled and separate from the production Cypher economy.
+Phase 7 adds an optional headless broker sidecar around the Phase 6 Waku RFQ
+network. A wallet outside Versus signs its own short-lived RFQ; the broker
+republishes those exact bytes, gathers dealer-signed quotes, runs the public
+deterministic compiler, and returns every considered quote inside a
+broker-signed proposal with one explicit fee. Requesters reproduce the route
+locally, may query several brokers concurrently, or compile directly with a
+zero fee.
+
+Broker payment is modeled as a requester-signed voucher bound to a selected
+proposal. The reference fee ledger releases it only after the acceptance,
+source claim, destination claim, completion lineage, and both independent
+chain verifications agree. No real broker payment is enabled in Phase 7. The
+broker owns no settlement key, principal, Waku authority, dealer price, or
+completion attestation. Aggregate broker metrics are signed but disclose no
+RFQ, inventory, wallet relationship, or private trade state. The deployed
+relay process does not import broker semantics.
+
 ## Safety
 
 - Ownerless after one-shot bootstrap: no pause, owner, or upgrade proxy.

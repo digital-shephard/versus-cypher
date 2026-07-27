@@ -20,6 +20,8 @@
     "fx:simulate": "node scripts/fx-simulate.js",
     "fx:phase6:headless": "node scripts/fx-phase6-headless.js",
     "fx:phase6:mac-dealer-lab": "node scripts/fx-phase6-mac-dealer-lab.js",
+    "fx:phase7:broker": "node scripts/fx-phase7-broker.js",
+    "fx:phase7:compare": "node scripts/fx-phase7-compare.js",
     "demo": "node scripts/demo.js",
     "waku:smoke": "node scripts/waku-smoke.js",
     "test": "node --test test/*.test.js"

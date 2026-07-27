@@ -7,6 +7,8 @@ module.exports = {
   ...require("./eligibility"),
   ...require("./economic-verifier"),
   ...require("./fx-protocol"),
+  ...require("./fx-broker-protocol"),
+  ...require("./fx-broker-service"),
   ...require("./fx-coordination"),
   ...require("./fx-ephemeral-identity"),
   ...require("./fx-journal"),
