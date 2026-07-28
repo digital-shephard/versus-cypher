@@ -37,6 +37,8 @@ function actionSlot(message) {
       return "trade:accept";
     case "fx_reserve":
       return "trade:reserve";
+    case "fx_cancel":
+      return "trade:cancel";
     case "fx_lock_source":
       return "lock:source";
     case "fx_lock_destination":
@@ -323,6 +325,37 @@ class FxTradeJournal {
         if (settlementState !== "quote_accepted") {
           throw new FxJournalError("reservation arrived outside acceptance", "INVALID_STATE");
         }
+        break;
+      }
+      case "fx_cancel": {
+        const accept = this.requireMessage(
+          message.payload.acceptId,
+          "fx_accept",
+          message.tradeId
+        );
+        const reserve = this.requireMessage(
+          message.payload.reserveId,
+          "fx_reserve",
+          message.tradeId
+        );
+        const rfq = this.requireMessage(
+          accept.payload.rfqId,
+          "fx_rfq",
+          message.tradeId
+        );
+        if (
+          message.sender !== rfq.sender ||
+          reserve.payload.acceptId !== accept.id
+        ) {
+          throw new FxJournalError(
+            "cancellation does not match the requester reservation",
+            "COUNTERPARTY_MISMATCH"
+          );
+        }
+        settlementState = advanceFxState(
+          settlementState,
+          "cancel_before_source_lock"
+        );
         break;
       }
       case "fx_lock_source": {

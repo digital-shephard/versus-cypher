@@ -21,6 +21,7 @@ module.exports = {
   ...require("./fx-phase8-dealer-guard"),
   ...require("./fx-phase8-journal"),
   ...require("./fx-phase8-policy"),
+  ...require("./fx-requester-sdk"),
   ...require("./identity"),
   ...require("./local-database"),
   ...require("./node"),

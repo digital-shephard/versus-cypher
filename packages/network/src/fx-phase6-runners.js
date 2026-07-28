@@ -64,6 +64,10 @@ class FxDeterministicDealer extends EventEmitter {
       if (envelope.type === "fx_quote" && envelope.sender === this.session.address) {
         this.quotes.set(envelope.tradeId, envelope);
       }
+      if (envelope.type === "fx_cancel") {
+        this.quotes.delete(envelope.tradeId);
+        this.historicalAccepts.delete(envelope.tradeId);
+      }
       return;
     }
     if (envelope.type === "fx_rfq") {
@@ -81,6 +85,12 @@ class FxDeterministicDealer extends EventEmitter {
       envelope.sender === this.session.address
     ) {
       this.quotes.set(envelope.tradeId, envelope);
+      return;
+    }
+    if (envelope.type === "fx_cancel") {
+      this.quotes.delete(envelope.tradeId);
+      this.historicalAccepts.delete(envelope.tradeId);
+      this.emit("cancelled", envelope, metadata);
       return;
     }
     if (envelope.type !== "fx_accept") return;
@@ -231,6 +241,7 @@ class FxRequesterBroker extends EventEmitter {
       }
     }
     if (envelope.type === "fx_reserve") this.emit("reserved", envelope, metadata);
+    if (envelope.type === "fx_cancel") this.emit("cancelled", envelope, metadata);
   }
 
   async openRfq({

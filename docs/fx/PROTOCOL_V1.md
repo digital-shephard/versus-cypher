@@ -123,6 +123,7 @@ Both independent implementations MUST produce that ID from their local
 | `fx_quote` | dealer |
 | `fx_accept` | requester |
 | `fx_reserve` | dealer |
+| `fx_cancel` | requester |
 | `fx_lock_source` | requester |
 | `fx_lock_destination` | dealer |
 | `fx_claim` | requester, dealer, relayer |
@@ -241,6 +242,22 @@ reservationDeadline
 ```
 
 The reservation deadline MUST be inside the message lifetime.
+
+### `fx_cancel`
+
+Requester releases an accepted dealer reservation before any source lock
+exists.
+
+```text
+acceptId
+reserveId
+reason
+```
+
+The reason is exactly `owner_cancelled`. The requester signature MUST match the
+original RFQ sender, both references MUST belong to the same trade, and the
+reservation MUST reference the same acceptance. Cancellation advances only
+`quote_accepted -> cancelled`; it is invalid after a source lock exists.
 
 ### `fx_lock_source` and `fx_lock_destination`
 
@@ -361,6 +378,7 @@ client evaluates verified evidence under local policy.
 | Quote | 60 seconds |
 | Accept | 10 minutes |
 | Reserve | 10 minutes |
+| Cancel | 60 seconds |
 | Economic evidence | 30 days |
 
 Normal envelope verification permits at most five minutes of local wall-clock
@@ -396,6 +414,12 @@ source_locked -> refunded
 destination_locked
   -> destination_refunded
   -> refunded
+```
+
+Pre-lock cancellation:
+
+```text
+quote_accepted -> cancelled
 ```
 
 An RFQ may expire before acceptance. An accepted quote may be cancelled only

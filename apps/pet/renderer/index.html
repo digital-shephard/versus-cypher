@@ -26,6 +26,10 @@
         <span class="service-screw-socket" data-screw-socket-id="2"></span>
         <span class="service-screw-socket" data-screw-socket-id="3"></span>
       </div>
+      <div id="fx-wheel-layer" aria-hidden="true">
+        <img src="../assets/tamagotchi/fx-side-wheel.png" alt="" draggable="false" />
+      </div>
+      <button type="button" id="btn-fx-wheel" title="Agentic FX" aria-label="Turn the Agentic FX wheel"></button>
       <div id="chassis-drag-region" aria-hidden="true"></div>
       <div id="faceplate-layer">
         <img class="device-shell" src="../assets/tamagotchi/device-shell-v2.png" alt="" draggable="false" />
@@ -318,6 +322,236 @@
               </div>
               <button type="button" id="btn-signal-flip" class="signal-flip-trigger" title="Flip signal card" aria-label="Flip signal card" aria-pressed="false">&#8635;</button>
             </div>
+          </div>
+
+          <div id="fx-screen" class="mode-screen fx-screen" aria-label="Cypher FX laboratory">
+            <div class="fx-quick-actions" aria-label="FX requester tools">
+              <button type="button" id="fx-open-swap" title="Request a swap" aria-label="Request a swap">&#8644;</button>
+              <button type="button" id="fx-open-history" title="Swap history" aria-label="Swap history">&#8634;</button>
+            </div>
+
+            <section class="fx-panel fx-desk-panel" data-fx-panel="desk" aria-label="FX dealer desk">
+              <div class="fx-desk-stage" aria-hidden="true">
+                <img class="fx-desk-layer fx-dock-background" src="../assets/tamagotchi/fx-layers/fx-dock-background.png" alt="" draggable="false" />
+                <img class="fx-desk-layer fx-booth-background" src="../assets/tamagotchi/fx-layers/fx-booth-background.png" alt="" draggable="false" />
+                <div class="fx-agent-station">
+                  <img id="fx-desk-cypher" alt="" draggable="false" />
+                </div>
+                <img class="fx-desk-layer fx-booth-foreground" src="../assets/tamagotchi/fx-layers/fx-booth-foreground.png" alt="" draggable="false" />
+                <div class="fx-desk-shutter" aria-hidden="true">
+                  <img class="fx-desk-closed-sign" src="../assets/tamagotchi/fx-layers/fx-closed-sign.png" alt="" draggable="false" />
+                  <span class="fx-desk-shutter-latch"></span>
+                </div>
+              </div>
+            </section>
+
+            <section class="fx-panel fx-stock-panel hidden" data-fx-panel="stock" aria-label="FX dealer inventory">
+              <div class="fx-panel-title">
+                <span>INVENTORY</span>
+                <span class="fx-title-actions">
+                  <b class="fx-state"><i aria-hidden="true"></i><em class="fx-state-label">DISARMED</em></b>
+                  <button type="button" id="fx-refresh-stock" class="fx-icon-action" aria-label="Refresh inventory" title="Refresh inventory">&#8635;</button>
+                  <button type="button" id="fx-add-position" class="fx-icon-action" aria-label="Choose supported assets" title="Choose supported assets">+</button>
+                </span>
+              </div>
+              <div class="fx-stock-summary">
+                <span><small>STOCKED</small><b id="fx-stock-total">$0.00</b></span>
+                <span><small>RESERVED</small><b id="fx-stock-reserved">$0.00</b></span>
+              </div>
+              <div class="fx-stock-filters" role="toolbar" aria-label="Filter inventory positions">
+                <button type="button" data-fx-stock-filter="all" aria-pressed="true">ALL</button>
+                <button type="button" data-fx-stock-filter="funded" aria-pressed="false">FUNDED</button>
+                <button type="button" data-fx-stock-filter="active" aria-pressed="false">ACTIVE</button>
+              </div>
+              <div class="fx-bays" id="fx-bays"></div>
+              <div class="fx-panel-foot" id="fx-stock-foot">0/2 READY &middot; NOT RUNWAY</div>
+            </section>
+
+            <section class="fx-panel fx-tape-panel hidden" data-fx-panel="tape" aria-label="FX settlement tape">
+              <div class="fx-panel-title"><span>RECEIPT TAPE</span><b class="fx-state"><i aria-hidden="true"></i><em class="fx-state-label">DISARMED</em></b></div>
+              <div class="fx-printer" aria-hidden="true"><span class="fx-printer-slot"></span></div>
+              <div class="fx-roll">
+                <div class="fx-roll-paper" id="fx-roll-paper"></div>
+                <div class="fx-roll-tear" aria-hidden="true"></div>
+              </div>
+              <div class="fx-panel-foot"><b id="fx-tape-complete">COMPLETE 0</b><b id="fx-tape-refunded">REFUNDED 0</b></div>
+            </section>
+
+            <section class="fx-panel fx-risk-panel hidden" data-fx-panel="risk" aria-label="FX dealer risk controls">
+              <div class="fx-panel-title">
+                <span>RISK</span>
+                <span class="fx-title-actions">
+                  <button type="button" id="fx-risk-assets" class="fx-text-action">ASSETS</button>
+                  <b class="fx-state"><i aria-hidden="true"></i><em class="fx-state-label">DISARMED</em></b>
+                </span>
+              </div>
+              <div class="fx-risk-scroll">
+                <div class="fx-risk-master">
+                  <span class="fx-risk-label"><b>FX DEALING</b></span>
+                  <button type="button" id="fx-risk-armed" class="fx-switch" role="switch" aria-checked="false" aria-label="FX dealing"><i></i></button>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>MAX TRADE</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="maxTradeUsd:-1" aria-label="Lower maximum trade size">&minus;</button>
+                    <b id="fx-risk-max-trade">$250</b>
+                    <button type="button" data-fx-step="maxTradeUsd:1" aria-label="Raise maximum trade size">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>MAX EXPOSURE</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="maxExposureUsd:-1" aria-label="Lower maximum concurrent exposure">&minus;</button>
+                    <b id="fx-risk-max-exposure">$1,000</b>
+                    <button type="button" data-fx-step="maxExposureUsd:1" aria-label="Raise maximum concurrent exposure">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>MIN SPREAD</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="minSpreadBps:-1" aria-label="Lower minimum spread">&minus;</button>
+                    <b id="fx-risk-min-spread">25 BPS</b>
+                    <button type="button" data-fx-step="minSpreadBps:1" aria-label="Raise minimum spread">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>QUOTE LIFE</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="quoteTimeoutSec:-1" aria-label="Shorten quote lifetime">&minus;</button>
+                    <b id="fx-risk-timeout">30s</b>
+                    <button type="button" data-fx-step="quoteTimeoutSec:1" aria-label="Extend quote lifetime">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>LOCK WINDOW</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="reservationSec:-1" aria-label="Shorten source lock window">&minus;</button>
+                    <b id="fx-risk-reservation">90s</b>
+                    <button type="button" data-fx-step="reservationSec:1" aria-label="Extend source lock window">+</button>
+                  </span>
+                </div>
+
+              </div>
+              <div class="fx-panel-foot" id="fx-risk-foot">LIMITS APPLY BEFORE EVERY QUOTE</div>
+            </section>
+
+            <div class="fx-sheet hidden" id="fx-deposit-sheet" role="dialog" aria-modal="true" aria-label="Deposit to inventory bay">
+              <div class="fx-sheet-card">
+                <header><b>DEPOSIT</b><button type="button" class="fx-sheet-close" data-fx-sheet-close aria-label="Close">&times;</button></header>
+                <p class="fx-sheet-route" id="fx-deposit-route">BASE &middot; USDC</p>
+                <div class="fx-qr-frame"><img id="fx-deposit-qr" alt="Inventory bay deposit QR code" draggable="false" /><span id="fx-deposit-qr-empty">NO ADDRESS</span></div>
+                <code class="fx-sheet-address" id="fx-deposit-address">Not provisioned</code>
+                <button type="button" class="fx-act fx-act-fill" id="fx-deposit-copy">COPY ADDRESS</button>
+                <p class="fx-sheet-note" id="fx-deposit-note">Send only the listed asset on the listed chain.</p>
+              </div>
+            </div>
+
+            <div class="fx-sheet hidden" id="fx-withdraw-sheet" role="dialog" aria-modal="true" aria-label="Withdraw from inventory bay">
+              <div class="fx-sheet-card">
+                <header><b>WITHDRAW</b><button type="button" class="fx-sheet-close" data-fx-sheet-close aria-label="Close">&times;</button></header>
+                <p class="fx-sheet-route" id="fx-withdraw-route">BASE &middot; USDC</p>
+                <label class="fx-field"><small>DESTINATION</small><input id="fx-withdraw-dest" type="text" spellcheck="false" autocomplete="off" placeholder="0x0000...0000" /></label>
+                <label class="fx-field"><small>AMOUNT</small><span class="fx-field-row"><input id="fx-withdraw-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" /><button type="button" class="fx-mini" id="fx-withdraw-max">MAX</button></span></label>
+                <p class="fx-sheet-note" id="fx-withdraw-note">Available $0.00</p>
+                <button type="button" class="fx-act fx-act-fill" id="fx-withdraw-send">SEND</button>
+              </div>
+            </div>
+
+            <div class="fx-sheet hidden" id="fx-add-position-sheet" role="dialog" aria-modal="true" aria-label="Add inventory position">
+              <div class="fx-sheet-card fx-position-card">
+                <header class="fx-position-header">
+                  <button type="button" class="fx-position-back" data-fx-sheet-close aria-label="Back to inventory">&lt; SUPPORTED ASSETS</button>
+                </header>
+                <div class="fx-position-options" id="fx-position-options"></div>
+              </div>
+            </div>
+
+            <section class="fx-requester hidden" id="fx-requester" role="dialog" aria-modal="true" aria-label="Request an FX swap">
+              <header class="fx-requester-head">
+                <button type="button" id="fx-requester-back" aria-label="Close swap">&lt;</button>
+                <button type="button" class="fx-requester-title" id="fx-requester-title" aria-label="Back to swap form">SWAP</button>
+                <span>TESTNET</span>
+              </header>
+
+              <div class="fx-requester-scroll" id="fx-requester-swap-view">
+                <div id="fx-requester-compose">
+                  <div class="fx-swap-pair">
+                    <label class="fx-swap-leg">
+                      <small>YOU SEND</small>
+                      <select id="fx-swap-source" aria-label="Asset to send"></select>
+                    </label>
+                    <button type="button" id="fx-swap-flip" class="fx-swap-flip" aria-label="Reverse assets">&#8645;</button>
+                    <label class="fx-swap-leg">
+                      <small>YOU RECEIVE</small>
+                      <span class="fx-swap-output-row">
+                        <input id="fx-swap-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount to receive" />
+                        <select id="fx-swap-destination" aria-label="Asset to receive"></select>
+                      </span>
+                    </label>
+                  </div>
+
+                  <label class="fx-swap-address">
+                    <small>RECIPIENT</small>
+                    <input id="fx-swap-recipient" type="text" spellcheck="false" autocomplete="off" placeholder="0x destination address" />
+                  </label>
+
+                  <p class="fx-requester-error hidden" id="fx-requester-error" role="alert"></p>
+                  <button type="button" class="fx-requester-primary" id="fx-get-quotes">GET QUOTES</button>
+                </div>
+
+                <section class="fx-quote-result hidden" id="fx-quote-result" aria-live="polite">
+                  <header><span id="fx-quote-label">BEST VERIFIED QUOTE</span><time id="fx-quote-expiry">--</time></header>
+                  <div class="fx-quote-main">
+                    <small>YOU SEND AT MOST</small>
+                    <strong id="fx-quote-input">--</strong>
+                    <span id="fx-quote-route">--</span>
+                  </div>
+                  <dl>
+                    <div><dt>DEALER</dt><dd id="fx-quote-dealer">--</dd></div>
+                    <div><dt>SPREAD</dt><dd id="fx-quote-spread">--</dd></div>
+                    <div><dt>BROKER FEE</dt><dd id="fx-quote-fee">--</dd></div>
+                    <div><dt>EST. TIME</dt><dd id="fx-quote-time">--</dd></div>
+                  </dl>
+                  <button type="button" class="fx-requester-primary" id="fx-accept-quote">ACCEPT QUOTE</button>
+                </section>
+
+                <section class="fx-funding-result hidden" id="fx-funding-result" aria-live="polite">
+                  <header><span>SEND EXACTLY</span><b id="fx-funding-amount">--</b></header>
+                  <div class="fx-funding-qr"><img id="fx-funding-qr-image" alt="Source funding address QR code" draggable="false" /></div>
+                  <div class="fx-funding-address-row">
+                    <code id="fx-funding-address">--</code>
+                    <button type="button" id="fx-copy-funding" aria-label="Copy funding address" title="Copy funding address">
+                      <span class="fx-copy-icon" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                  <p class="fx-funding-window"><span>DEALER RESERVED</span><time id="fx-funding-expiry">--</time></p>
+                  <p id="fx-funding-note">Send only the selected asset on the selected network.</p>
+                  <button type="button" class="fx-requester-primary" id="fx-check-funding">I SENT IT</button>
+                  <button type="button" class="fx-requester-secondary fx-requester-cancel" id="fx-cancel-trade">CANCEL SWAP</button>
+                </section>
+
+                <section class="fx-settlement-result hidden" id="fx-settlement-result" aria-live="polite">
+                  <div class="fx-settlement-lamp" aria-hidden="true"></div>
+                  <small id="fx-settlement-kicker">SETTLEMENT</small>
+                  <strong id="fx-settlement-state">CHECKING SOURCE FUNDS</strong>
+                  <p id="fx-settlement-detail">Chain confirmation decides what happens next.</p>
+                  <ol id="fx-settlement-timeline"></ol>
+                  <button type="button" class="fx-requester-secondary hidden" id="fx-refund-trade">REFUND SOURCE</button>
+                  <button type="button" class="fx-requester-secondary hidden" id="fx-check-status">CHECK STATUS</button>
+                  <button type="button" class="fx-requester-primary hidden" id="fx-settlement-done">DONE</button>
+                </section>
+              </div>
+
+              <div class="fx-requester-scroll hidden" id="fx-requester-history-view">
+                <div class="fx-history-list" id="fx-history-list"></div>
+                <button type="button" class="fx-requester-secondary" id="fx-export-evidence">EXPORT EVIDENCE</button>
+              </div>
+            </section>
           </div>
         </main>
 

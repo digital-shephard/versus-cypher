@@ -241,6 +241,142 @@ test("manual brain ticks lock their controls before invoking the brain", () => {
   assert.match(renderer, /finally \{\s+brainThinkPending = false;\s+renderNetworkScreen\(\)/);
 });
 
+test("the FX wheel is sandwiched between the chassis and removable faceplate", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+
+  assert.ok(html.indexOf('id="service-chassis"') < html.indexOf('id="fx-wheel-layer"'));
+  assert.ok(html.indexOf('id="fx-wheel-layer"') < html.indexOf('id="faceplate-layer"'));
+  assert.match(html, /id="fx-wheel-layer"[\s\S]*fx-side-wheel\.png/);
+  assert.match(css, /#fx-wheel-layer[\s\S]*z-index: 3/);
+  assert.match(css, /#faceplate-layer[\s\S]*z-index: 4/);
+  assert.match(css, /#btn-fx-wheel[\s\S]*z-index: 5/);
+  assert.match(css, /#shell \{[\s\S]*width: 390px[\s\S]*height: 640px[\s\S]*overflow: visible/);
+  assert.match(main, /const WIN_W = 454/);
+  assert.match(renderer, /function wireFxWheel\(\)[\s\S]*direction < 0 \? -90 : 90/);
+  assert.match(renderer, /const overshoot = target \+ Math\.sign\(step\) \* 11/);
+  assert.match(renderer, /const rebound = target - Math\.sign\(step\) \* 3/);
+  assert.match(renderer, /image\.animate\(\[[\s\S]*duration: 320/);
+  assert.match(renderer, /button\.addEventListener\("click", \(\) => \{[\s\S]*toggleFxSurface\(\)/);
+  assert.match(renderer, /button\.addEventListener\("wheel"[\s\S]*passive: false/);
+});
+
+test("the FX wheel opens a dedicated surface while MODE keeps cycling its tabs", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+
+  assert.match(html, /id="fx-screen"[\s\S]*data-fx-panel="desk"[\s\S]*data-fx-panel="stock"[\s\S]*data-fx-panel="tape"[\s\S]*data-fx-panel="risk"/);
+  assert.match(html, /fx-dock-background[\s\S]*fx-booth-background[\s\S]*id="fx-desk-cypher"[\s\S]*fx-booth-foreground/);
+  assert.match(renderer, /const FX_MODES = \["desk", "stock", "tape", "risk"\]/);
+  assert.match(renderer, /let activeSurface = "cypher"/);
+  assert.match(renderer, /function setSurface\(next\)[\s\S]*activeSurface = next[\s\S]*renderFxScreen\(\)/);
+  assert.match(renderer, /if \(activeSurface === "fx"\) \{[\s\S]*setFxMode\(FX_MODES/);
+  assert.match(css, /#shell\[data-surface="fx"\] #fx-screen \{ display: block; \}/);
+  assert.match(css, /\.fx-dock-background \{ z-index: 0; \}/);
+  assert.match(css, /\.fx-booth-background \{[\s\S]*?z-index: 1;/);
+  assert.match(css, /\.fx-agent-station \{[\s\S]*z-index: 3/);
+  assert.match(css, /\.fx-booth-foreground \{[\s\S]*?z-index: 4;/);
+  assert.match(html, /fx-booth-foreground[\s\S]*fx-desk-shutter/);
+  assert.match(html, /fx-desk-shutter[\s\S]*fx-closed-sign\.png/);
+  assert.match(html, /fx-printer[\s\S]*fx-printer-slot/);
+  assert.doesNotMatch(html, /class="fx-printer"[^>]*><i>/);
+  assert.match(css, /\.fx-desk-shutter \{[\s\S]*z-index: 7/);
+  assert.match(css, /#fx-screen\[data-armed="true"\] \.fx-desk-shutter \{[\s\S]*translateY\(calc\(-100% \+ 14px\)\)/);
+  assert.match(css, /\.fx-printer-slot \{[\s\S]*linear-gradient\(180deg/);
+  assert.match(css, /\.fx-roll\.is-feeding \.fx-roll-paper[\s\S]*fx-paper-kick/);
+  assert.match(renderer, /screen\.dataset\.armed = armed/);
+  assert.match(renderer, /function pushFxReceipt\(receipt\)[\s\S]*fxTape\.unshift\(receipt\)[\s\S]*roll\.classList\.add\("is-feeding"\)/);
+  assert.match(renderer, /function playFxTapeDemo\(intervalMs = 850\)[\s\S]*pushFxReceipt\(receipt\)/);
+  assert.match(html, /QUOTE LIFE[\s\S]*LOCK WINDOW/);
+  assert.match(renderer, /steps: \[1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500\]/);
+  assert.match(renderer, /steps: \[1, 5, 10, 15, 25, 40, 60, 100\]/);
+  assert.match(renderer, /function setFxRiskValue\(key, value\)[\s\S]*value > fxRisk\.maxExposureUsd[\s\S]*fxRisk\.maxExposureUsd = value[\s\S]*value < fxRisk\.maxTradeUsd[\s\S]*fxRisk\.maxTradeUsd = value/);
+  assert.match(renderer, /REFUND: DEALER 10m \\u00b7 REQUESTER 2h/);
+  assert.match(html, /id="fx-risk-assets"[^>]*>ASSETS/);
+  assert.doesNotMatch(html, /fx-risk-chains|fx-risk-allow/);
+  assert.doesNotMatch(renderer, /FX_RISK_CHAINS|FX_RISK_ASSETS|renderFxChips/);
+  assert.match(css, /#shell\[data-view="view-class"\] #mode-dots span\.active/);
+});
+
+test("FX stock uses a canonical supported-asset catalog instead of manual token configuration", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+
+  assert.match(html, /id="fx-add-position"[\s\S]*data-fx-stock-filter="all"[\s\S]*data-fx-stock-filter="funded"[\s\S]*data-fx-stock-filter="active"/);
+  assert.match(html, /id="fx-add-position-sheet"[\s\S]*fx-position-back[\s\S]*SUPPORTED ASSETS[\s\S]*id="fx-position-options"/);
+  assert.doesNotMatch(html, /id="fx-position-done"|id="fx-position-note"/);
+  assert.doesNotMatch(html, /id="fx-position-contract"|id="fx-position-capacity"/);
+  assert.match(renderer, /const FX_SUPPORTED_POSITIONS = \[[\s\S]*id: "base-sepolia-usdc"[\s\S]*id: "arbitrum-sepolia-usdc"/);
+  assert.match(renderer, /function fxVisibleInventory\(\)[\s\S]*fxStockFilter === "funded"[\s\S]*fxStockFilter === "active"/);
+  assert.match(renderer, /function fxPositionOptionNode\(position\)[\s\S]*toggle\.setAttribute\("role", "switch"\)/);
+  assert.match(renderer, /bay\.availableMicros \+ bay\.reservedMicros > 0[\s\S]*bay\.reservedMicros > 0 \|\| bay\.inFlight > 0/);
+  assert.match(renderer, /toggle\.disabled = locked \|\| \(!selected && !chain\?\.gasReady\)/);
+  assert.match(renderer, /function fxChainOptionNode\(chain\)[\s\S]*GAS 2\/2[\s\S]*CUSTOM RPC \(OPTIONAL\)/);
+  assert.match(renderer, /setFxDemo\(on = true\)[\s\S]*fxStockFilter = "all";\s*fxOpenBay = null;/);
+  assert.match(renderer, /window\.versus\.fxSetPositionEnabled\(position\.id, !selected\)/);
+  assert.match(css, /\.fx-stock-filters \{[\s\S]*grid-template-columns: repeat\(3, 1fr\)/);
+  assert.match(css, /\.fx-bays \{[\s\S]*overflow-y: auto/);
+  assert.match(css, /\.fx-icon-action \{[\s\S]*border-radius: 50%/);
+  assert.match(css, /#fx-add-position-sheet \{[\s\S]*padding: 0;[\s\S]*place-items: stretch/);
+  assert.match(css, /\.fx-position-card \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*border-radius: 0/);
+  assert.match(css, /\.fx-position-toggle\[aria-checked="true"\][\s\S]*transform: translateX\(16px\)/);
+});
+
+test("Phase 10 keeps the requester flow simple and the economic runtime fail closed", () => {
+  const html = fs.readFileSync(path.join(root, "renderer", "index.html"), "utf8");
+  const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const preload = fs.readFileSync(path.join(root, "src", "preload.js"), "utf8");
+  const service = fs.readFileSync(path.join(root, "src", "fx-desktop-service.js"), "utf8");
+  const cohort = fs.readFileSync(path.join(root, "src", "fx-evm-cohort.js"), "utf8");
+  const roles = fs.readFileSync(path.join(root, "src", "fx-role-wallet.js"), "utf8");
+  const capture = fs.readFileSync(path.join(root, "scripts", "capture-views.js"), "utf8");
+
+  assert.match(html, /YOU SEND[\s\S]*YOU RECEIVE[\s\S]*RECIPIENT[\s\S]*GET QUOTES/);
+  assert.match(html, /BEST VERIFIED QUOTE[\s\S]*ACCEPT QUOTE[\s\S]*SEND EXACTLY[\s\S]*I SENT IT[\s\S]*CANCEL SWAP/);
+  assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
+  assert.match(html, /id="fx-settlement-done">DONE/);
+  assert.match(html, /id="fx-requester-compose"/);
+  assert.match(html, /id="fx-requester-title" aria-label="Back to swap form">SWAP/);
+  assert.doesNotMatch(html, /id="fx-copy-funding"[^>]*>COPY ADDRESS/);
+  assert.doesNotMatch(html, /CONNECT WALLET/i);
+  assert.match(renderer, /function fxShortAddress[\s\S]*\u2026/);
+  assert.match(renderer, /destinationAddress: fxAddressInputValue/);
+  assert.match(renderer, /fxRequesterTrade\.state === "refund_wait"[\s\S]*fxRefund/);
+  assert.match(renderer, /function cancelFxTrade[\s\S]*window\.versus\.fxCancel/);
+  assert.match(renderer, /function scrollFxRequesterToBottom[\s\S]*scroll\.scrollHeight/);
+  assert.match(renderer, /function finishFxRequester[\s\S]*fxRequesterTrade = null[\s\S]*closeFxRequester/);
+  assert.match(renderer, /fx-settlement-done"\)\?\.addEventListener\("click", finishFxRequester\)/);
+  assert.match(renderer, /fx-requester-compose"\)\.classList\.toggle\("hidden", Boolean\(fxRequesterTrade\)\)/);
+  assert.match(renderer, /function returnToFxSwapMain[\s\S]*state === "quoted"[\s\S]*renderFxRequester/);
+  assert.match(renderer, /fx-requester-title"\)\?\.addEventListener\("click", returnToFxSwapMain\)/);
+  assert.match(renderer, /function navigateBackFromFxRequester[\s\S]*fxRequesterView === "history"[\s\S]*closeFxRequester\(\)[\s\S]*state === "quoted"[\s\S]*returnToFxSwapMain/);
+  assert.match(renderer, /fx-requester-back"\)\?\.addEventListener\("click", navigateBackFromFxRequester\)/);
+  assert.match(css, /\.fx-funding-address-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) 21px/);
+  assert.match(service, /fundingBaseline,[\s\S]*\.\.\.safe/);
+  assert.match(service, /endpointPaymentAuthorized: false[\s\S]*endpointPaymentSubmitted: false/);
+  assert.match(main, /sourceFundingVerifier[\s\S]*settlementReconciler[\s\S]*refundExecutor/);
+  assert.match(main, /registerIpcHandle\("fx:refund"/);
+  assert.match(main, /registerIpcHandle\("fx:cancel"/);
+  assert.match(preload, /fxRefund: \(tradeId\) => ipcRenderer\.invoke\("fx:refund"/);
+  assert.match(preload, /fxCancel: \(tradeId\) => ipcRenderer\.invoke\("fx:cancel"/);
+  assert.match(preload, /fxSetChainSettings[\s\S]*fxWithdrawPosition/);
+  assert.match(main, /registerIpcHandle\("fx:setChainSettings"[\s\S]*registerIpcHandle\("fx:withdrawPosition"/);
+  assert.match(service, /async withdrawPosition[\s\S]*DEALER_ACTIVE[\s\S]*withdrawInventory/);
+  assert.match(service, /async resumeDealer[\s\S]*armDealer/);
+  assert.match(renderer, /function renderFxHistory[\s\S]*fxReconcile/);
+  assert.match(capture, /ipcMain\.handle\("fx:cancel"/);
+  assert.match(roles, /requester[\s\S]*dealer[\s\S]*broker/);
+  assert.match(cohort, /adapterDeploymentBlock: 44662322/);
+  assert.match(cohort, /adapterDeploymentBlock: 291630348/);
+  assert.doesNotMatch(cohort, /fromBlock: 0/);
+});
+
 test("archive restore reveals the local Cypher while remote recovery continues", () => {
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");

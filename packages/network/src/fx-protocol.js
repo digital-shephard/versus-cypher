@@ -19,6 +19,7 @@ const FX_MESSAGE_TYPES = Object.freeze([
   "fx_quote",
   "fx_accept",
   "fx_reserve",
+  "fx_cancel",
   "fx_lock_source",
   "fx_lock_destination",
   "fx_claim",
@@ -36,6 +37,7 @@ const ROLE_BY_TYPE = Object.freeze({
   fx_quote: Object.freeze(["dealer"]),
   fx_accept: Object.freeze(["requester"]),
   fx_reserve: Object.freeze(["dealer"]),
+  fx_cancel: Object.freeze(["requester"]),
   fx_lock_source: Object.freeze(["requester"]),
   fx_lock_destination: Object.freeze(["dealer"]),
   fx_claim: Object.freeze(["requester", "dealer", "relayer"]),
@@ -50,6 +52,7 @@ const MAX_LIFETIME_BY_TYPE = Object.freeze({
   fx_quote: 60,
   fx_accept: 10 * 60,
   fx_reserve: 10 * 60,
+  fx_cancel: 60,
   fx_lock_source: 30 * 24 * 60 * 60,
   fx_lock_destination: 30 * 24 * 60 * 60,
   fx_claim: 30 * 24 * 60 * 60,
@@ -493,6 +496,19 @@ function normalizeReservePayload(value, envelope) {
   };
 }
 
+function normalizeCancelPayload(value) {
+  assertAllowedKeys(value, [
+    "acceptId",
+    "reserveId",
+    "reason",
+  ], "payload");
+  return {
+    acceptId: normalizeHash(value.acceptId, "payload.acceptId"),
+    reserveId: normalizeHash(value.reserveId, "payload.reserveId"),
+    reason: normalizeEnum(value.reason, ["owner_cancelled"], "payload.reason"),
+  };
+}
+
 function normalizeLockPayload(value, envelope) {
   assertAllowedKeys(value, [
     "acceptId",
@@ -629,6 +645,7 @@ const PAYLOAD_NORMALIZERS = Object.freeze({
   fx_quote: normalizeQuotePayload,
   fx_accept: normalizeAcceptPayload,
   fx_reserve: normalizeReservePayload,
+  fx_cancel: normalizeCancelPayload,
   fx_lock_source: normalizeLockPayload,
   fx_lock_destination: normalizeLockPayload,
   fx_claim: normalizeClaimPayload,

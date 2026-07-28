@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, clipboard, safeStorage, dialog, powerMonitor } = require("electron");
+const crypto = require("node:crypto");
 const path = require("path");
 const fs = require("fs");
 const { Wallet } = require("ethers");
@@ -35,6 +36,10 @@ const { RainInbox } = require("./rain-inbox");
 const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
 const { applyPackagedProductionDeployment } = require("./runtime-deployment");
+const { FxDesktopService } = require("./fx-desktop-service");
+const { FxDesktopNetworkRuntime } = require("./fx-desktop-network");
+const { FxEvmCohort } = require("./fx-evm-cohort");
+const { fxRoleWalletProvider } = require("./fx-role-wallet");
 const {
   launchAtLoginAccepted,
   readWindowsRunValue,
@@ -115,10 +120,18 @@ const SETTINGS_PATH = path.join(app.getPath("userData"), "settings.json");
 const OPERATION_JOURNAL_PATH = path.join(app.getPath("userData"), "economic-operations.json");
 const NETWORK_DATA_DIR = path.join(app.getPath("userData"), "network");
 const RAIN_INBOX_PATH = path.join(app.getPath("userData"), "verified-rain.json");
+const FX_STATE_PATH = path.join(app.getPath("userData"), "fx", "state.json");
+const FX_RECOVERY_DIR = path.join(app.getPath("userData"), "fx", "recovery");
+const FX_NETWORK_DIR = path.join(app.getPath("userData"), "fx", "network");
+const FX_RECOVERY_KEY_PATH = path.join(
+  app.getPath("userData"),
+  "fx",
+  "recovery-key.json"
+);
 const RENDERER_PATH = path.join(__dirname, "..", "renderer", "index.html");
 const TRUSTED_RENDERER_URL = trustedFileUrl(RENDERER_PATH);
 const registerIpcHandle = createTrustedIpcRegistrar(ipcMain, TRUSTED_RENDERER_URL);
-const WIN_W = 390;
+const WIN_W = 454;
 const WIN_H = 640;
 
 /** Local demo stand-in for the roughly $10 funded hatch. */
@@ -154,6 +167,68 @@ const healthMonitor = new HealthMonitor();
 const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE) ? process.env.VERSUS_FAULTS : "");
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
+const fxWalletProvider = fxRoleWalletProvider(ensureWallet);
+const fxEvmCohort = new FxEvmCohort({
+  walletProvider: fxWalletProvider,
+});
+const fxNetworkRuntime = new FxDesktopNetworkRuntime({
+  dataDirectory: FX_NETWORK_DIR,
+  walletProvider: fxWalletProvider,
+  evm: fxEvmCohort,
+  now: () => Math.floor(networkNowMs() / 1000),
+});
+const fxDesktopService = new FxDesktopService({
+  statePath: FX_STATE_PATH,
+  recoveryDirectory: FX_RECOVERY_DIR,
+  walletProvider: () => fxWalletProvider("requester"),
+  recoveryPasswordProvider: ensureFxRecoveryPassword,
+  deploymentId: fxNetworkRuntime.deploymentId,
+  queryRoutes: (input) => fxNetworkRuntime.queryRoutes(input),
+  reservationExecutor: (input) => fxNetworkRuntime.reserveRequester(input),
+  cancellationExecutor: (input) => fxNetworkRuntime.cancelRequester(input),
+  sourceFundingPlanner: ({ prepared }) =>
+    fxEvmCohort.captureFunding({
+      chainId: prepared.inputChainId,
+      token: prepared.inputToken,
+      address: prepared.sourceFundingAddress,
+      requiredAtomic: prepared.inputAmountAtomic,
+    }),
+  sourceFundingVerifier: ({ prepared, fundingBaseline }) =>
+    fxEvmCohort.verifyFunding({
+      baseline: fundingBaseline,
+      requiredAtomic: prepared.inputAmountAtomic,
+    }),
+  settlementExecutor: (input) => fxNetworkRuntime.executeRequester(input),
+  destinationVerifier: ({ settlement }) => settlement.destinationObservation,
+  settlementReconciler: (input) => fxNetworkRuntime.reconcileRequester(input),
+  refundExecutor: (input) => fxNetworkRuntime.refundRequester(input),
+  dealerController: fxNetworkRuntime,
+  nativeUsdPriceProvider: async () => {
+    const quote = await getCachedHatchQuote();
+    const swapWei = BigInt(quote?.swapWei || 0);
+    const quotedUsdMicros = BigInt(quote?.quotedRunwayMicros || 0);
+    if (swapWei <= 0n || quotedUsdMicros <= 0n) return 0n;
+    return (quotedUsdMicros * 10n ** 18n) / swapWei;
+  },
+  now: () => Math.floor(networkNowMs() / 1000),
+});
+
+fxDesktopService.on("changed", (snapshot) => {
+  sendRenderer("fx:changed", snapshot);
+});
+fxNetworkRuntime.on("trade", (update) => {
+  fxDesktopService.recordRuntimeTrade(update);
+});
+fxNetworkRuntime.on("status", () => {
+  sendRenderer("fx:changed", fxDesktopService.snapshot());
+});
+fxNetworkRuntime.on("error", (error) => {
+  console.error("Versus FX runtime error:", error);
+  healthMonitor.report(error, {
+    channel: "fx",
+    operation: "distributed_settlement",
+  });
+});
 
 function updateNetworkClockOffset(value) {
   if (value == null) return networkClockOffsetMs;
@@ -648,6 +723,25 @@ function ensureWallet() {
   };
   saveWallet(w);
   return w;
+}
+
+function ensureFxRecoveryPassword() {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error("OS credential encryption is unavailable");
+  }
+  const stored = loadJson(FX_RECOVERY_KEY_PATH, null);
+  if (stored?.encryptedPassword) {
+    return safeStorage.decryptString(
+      Buffer.from(stored.encryptedPassword, "base64")
+    );
+  }
+  const password = crypto.randomBytes(32).toString("base64url");
+  saveJson(FX_RECOVERY_KEY_PATH, {
+    version: 1,
+    keyProtection: "electron-safe-storage-v1",
+    encryptedPassword: safeStorage.encryptString(password).toString("base64"),
+  });
+  return password;
 }
 
 function loadSettings() {
@@ -1581,6 +1675,9 @@ app.whenReady().then(() => {
     .finally(async () => {
       await reconcileOperationJournal().catch((error) => console.error("Versus operation reconciliation error:", error.message));
       await ensureNetworkService().catch((error) => console.error("Versus network start error:", error.message));
+      await fxDesktopService.resumeDealer().catch((error) => {
+        console.error("Versus FX dealer resume error:", error.message);
+      });
       startDailyLifecycle();
     });
   startStateSync();
@@ -1608,6 +1705,7 @@ app.on("before-quit", () => {
   stopSignalPublicationRetries();
   dailyLifecycleScheduler?.stop();
   networkService?.close().catch(() => {});
+  fxNetworkRuntime.close().catch(() => {});
   updateService?.stop();
 });
 
@@ -1661,6 +1759,102 @@ registerIpcHandle("wallet:getAddressQr", async () => {
       light: "#e3edcfff",
     },
   });
+});
+
+function assertEvmAddress(value) {
+  const address = typeof value === "string" ? value.trim() : "";
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("address is invalid");
+  return address;
+}
+
+registerIpcHandle("fx:addressQr", async (_event, payload) => {
+  return QRCode.toDataURL(assertEvmAddress(payload?.address), {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 144,
+    color: {
+      dark: "#173d32ff",
+      light: "#e3edcfff",
+    },
+  });
+});
+
+registerIpcHandle("fx:copyAddress", (_event, payload) => {
+  const address = assertEvmAddress(payload?.address);
+  clipboard.writeText(address);
+  return address;
+});
+
+registerIpcHandle("fx:snapshot", (_event, payload) =>
+  fxDesktopService.refresh({ force: payload?.force === true })
+);
+
+registerIpcHandle("fx:setEnabled", (_event, payload) =>
+  fxDesktopService.setEnabled(payload?.enabled === true)
+);
+
+registerIpcHandle("fx:setPolicy", (_event, payload) =>
+  fxDesktopService.setPolicy(payload?.patch || {})
+);
+
+registerIpcHandle("fx:setPositionEnabled", (_event, payload) =>
+  fxDesktopService.setPositionEnabled(
+    payload?.id,
+    payload?.enabled === true
+  )
+);
+
+registerIpcHandle("fx:setChainSettings", (_event, payload) =>
+  fxDesktopService.setChainSettings(payload?.chainId, payload?.patch || {})
+);
+
+registerIpcHandle("fx:withdrawPosition", (_event, payload) =>
+  fxDesktopService.withdrawPosition(payload || {})
+);
+
+registerIpcHandle("fx:requestQuote", (_event, payload) =>
+  fxDesktopService.requestQuote(payload || {})
+);
+
+registerIpcHandle("fx:acceptQuote", (_event, payload) =>
+  fxDesktopService.acceptQuote(payload?.tradeId)
+);
+
+registerIpcHandle("fx:checkFunding", (_event, payload) =>
+  fxDesktopService.checkFunding(payload?.tradeId)
+);
+
+registerIpcHandle("fx:cancel", (_event, payload) =>
+  fxDesktopService.cancelTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:reconcile", (_event, payload) =>
+  fxDesktopService.reconcileTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:refund", (_event, payload) =>
+  fxDesktopService.refundTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:refundDealer", (_event, payload) =>
+  fxDesktopService.refundDealerTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:trade", (_event, payload) =>
+  fxDesktopService.trade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:exportEvidence", async () => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Export Agentic FX evidence",
+    defaultPath: path.join(
+      app.getPath("documents"),
+      `versus-fx-evidence-${new Date().toISOString().slice(0, 10)}.json`
+    ),
+    filters: [{ name: "JSON", extensions: ["json"] }],
+  });
+  if (result.canceled || !result.filePath) return null;
+  return fxDesktopService.exportEvidence(result.filePath);
 });
 
 registerIpcHandle("rain:next", () => rainInbox.next());

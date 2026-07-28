@@ -204,7 +204,79 @@ function wireChrome() {
     if (e.key === "q" && (e.ctrlKey || e.metaKey)) window.versus?.quit?.();
   });
 }
+
+function wireFxWheel() {
+  const button = $("btn-fx-wheel");
+  const layer = $("fx-wheel-layer");
+  const image = layer?.querySelector("img");
+  if (!button || !layer || !image) return;
+
+  let rotation = 0;
+  let lastWheelAt = 0;
+  let activeAnimation = null;
+  const turn = (direction) => {
+    const step = direction < 0 ? -90 : 90;
+    const start = rotation;
+    const target = start + step;
+    const overshoot = target + Math.sign(step) * 11;
+    const rebound = target - Math.sign(step) * 3;
+
+    activeAnimation?.cancel();
+    activeAnimation = null;
+    rotation = target;
+    layer.style.setProperty("--fx-wheel-rotation", `${target}deg`);
+    layer.classList.add("is-turning");
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || typeof image.animate !== "function") {
+      layer.classList.remove("is-turning");
+      return;
+    }
+
+    const animation = image.animate([
+      {
+        transform: `rotate(${start}deg)`,
+        offset: 0,
+        easing: "cubic-bezier(0.42, 0, 0.58, 1)",
+      },
+      {
+        transform: `rotate(${overshoot}deg)`,
+        offset: 0.68,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      {
+        transform: `rotate(${rebound}deg)`,
+        offset: 0.86,
+        easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+      },
+      { transform: `rotate(${target}deg)`, offset: 1 },
+    ], {
+      duration: 320,
+      easing: "linear",
+    });
+    activeAnimation = animation;
+    animation.addEventListener("finish", () => {
+      if (activeAnimation !== animation) return;
+      layer.classList.remove("is-turning");
+      activeAnimation = null;
+    }, { once: true });
+  };
+
+  button.addEventListener("click", () => {
+    turn(1);
+    toggleFxSurface();
+  });
+  button.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = performance.now();
+    if (now - lastWheelAt < 90) return;
+    lastWheelAt = now;
+    turn(event.deltaY || event.deltaX || 1);
+  }, { passive: false });
+}
+
 wireChrome();
+wireFxWheel();
 wireServiceChassis();
 wireServiceMonitor();
 
@@ -244,7 +316,24 @@ function networkNowMs() {
 }
 
 const MODES = ["raft", "cypher", "vault", "network"];
+const FX_MODES = ["desk", "stock", "tape", "risk"];
+const MODE_LABELS = {
+  cypher: [
+    ["raft", "Raft"],
+    ["cypher", "Cypher"],
+    ["vault", "Vault"],
+    ["network", "Signal"],
+  ],
+  fx: [
+    ["desk", "Desk"],
+    ["stock", "Stock"],
+    ["tape", "Tape"],
+    ["risk", "Risk"],
+  ],
+};
 let activeMode = "raft";
+let activeFxMode = "desk";
+let activeSurface = "cypher";
 let modeLock = false;
 let staticRaf = 0;
 let sceneTimer = null;
@@ -654,6 +743,7 @@ function renderSettings(settings) {
     $("btn-backup-wallet").textContent = bond?.phase === "active" && bond?.agentId ? "Back up all" : "Back up wallet";
   }
   updateBrainAdapterFields();
+  renderFxScreen();
 }
 
 function renderUpdateStatus(status) {
@@ -1062,10 +1152,1723 @@ function updateNextRainCountdown() {
   label.textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
+function renderModeDock() {
+  const entries = MODE_LABELS[activeSurface] || MODE_LABELS.cypher;
+  const selected = activeSurface === "fx" ? activeFxMode : activeMode;
+  const dots = [...document.querySelectorAll("#mode-dots span")];
+  dots.forEach((dot, index) => {
+    const [mode, label] = entries[index];
+    dot.dataset.m = mode;
+    dot.textContent = label;
+    dot.classList.toggle("active", mode === selected);
+  });
+}
+
+/* ------------------------------------------------------------------
+   FX dealer surface — inventory bays, receipt tape, risk console.
+   The renderer consumes the fail-closed main-process service; keys,
+   recovery packets, Waku sessions, and chain writes stay outside this
+   process. __pet.setFxDemo() remains screenshot-only sample data.
+   ------------------------------------------------------------------ */
+
+const FX_SUPPORTED_POSITIONS = [
+  {
+    id: "base-sepolia-usdc",
+    chainId: "84532",
+    chainKey: "base",
+    chain: "BASE SEPOLIA",
+    asset: "USDC",
+    decimals: 6,
+    assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+  },
+  {
+    id: "arbitrum-sepolia-usdc",
+    chainId: "421614",
+    chainKey: "arbitrum",
+    chain: "ARBITRUM SEPOLIA",
+    asset: "USDC",
+    decimals: 6,
+    assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+  },
+];
+
+const FX_SUPPORTED_CHAINS = [
+  {
+    chainId: "84532",
+    chainKey: "base",
+    chain: "BASE SEPOLIA",
+    nativeAsset: "ETH",
+    nativeDecimals: 18,
+  },
+  {
+    chainId: "421614",
+    chainKey: "arbitrum",
+    chain: "ARBITRUM SEPOLIA",
+    nativeAsset: "ETH",
+    nativeDecimals: 18,
+  },
+];
+
+const FX_RISK_CONTROLS = {
+  maxTradeUsd: {
+    readout: "fx-risk-max-trade",
+    steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500],
+    format: (value) => `$${value.toLocaleString("en-US")}`,
+  },
+  maxExposureUsd: {
+    readout: "fx-risk-max-exposure",
+    steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000],
+    format: (value) => `$${value.toLocaleString("en-US")}`,
+  },
+  minSpreadBps: {
+    readout: "fx-risk-min-spread",
+    steps: [1, 5, 10, 15, 25, 40, 60, 100],
+    format: (value) => `${value} BPS`,
+  },
+  quoteTimeoutSec: {
+    readout: "fx-risk-timeout",
+    steps: [10, 15, 30, 45, 60],
+    format: (value) => `${value}s`,
+  },
+  reservationSec: {
+    readout: "fx-risk-reservation",
+    steps: [30, 60, 90, 120, 300, 600],
+    format: (value) => (value < 120 ? `${value}s` : `${value / 60}m`),
+  },
+  requesterExposureUsd: {
+    steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500],
+    format: (value) => `$${value.toLocaleString("en-US")}`,
+    label: "PER REQUESTER",
+    policyKey: "maximumRequesterExposureUsd",
+  },
+  assetExposureUsd: {
+    steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
+    format: (value) => `$${value.toLocaleString("en-US")}`,
+    label: "PER ASSET",
+    policyKey: "maximumAssetExposureUsd",
+  },
+  maxGasUsd: {
+    steps: [0, 1, 2, 5, 10, 25, 50, 100],
+    format: (value) => `$${value.toLocaleString("en-US")}`,
+    label: "MAX GAS",
+    policyKey: "maximumGasUsd",
+  },
+  overheadBps: {
+    steps: [0, 25, 50, 100, 200, 500, 1000],
+    format: (value) => `${value} BPS`,
+    label: "MAX OVERHEAD",
+    policyKey: "maximumOverheadBps",
+  },
+  inventoryPremiumBps: {
+    steps: [0, 5, 10, 25, 50, 100, 250],
+    format: (value) => `${value} BPS`,
+    label: "INVENTORY PREMIUM",
+    policyKey: "inventoryPremiumBps",
+  },
+};
+
+const ELLIPSIS = "\u2026";
+const MIDDOT = "\u00b7";
+const FX_TAPE_DEMO_RECEIPTS = [
+  { kind: "SETTLED", at: "14:02", route: `BASE USDC ${MIDDOT} ARBITRUM USDC`, amount: "$0.50", detail: "SPREAD +$0.0012", reference: "0x9f2c4a71d3b6e05812fa7c93de40188cb6d24b17", state: "settled" },
+  { kind: "SETTLED", at: "13:41", route: `ARBITRUM USDC ${MIDDOT} BASE USDC`, amount: "$0.25", detail: "SPREAD +$0.0008", reference: "0x41b8d0e27ca5f9314d6027ba88e5137fa0c93e42", state: "settled" },
+  { kind: "RESERVED", at: "13:37", route: `BASE USDC ${MIDDOT} ARBITRUM USDC`, amount: "$0.75", detail: "HOLD 90s", reference: "0x77ad91fe4c2b8350ea16d47c9b0f2381ce5a7d90", state: "pending" },
+  { kind: "REFUND", at: "12:18", route: `BASE USDC ${MIDDOT} ARBITRUM USDC`, amount: "$0.40", detail: "QUOTE LAPSED", reference: "0x2be05c8137da49f6b0e71c3a95d8046f2ac13b58", state: "refunded" },
+];
+
+function emptyFxInventory() {
+  return FX_SUPPORTED_POSITIONS.map((bay) => ({
+    ...bay,
+    address: null,
+    availableMicros: 0,
+    reservedMicros: 0,
+    capacityMicros: 0,
+    inFlight: 0,
+    enabled: false,
+  }));
+}
+
+let fxInventory = emptyFxInventory();
+let fxChains = FX_SUPPORTED_CHAINS.map((chain) => ({
+  ...chain,
+  enabled: false,
+  gasReady: false,
+  address: null,
+  balanceAtomic: "0",
+  balanceUsd: 0,
+  rpcUrl: "",
+}));
+let fxTape = [];
+let fxOpenBay = null;
+let fxSheetBay = null;
+let fxSheetChain = null;
+let fxSheetChainRole = "dealer";
+let fxStockFilter = "all";
+let fxTapeDemoTimers = [];
+let fxDesktopSnapshot = null;
+let fxRequesterTrade = null;
+let fxRequesterView = "swap";
+let fxQuoteRefreshActive = false;
+let fxQuoteRefreshRetryAt = 0;
+let fxQuoteAcceptActive = false;
+let fxCancelActive = false;
+const fxRisk = {
+  armed: false,
+  maxTradeUsd: 250,
+  maxExposureUsd: 1000,
+  minSpreadBps: 25,
+  quoteTimeoutSec: 30,
+  reservationSec: 90,
+  requesterExposureUsd: 100,
+  assetExposureUsd: 500,
+  maxGasUsd: 5,
+  overheadBps: 100,
+  inventoryPremiumBps: 0,
+};
+
+function fxAtomicMicros(value, decimals = 6) {
+  const atomic = BigInt(String(value || "0"));
+  if (decimals === 6) return Number(atomic);
+  if (decimals > 6) return Number(atomic / (10n ** BigInt(decimals - 6)));
+  return Number(atomic * (10n ** BigInt(6 - decimals)));
+}
+
+function fxTradeReceipt(trade) {
+  const settled = ["funds_ready", "complete"].includes(trade.state);
+  const refunded = trade.state === "refunded";
+  const reference =
+    trade.receipt?.destinationTransactionHash ||
+    trade.receipt?.sourceTransactionHash ||
+    trade.refund?.transactionHash ||
+    trade.transactionHash ||
+    trade.tradeId;
+  const confirmations =
+    trade.receipt?.confirmations ||
+    trade.fundingVerification?.confirmations ||
+    null;
+  return {
+    tradeId: trade.tradeId,
+    role: trade.role,
+    kind: settled ? "SETTLED" : refunded ? "REFUND" : trade.state.toUpperCase().slice(0, 12),
+    at: new Date(trade.updatedAt || trade.createdAt || Date.now())
+      .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    route: `${trade.source?.chain || "SOURCE"} ${trade.source?.asset || ""} ${MIDDOT} ${trade.destination?.chain || "DEST"} ${trade.destination?.asset || ""}`,
+    amount: trade.outputAmountDisplay || "--",
+    detail: [
+      trade.route ? `${trade.route.spreadBps} BPS` : "PENDING",
+      confirmations ? `${confirmations} CONF` : null,
+    ].filter(Boolean).join(` ${MIDDOT} `),
+    reference,
+    state: settled ? "settled" : refunded ? "refunded" : "pending",
+    dealerRefundReady:
+      trade.role === "dealer" &&
+      trade.state === "refund_wait" &&
+      trade.refund?.eligible === true,
+  };
+}
+
+function applyFxSnapshot(snapshot) {
+  if (!snapshot) return;
+  fxDesktopSnapshot = snapshot;
+  fxChains = (snapshot.chains || []).map((chain) => ({
+    ...chain,
+    chainKey: chain.chainKey?.includes("arbitrum") ? "arbitrum" : "base",
+    balanceUsd: Number(chain.balanceUsd || 0),
+  }));
+  fxInventory = (snapshot.positions || [])
+    .filter((position) => position.enabled)
+    .map((position) => ({
+      ...position,
+      chainKey: position.chainKey.includes("arbitrum") ? "arbitrum" : "base",
+      availableMicros: fxAtomicMicros(position.availableAtomic, position.decimals),
+      reservedMicros: fxAtomicMicros(position.reservedAtomic, position.decimals),
+      capacityMicros: Math.max(
+        fxAtomicMicros(position.availableAtomic, position.decimals)
+          + fxAtomicMicros(position.reservedAtomic, position.decimals),
+        1_000_000,
+      ),
+      inFlight: position.activeLocks,
+    }));
+  fxRisk.armed = snapshot.policy?.armed === true;
+  fxRisk.maxTradeUsd = Number(snapshot.policy?.maximumTradeUsd || 50);
+  fxRisk.maxExposureUsd = Number(snapshot.policy?.maximumExposureUsd || 1000);
+  fxRisk.minSpreadBps = Number(snapshot.policy?.minimumSpreadBps || 25);
+  fxRisk.quoteTimeoutSec = Number(snapshot.policy?.quoteLifetimeSeconds || 30);
+  fxRisk.reservationSec = Number(snapshot.policy?.reservationSeconds || 90);
+  fxRisk.requesterExposureUsd = Number(
+    snapshot.policy?.maximumRequesterExposureUsd || 100
+  );
+  fxRisk.assetExposureUsd = Number(
+    snapshot.policy?.maximumAssetExposureUsd || 500
+  );
+  fxRisk.maxGasUsd = Number(snapshot.policy?.maximumGasUsd || 5);
+  fxRisk.overheadBps = Number(snapshot.policy?.maximumOverheadBps || 100);
+  fxRisk.inventoryPremiumBps = Number(
+    snapshot.policy?.inventoryPremiumBps || 0
+  );
+  fxTape = (snapshot.trades || []).map(fxTradeReceipt);
+  if (fxRequesterTrade) {
+    fxRequesterTrade = (snapshot.trades || []).find(
+      (trade) => trade.tradeId === fxRequesterTrade.tradeId
+    ) || fxRequesterTrade;
+  }
+  renderFxScreen();
+  if (!$("fx-requester")?.classList.contains("hidden")) renderFxRequester();
+}
+
+async function refreshFxSnapshot(force = false) {
+  try {
+    applyFxSnapshot(await window.versus.fxSnapshot(force));
+  } catch (error) {
+    console.error("Versus FX state error:", error);
+  }
+}
+
+function fxNode(tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text != null) element.textContent = text;
+  return element;
+}
+
+function fxShortAddress(address) {
+  if (typeof address !== "string" || address.length < 14) return address || "";
+  return `${address.slice(0, 6)}${ELLIPSIS}${address.slice(-4)}`;
+}
+
+function fxAddressInputValue(input) {
+  return input?.dataset?.fullAddress || input?.value?.trim() || "";
+}
+
+function wireFxAddressInput(input) {
+  if (!input) return;
+  input.addEventListener("focus", () => {
+    if (input.dataset.fullAddress) input.value = input.dataset.fullAddress;
+  });
+  input.addEventListener("input", () => {
+    if (input.dataset.fullAddress && input.value !== input.dataset.fullAddress) {
+      delete input.dataset.fullAddress;
+    }
+  });
+  input.addEventListener("blur", () => {
+    const value = input.value.trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(value)) return;
+    input.dataset.fullAddress = value;
+    input.value = fxShortAddress(value);
+  });
+}
+
+function fxBayOf(id) {
+  return fxInventory.find((bay) => bay.id === id) || null;
+}
+
+function fxVisibleInventory() {
+  const filtered = fxInventory.filter((bay) => {
+    const funded = bay.availableMicros + bay.reservedMicros > 0;
+    const active = bay.reservedMicros > 0 || bay.inFlight > 0;
+    if (fxStockFilter === "funded") return funded;
+    if (fxStockFilter === "active") return active;
+    return true;
+  });
+  return filtered.sort((a, b) => {
+    const priority = (bay) => {
+      if (bay.reservedMicros > 0 || bay.inFlight > 0) return 0;
+      if (bay.availableMicros + bay.reservedMicros > 0) return 1;
+      return 2;
+    };
+    return priority(a) - priority(b)
+      || a.chain.localeCompare(b.chain)
+      || a.asset.localeCompare(b.asset);
+  });
+}
+
+function setFxOpenBay(id) {
+  fxOpenBay = id;
+  let openCard = null;
+  for (const card of document.querySelectorAll(".fx-bay")) {
+    const open = card.dataset.positionId === id;
+    card.classList.toggle("is-open", open);
+    card.querySelector(".fx-bay-head")?.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) openCard = card;
+  }
+  openCard?.scrollIntoView({ block: "start" });
+}
+
+function fxBayNode(bay) {
+  const provisioned = Boolean(bay.address);
+  const stocked = bay.availableMicros + bay.reservedMicros;
+  const open = fxOpenBay === bay.id;
+
+  const card = fxNode("article", open ? "fx-bay is-open" : "fx-bay");
+  card.dataset.positionId = bay.id;
+  card.dataset.chain = bay.chainKey;
+  card.dataset.state = stocked > 0 ? "stocked" : "idle";
+
+  const head = fxNode("button", "fx-bay-head");
+  head.type = "button";
+  head.setAttribute("aria-expanded", open ? "true" : "false");
+  head.append(fxNode("span", "fx-bay-mark"));
+
+  const identity = fxNode("span", "fx-bay-id");
+  identity.append(fxNode("b", null, bay.chain), fxNode("small", null, bay.asset));
+
+  const figure = fxNode("span", "fx-bay-figure");
+  figure.append(
+    fxNode("b", null, formatUsdcDollars(bay.availableMicros)),
+    fxNode("small", null, provisioned ? "AVAILABLE" : "NOT PROVISIONED"),
+  );
+
+  head.append(identity, figure, fxNode("span", "fx-bay-caret"));
+  head.addEventListener("click", () => setFxOpenBay(fxOpenBay === bay.id ? null : bay.id));
+
+  const rail = fxNode("div", "fx-bay-rail");
+  const railFill = fxNode("i");
+  const used = bay.capacityMicros > 0 ? clamp(stocked / bay.capacityMicros, 0, 1) : 0;
+  railFill.style.width = `${Math.round(used * 100)}%`;
+  rail.append(railFill);
+
+  const body = fxNode("div", "fx-bay-body");
+
+  const split = fxNode("div", "fx-bay-split");
+  for (const [label, value] of [
+    ["RESERVED", formatUsdcDollars(bay.reservedMicros)],
+    ["IN FLIGHT", String(bay.inFlight)],
+  ]) {
+    const cell = fxNode("span");
+    cell.append(fxNode("small", null, label), fxNode("b", null, value));
+    split.append(cell);
+  }
+  body.append(split);
+
+  if (provisioned) {
+    const addressRow = fxNode("div", "fx-bay-addr");
+    const copy = fxNode("button", "fx-mini", "COPY");
+    copy.type = "button";
+    copy.addEventListener("click", () => copyFxBayAddress(bay, copy));
+    addressRow.append(fxNode("code", null, fxShortAddress(bay.address)), copy);
+    body.append(addressRow);
+  } else {
+    body.append(fxNode("p", "fx-bay-hint", "NO DEALER ADDRESS ON THIS CHAIN YET"));
+  }
+
+  const actions = fxNode("div", "fx-bay-acts");
+  const deposit = fxNode("button", "fx-act fx-act-fill", "DEPOSIT");
+  deposit.type = "button";
+  deposit.disabled = !provisioned;
+  deposit.addEventListener("click", () => openFxDepositSheet(bay.id));
+  const withdraw = fxNode("button", "fx-act", "WITHDRAW");
+  withdraw.type = "button";
+  withdraw.disabled = !provisioned || bay.availableMicros <= 0;
+  withdraw.addEventListener("click", () => openFxWithdrawSheet(bay.id));
+  actions.append(deposit, withdraw);
+  body.append(actions);
+
+  const clip = fxNode("div");
+  clip.append(body);
+  const drawer = fxNode("div", "fx-bay-drawer");
+  drawer.append(clip);
+
+  card.append(head, rail, drawer);
+  return card;
+}
+
+function renderFxStock() {
+  const list = $("fx-bays");
+  if (!list) return;
+
+  const available = fxInventory.reduce((sum, bay) => sum + bay.availableMicros, 0);
+  const reserved = fxInventory.reduce((sum, bay) => sum + bay.reservedMicros, 0);
+  const provisioned = fxInventory.filter((bay) => Boolean(bay.address)).length;
+  const visible = fxVisibleInventory();
+
+  $("fx-stock-total").textContent = formatUsdcDollars(available + reserved);
+  $("fx-stock-reserved").textContent = formatUsdcDollars(reserved);
+  $("fx-stock-foot").textContent =
+    `${provisioned}/${fxInventory.length} READY ${MIDDOT} NOT RUNWAY`;
+
+  for (const button of document.querySelectorAll("[data-fx-stock-filter]")) {
+    button.setAttribute("aria-pressed", button.dataset.fxStockFilter === fxStockFilter ? "true" : "false");
+  }
+
+  if (visible.length) {
+    list.replaceChildren(...visible.map(fxBayNode));
+  } else {
+    const empty = fxNode("div", "fx-bays-empty");
+    empty.append(
+      fxNode("b", null, "NO MATCHING POSITIONS"),
+      fxNode("small", null, "Change the filter or add inventory with +."),
+    );
+    list.replaceChildren(empty);
+  }
+}
+
+function fxReceiptNode(receipt) {
+  const item = fxNode("article", "fx-receipt");
+  item.dataset.state = receipt.state;
+
+  const head = fxNode("header");
+  head.append(fxNode("b", null, receipt.kind), fxNode("time", null, receipt.at));
+
+  const amount = fxNode("div", "fx-receipt-amount");
+  amount.append(fxNode("b", null, receipt.amount), fxNode("small", null, receipt.detail));
+
+  const foot = fxNode("footer");
+  foot.append(
+    fxNode("code", null, fxShortAddress(receipt.reference)),
+    fxNode("span", null, receipt.state.toUpperCase()),
+  );
+  if (receipt.dealerRefundReady) {
+    const refund = fxNode("button", "fx-tape-action", "REFUND");
+    refund.type = "button";
+    refund.addEventListener("click", async () => {
+      refund.disabled = true;
+      refund.textContent = "CHECKING...";
+      try {
+        applyFxSnapshot(
+          await window.versus.fxRefundDealer(receipt.tradeId)
+        );
+      } catch (error) {
+        toast(error.message || "dealer refund is not ready");
+        refund.disabled = false;
+        refund.textContent = "REFUND";
+      }
+    });
+    foot.append(refund);
+  }
+
+  item.append(head, fxNode("p", "fx-receipt-route", receipt.route), amount, foot);
+  return item;
+}
+
+function renderFxTapeCounters() {
+  $("fx-tape-complete").textContent = `COMPLETE ${fxTape.filter((r) => r.state === "settled").length}`;
+  $("fx-tape-refunded").textContent = `REFUNDED ${fxTape.filter((r) => r.state === "refunded").length}`;
+}
+
+function renderFxTape() {
+  const paper = $("fx-roll-paper");
+  if (!paper) return;
+
+  if (fxTape.length) {
+    paper.replaceChildren(...fxTape.map(fxReceiptNode));
+  } else {
+    const empty = fxNode("div", "fx-roll-empty");
+    empty.append(
+      fxNode("b", null, "TAPE IS BLANK"),
+      fxNode("i"),
+      fxNode("small", null, "Every quote, fill, and refund prints here with its route and settlement hash."),
+    );
+    paper.replaceChildren(empty);
+  }
+
+  renderFxTapeCounters();
+}
+
+function pushFxReceipt(receipt) {
+  const paper = $("fx-roll-paper");
+  const roll = paper?.closest(".fx-roll");
+  fxTape.unshift(receipt);
+  if (!paper || !roll) return;
+
+  const node = fxReceiptNode(receipt);
+  if (paper.querySelector(".fx-roll-empty")) {
+    paper.replaceChildren(node);
+  } else {
+    paper.prepend(node);
+  }
+  paper.scrollTop = 0;
+  roll.classList.remove("is-feeding");
+  void roll.offsetWidth;
+  roll.classList.add("is-feeding");
+  setTimeout(() => roll.classList.remove("is-feeding"), 460);
+  renderFxTapeCounters();
+}
+
+function clearFxTapeDemo() {
+  for (const timer of fxTapeDemoTimers) clearTimeout(timer);
+  fxTapeDemoTimers = [];
+}
+
+function playFxTapeDemo(intervalMs = 850) {
+  clearFxTapeDemo();
+  fxTape = [];
+  renderFxTape();
+  const chronological = [...FX_TAPE_DEMO_RECEIPTS].reverse();
+  fxTapeDemoTimers = chronological.map((receipt, index) => setTimeout(() => {
+    pushFxReceipt(receipt);
+  }, 450 + index * intervalMs));
+}
+
+function renderFxRisk() {
+  const panel = document.querySelector('[data-fx-panel="risk"]');
+  const screen = $("fx-screen");
+  if (!panel || !screen) return;
+
+  const armed = fxRisk.armed ? "true" : "false";
+  screen.dataset.armed = armed;
+  panel.dataset.armed = armed;
+  for (const label of document.querySelectorAll(".fx-state-label")) {
+    label.textContent = fxRisk.armed ? "DEALING" : "DISARMED";
+  }
+  $("fx-risk-armed").setAttribute("aria-checked", armed);
+
+  for (const [key, control] of Object.entries(FX_RISK_CONTROLS)) {
+    const readout = control.readout ? $(control.readout) : null;
+    if (readout) readout.textContent = control.format(fxRisk[key]);
+    const index = control.steps.indexOf(fxRisk[key]);
+    for (const button of document.querySelectorAll(`[data-fx-step^="${key}:"]`)) {
+      const next = index + Number(button.dataset.fxStep.split(":")[1]);
+      button.disabled = next < 0 || next >= control.steps.length;
+    }
+  }
+
+  const foot = $("fx-risk-foot");
+  if (fxDesktopSnapshot?.enabled !== true) {
+    foot.textContent = "FX IS OFF \u2014 REQUESTS AND DEALING DISABLED";
+  } else if (!fxRisk.armed) {
+    foot.textContent = "DEALING OFF \u2014 NOTHING QUOTED";
+  } else {
+    foot.textContent = "REFUND: DEALER 10m \u00b7 REQUESTER 2h";
+  }
+}
+
+function setFxRiskValue(key, value) {
+  fxRisk[key] = value;
+  if (key === "maxTradeUsd" && value > fxRisk.maxExposureUsd) {
+    fxRisk.maxExposureUsd = value;
+  }
+  if (key === "maxExposureUsd" && value < fxRisk.maxTradeUsd) {
+    fxRisk.maxTradeUsd = value;
+  }
+}
+
+function closeFxSheets() {
+  fxSheetBay = null;
+  fxSheetChain = null;
+  fxSheetChainRole = "dealer";
+  $("fx-deposit-sheet")?.classList.add("hidden");
+  $("fx-withdraw-sheet")?.classList.add("hidden");
+  $("fx-add-position-sheet")?.classList.add("hidden");
+}
+
+function fxPositionOptionNode(position) {
+  const current = (fxDesktopSnapshot?.positions || []).find(
+    (candidate) => candidate.id === position.id
+  );
+  const selected = current?.enabled === true;
+  const chain = fxChains.find(
+    (candidate) => candidate.chainId === position.chainId
+  );
+  const locked = Boolean(current && (
+    BigInt(current.availableAtomic || "0") > 0n
+    || BigInt(current.reservedAtomic || "0") > 0n
+    || current.activeLocks > 0
+  ));
+
+  const row = fxNode("div", "fx-position-option");
+  const identity = fxNode("span");
+  identity.append(
+    fxNode("b", null, position.asset),
+    fxNode(
+      "small",
+      null,
+      chain?.gasReady
+        ? `${position.chain} ${MIDDOT} LIMIT $${fxRisk.assetExposureUsd}`
+        : `${position.chain} ${MIDDOT} FUND ${chain?.nativeAsset || "GAS"} FIRST`
+    ),
+  );
+
+  const toggle = fxNode("button", "fx-position-toggle");
+  toggle.type = "button";
+  toggle.setAttribute("role", "switch");
+  toggle.setAttribute("aria-label", `${position.asset} on ${position.chain}`);
+  toggle.setAttribute("aria-checked", selected ? "true" : "false");
+  toggle.disabled = locked || (!selected && !chain?.gasReady);
+  toggle.title = locked
+    ? "Empty this position before removing it"
+    : !chain?.gasReady
+      ? `Enable and fund ${chain?.nativeAsset || "gas"} first`
+      : "";
+  toggle.append(fxNode("i"));
+  toggle.addEventListener("click", async () => {
+    toggle.disabled = true;
+    try {
+      applyFxSnapshot(await window.versus.fxSetPositionEnabled(position.id, !selected));
+      if (selected && fxOpenBay === position.id) fxOpenBay = null;
+      fxStockFilter = "all";
+      renderFxPositionOptions();
+    } catch (error) {
+      toast(error.message || "position unchanged");
+      toggle.disabled = locked;
+    }
+  });
+
+  row.append(identity, toggle);
+  return row;
+}
+
+function fxAdvancedLimitNode(key) {
+  const control = FX_RISK_CONTROLS[key];
+  const row = fxNode("div", "fx-position-option fx-limit-option");
+  const identity = fxNode("span");
+  identity.append(
+    fxNode("b", null, control.label),
+    fxNode("small", null, key === "assetExposureUsd"
+      ? "APPLIES TO EACH ENABLED ASSET"
+      : "OWNER LIMIT"),
+  );
+  const stepper = fxNode("span", "fx-stepper");
+  const index = control.steps.indexOf(fxRisk[key]);
+  for (const direction of [-1, 1]) {
+    const button = fxNode("button", null, direction < 0 ? "\u2212" : "+");
+    button.type = "button";
+    button.disabled = index + direction < 0 ||
+      index + direction >= control.steps.length;
+    button.addEventListener("click", async () => {
+      const next = control.steps.indexOf(fxRisk[key]) + direction;
+      if (next < 0 || next >= control.steps.length) return;
+      button.disabled = true;
+      try {
+        applyFxSnapshot(
+          await window.versus.fxSetPolicy({
+            [control.policyKey]: control.steps[next],
+          })
+        );
+        renderFxPositionOptions();
+      } catch (error) {
+        toast(error.message || "limit unchanged");
+      }
+    });
+    if (direction < 0) stepper.append(button);
+    else {
+      stepper.append(
+        fxNode("b", null, control.format(fxRisk[key])),
+        button
+      );
+    }
+  }
+  row.append(identity, stepper);
+  return row;
+}
+
+function fxChainOptionNode(chain) {
+  const row = fxNode("section", "fx-chain-option");
+  const head = fxNode("div", "fx-position-option");
+  const identity = fxNode("span");
+  const readyRoles =
+    Number(chain.dealerGasReady === true) +
+    Number(chain.requesterGasReady === true);
+  const readiness = chain.gasReady
+    ? `GAS 2/2 ${MIDDOT} READY`
+    : chain.enabled
+      ? `GAS ${readyRoles}/2 ${MIDDOT} $${chain.minimumGasUsd || 1} EACH`
+      : "CHAIN OFF";
+  identity.append(
+    fxNode("b", null, `${chain.chain.split(" ")[0]} ${chain.nativeAsset}`),
+    fxNode("small", null, readiness),
+  );
+  const controls = fxNode("span", "fx-chain-controls");
+  const roleActions = fxNode("div", "fx-chain-funding");
+  for (const [role, label, available] of [
+    ["dealer", "DEALER", chain.dealerAddress || chain.address],
+    ["requester", "SWAP", chain.requesterAddress],
+  ]) {
+    if (!available) continue;
+    const fund = fxNode("button", "fx-mini", `FUND ${label}`);
+    fund.type = "button";
+    fund.title = `Fund ${label.toLowerCase()} gas`;
+    fund.addEventListener("click", () =>
+      openFxChainDepositSheet(chain.chainId, role)
+    );
+    roleActions.append(fund);
+  }
+  const toggle = fxNode("button", "fx-position-toggle");
+  toggle.type = "button";
+  toggle.setAttribute("role", "switch");
+  toggle.setAttribute("aria-label", `${chain.nativeAsset} on ${chain.chain}`);
+  toggle.setAttribute("aria-checked", chain.enabled ? "true" : "false");
+  toggle.append(fxNode("i"));
+  toggle.addEventListener("click", async () => {
+    toggle.disabled = true;
+    try {
+      applyFxSnapshot(
+        await window.versus.fxSetChainSettings(chain.chainId, {
+          enabled: !chain.enabled,
+        })
+      );
+      renderFxPositionOptions();
+    } catch (error) {
+      toast(error.message || "chain unchanged");
+      toggle.disabled = false;
+    }
+  });
+  controls.append(toggle);
+  head.append(identity, controls);
+
+  const rpc = fxNode("label", "fx-rpc-field");
+  rpc.append(fxNode("small", null, "CUSTOM RPC (OPTIONAL)"));
+  const input = fxNode("input");
+  input.type = "url";
+  input.spellcheck = false;
+  input.autocomplete = "off";
+  input.placeholder = "PUBLIC RPC";
+  input.value = chain.rpcUrl || "";
+  const saveRpc = async () => {
+    const value = input.value.trim();
+    if (value === (chain.rpcUrl || "")) return;
+    input.disabled = true;
+    try {
+      applyFxSnapshot(
+        await window.versus.fxSetChainSettings(chain.chainId, {
+          rpcUrl: value,
+        })
+      );
+      renderFxPositionOptions();
+    } catch (error) {
+      toast(error.message || "RPC unchanged");
+      input.disabled = false;
+    }
+  };
+  input.addEventListener("blur", saveRpc);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") input.blur();
+  });
+  rpc.append(input);
+  row.append(head, roleActions, rpc);
+  return row;
+}
+
+function renderFxPositionOptions() {
+  const host = $("fx-position-options");
+  if (!host) return;
+  const nodes = [];
+  for (const chain of fxChains) {
+    nodes.push(fxChainOptionNode(chain));
+    nodes.push(
+      ...FX_SUPPORTED_POSITIONS
+        .filter((position) => position.chainId === chain.chainId)
+        .map(fxPositionOptionNode)
+    );
+  }
+  const label = fxNode("div", "fx-position-section-label", "LIMITS");
+  nodes.push(
+    label,
+    ...[
+      "requesterExposureUsd",
+      "assetExposureUsd",
+      "maxGasUsd",
+      "overheadBps",
+      "inventoryPremiumBps",
+    ].map(fxAdvancedLimitNode)
+  );
+  host.replaceChildren(...nodes);
+}
+
+function openFxAddPositionSheet() {
+  closeFxSheets();
+  renderFxPositionOptions();
+  const sheet = $("fx-add-position-sheet");
+  const host = $("fx-position-options");
+  if (host) host.scrollTop = 0;
+  sheet.classList.remove("hidden");
+  void refreshFxSnapshot(true).then(renderFxPositionOptions);
+}
+
+async function copyFxBayAddress(bay, button) {
+  if (!bay.address) return;
+  const label = button.textContent;
+  try {
+    await window.versus.fxCopyAddress(bay.address);
+    button.textContent = "COPIED";
+  } catch (error) {
+    console.error("Versus FX address copy error:", error);
+    button.textContent = "FAILED";
+  }
+  setTimeout(() => { button.textContent = label; }, 900);
+}
+
+async function openFxDepositSheet(bayId) {
+  const bay = fxBayOf(bayId);
+  if (!bay?.address) return;
+  fxSheetBay = bayId;
+
+  $("fx-deposit-route").textContent = `${bay.chain} ${MIDDOT} ${bay.asset}`;
+  $("fx-deposit-address").textContent = fxShortAddress(bay.address);
+  $("fx-deposit-note").textContent = `Send only ${bay.asset} on ${bay.chain}. Anything else is lost.`;
+
+  const image = $("fx-deposit-qr");
+  const placeholder = $("fx-deposit-qr-empty");
+  image.classList.add("hidden");
+  placeholder.classList.remove("hidden");
+  $("fx-deposit-sheet").classList.remove("hidden");
+
+  try {
+    const dataUrl = await window.versus.fxAddressQr(bay.address);
+    if (!dataUrl || fxSheetBay !== bayId) return;
+    image.src = dataUrl;
+    image.classList.remove("hidden");
+    placeholder.classList.add("hidden");
+  } catch (error) {
+    console.error("Versus FX deposit QR error:", error);
+  }
+}
+
+function openFxWithdrawSheet(bayId) {
+  const bay = fxBayOf(bayId);
+  if (!bay?.address) return;
+  fxSheetBay = bayId;
+
+  $("fx-withdraw-route").textContent = `${bay.chain} ${MIDDOT} ${bay.asset}`;
+  $("fx-withdraw-note").textContent = `Available ${formatUsdcDollars(bay.availableMicros)}`;
+  $("fx-withdraw-dest").value = "";
+  $("fx-withdraw-amount").value = "";
+  $("fx-withdraw-sheet").classList.remove("hidden");
+  $("fx-withdraw-dest").focus();
+}
+
+async function submitFxWithdraw() {
+  const bay = fxBayOf(fxSheetBay);
+  if (!bay) return;
+  const destination = fxAddressInputValue($("fx-withdraw-dest"));
+  const amount = Number($("fx-withdraw-amount").value.trim());
+  const note = $("fx-withdraw-note");
+
+  if (!/^0x[0-9a-fA-F]{40}$/.test(destination)) {
+    note.textContent = `Enter a ${bay.chain} destination address.`;
+    return;
+  }
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0 ||
+    amount * 1e6 > bay.availableMicros
+  ) {
+    note.textContent = `Enter an amount up to ${formatUsdcDollars(bay.availableMicros)}.`;
+    return;
+  }
+  const button = $("fx-withdraw-send");
+  button.disabled = true;
+  button.textContent = "SENDING...";
+  note.textContent = "Waiting for chain confirmation...";
+  try {
+    const snapshot = await window.versus.fxWithdrawPosition({
+      positionId: bay.id,
+      destination,
+      amount: $("fx-withdraw-amount").value.trim(),
+    });
+    applyFxSnapshot(snapshot);
+    const hash = snapshot.inventoryTransfer?.transactionHash;
+    note.textContent = hash
+      ? `Sent ${fxShortAddress(hash)}`
+      : "Withdrawal confirmed";
+    button.textContent = "SENT";
+    setTimeout(closeFxSheets, 900);
+  } catch (error) {
+    note.textContent = error.message || "Withdrawal failed";
+    button.disabled = false;
+    button.textContent = "SEND";
+  }
+}
+
+async function openFxChainDepositSheet(chainId, role = "dealer") {
+  const chain = fxChains.find(
+    (candidate) => candidate.chainId === String(chainId)
+  );
+  const depositAddress = role === "requester"
+    ? chain?.requesterAddress
+    : chain?.dealerAddress || chain?.address;
+  if (!depositAddress) return;
+  closeFxSheets();
+  fxSheetChain = chain.chainId;
+  fxSheetChainRole = role;
+  $("fx-deposit-route").textContent =
+    `${chain.chain} ${MIDDOT} ${chain.nativeAsset} ${MIDDOT} ${
+      role === "requester" ? "SWAP" : "DEALER"
+    }`;
+  $("fx-deposit-address").textContent = fxShortAddress(depositAddress);
+  $("fx-deposit-note").textContent =
+    `Send only ${chain.nativeAsset} on ${chain.chain}. Minimum $${chain.minimumGasUsd || 1}.`;
+  const image = $("fx-deposit-qr");
+  const placeholder = $("fx-deposit-qr-empty");
+  image.classList.add("hidden");
+  placeholder.classList.remove("hidden");
+  $("fx-deposit-sheet").classList.remove("hidden");
+  try {
+    const dataUrl = await window.versus.fxAddressQr(depositAddress);
+    if (
+      !dataUrl ||
+      fxSheetChain !== chain.chainId ||
+      fxSheetChainRole !== role
+    ) return;
+    image.src = dataUrl;
+    image.classList.remove("hidden");
+    placeholder.classList.add("hidden");
+  } catch (error) {
+    console.error("Versus FX gas deposit QR error:", error);
+  }
+}
+
+function fxPositionLabel(position) {
+  return `${position.asset} \u00b7 ${position.chain}`;
+}
+
+function fxRequesterPositionLabel(position) {
+  const chain = {
+    "BASE SEPOLIA": "BASE",
+    "ARBITRUM SEPOLIA": "ARB",
+  }[position.chain] || position.chain;
+  return `${position.asset} \u00b7 ${chain}`;
+}
+
+function fxPopulateRequesterAssets() {
+  const positions = (fxDesktopSnapshot?.positions || FX_SUPPORTED_POSITIONS)
+    .filter((position) =>
+      position.usable === true ||
+      (!("usable" in position) && position.enabled !== false)
+    );
+  for (const [id, preferred] of [
+    ["fx-swap-source", "base-sepolia-usdc"],
+    ["fx-swap-destination", "arbitrum-sepolia-usdc"],
+  ]) {
+    const select = $(id);
+    if (!select) continue;
+    const current = select.value || preferred;
+    select.replaceChildren(...positions.map((position) => {
+      const option = document.createElement("option");
+      option.value = position.id;
+      option.textContent = fxRequesterPositionLabel(position);
+      return option;
+    }));
+    select.value = positions.some((position) => position.id === current)
+      ? current
+      : positions[0]?.id || "";
+  }
+}
+
+function fxRequesterError(message = "") {
+  const host = $("fx-requester-error");
+  if (!host) return;
+  host.textContent = message;
+  host.classList.toggle("hidden", !message);
+}
+
+function fxTimelineLabel(state) {
+  return ({
+    requesting: "Request sent",
+    quoted: "Quote verified",
+    accepted: "Quote accepted",
+    reserved: "Dealer reserved",
+    awaiting_source_funds: "Waiting for source funds",
+    source_funds_detected: "Source funds detected",
+    source_lock_pending: "Source lock pending",
+    source_lock_confirmed: "Source lock confirmed",
+    destination_lock_pending: "Destination lock pending",
+    destination_lock_confirmed: "Destination lock confirmed",
+    destination_claimed: "Destination claimed",
+    source_claimed: "Source claimed",
+    funds_ready: "Destination funds verified",
+    complete: "Complete",
+    refund_wait: "Refund waiting period",
+    refunded: "Refunded",
+    cancelled: "Cancelled",
+    failed: "Stopped",
+  })[state] || state.replaceAll("_", " ");
+}
+
+function fxRemainingTime(eligibleAt) {
+  const remaining = Math.max(
+    0,
+    Number(eligibleAt || 0) - Math.floor(networkNowMs() / 1000),
+  );
+  if (remaining === 0) return "now";
+  const hours = Math.floor(remaining / 3600);
+  const minutes = Math.ceil((remaining % 3600) / 60);
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+function renderFxHistory() {
+  const list = $("fx-history-list");
+  if (!list) return;
+  const trades = fxDesktopSnapshot?.trades || [];
+  if (!trades.length) {
+    list.replaceChildren(fxNode("div", "fx-history-empty", "NO SWAPS YET"));
+    return;
+  }
+  list.replaceChildren(...trades.map((trade) => {
+    const entry = fxNode("article", "fx-history-entry");
+    const head = fxNode("header");
+    head.append(
+      fxNode("b", null, fxTimelineLabel(trade.state).toUpperCase()),
+      fxNode("time", null, new Date(trade.updatedAt || trade.createdAt).toLocaleDateString()),
+    );
+    const route = fxNode(
+      "p",
+      null,
+      `${trade.source?.asset || "?"} ${trade.source?.chain || ""} \u2192 ${trade.destination?.asset || "?"} ${trade.destination?.chain || ""}`,
+    );
+    const foot = fxNode("footer");
+    foot.append(
+      fxNode("span", null, trade.outputAmountDisplay || "--"),
+      fxNode("code", null, fxShortAddress(trade.tradeId)),
+    );
+    const terminal = [
+      "funds_ready",
+      "complete",
+      "refunded",
+      "cancelled",
+      "failed",
+    ].includes(trade.state);
+    if (!terminal && trade.state !== "quoted") {
+      const status = fxNode("button", "fx-history-status", "CHECK");
+      status.type = "button";
+      status.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        status.disabled = true;
+        status.textContent = "CHECKING";
+        try {
+          const result = trade.state === "awaiting_source_funds"
+            ? await window.versus.fxCheckFunding(trade.tradeId)
+            : await window.versus.fxReconcile(trade.tradeId);
+          if (result?.detected !== false) {
+            fxRequesterTrade = result;
+          }
+          await refreshFxSnapshot(true);
+        } catch (error) {
+          toast(error.message || "status unavailable");
+        } finally {
+          renderFxHistory();
+        }
+      });
+      foot.append(status);
+    }
+    entry.append(head, route, foot);
+    entry.addEventListener("click", () => {
+      fxRequesterTrade = trade;
+      fxRequesterView = "swap";
+      renderFxRequester();
+    });
+    return entry;
+  }));
+}
+
+function renderFxRequester() {
+  const requester = $("fx-requester");
+  if (!requester) return;
+  fxPopulateRequesterAssets();
+  const history = fxRequesterView === "history";
+  $("fx-requester-title").textContent = history ? "SWAP HISTORY" : "SWAP";
+  $("fx-requester-swap-view").classList.toggle("hidden", history);
+  $("fx-requester-history-view").classList.toggle("hidden", !history);
+  if (history) {
+    renderFxHistory();
+    return;
+  }
+
+  const getQuotes = $("fx-get-quotes");
+  const requesterPositions = (fxDesktopSnapshot?.positions || []).filter(
+    (position) => position.usable === true
+  );
+  $("fx-requester-compose").classList.toggle("hidden", Boolean(fxRequesterTrade));
+  if (getQuotes) {
+    getQuotes.disabled = requesterPositions.length < 2;
+    getQuotes.textContent = requesterPositions.length < 2
+      ? "SET UP ASSETS"
+      : fxDesktopSnapshot?.enabled
+        ? "GET QUOTES"
+        : "TURN ON FX";
+    getQuotes.classList.toggle("hidden", Boolean(fxRequesterTrade));
+  }
+
+  const quote = fxRequesterTrade?.state === "quoted" ? fxRequesterTrade : null;
+  const quoteRemaining = quote
+    ? Math.max(0, quote.route.expiresAt - Math.floor(networkNowMs() / 1000))
+    : null;
+  const quoteExpired = quoteRemaining === 0;
+  const quoteSearching = quoteExpired || fxQuoteAcceptActive;
+  const funding = fxRequesterTrade?.funding;
+  const awaitingFunding =
+    Boolean(funding) && fxRequesterTrade?.state === "awaiting_source_funds";
+  $("fx-quote-result").classList.toggle("hidden", !quote);
+  $("fx-quote-result").classList.toggle("is-refreshing", quoteSearching);
+  $("fx-funding-result").classList.toggle("hidden", !awaitingFunding);
+  const settling = Boolean(
+    fxRequesterTrade &&
+    !["quoted", "awaiting_source_funds"].includes(fxRequesterTrade.state)
+  );
+  $("fx-settlement-result").classList.toggle("hidden", !settling);
+
+  if (quote) {
+    const route = quote.route;
+    const source = quote.source;
+    const destination = quote.destination;
+    $("fx-quote-input").textContent = quote.inputAmountDisplay;
+    $("fx-quote-route").textContent =
+      `${source.asset} ${source.chain} \u2192 ${destination.asset} ${destination.chain}`;
+    $("fx-quote-dealer").textContent = fxShortAddress(route.dealer);
+    $("fx-quote-spread").textContent = `${route.spreadBps} BPS`;
+    $("fx-quote-fee").textContent =
+      `${(Number(route.brokerFeeAtomic) / (10 ** source.decimals)).toFixed(6)} ${source.asset}`;
+    $("fx-quote-time").textContent = `${route.estimatedCompletionSeconds}s`;
+    $("fx-quote-label").textContent = fxQuoteAcceptActive
+      ? "RESERVING DEALER"
+      : quoteExpired
+        ? "FETCHING NEW QUOTES"
+        : "BEST VERIFIED QUOTE";
+    $("fx-quote-expiry").textContent = `${quoteRemaining}s`;
+  }
+
+  if (funding) {
+    const source = fxRequesterTrade.source;
+    const fundingRemaining = Number.isSafeInteger(Number(funding.expiresAt))
+      ? Math.max(0, Number(funding.expiresAt) - Math.floor(networkNowMs() / 1000))
+      : 0;
+    const fundingExpired = fundingRemaining === 0;
+    $("fx-funding-amount").textContent =
+      `${(Number(funding.amountAtomic) / (10 ** source.decimals)).toFixed(source.decimals)} ${source.asset}`;
+    $("fx-funding-address").textContent = funding.addressShort || fxShortAddress(funding.address);
+    $("fx-funding-note").textContent =
+      `${source.asset} on ${source.chain} only. Locks after confirmation.`;
+    const fundingWindow = $("fx-funding-expiry")?.closest(".fx-funding-window");
+    fundingWindow?.classList.toggle("is-expired", fundingExpired);
+    fundingWindow?.querySelector("span")?.replaceChildren(
+      document.createTextNode(fundingExpired ? "RESERVATION EXPIRED" : "DEALER RESERVED"),
+    );
+    $("fx-funding-expiry").textContent = fundingExpired
+      ? "0:00"
+      : `${Math.floor(fundingRemaining / 60)}:${String(fundingRemaining % 60).padStart(2, "0")}`;
+    $("fx-check-funding").textContent =
+      fxRequesterTrade.state === "awaiting_source_funds"
+        ? fundingExpired
+          ? "CLOSE EXPIRED ORDER"
+          : "I SENT IT"
+        : "CHECK STATUS";
+    $("fx-cancel-trade").classList.toggle("hidden", fundingExpired);
+    $("fx-cancel-trade").disabled = fxCancelActive;
+    $("fx-cancel-trade").textContent = fxCancelActive
+      ? "CANCELLING..."
+      : "CANCEL SWAP";
+  }
+
+  if (settling) {
+    const settlementTerminal = [
+      "funds_ready",
+      "complete",
+      "refunded",
+      "cancelled",
+      "failed",
+    ].includes(fxRequesterTrade.state);
+    const swapComplete = ["funds_ready", "complete"].includes(fxRequesterTrade.state);
+    $("fx-settlement-kicker").textContent = swapComplete ? "SETTLED" : "SETTLEMENT";
+    $("fx-settlement-state").textContent = swapComplete
+      ? "SWAP COMPLETE"
+      : fxRequesterTrade.state === "refunded"
+        ? "REFUND COMPLETE"
+        : fxRequesterTrade.state === "cancelled"
+          ? "SWAP CANCELLED"
+          : fxTimelineLabel(fxRequesterTrade.state).toUpperCase();
+    $("fx-settlement-detail").textContent = swapComplete
+      ? `${fxRequesterTrade.outputAmountDisplay || "Destination funds"} arrived at ${
+          fxRequesterTrade.destination?.addressShort ||
+          fxShortAddress(fxRequesterTrade.destination?.address)
+        }. Receipt saved to Tape.`
+      : fxRequesterTrade.state === "cancelled"
+        ? "No source lock was created. The dealer reservation was released."
+      : fxRequesterTrade.state === "refund_wait" &&
+          fxRequesterTrade.refund?.eligible === true
+        ? "The contract timeout has passed. Source refund is available now."
+      : fxRequesterTrade.lastFailure?.message
+        ? `${fxRequesterTrade.lastFailure.message}. Status checks will not rebroadcast.`
+        : fxRequesterTrade.refund?.eligibleAt
+          ? `If settlement stops, the source refund unlocks in ${fxRemainingTime(
+              fxRequesterTrade.refund.eligibleAt,
+            )}. Refunds are not instant.`
+          : fxRequesterTrade.refundEligibleAt
+            ? `If settlement stops, the source refund unlocks in ${fxRemainingTime(
+                fxRequesterTrade.refundEligibleAt,
+              )}. Refunds are not instant.`
+        : "Chain confirmation decides what happens next.";
+    const timeline = $("fx-settlement-timeline");
+    timeline.replaceChildren(...(fxRequesterTrade.timeline || []).map((event) => {
+      const item = fxNode("li", "is-complete", fxTimelineLabel(event.state));
+      return item;
+    }));
+    const refund = $("fx-refund-trade");
+    const refundReady =
+      fxRequesterTrade.state === "refund_wait" &&
+      fxRequesterTrade.refund?.eligible === true;
+    refund.classList.toggle("hidden", !refundReady);
+    if (refundReady) {
+      refund.textContent = "REFUND SOURCE";
+    }
+    const checkStatus = $("fx-check-status");
+    checkStatus.classList.toggle(
+      "hidden",
+      settlementTerminal || refundReady
+    );
+    checkStatus.disabled = false;
+    checkStatus.textContent = "CHECK STATUS";
+    $("fx-settlement-done").classList.toggle("hidden", !settlementTerminal);
+  }
+}
+
+async function refreshExpiredFxQuote() {
+  const trade = fxRequesterTrade;
+  if (
+    fxQuoteRefreshActive ||
+    fxQuoteAcceptActive ||
+    Date.now() < fxQuoteRefreshRetryAt ||
+    trade?.state !== "quoted" ||
+    trade.route.expiresAt > Math.floor(networkNowMs() / 1000)
+  ) {
+    return;
+  }
+
+  fxQuoteRefreshActive = true;
+  renderFxRequester();
+  try {
+    const outputAmount = String(trade.outputAmountDisplay || "").split(/\s+/)[0];
+    const replacement = await window.versus.fxRequestQuote({
+      sourcePositionId: trade.sourcePositionId,
+      destinationPositionId: trade.destinationPositionId,
+      outputAmount,
+      destinationAddress: trade.destination.address,
+      sourceRefundAddress: trade.refundAddress,
+    });
+    if (
+      fxRequesterTrade?.tradeId === trade.tradeId &&
+      !$("fx-requester")?.classList.contains("hidden")
+    ) {
+      fxRequesterTrade = replacement;
+      fxRequesterError("");
+      await refreshFxSnapshot();
+    }
+    fxQuoteRefreshRetryAt = 0;
+  } catch (error) {
+    fxQuoteRefreshRetryAt = Date.now() + 5_000;
+    fxRequesterError(
+      `${error.message || "No fresh verified quote was returned."} Retrying...`,
+    );
+  } finally {
+    fxQuoteRefreshActive = false;
+    renderFxRequester();
+  }
+}
+
+window.setInterval(() => {
+  if (!$("fx-requester")?.classList.contains("hidden")) {
+    renderFxRequester();
+    void refreshExpiredFxQuote();
+  }
+}, 1000);
+
+window.setInterval(() => {
+  if (
+    !document.hidden &&
+    activeSurface === "fx" &&
+    (
+      activeFxMode === "stock" ||
+      !$("fx-add-position-sheet")?.classList.contains("hidden")
+    )
+  ) {
+    void refreshFxSnapshot();
+  }
+}, 30_000);
+
+function openFxRequester(view = "swap") {
+  closeFxSheets();
+  fxRequesterView = view;
+  if (view === "swap") {
+    const resumable = (fxDesktopSnapshot?.trades || []).find((trade) =>
+      !["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(trade.state)
+    );
+    if (
+      !fxRequesterTrade ||
+      ["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(fxRequesterTrade.state)
+    ) {
+      fxRequesterTrade = resumable || null;
+    }
+  }
+  fxRequesterError("");
+  $("fx-requester").classList.remove("hidden");
+  renderFxRequester();
+}
+
+function closeFxRequester() {
+  $("fx-requester")?.classList.add("hidden");
+  fxRequesterError("");
+}
+
+function finishFxRequester() {
+  fxRequesterTrade = null;
+  fxRequesterView = "swap";
+  closeFxRequester();
+  renderFxScreen();
+}
+
+function returnToFxSwapMain() {
+  const state = fxRequesterTrade?.state;
+  const mayAbandon =
+    !fxRequesterTrade ||
+    state === "quoted" ||
+    ["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(state);
+  if (fxRequesterView !== "history" && !mayAbandon) return;
+  fxRequesterTrade = null;
+  fxRequesterView = "swap";
+  fxRequesterError("");
+  const scroll = $("fx-requester-swap-view");
+  if (scroll) scroll.scrollTop = 0;
+  renderFxRequester();
+}
+
+function navigateBackFromFxRequester() {
+  const state = fxRequesterTrade?.state;
+  if (fxRequesterView === "history") {
+    closeFxRequester();
+    return;
+  }
+  const nestedView =
+    state === "quoted" ||
+    ["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(state);
+  if (nestedView) {
+    returnToFxSwapMain();
+    return;
+  }
+  closeFxRequester();
+}
+
+function scrollFxRequesterToBottom() {
+  const scroll = $("fx-requester-swap-view");
+  if (!scroll) return;
+  window.requestAnimationFrame(() => {
+    scroll.scrollTo({
+      top: scroll.scrollHeight,
+      behavior: "smooth",
+    });
+  });
+}
+
+async function submitFxQuoteRequest() {
+  const button = $("fx-get-quotes");
+  fxRequesterError("");
+  const requesterPositions = (fxDesktopSnapshot?.positions || []).filter(
+    (position) => position.usable === true
+  );
+  if (requesterPositions.length < 2) {
+    closeFxRequester();
+    openFxAddPositionSheet();
+    return;
+  }
+  if (fxDesktopSnapshot?.enabled !== true) {
+    button.disabled = true;
+    button.textContent = "TURNING ON...";
+    try {
+      applyFxSnapshot(await window.versus.fxSetEnabled(true));
+      button.textContent = "GET QUOTES";
+    } catch (error) {
+      fxRequesterError(error.message || "FX could not be enabled.");
+    } finally {
+      button.disabled = false;
+    }
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "REQUESTING...";
+  $("fx-quote-result").classList.add("hidden");
+  $("fx-funding-result").classList.add("hidden");
+  try {
+    fxRequesterTrade = await window.versus.fxRequestQuote({
+      sourcePositionId: $("fx-swap-source").value,
+      destinationPositionId: $("fx-swap-destination").value,
+      outputAmount: $("fx-swap-amount").value,
+      destinationAddress: fxAddressInputValue($("fx-swap-recipient")),
+    });
+    await refreshFxSnapshot();
+    renderFxRequester();
+    $("fx-quote-result")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  } catch (error) {
+    fxRequesterError(error.message || "No verified quote was returned.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "GET QUOTES";
+  }
+}
+
+async function acceptFxQuote() {
+  if (!fxRequesterTrade?.tradeId) return;
+  const button = $("fx-accept-quote");
+  fxQuoteAcceptActive = true;
+  button.disabled = true;
+  button.textContent = "RESERVING...";
+  fxRequesterError("");
+  renderFxRequester();
+  try {
+    fxRequesterTrade = await window.versus.fxAcceptQuote(fxRequesterTrade.tradeId);
+    const dataUrl = await window.versus.fxAddressQr(fxRequesterTrade.funding.address);
+    $("fx-funding-qr-image").src = dataUrl;
+    await refreshFxSnapshot();
+    renderFxRequester();
+    scrollFxRequesterToBottom();
+  } catch (error) {
+    fxRequesterError(error.message || "The quote could not be accepted.");
+  } finally {
+    fxQuoteAcceptActive = false;
+    button.disabled = false;
+    button.textContent = "ACCEPT QUOTE";
+    renderFxRequester();
+  }
+}
+
+async function checkFxFunding(trigger = null) {
+  if (!fxRequesterTrade?.tradeId) return;
+  const button = trigger?.currentTarget || trigger || $("fx-check-funding");
+  button.disabled = true;
+  button.textContent = "CHECKING...";
+  fxRequesterError("");
+  try {
+    const result = fxRequesterTrade.state === "awaiting_source_funds"
+      ? await window.versus.fxCheckFunding(fxRequesterTrade.tradeId)
+      : await window.versus.fxReconcile(fxRequesterTrade.tradeId);
+    if (result?.detected === false) {
+      fxRequesterError("Funds are not confirmed yet. Nothing has been locked.");
+      return;
+    }
+    fxRequesterTrade = result;
+    await refreshFxSnapshot();
+    renderFxRequester();
+    $("fx-settlement-result")?.scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
+  } catch (error) {
+    fxRequesterError(error.message || "Funding could not be verified.");
+  } finally {
+    button.disabled = false;
+    button.textContent = fxRequesterTrade?.state === "awaiting_source_funds"
+      ? "I SENT IT"
+      : "CHECK STATUS";
+  }
+}
+
+async function cancelFxTrade() {
+  if (
+    !fxRequesterTrade?.tradeId ||
+    fxRequesterTrade.state !== "awaiting_source_funds" ||
+    fxCancelActive
+  ) {
+    return;
+  }
+  const button = $("fx-cancel-trade");
+  fxCancelActive = true;
+  button.disabled = true;
+  button.textContent = "CANCELLING...";
+  fxRequesterError("");
+  try {
+    fxRequesterTrade = await window.versus.fxCancel(fxRequesterTrade.tradeId);
+    await refreshFxSnapshot();
+    renderFxRequester();
+  } catch (error) {
+    fxRequesterError(error.message || "The swap could not be cancelled.");
+  } finally {
+    fxCancelActive = false;
+    button.disabled = false;
+    button.textContent = "CANCEL SWAP";
+    renderFxRequester();
+  }
+}
+
+async function refundFxTrade() {
+  if (
+    !fxRequesterTrade?.tradeId ||
+    fxRequesterTrade.state !== "refund_wait" ||
+    fxRequesterTrade.refund?.eligible !== true
+  ) {
+    return;
+  }
+  const button = $("fx-refund-trade");
+  button.disabled = true;
+  button.textContent = "REFUNDING...";
+  fxRequesterError("");
+  try {
+    fxRequesterTrade = await window.versus.fxRefund(
+      fxRequesterTrade.tradeId
+    );
+    await refreshFxSnapshot();
+    renderFxRequester();
+  } catch (error) {
+    fxRequesterError(error.message || "The source refund could not be confirmed.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "REFUND SOURCE";
+  }
+}
+
+function wireFxControls() {
+  wireFxAddressInput($("fx-swap-recipient"));
+  wireFxAddressInput($("fx-withdraw-dest"));
+  $("fx-add-position")?.addEventListener("click", openFxAddPositionSheet);
+  $("fx-risk-assets")?.addEventListener("click", openFxAddPositionSheet);
+  $("fx-refresh-stock")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await refreshFxSnapshot(true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  $("fx-open-swap")?.addEventListener("click", () => openFxRequester("swap"));
+  $("fx-open-history")?.addEventListener("click", () => openFxRequester("history"));
+  $("fx-requester-back")?.addEventListener("click", navigateBackFromFxRequester);
+  $("fx-requester-title")?.addEventListener("click", returnToFxSwapMain);
+  $("fx-get-quotes")?.addEventListener("click", submitFxQuoteRequest);
+  $("fx-accept-quote")?.addEventListener("click", acceptFxQuote);
+  $("fx-check-funding")?.addEventListener("click", checkFxFunding);
+  $("fx-check-status")?.addEventListener("click", checkFxFunding);
+  $("fx-cancel-trade")?.addEventListener("click", cancelFxTrade);
+  $("fx-refund-trade")?.addEventListener("click", refundFxTrade);
+  $("fx-settlement-done")?.addEventListener("click", finishFxRequester);
+  $("fx-copy-funding")?.addEventListener("click", async (event) => {
+    const address = fxRequesterTrade?.funding?.address;
+    if (!address) return;
+    const button = event.currentTarget;
+    try {
+      await window.versus.fxCopyAddress(address);
+      button.classList.add("is-copied");
+      button.setAttribute("aria-label", "Funding address copied");
+      button.title = "Copied";
+      setTimeout(() => {
+        button.classList.remove("is-copied");
+        button.setAttribute("aria-label", "Copy funding address");
+        button.title = "Copy funding address";
+      }, 900);
+    } catch (error) {
+      fxRequesterError(error.message || "Address copy failed.");
+    }
+  });
+  $("fx-swap-flip")?.addEventListener("click", () => {
+    const source = $("fx-swap-source");
+    const destination = $("fx-swap-destination");
+    [source.value, destination.value] = [destination.value, source.value];
+  });
+  $("fx-export-evidence")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const filePath = await window.versus.fxExportEvidence();
+      if (filePath) toast("FX evidence exported");
+    } catch (error) {
+      toast(error.message || "export failed");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  for (const button of document.querySelectorAll("[data-fx-stock-filter]")) {
+    button.addEventListener("click", () => {
+      fxStockFilter = button.dataset.fxStockFilter;
+      fxOpenBay = null;
+      renderFxStock();
+    });
+  }
+
+  $("fx-risk-armed")?.addEventListener("click", async () => {
+    try {
+      if (fxDesktopSnapshot?.enabled !== true) {
+        applyFxSnapshot(await window.versus.fxSetEnabled(true));
+      }
+      applyFxSnapshot(await window.versus.fxSetPolicy({ armed: !fxRisk.armed }));
+    } catch (error) {
+      toast(error.message || "dealer policy unchanged");
+    }
+  });
+
+  for (const button of document.querySelectorAll("[data-fx-step]")) {
+    const [key, rawDirection] = button.dataset.fxStep.split(":");
+    const control = FX_RISK_CONTROLS[key];
+    if (!control) continue;
+    button.addEventListener("click", async () => {
+      const next = control.steps.indexOf(fxRisk[key]) + Number(rawDirection);
+      if (next < 0 || next >= control.steps.length) return;
+      const nextValue = control.steps[next];
+      const policyKey = ({
+        maxTradeUsd: "maximumTradeUsd",
+        maxExposureUsd: "maximumExposureUsd",
+        minSpreadBps: "minimumSpreadBps",
+        quoteTimeoutSec: "quoteLifetimeSeconds",
+        reservationSec: "reservationSeconds",
+      })[key];
+      try {
+        applyFxSnapshot(await window.versus.fxSetPolicy({ [policyKey]: nextValue }));
+      } catch (error) {
+        toast(error.message || "dealer policy unchanged");
+      }
+    });
+  }
+
+  for (const button of document.querySelectorAll("[data-fx-sheet-close]")) {
+    button.addEventListener("click", closeFxSheets);
+  }
+  for (const sheet of document.querySelectorAll(".fx-sheet")) {
+    sheet.addEventListener("click", (event) => { if (event.target === sheet) closeFxSheets(); });
+  }
+
+  $("fx-deposit-copy")?.addEventListener("click", (event) => {
+    let target = fxBayOf(fxSheetBay);
+    const chain = fxChains.find(
+      (chain) => chain.chainId === fxSheetChain
+    );
+    if (!target && chain) {
+      target = {
+        ...chain,
+        address: fxSheetChainRole === "requester"
+          ? chain.requesterAddress
+          : chain.dealerAddress || chain.address,
+      };
+    }
+    if (target) copyFxBayAddress(target, event.currentTarget);
+  });
+
+  $("fx-withdraw-max")?.addEventListener("click", () => {
+    const bay = fxBayOf(fxSheetBay);
+    if (bay) $("fx-withdraw-amount").value = (bay.availableMicros / 1e6).toFixed(2);
+  });
+
+  $("fx-withdraw-send")?.addEventListener("click", submitFxWithdraw);
+}
+
+function renderFxScreen() {
+  const shell = $("shell");
+  if (!shell) return;
+  shell.dataset.surface = activeSurface;
+  shell.dataset.fxMode = activeFxMode;
+
+  const cypher = bond?.cypherId == null ? null : cypherOf(bond.cypherId);
+  const portrait = $("fx-desk-cypher");
+  if (portrait && cypher) {
+    portrait.src = cypherSrc(cypher.file);
+    portrait.alt = `${cypher.name} at the FX desk`;
+  }
+
+  if (activeSurface === "fx") {
+    renderFxStock();
+    renderFxTape();
+    renderFxRisk();
+  }
+
+  document.querySelectorAll("[data-fx-panel]").forEach((panel) => {
+    const selected = panel.dataset.fxPanel === activeFxMode;
+    panel.classList.toggle("hidden", !selected);
+    panel.setAttribute("aria-hidden", selected ? "false" : "true");
+  });
+  renderModeDock();
+}
+
+wireFxControls();
+
 function updateModeScreen() {
   if (!bond || bond.phase !== "active") return;
 
   $("shell")?.setAttribute("data-mode", activeMode);
+  renderFxScreen();
 
   const c = cypherOf(bond.cypherId);
 
@@ -1213,6 +3016,55 @@ function setMode(next) {
     modeLock = false;
     wipe?.classList.remove("run");
   }, 170);
+}
+
+function setFxMode(next) {
+  if (modeLock || next === activeFxMode || !FX_MODES.includes(next)) return;
+  closeFxSheets();
+  modeLock = true;
+  const wipe = $("lcd-wipe");
+  if (wipe) {
+    wipe.classList.remove("run");
+    void wipe.offsetWidth;
+    wipe.classList.add("run");
+  }
+  setTimeout(() => {
+    activeFxMode = next;
+    renderFxScreen();
+    if (next === "stock") void refreshFxSnapshot(true);
+  }, 50);
+  setTimeout(() => {
+    modeLock = false;
+    wipe?.classList.remove("run");
+  }, 170);
+}
+
+function setSurface(next) {
+  if (modeLock || next === activeSurface || !["cypher", "fx"].includes(next)) return;
+  if (!bond || bond.phase !== "active" || bond.cypherId == null) return;
+  if (graduationRunning || settingsOpen || helpOpen) return;
+
+  closeFxSheets();
+  modeLock = true;
+  const wipe = $("lcd-wipe");
+  if (wipe) {
+    wipe.classList.remove("run");
+    void wipe.offsetWidth;
+    wipe.classList.add("run");
+  }
+  setTimeout(() => {
+    activeSurface = next;
+    renderFxScreen();
+    if (next === "fx") void refreshFxSnapshot(true);
+  }, 50);
+  setTimeout(() => {
+    modeLock = false;
+    wipe?.classList.remove("run");
+  }, 170);
+}
+
+function toggleFxSurface() {
+  setSurface(activeSurface === "fx" ? "cypher" : "fx");
 }
 
 function staticLcd() {
@@ -2678,9 +4530,11 @@ async function boot() {
         updateModeScreen();
       }
     });
+    window.versus.onFxChanged?.(applyFxSnapshot);
 
     flashLcd(false);
     wallet = await window.versus.ensureWallet();
+    await refreshFxSnapshot();
     bond = await window.versus.loadLocalBond();
 
     const localCypherIsActive = bond?.phase === "active" && bond.cypherId != null;
@@ -3061,6 +4915,11 @@ $("btn-mode").onclick = () => {
     staticLcd();
     return;
   }
+  if (activeSurface === "fx") {
+    const index = FX_MODES.indexOf(activeFxMode);
+    setFxMode(FX_MODES[(index + 1) % FX_MODES.length]);
+    return;
+  }
   const index = MODES.indexOf(activeMode);
   setMode(MODES[(index + 1) % MODES.length]);
 };
@@ -3387,6 +5246,38 @@ window.__pet = {
     activeMode = m;
     updateModeScreen();
   },
+  setSurface(surface) {
+    activeSurface = surface === "fx" ? "fx" : "cypher";
+    renderFxScreen();
+  },
+  setFxMode(mode) {
+    if (!FX_MODES.includes(mode)) return;
+    activeFxMode = mode;
+    renderFxScreen();
+  },
+  /** Design-review only: populate the FX panels with sample dealer rows. */
+  setFxDemo(on = true) {
+    clearFxTapeDemo();
+    if (!on) {
+      fxInventory = emptyFxInventory();
+      fxTape = [];
+      fxOpenBay = null;
+      fxStockFilter = "all";
+      fxRisk.armed = false;
+      renderFxScreen();
+      return;
+    }
+    fxInventory = [
+      { ...FX_SUPPORTED_POSITIONS[0], address: "0x9f2c4a71d3b6e05812fa7c93de40188cb6d24b17", availableMicros: 1_240_180_000, reservedMicros: 260_000_000, capacityMicros: 2_000_000_000, inFlight: 1, enabled: true },
+      { ...FX_SUPPORTED_POSITIONS[1], address: "0x41b8d0e27ca5f9314d6027ba88e5137fa0c93e42", availableMicros: 486_500_000, reservedMicros: 0, capacityMicros: 1_000_000_000, inFlight: 0, enabled: true },
+    ];
+    fxTape = [...FX_TAPE_DEMO_RECEIPTS];
+    fxStockFilter = "all";
+    fxOpenBay = null;
+    fxRisk.armed = true;
+    renderFxScreen();
+  },
+  playFxTapeDemo,
   queueRainTap,
   flushRainBatch,
   verifiedRainDrop,

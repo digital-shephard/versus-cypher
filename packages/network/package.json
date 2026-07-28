@@ -4,7 +4,12 @@
   "description": "Signed postcard protocol and peer mesh for Versus Cyphers",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./fx-requester": {
+      "types": "./types/fx-requester-sdk.d.ts",
+      "require": "./src/fx-requester-sdk.js",
+      "default": "./src/fx-requester-sdk.js"
+    }
   },
   "license": "MIT",
   "scripts": {
@@ -23,6 +28,7 @@
     "fx:phase7:broker": "node scripts/fx-phase7-broker.js",
     "fx:phase7:compare": "node scripts/fx-phase7-compare.js",
     "fx:phase8:public-proof": "node scripts/fx-phase8-public-broker-proof.js",
+    "fx:phase9:handoff": "node scripts/fx-phase9-requester-handoff.js",
     "demo": "node scripts/demo.js",
     "waku:smoke": "node scripts/waku-smoke.js",
     "test": "node --test test/*.test.js"

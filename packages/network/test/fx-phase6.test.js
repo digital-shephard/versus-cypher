@@ -217,6 +217,54 @@ test("real signed requester and deterministic dealer coordinate over isolated Wa
   assert.equal(reservation.payload.quoteId, route.quoteId);
   assert.equal(requesterSession.journal.snapshot(rfq.tradeId).settlementState, "quote_accepted");
   assert.equal(dealerSession.journal.snapshot(rfq.tradeId).stateHash, requesterSession.journal.snapshot(rfq.tradeId).stateHash);
+
+  const dealerCancelled = once(dealer, "cancelled");
+  const cancellation = await requesterSession.publish({
+    protocol: "versus-fx",
+    version: 1,
+    type: "fx_cancel",
+    tradeId: rfq.tradeId,
+    createdAt: now.value,
+    expiresAt: now.value + 60,
+    payload: {
+      acceptId: accepted.id,
+      reserveId: reservation.id,
+      reason: "owner_cancelled",
+    },
+  });
+  await dealerCancelled;
+  assert.equal(cancellation.payload.reserveId, reservation.id);
+  assert.equal(requesterSession.journal.snapshot(rfq.tradeId).settlementState, "cancelled");
+  assert.equal(dealerSession.journal.snapshot(rfq.tradeId).settlementState, "cancelled");
+  assert.equal(
+    dealerSession.journal.snapshot(rfq.tradeId).stateHash,
+    requesterSession.journal.snapshot(rfq.tradeId).stateHash
+  );
+
+  await assert.rejects(
+    requesterSession.publish({
+      protocol: "versus-fx",
+      version: 1,
+      type: "fx_lock_source",
+      tradeId: rfq.tradeId,
+      createdAt: now.value + 1,
+      expiresAt: now.value + 3600,
+      payload: {
+        acceptId: accepted.id,
+        chainId: route.inputChainId,
+        token: route.inputToken,
+        amountAtomic: route.totalInputAtomic,
+        lockAddress: requesterWallet.address,
+        beneficiary: reservation.payload.dealerSourceClaimAddress,
+        refundAddress: requesterWallet.address,
+        secretHash,
+        timeout: now.value + 1800,
+        transactionHash: `0x${"ab".repeat(32)}`,
+        blockNumber: "1",
+      },
+    }),
+    /local FX message was not accepted/
+  );
   const snapshotMessageIds = requesterSession.journal
     .snapshot(rfq.tradeId)
     .messages.map((message) => message.id);
