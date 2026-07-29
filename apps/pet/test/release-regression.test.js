@@ -297,6 +297,8 @@ test("the FX wheel opens a dedicated surface while MODE keeps cycling its tabs",
   assert.match(renderer, /REFUND: DEALER 10m \\u00b7 REQUESTER 2h/);
   assert.match(html, /id="fx-risk-assets"[^>]*>ASSETS/);
   assert.doesNotMatch(html, /fx-risk-chains|fx-risk-allow/);
+  assert.match(css, /\.fx-position-card \{[\s\S]*min-height: 0;[\s\S]*overflow: hidden;/);
+  assert.match(css, /\.fx-position-options \{[\s\S]*flex: 1 1 auto;[\s\S]*overflow-y: auto;[\s\S]*-webkit-overflow-scrolling: touch;/);
   assert.doesNotMatch(renderer, /FX_RISK_CHAINS|FX_RISK_ASSETS|renderFxChips/);
   assert.match(css, /#shell\[data-view="view-class"\] #mode-dots span\.active/);
 });

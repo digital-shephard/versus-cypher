@@ -4150,8 +4150,10 @@ body {
   width: 100%;
   max-width: none;
   height: 100%;
+  min-height: 0;
   gap: 8px;
   padding: 19px 12px 11px;
+  overflow: hidden;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -4178,11 +4180,16 @@ body {
 .fx-position-back:hover { color: var(--fx-orchid-2); }
 
 .fx-position-options {
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
