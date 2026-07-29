@@ -55,13 +55,34 @@ const FX_POLICY_BOUNDS = Object.freeze({
 
 const FX_DEFAULT_POSITIONS = Object.freeze([
   Object.freeze({
+    id: "base-sepolia-eth",
+    chainId: "84532",
+    chainKey: "base-sepolia",
+    chain: "BASE SEPOLIA",
+    asset: "ETH",
+    decimals: 18,
+    assetKind: "native",
+    assetAddress: "0x0000000000000000000000000000000000000000",
+  }),
+  Object.freeze({
     id: "base-sepolia-usdc",
     chainId: "84532",
     chainKey: "base-sepolia",
     chain: "BASE SEPOLIA",
     asset: "USDC",
     decimals: 6,
+    assetKind: "erc20",
     assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+  }),
+  Object.freeze({
+    id: "arbitrum-sepolia-eth",
+    chainId: "421614",
+    chainKey: "arbitrum-sepolia",
+    chain: "ARBITRUM SEPOLIA",
+    asset: "ETH",
+    decimals: 18,
+    assetKind: "native",
+    assetAddress: "0x0000000000000000000000000000000000000000",
   }),
   Object.freeze({
     id: "arbitrum-sepolia-usdc",
@@ -70,6 +91,7 @@ const FX_DEFAULT_POSITIONS = Object.freeze([
     chain: "ARBITRUM SEPOLIA",
     asset: "USDC",
     decimals: 6,
+    assetKind: "erc20",
     assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
   }),
 ]);

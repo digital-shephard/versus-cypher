@@ -558,10 +558,17 @@ class FxRequesterFundingSdk {
         secretHash: recovery.secretHash,
         sourceRefundAddress,
         destinationClaimAddress: destinationAddress,
-        sourceAdapterId: selectedQuote.payload.adapterId,
-        sourceAdapterVersion: selectedQuote.payload.adapterVersion,
-        destinationAdapterId: selectedQuote.payload.adapterId,
-        destinationAdapterVersion: selectedQuote.payload.adapterVersion,
+        sourceAdapterId:
+          selectedQuote.payload.sourceAdapterId || selectedQuote.payload.adapterId,
+        sourceAdapterVersion:
+          selectedQuote.payload.sourceAdapterVersion ||
+          selectedQuote.payload.adapterVersion,
+        destinationAdapterId:
+          selectedQuote.payload.destinationAdapterId ||
+          selectedQuote.payload.adapterId,
+        destinationAdapterVersion:
+          selectedQuote.payload.destinationAdapterVersion ||
+          selectedQuote.payload.adapterVersion,
       },
     }, this.signer);
     const expected = {

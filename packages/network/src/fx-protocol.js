@@ -13,6 +13,9 @@ const FX_MAX_CLOCK_SKEW_SECONDS = 300;
 const FX_MAX_REFERENCE_AGE_SECONDS = 60;
 const FX_MAX_INPUT_OPTIONS = 4;
 const FX_MAX_EVIDENCE_IDS = 16;
+// The token field remains an EVM address for wire compatibility. The zero
+// address is reserved exclusively for the chain's native ETH capability.
+const FX_NATIVE_ETH_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const FX_MESSAGE_TYPES = Object.freeze([
   "fx_rfq",
@@ -334,10 +337,28 @@ function normalizeQuotePayload(value) {
     "estimatedCompletionSeconds",
     "adapterId",
     "adapterVersion",
+    "sourceAdapterId",
+    "sourceAdapterVersion",
+    "destinationAdapterId",
+    "destinationAdapterVersion",
   ], "payload");
   const spreadBps = normalizeSafeInteger(value.spreadBps, "payload.spreadBps");
   if (spreadBps > 10_000) {
     throw new FxValidationError("payload.spreadBps must not exceed 10000");
+  }
+  const routeAdapterFields = [
+    value.sourceAdapterId,
+    value.sourceAdapterVersion,
+    value.destinationAdapterId,
+    value.destinationAdapterVersion,
+  ];
+  if (
+    routeAdapterFields.some((field) => field !== undefined) &&
+    routeAdapterFields.some((field) => field === undefined)
+  ) {
+    throw new FxValidationError(
+      "payload route adapter binding must include both sides and versions"
+    );
   }
   return {
     rfqId: normalizeHash(value.rfqId, "payload.rfqId"),
@@ -382,6 +403,26 @@ function normalizeQuotePayload(value) {
     adapterId: normalizeIdentifier(value.adapterId, "payload.adapterId"),
     adapterVersion: normalizeSafeInteger(value.adapterVersion, "payload.adapterVersion", {
       allowZero: false,
+    }),
+    ...(value.sourceAdapterId === undefined ? {} : {
+      sourceAdapterId: normalizeIdentifier(
+        value.sourceAdapterId,
+        "payload.sourceAdapterId"
+      ),
+      sourceAdapterVersion: normalizeSafeInteger(
+        value.sourceAdapterVersion,
+        "payload.sourceAdapterVersion",
+        { allowZero: false }
+      ),
+      destinationAdapterId: normalizeIdentifier(
+        value.destinationAdapterId,
+        "payload.destinationAdapterId"
+      ),
+      destinationAdapterVersion: normalizeSafeInteger(
+        value.destinationAdapterVersion,
+        "payload.destinationAdapterVersion",
+        { allowZero: false }
+      ),
     }),
   };
 }
@@ -915,6 +956,7 @@ module.exports = {
   FX_MAX_CLOCK_SKEW_SECONDS,
   FX_MAX_REFERENCE_AGE_SECONDS,
   FX_MESSAGE_TYPES,
+  FX_NATIVE_ETH_ADDRESS,
   FX_PRIVACY_CLASSES,
   FX_PROTOCOL,
   FX_QUOTE_TYPE,

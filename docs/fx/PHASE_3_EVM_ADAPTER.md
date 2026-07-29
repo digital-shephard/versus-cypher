@@ -1,7 +1,8 @@
 # Agentic FX Phase 3: EVM Adapter
 
-Status: local evidence only. FX remains disabled and this adapter is not
-exported by the desktop network package.
+Status: the ERC-20 and native-ETH adapter families are frozen and deployed to
+the Base Sepolia / Arbitrum Sepolia cohort. FX remains disabled by default and
+these deployments are not authorized for mainnet or production funds.
 
 ## Scope
 
@@ -13,6 +14,16 @@ Phase 3 introduces one narrowly reusable EVM settlement family:
 - asset model: one immutable ERC-20 per deployment
 - settlement model: hash-locked claim before expiry, fixed-address refund at
   or after expiry
+
+Phase 9 adds a separate native-asset family without weakening or pretending to
+extend the ERC-20 contract:
+
+- adapter ID: `evm-native-htlc`
+- adapter version: `1`
+- contract: `EvmNativeHtlcV1`
+- asset model: the native ETH of the exact manifested EVM chain
+- funding model: exact `msg.value`, with no amount parameter that can disagree
+  with custody
 
 This is not a router. It cannot call arbitrary targets, swap assets, bridge
 assets, change beneficiaries, or alter a funded lock.
@@ -37,6 +48,13 @@ stored amount. A failed transfer reverts the complete state change.
 There is no owner, pause key, upgrade proxy, sweep function, arbitrary call,
 native-asset receiver, or mutable asset configuration.
 
+`EvmNativeHtlcV1` has the same fixed-party claim/refund state machine but is a
+separate payable contract. Direct transfers and arbitrary calldata revert.
+State and `totalLocked` update before payout, `ReentrancyGuard` protects every
+value-moving path, and a failed fixed-address payout rolls the complete state
+change back. Forced ETH may create harmless surplus but never a claim or admin
+withdrawal.
+
 ## Capability Manifest
 
 The machine-readable schema is
@@ -56,6 +74,13 @@ Fee-on-transfer, rebasing, and callback-heavy tokens are rejected by policy
 before any provider call, approval, or funding. Issuer controls are represented
 separately as `none` or `documented`; a future route may accept a canonical
 issuer-controlled stablecoin only with an explicit route-specific assumption.
+
+Native capabilities use the independent
+[`schemas/native-adapter-capability-v1.schema.json`](./schemas/native-adapter-capability-v1.schema.json).
+They pin `native:eth`, 18 decimals, deployment block, runtime bytecode,
+immutables, confirmation policy, and timeout policy. Protocol messages use the
+canonical zero address only as native ETH's wire identifier; it is never
+treated as an ERC-20 contract.
 
 ## Timeout Rule
 
@@ -111,6 +136,29 @@ Its source identity is the local `agentic-fx-phase3-v1` tag; checking out that
 tag and running `npm run fx:freeze:evm-v1` must reproduce the committed source
 and creation-bytecode hashes.
 
+The native freeze is
+`versus/deployments/fx/evm-native-htlc-v1-build.json`. The combined cohort is
+`versus/deployments/fx/phase9-public-testnet.json`, whose deployment ID binds
+both adapter families on both chains.
+
+## Native Public-Testnet Deployments
+
+Both chains contain identical runtime bytecode:
+
+`0x752e5fe73aed992241e138ff550d4ab7fc127230b802e70b9c87239fec60f082`
+
+| Chain | Address | Block | Explorer |
+| --- | --- | ---: | --- |
+| Base Sepolia | `0x7c917f09e1de03977acc14575b56932aa55da543` | `44762481` | [contract](https://sepolia.basescan.org/address/0x7c917f09e1de03977acc14575b56932aa55da543) |
+| Arbitrum Sepolia | `0x7c917f09e1de03977acc14575b56932aa55da543` | `292433456` | [contract](https://sepolia.arbiscan.io/address/0x7c917f09e1de03977acc14575b56932aa55da543) |
+
+The frozen source SHA-256 is
+`0xea81dd22c015e56d4e631e340fab5593397952fca5470635fc8d4b2bdb922ad4`;
+the creation-code hash is
+`0xda6b8e42b4b22c07cda53b08db6091e78ea3a884905703c69f18e9494e7f2244`.
+Both explorer links above display the verified source and constructor
+arguments.
+
 ## Evidence
 
 The Phase 3 suite covers:
@@ -131,6 +179,9 @@ The Phase 3 suite covers:
 - replacement and reorganization classification
 - deterministic build reproduction
 - Foundry fuzz and stateful custody invariants
+- native exact-value funding and fixed-payout behavior
+- native payout failure rollback and callback reentrancy
+- native active-liability equality and solvency across 32,768 invariant calls
 
 The relay implements an independent manifest validator, but production
 `src/main.mjs` does not import it. Phase 3 therefore adds evidence without

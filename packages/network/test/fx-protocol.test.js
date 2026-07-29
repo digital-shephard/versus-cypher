@@ -4,6 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { Wallet } = require("ethers");
 const {
+  FX_NATIVE_ETH_ADDRESS,
   FxValidationError,
   advanceFxCaseState,
   advanceFxState,
@@ -194,6 +195,41 @@ test("rejects unknown fields, role confusion, secret disclosure, and unsafe life
       payload: { ...accept.payload, totalInputAtomic: "101251" },
     }),
     { code: "INVALID_ECONOMICS" }
+  );
+});
+
+test("binds native and ERC-20 adapter families without changing legacy quotes", () => {
+  const legacy = fixture.messages.find(
+    (message) => message.type === "fx_quote"
+  );
+  const normalizedLegacy = normalizeFxMessage(legacy);
+  assert.equal("sourceAdapterId" in normalizedLegacy.payload, false);
+
+  const native = normalizeFxMessage({
+    ...legacy,
+    payload: {
+      ...legacy.payload,
+      inputToken: FX_NATIVE_ETH_ADDRESS,
+      sourceAdapterId: "evm-native-htlc-v1",
+      sourceAdapterVersion: 1,
+      destinationAdapterId: "evm-htlc-v1",
+      destinationAdapterVersion: 1,
+    },
+  });
+  assert.equal(native.payload.inputToken, FX_NATIVE_ETH_ADDRESS);
+  assert.equal(native.payload.sourceAdapterId, "evm-native-htlc-v1");
+  assert.equal(native.payload.destinationAdapterId, "evm-htlc-v1");
+  assert.notEqual(computeFxMessageId(native), computeFxMessageId(legacy));
+
+  assert.throws(
+    () => normalizeFxMessage({
+      ...legacy,
+      payload: {
+        ...legacy.payload,
+        sourceAdapterId: "evm-native-htlc-v1",
+      },
+    }),
+    /must include both sides and versions/
   );
 });
 

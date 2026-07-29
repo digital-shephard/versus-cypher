@@ -169,6 +169,35 @@ const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE)
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
 const fxWalletProvider = fxRoleWalletProvider(ensureWallet);
+const fxNativeUsdPriceProvider = async () => {
+  const quote = await getCachedHatchQuote();
+  const quoteValidUntil = Number(quote?.validUntil || 0);
+  const nowSeconds = Math.floor(networkNowMs() / 1000);
+  if (
+    quote?.nodeQuote !== true ||
+    quote?.freshness !== "fresh" ||
+    !Number.isSafeInteger(quoteValidUntil) ||
+    quoteValidUntil < nowSeconds
+  ) {
+    if (!app.isPackaged && process.env.VERSUS_FX_DEVELOPMENT === "1") {
+      return (
+        DEMO_DEPOSIT_USD_MICROS * 10n ** 18n
+      ) / BigInt(DEMO_DEPOSIT_WEI);
+    }
+    throw new Error("fresh signed relay ETH/USD quote is unavailable");
+  }
+  const swapWei = BigInt(quote?.swapWei || 0);
+  const quotedUsdMicros = BigInt(quote?.quotedRunwayMicros || 0);
+  if (swapWei <= 0n || quotedUsdMicros <= 0n) {
+    if (!app.isPackaged && process.env.VERSUS_FX_DEVELOPMENT === "1") {
+      return (
+        DEMO_DEPOSIT_USD_MICROS * 10n ** 18n
+      ) / BigInt(DEMO_DEPOSIT_WEI);
+    }
+    throw new Error("fresh relay ETH/USD quote is unavailable");
+  }
+  return (quotedUsdMicros * 10n ** 18n) / swapWei;
+};
 const fxEvmCohort = new FxEvmCohort({
   walletProvider: fxWalletProvider,
 });
@@ -176,6 +205,7 @@ const fxNetworkRuntime = new FxDesktopNetworkRuntime({
   dataDirectory: FX_NETWORK_DIR,
   walletProvider: fxWalletProvider,
   evm: fxEvmCohort,
+  nativeUsdPriceProvider: fxNativeUsdPriceProvider,
   now: () => Math.floor(networkNowMs() / 1000),
 });
 const fxDesktopService = new FxDesktopService({
@@ -204,20 +234,7 @@ const fxDesktopService = new FxDesktopService({
   settlementReconciler: (input) => fxNetworkRuntime.reconcileRequester(input),
   refundExecutor: (input) => fxNetworkRuntime.refundRequester(input),
   dealerController: fxNetworkRuntime,
-  nativeUsdPriceProvider: async () => {
-    const quote = await getCachedHatchQuote();
-    const swapWei = BigInt(quote?.swapWei || 0);
-    const quotedUsdMicros = BigInt(quote?.quotedRunwayMicros || 0);
-    if (swapWei <= 0n || quotedUsdMicros <= 0n) {
-      if (!app.isPackaged && process.env.VERSUS_FX_DEVELOPMENT === "1") {
-        return (
-          DEMO_DEPOSIT_USD_MICROS * 10n ** 18n
-        ) / BigInt(DEMO_DEPOSIT_WEI);
-      }
-      return 0n;
-    }
-    return (quotedUsdMicros * 10n ** 18n) / swapWei;
-  },
+  nativeUsdPriceProvider: fxNativeUsdPriceProvider,
   now: () => Math.floor(networkNowMs() / 1000),
 });
 

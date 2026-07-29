@@ -8,6 +8,7 @@ const {
 } = require("ethers");
 const {
   createBrokerRouteProposal,
+  FX_NATIVE_ETH_ADDRESS,
   signFxMessage,
 } = require("@versus/network");
 const {
@@ -365,6 +366,107 @@ test("desktop requester stays disabled and enforces local limits", async () => {
   );
 });
 
+test("native requester quotes bind the native adapter and atomic ETH input", async () => {
+  const dealer = Wallet.createRandom();
+  let observedRfq = null;
+  const { service } = fixture({
+    nativeUsdPriceProvider: async () => "2000000000",
+    async queryRoutes({ rfq }) {
+      observedRfq = rfq;
+      const quote = await signFxMessage({
+        protocol: "versus-fx",
+        version: 1,
+        deploymentId: FX_DESKTOP_DEPLOYMENT_ID,
+        type: "fx_quote",
+        tradeId: rfq.tradeId,
+        role: "dealer",
+        sequence: "1",
+        createdAt: NOW,
+        expiresAt: NOW + 30,
+        payload: {
+          rfqId: rfq.id,
+          inputChainId: "84532",
+          inputToken: FX_NATIVE_ETH_ADDRESS,
+          inputAmountAtomic: "501250000000000",
+          outputChainId: "421614",
+          outputToken: TOKEN,
+          outputAmountAtomic: "1000000",
+          quoteType: "fixed_exact_output",
+          referenceSource: "desktop:test:eth-usd",
+          referencePriceMicros: "2000000000",
+          referenceTimestamp: NOW,
+          spreadBps: 25,
+          dealerSettlementCostAtomic: "0",
+          estimatedCompletionSeconds: 20,
+          adapterId: "evm-htlc-v1",
+          adapterVersion: 1,
+          sourceAdapterId: "evm-native-htlc-v1",
+          sourceAdapterVersion: 1,
+          destinationAdapterId: "evm-htlc-v1",
+          destinationAdapterVersion: 1,
+        },
+      }, dealer);
+      const proposal = await createBrokerRouteProposal({
+        signer: Wallet.createRandom(),
+        rfq,
+        quotes: [quote],
+        brokerFeeAtomic: "0",
+        now: NOW,
+      });
+      return {
+        selected: proposal,
+        attempts: [{ endpoint: "local", ok: true, latencyMs: 1, proposal }],
+      };
+    },
+  });
+  service.store.setPositionEnabled("base-sepolia-eth", true);
+  service.setEnabled(true);
+
+  const quoted = await service.requestQuote({
+    sourcePositionId: "base-sepolia-eth",
+    destinationPositionId: "arbitrum-sepolia-usdc",
+    outputAmount: "1",
+    destinationAddress: Wallet.createRandom().address,
+  });
+
+  assert.equal(
+    observedRfq.payload.inputOptions[0].token,
+    FX_NATIVE_ETH_ADDRESS
+  );
+  assert.equal(
+    observedRfq.payload.inputOptions[0].maxInputAtomic,
+    "505000000000000"
+  );
+  assert.equal(quoted.route.inputToken, FX_NATIVE_ETH_ADDRESS);
+  assert.equal(quoted.route.totalInputAtomic, "501250000000000");
+});
+
+test("native requester quotes fail closed without a fresh ETH/USD price", async () => {
+  let routeCalls = 0;
+  const { service } = fixture({
+    nativeUsdPriceProvider: async () => {
+      throw new Error("stale");
+    },
+    async queryRoutes() {
+      routeCalls += 1;
+      throw new Error("must not query");
+    },
+  });
+  service.store.setPositionEnabled("base-sepolia-eth", true);
+  service.setEnabled(true);
+
+  await assert.rejects(
+    service.requestQuote({
+      sourcePositionId: "base-sepolia-eth",
+      destinationPositionId: "arbitrum-sepolia-usdc",
+      outputAmount: "1",
+      destinationAddress: Wallet.createRandom().address,
+    }),
+    (error) => error.code === "STALE_PRICE"
+  );
+  assert.equal(routeCalls, 0);
+});
+
 test("public state truncates addresses and evidence excludes private material", async () => {
   const { root, service } = fixture();
   service.setEnabled(true);
@@ -500,6 +602,62 @@ test("dealer native gas gates token support independently of personal swap gas",
     result.inventoryTransfer.transactionHash,
     `0x${"77".repeat(32)}`
   );
+});
+
+test("a funded native ETH position can arm without a USDC token bay", async () => {
+  const dealer = Wallet.createRandom().address.toLowerCase();
+  const requesterRole = Wallet.createRandom().address.toLowerCase();
+  let active = false;
+  let armedPositions = null;
+  const dealerController = {
+    status: () => ({ dealer: { configured: true, active } }),
+    setRpcUrl() {},
+    async chainGasSnapshot(chains) {
+      return chains.map((chain) => ({
+        chainId: chain.chainId,
+        dealer: {
+          address: dealer,
+          balanceAtomic: "1000000000000000000",
+        },
+        requester: {
+          address: requesterRole,
+          balanceAtomic: "1000000000000000",
+        },
+      }));
+    },
+    async inventorySnapshot(positions) {
+      return positions.map((position) => ({
+        id: position.id,
+        address: dealer,
+        availableAtomic: "500000000000000000",
+        reservedAtomic: "0",
+        activeLocks: 0,
+      }));
+    },
+    async armDealer({ positions }) {
+      armedPositions = positions;
+      active = true;
+    },
+  };
+  const { service } = fixture({
+    dealerController,
+    chainReadinessRequired: true,
+    nativeUsdPriceProvider: async () => "2000000000",
+  });
+  service.store.setPositionEnabled("base-sepolia-usdc", false);
+  service.store.setPositionEnabled("arbitrum-sepolia-usdc", false);
+  await service.setEnabled(true);
+  await service.setChainSettings("84532", {
+    enabled: true,
+    rpcUrl: "https://rpc.example",
+  });
+
+  const armed = await service.setPolicy({ armed: true });
+
+  assert.equal(armed.policy.armed, true);
+  assert.equal(armedPositions.length, 1);
+  assert.equal(armedPositions[0].id, "base-sepolia-eth");
+  assert.equal(armedPositions[0].assetKind, "native");
 });
 
 test("an explicitly armed dealer resumes after restart", async () => {

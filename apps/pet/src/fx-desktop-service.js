@@ -57,6 +57,17 @@ function positionOf(snapshot, id, label) {
   return position;
 }
 
+function quoteableDealerPositions(snapshot, requireFunding) {
+  return snapshot.positions.filter(
+    (position) =>
+      position.usable &&
+      (
+        !requireFunding ||
+        BigInt(position.availableAtomic || "0") > 0n
+      )
+  );
+}
+
 function address(value, label) {
   const normalized = String(value || "").trim();
   if (!isAddress(normalized)) {
@@ -300,6 +311,14 @@ class FxDesktopService extends EventEmitter {
       const chain = chains.find(
         (candidate) => candidate.chainId === position.chainId
       );
+      const availableAtomic = BigInt(position.availableAtomic || "0");
+      const reservedAtomic = BigInt(position.reservedAtomic || "0");
+      const dealerAtomic = BigInt(chain?.dealerBalanceAtomic || "0");
+      const dealerUsdMicros = BigInt(chain?.dealerBalanceUsdMicros || "0");
+      const nativePriceMicros =
+        dealerAtomic > 0n
+          ? (dealerUsdMicros * 10n ** 18n) / dealerAtomic
+          : 0n;
       return {
         ...position,
         usable:
@@ -310,6 +329,14 @@ class FxDesktopService extends EventEmitter {
           ),
         gasReady: chain?.gasReady === true,
         dealerGasReady: chain?.dealerGasReady === true,
+        availableUsdMicros:
+          position.assetKind === "native"
+            ? ((availableAtomic * nativePriceMicros) / 10n ** 18n).toString()
+            : availableAtomic.toString(),
+        reservedUsdMicros:
+          position.assetKind === "native"
+            ? ((reservedAtomic * nativePriceMicros) / 10n ** 18n).toString()
+            : reservedAtomic.toString(),
       };
     });
     return {
@@ -494,7 +521,18 @@ class FxDesktopService extends EventEmitter {
     if (next.enabled === true && !state.enabled) {
       this.store.setEnabled(true);
     }
+    const nativePosition = state.positions.find(
+      (position) =>
+        position.chainId === chain.chainId &&
+        position.assetKind === "native"
+    );
+    if (next.enabled === false && nativePosition?.enabled) {
+      this.store.setPositionEnabled(nativePosition.id, false);
+    }
     this.store.setChainSettings(chain.chainId, next);
+    if (next.enabled === true && nativePosition && !nativePosition.enabled) {
+      this.store.setPositionEnabled(nativePosition.id, true);
+    }
     this.lastRefreshAt = 0;
     return this.refresh({ force: true });
   }
@@ -519,10 +557,13 @@ class FxDesktopService extends EventEmitter {
           "FX_DISABLED"
         );
       }
-      const positions = current.positions.filter((position) => position.usable);
+      const positions = quoteableDealerPositions(
+        current,
+        this.chainReadinessRequired
+      );
       if (!positions.length) {
         throw new FxDesktopError(
-          "Enable a funded chain and at least one token before dealing",
+          "Enable a funded chain and at least one inventory asset before dealing",
           "NO_READY_INVENTORY"
         );
       }
@@ -541,7 +582,10 @@ class FxDesktopService extends EventEmitter {
     ) {
       await this.dealerController.updateDealer({
         policy: nextPolicy,
-        positions: current.positions.filter((position) => position.usable),
+        positions: quoteableDealerPositions(
+          current,
+          this.chainReadinessRequired
+        ),
       });
     }
     this.store.setPolicy({
@@ -573,7 +617,10 @@ class FxDesktopService extends EventEmitter {
       const state = this.snapshot();
       await this.dealerController.updateDealer({
         policy: state.policy,
-        positions: state.positions.filter((position) => position.usable),
+        positions: quoteableDealerPositions(
+          state,
+          this.chainReadinessRequired
+        ),
       });
     }
     return this.#emit();
@@ -655,7 +702,10 @@ class FxDesktopService extends EventEmitter {
     }
     await this.refresh({ force: true });
     const snapshot = this.snapshot();
-    const positions = snapshot.positions.filter((position) => position.usable);
+    const positions = quoteableDealerPositions(
+      snapshot,
+      this.chainReadinessRequired
+    );
     if (!positions.length) {
       this.store.setPolicy({ armed: false });
       return this.#emit();
@@ -707,7 +757,27 @@ class FxDesktopService extends EventEmitter {
       destination.decimals,
       "receive amount"
     );
-    const outputUsd = Number(formatUnits(outputAtomic, destination.decimals));
+    const usesNative =
+      source.assetKind === "native" || destination.assetKind === "native";
+    let nativeUsdPriceMicros = 1_000_000n;
+    if (usesNative) {
+      try {
+        nativeUsdPriceMicros = BigInt(await this.nativeUsdPriceProvider?.());
+      } catch {
+        nativeUsdPriceMicros = 0n;
+      }
+      if (nativeUsdPriceMicros <= 0n) {
+        throw new FxDesktopError(
+          "A fresh trusted ETH/USD quote is required",
+          "STALE_PRICE"
+        );
+      }
+    }
+    const outputUsdMicros =
+      destination.assetKind === "native"
+        ? (BigInt(outputAtomic) * nativeUsdPriceMicros) / 10n ** 18n
+        : BigInt(outputAtomic);
+    const outputUsd = Number(outputUsdMicros) / 1_000_000;
     if (
       outputUsd < snapshot.policy.minimumTradeUsd ||
       outputUsd > snapshot.policy.maximumTradeUsd
@@ -722,11 +792,19 @@ class FxDesktopService extends EventEmitter {
       sourceRefundAddress || this.#wallet().address,
       "refund address"
     );
-    const maximumInputAtomic = (
-      (BigInt(outputAtomic) * BigInt(10_000 + snapshot.policy.maximumOverheadBps)) /
-      10_000n +
-      1n
-    ).toString();
+    const maximumInputUsdMicros =
+      (outputUsdMicros * BigInt(10_000 + snapshot.policy.maximumOverheadBps) +
+        9_999n) /
+      10_000n;
+    const maximumInputAtomic =
+      source.assetKind === "native"
+        ? (
+            (maximumInputUsdMicros * 10n ** 18n +
+              nativeUsdPriceMicros -
+              1n) /
+            nativeUsdPriceMicros
+          ).toString()
+        : maximumInputUsdMicros.toString();
     const startedAt = Date.now();
     const sdk = this.#sdk();
     let quote;

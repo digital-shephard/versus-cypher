@@ -51,9 +51,10 @@ module.exports = {
     currency: "USD",
   },
   etherscan: {
-    apiKey: {
-      base: process.env.BASESCAN_API_KEY || "",
-    },
+    apiKey:
+      process.env.ETHERSCAN_API_KEY ||
+      process.env.BASESCAN_API_KEY ||
+      "",
   },
   paths: {
     sources: "./contracts",

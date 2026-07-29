@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { EventEmitter } = require("node:events");
 const {
+  FX_NATIVE_ETH_ADDRESS,
   FxCoordinationSession,
   FxDeterministicDealer,
   FxPhase8DealerGuard,
@@ -13,7 +14,7 @@ const {
 } = require("@versus/network");
 
 const FX_PUBLIC_TESTNET_DEPLOYMENT_ID =
-  "0xd0935aa32dc4d37e33180ac9409c993b7bf39749ff375df4da033bd106c0983e";
+  "0x2baf66b4211ecbc126916260c0a671e745e3184275744fb15bd5d5069b575fc3";
 
 const FX_PUBLIC_WAKU_PEERS = Object.freeze([
   "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
@@ -58,6 +59,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     now = () => Math.floor(Date.now() / 1000),
     brokerObservationWindowMs = 15_000,
     sessionFactory,
+    nativeUsdPriceProvider,
   } = {}) {
     super();
     if (!dataDirectory || typeof walletProvider !== "function" || !evm) {
@@ -71,6 +73,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.now = now;
     this.brokerObservationWindowMs = Number(brokerObservationWindowMs);
     this.sessionFactory = sessionFactory;
+    this.nativeUsdPriceProvider = nativeUsdPriceProvider;
+    this.nativePrice = null;
     this.broker = null;
     this.brokerJournal = null;
     this.requesterSession = null;
@@ -396,6 +400,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       secretHash,
       refundTimestamp: sourceRefundTimestamp,
       role: "requester",
+      token: route.inputToken,
     });
     const sourceReceipt = source.receipt;
     if (!sourceReceipt && source.lock.state !== 1) {
@@ -403,7 +408,12 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     }
     const sourceTransactionHash =
       sourceReceipt?.transactionHash ||
-      await this.#findFundTransaction(route.inputChainId, acceptance.tradeId, "source");
+      await this.#findFundTransaction(
+        route.inputChainId,
+        acceptance.tradeId,
+        "source",
+        route.inputToken
+      );
     const sourceBlockNumber =
       sourceReceipt?.blockNumber ||
       await this.#transactionBlock(route.inputChainId, sourceTransactionHash);
@@ -419,7 +429,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         chainId: route.inputChainId,
         token: route.inputToken,
         amountAtomic: route.totalInputAtomic,
-        lockAddress: this.evm.configuration(route.inputChainId).adapterAddress,
+        lockAddress: this.evm.adapterAddress(
+          route.inputChainId,
+          route.inputToken
+        ),
         beneficiary: reserve.payload.dealerSourceClaimAddress,
         refundAddress: sourceRefundAddress,
         secretHash,
@@ -447,6 +460,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       chainId: route.outputChainId,
       lockId: phase5LockId(acceptance.tradeId, "destination"),
       transactionHash: destinationMessage.payload.transactionHash,
+      token: route.outputToken,
     });
     if (
       destinationObservation.confirmed !== true ||
@@ -472,13 +486,15 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       side: "destination",
       secret,
       role: "requester",
+      token: route.outputToken,
     });
     const claimTransactionHash =
       claim.receipt?.transactionHash ||
       await this.#findClaimTransaction(
         route.outputChainId,
         acceptance.tradeId,
-        "destination"
+        "destination",
+        route.outputToken
       );
     const claimBlockNumber =
       claim.receipt?.blockNumber ||
@@ -534,14 +550,15 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const sourceId = phase5LockId(prepared.tradeId, "source");
     const destinationId = phase5LockId(prepared.tradeId, "destination");
     const [source, destination] = await Promise.all([
-      this.evm.readLock(route.inputChainId, sourceId),
-      this.evm.readLock(route.outputChainId, destinationId),
+      this.evm.readLock(route.inputChainId, sourceId, route.inputToken),
+      this.evm.readLock(route.outputChainId, destinationId, route.outputToken),
     ]);
     if (destination.state === 2) {
       const claim = await this.#findClaimReceipt(
         route.outputChainId,
         prepared.tradeId,
-        "destination"
+        "destination",
+        route.outputToken
       );
       return {
         state: "funds_ready",
@@ -636,6 +653,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       tradeId: prepared.tradeId,
       side: "source",
       role: "requester",
+      token: route.inputToken,
     });
     return {
       state: "refunded",
@@ -679,17 +697,20 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           chainId: sourceLock.payload.chainId,
           lockId,
           transactionHash: sourceLock.payload.transactionHash,
+          token: sourceLock.payload.token,
         }),
       verifyDestinationLock: async ({ lockId, destinationLock }) =>
         this.evm.verifyLockEnvelope({
           chainId: destinationLock.payload.chainId,
           lockId,
           transactionHash: destinationLock.payload.transactionHash,
+          token: destinationLock.payload.token,
         }),
       readDestinationLock: async ({ lockId, destinationObservation }) => {
         const lock = await this.evm.readLock(
           destinationObservation.chainId,
-          lockId
+          lockId,
+          destinationObservation.token
         );
         return { exists: lock.state !== 0, ...lock };
       },
@@ -748,23 +769,39 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           position.assetAddress,
           owner
         );
-        const exposure = this.exposureJournal?.exposureSummary?.().byAsset?.[
-          `${position.chainId}:${position.assetAddress}`
-        ];
-        const reservedAtomic = BigInt(
-          exposure?.exposureValueMicros || "0"
+        const assetKey = `${position.chainId}:${position.assetAddress}`;
+        const activeTrades = this.exposureJournal?.activeTrades?.() || [];
+        const reservedTrades = activeTrades.filter(
+          (trade) => trade.assetKey === assetKey
         );
+        const reservedAtomic = reservedTrades
+          .reduce(
+            (total, trade) =>
+              total + BigInt(
+                trade.package?.quote?.payload?.outputAmountAtomic || 0
+              ),
+            0n
+          );
         const walletBalance = BigInt(availableAtomic);
+        const gasReserve =
+          position.assetAddress === FX_NATIVE_ETH_ADDRESS
+            ? BigInt(
+                this.evm.configuration?.(position.chainId)
+                  ?.nativeGasReserveWei || 0
+              )
+            : 0n;
+        const unreserved =
+          walletBalance > reservedAtomic ? walletBalance - reservedAtomic : 0n;
         return {
           id: position.id,
           address: owner,
           availableAtomic: (
-            walletBalance > reservedAtomic
-              ? walletBalance - reservedAtomic
+            unreserved > gasReserve
+              ? unreserved - gasReserve
               : 0n
           ).toString(),
           reservedAtomic: reservedAtomic.toString(),
-          activeLocks: Number(exposure?.count || 0),
+          activeLocks: reservedTrades.length,
         };
       })
     );
@@ -810,7 +847,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       if (trade.state !== "destination_locked") continue;
       const lock = await this.evm.readLock(
         trade.package.quote.payload.outputChainId,
-        trade.destinationLockId
+        trade.destinationLockId,
+        trade.package.quote.payload.outputToken
       );
       if (lock.state === 3) {
         this.exposureJournal.markTerminal(trade.tradeId, "destination_refunded");
@@ -897,7 +935,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     }
     const lock = await this.evm.readLock(
       destinationLock.payload.chainId,
-      trade.destinationLockId
+      trade.destinationLockId,
+      destinationLock.payload.token
     );
     const latest = await this.evm.provider(lock.chainId).getBlock("latest");
     if (lock.state !== 1 || Number(latest.timestamp) < Number(lock.timeout)) {
@@ -911,6 +950,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       tradeId,
       side: "destination",
       role: "dealer",
+      token: destinationLock.payload.token,
     });
     this.inventoryCache = null;
     const txHash =
@@ -920,6 +960,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         tradeId,
         side: "destination",
         eventName: "LockRefunded",
+        token: destinationLock.payload.token,
       })).transactionHash;
     const blockNumber =
       refunded.receipt?.blockNumber ||
@@ -995,38 +1036,118 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     );
     if (!input || input.chainId === destination.chainId) return null;
     const output = BigInt(rfq.payload.outputAmountAtomic);
+    const usesNative =
+      destination.assetAddress === FX_NATIVE_ETH_ADDRESS ||
+      input.token === FX_NATIVE_ETH_ADDRESS;
+    const nativePriceMicros = usesNative
+      ? await this.#nativePriceMicros()
+      : 1_000_000n;
+    const outputValueMicros = this.#assetValueMicros(
+      output,
+      destination,
+      nativePriceMicros
+    );
     const minimum = BigInt(dollarsToMicros(this.dealerPolicy.minimumTradeUsd));
     const maximum = BigInt(dollarsToMicros(this.dealerPolicy.maximumTradeUsd));
-    if (output < minimum || output > maximum) return null;
+    if (outputValueMicros < minimum || outputValueMicros > maximum) return null;
     const balance = BigInt(
       await this.evm.tokenBalance(destination.chainId, destination.assetAddress)
     );
-    const reserved = BigInt(
-      this.exposureJournal?.exposureSummary?.().byAsset?.[
-        `${destination.chainId}:${destination.assetAddress}`
-      ]?.exposureValueMicros || "0"
-    );
-    const available = balance > reserved ? balance - reserved : 0n;
+    const reserved = (this.exposureJournal?.activeTrades?.() || [])
+      .filter(
+        (trade) =>
+          trade.assetKey ===
+          `${destination.chainId}:${destination.assetAddress}`
+      )
+      .reduce(
+        (total, trade) =>
+          total + BigInt(
+            trade.package?.quote?.payload?.outputAmountAtomic || 0
+          ),
+        0n
+      );
+    const configuration = this.evm.configuration(destination.chainId);
+    const gasReserve =
+      destination.assetAddress === FX_NATIVE_ETH_ADDRESS
+        ? BigInt(configuration.nativeGasReserveWei || 0)
+        : 0n;
+    const unreserved = balance > reserved ? balance - reserved : 0n;
+    const available = unreserved > gasReserve ? unreserved - gasReserve : 0n;
     if (available < output) return null;
     const spreadBps =
       Number(this.dealerPolicy.minimumSpreadBps) +
       Number(this.dealerPolicy.inventoryPremiumBps || 0);
-    const inputAmountAtomic =
-      ((output * BigInt(10_000 + spreadBps)) + 9_999n) / 10_000n;
+    const inputValueMicros =
+      ((outputValueMicros * BigInt(10_000 + spreadBps)) + 9_999n) /
+      10_000n;
+    const inputAmountAtomic = this.#assetAmountForMicros(
+      inputValueMicros,
+      input,
+      nativePriceMicros
+    );
     if (inputAmountAtomic > BigInt(input.maxInputAtomic)) return null;
     return {
       inputChainId: input.chainId,
       inputToken: input.token,
       inputAmountAtomic: inputAmountAtomic.toString(),
-      referenceSource: "desktop:cohort:usdc-par",
-      referencePriceMicros: "1000000",
+      referenceSource: usesNative
+        ? "relay:hatch-exact-output"
+        : "desktop:cohort:usdc-par",
+      referencePriceMicros: nativePriceMicros.toString(),
       referenceTimestamp: this.now(),
       spreadBps,
       dealerSettlementCostAtomic: "0",
       estimatedCompletionSeconds: 45,
       adapterId: "evm-htlc-v1",
       adapterVersion: 1,
+      sourceAdapterId:
+        input.token === FX_NATIVE_ETH_ADDRESS
+          ? "evm-native-htlc-v1"
+          : "evm-htlc-v1",
+      sourceAdapterVersion: 1,
+      destinationAdapterId:
+        destination.assetAddress === FX_NATIVE_ETH_ADDRESS
+          ? "evm-native-htlc-v1"
+          : "evm-htlc-v1",
+      destinationAdapterVersion: 1,
     };
+  }
+
+  async #nativePriceMicros() {
+    if (
+      this.nativePrice &&
+      Date.now() - this.nativePrice.at <= 180_000
+    ) {
+      return this.nativePrice.value;
+    }
+    if (typeof this.nativeUsdPriceProvider !== "function") {
+      throw new FxDesktopNetworkError(
+        "fresh ETH/USD reference is unavailable",
+        "STALE_PRICE"
+      );
+    }
+    const value = BigInt(await this.nativeUsdPriceProvider());
+    if (value <= 0n) {
+      throw new FxDesktopNetworkError(
+        "fresh ETH/USD reference is unavailable",
+        "STALE_PRICE"
+      );
+    }
+    this.nativePrice = { value, at: Date.now() };
+    return value;
+  }
+
+  #assetValueMicros(amount, position, nativePriceMicros) {
+    return position.assetAddress === FX_NATIVE_ETH_ADDRESS
+      ? (amount * nativePriceMicros) / 10n ** 18n
+      : amount;
+  }
+
+  #assetAmountForMicros(valueMicros, option, nativePriceMicros) {
+    return option.token === FX_NATIVE_ETH_ADDRESS
+      ? ((valueMicros * 10n ** 18n) + nativePriceMicros - 1n) /
+          nativePriceMicros
+      : valueMicros;
   }
 
   async #onDealerEnvelope(envelope) {
@@ -1073,7 +1194,13 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       reserve,
       sourceLock,
       referenceInputAtomic: quote.payload.inputAmountAtomic,
-      exposureValueMicros: quote.payload.outputAmountAtomic,
+      exposureValueMicros: this.#assetValueMicros(
+        BigInt(quote.payload.outputAmountAtomic),
+        {
+          assetAddress: quote.payload.outputToken,
+        },
+        BigInt(quote.payload.referencePriceMicros)
+      ).toString(),
       requesterGasInputAtomic: "0",
     });
     this.emit("trade", {
@@ -1092,6 +1219,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       secretHash: firm.destinationPlan.secretHash,
       refundTimestamp: firm.destinationPlan.refundTimestamp,
       role: "dealer",
+      token: firm.destinationPlan.token,
     });
     this.inventoryCache = null;
     const txHash =
@@ -1099,7 +1227,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       await this.#findFundTransaction(
         firm.destinationPlan.chainId,
         tradeId,
-        "destination"
+        "destination",
+        firm.destinationPlan.token
       );
     const blockNumber =
       funded.receipt?.blockNumber ||
@@ -1116,9 +1245,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         chainId: firm.destinationPlan.chainId,
         token: firm.destinationPlan.token,
         amountAtomic: firm.destinationPlan.amountAtomic,
-        lockAddress: this.evm.configuration(
-          firm.destinationPlan.chainId
-        ).adapterAddress,
+        lockAddress: this.evm.adapterAddress(
+          firm.destinationPlan.chainId,
+          firm.destinationPlan.token
+        ),
         beneficiary: firm.destinationPlan.beneficiary,
         refundAddress: firm.destinationPlan.refundAddress,
         secretHash: firm.destinationPlan.secretHash,
@@ -1146,6 +1276,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       tradeId,
       side: "destination",
       transactionHash: claimMessage.payload.transactionHash,
+      token: destinationLock.payload.token,
     });
     this.guard.markDestinationClaimed(tradeId);
     const sourceLock = this.dealerJournal.findType(tradeId, "fx_lock_source");
@@ -1155,6 +1286,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       side: "source",
       secret,
       role: "dealer",
+      token: sourceLock.payload.token,
     });
     this.inventoryCache = null;
     const txHash =
@@ -1162,7 +1294,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       await this.#findClaimTransaction(
         sourceLock.payload.chainId,
         tradeId,
-        "source"
+        "source",
+        sourceLock.payload.token
       );
     const blockNumber =
       claimed.receipt?.blockNumber ||
@@ -1222,27 +1355,34 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return Number(receipt.blockNumber);
   }
 
-  async #findFundTransaction(chainId, tradeId, side) {
+  async #findFundTransaction(chainId, tradeId, side, token = null) {
     const receipt = await this.evm.findLockEvent({
       chainId,
       tradeId,
       side,
       eventName: "LockFunded",
+      token,
     });
     return receipt.transactionHash;
   }
 
-  async #findClaimTransaction(chainId, tradeId, side) {
-    const receipt = await this.#findClaimReceipt(chainId, tradeId, side);
+  async #findClaimTransaction(chainId, tradeId, side, token = null) {
+    const receipt = await this.#findClaimReceipt(
+      chainId,
+      tradeId,
+      side,
+      token
+    );
     return receipt.transactionHash;
   }
 
-  async #findClaimReceipt(chainId, tradeId, side) {
+  async #findClaimReceipt(chainId, tradeId, side, token = null) {
     return this.evm.findLockEvent({
       chainId,
       tradeId,
       side,
       eventName: "LockClaimed",
+      token,
     });
   }
 

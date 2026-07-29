@@ -30,9 +30,15 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 - Dealer mode is disabled by default.
 - The owner explicitly enables the FX lab and then separately arms dealing.
 - Supported inventory positions are selected on the Stock page.
-- Each supported chain is a first-class native-gas position. Both the dealer
-  and requester role wallets must hold at least the displayed USD minimum in
-  the native coin before token positions on that chain become usable.
+- Native ETH is a genuine inventory asset on Base Sepolia and Arbitrum
+  Sepolia, not merely a gas-readiness indicator. A chain toggle enables its
+  native ETH bay; the owner may then enable the chain's ERC-20 bay separately.
+- Native positions reserve configured operating ETH plus the estimated
+  transaction fee before advertising inventory, locking, or withdrawing.
+  `MAX GAS` remains a USD risk/cost limit, not a separate balance.
+- Both the dealer and requester role wallets must still satisfy the displayed
+  native-gas readiness threshold before ERC-20 positions on that chain become
+  usable. A quoteable native-only position can arm dealing without a USDC bay.
 - The Assets screen exposes the chain and token toggles, role-specific gas
   deposit addresses, optional local custom RPC URLs, and the less common
   requester, asset, gas, overhead, and inventory-premium limits.
@@ -45,9 +51,10 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 - Stock refreshes use bounded single-flight reads while the relevant FX screen
   is visible. They do not continuously poll every enabled chain in the
   background. The refresh control performs an explicit fresh read.
-- Inventory withdrawals are confirmed ERC-20 transfers from the dealer role
-  wallet. Dealing must be disarmed first so an accepted quote cannot race an
-  owner withdrawal.
+- Inventory withdrawals are confirmed native or ERC-20 transfers from the
+  dealer role wallet. Native withdrawals preserve the operating reserve and
+  estimated fee. Dealing must be disarmed first so an accepted quote cannot
+  race an owner withdrawal.
 - An abandoned destination lock reappears on the Tape after restart. Once
   chain time reaches its short timeout, the owner can submit its deterministic
   dealer refund there; exposure is released only after confirmation.
@@ -60,7 +67,7 @@ as dealer inventory.
 
 Waku carries signed RFQs, quotes, acceptance, reservation, lock notices, and
 claim notices. It is not settlement truth. The desktop independently checks
-the frozen testnet token and adapter contracts before recognizing:
+the applicable frozen testnet asset and adapter contracts before recognizing:
 
 - source funding
 - source lock
@@ -71,6 +78,15 @@ the frozen testnet token and adapter contracts before recognizing:
 
 Event recovery starts at the frozen adapter deployment blocks, not chain
 genesis. Inventory reads are cached and invalidated when dealer funds move.
+Each quote binds the adapter ID and version independently for its source and
+destination legs. The zero address is the canonical wire identifier for native
+ETH and is never treated as an ERC-20 address.
+
+Native atomic amounts use a signed relay ETH/USD reference for quote and risk
+calculation. The desktop caches a valid reference for no more than three
+minutes and fails native routes closed if no currently valid signed quote is
+available. The hatch service's longer stale fallback is not accepted for FX.
+Stablecoin-only ERC-20 routes remain independent of ETH pricing.
 
 ## Recovery
 

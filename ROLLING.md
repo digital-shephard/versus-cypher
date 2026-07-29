@@ -511,6 +511,14 @@ A separate basic sanity test showed that these are not general question-answerin
 
 ### Desktop experience
 
+- [x] Add first-class native ETH to the disabled Agentic FX public-testnet
+  laboratory. Base Sepolia and Arbitrum Sepolia now use a separately reviewed
+  ownerless payable HTLC, source/destination adapter binding, native inventory
+  reservations, operating gas reserves, disarmed native withdrawals, and
+  fresh signed ETH/USD risk conversion. The frozen cohort deployment ID is
+  `0x2baf66b4211ecbc126916260c0a671e745e3184275744fb15bd5d5069b575fc3`;
+  this checkpoint authorizes neither mainnet nor production funds.
+
 - [x] Turn a confirmed class transition into one restart-safe graduation ritual: a layered ship arrives, an independently animated rig centers across all 29 Cypher silhouettes, the Cypher is lifted away, the completed ocean drains, and the new zero-agent class receives the returning raft. Same-class and day changes cannot trigger it.
 
 - [x] Implement the persistent unseen raft-thought queue described in the linked design draft.

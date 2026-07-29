@@ -1401,18 +1401,34 @@ function applyFxSnapshot(snapshot) {
       chain.enabled === true
       || BigInt(chain.dealerBalanceAtomic || chain.balanceAtomic || "0") > 0n
     )
-    .map((chain) => ({
+    .map((chain) => {
+      const nativePosition = (snapshot.positions || []).find(
+        (position) =>
+          position.chainId === chain.chainId &&
+          position.assetKind === "native"
+      );
+      return ({
       ...chain,
-      id: `${chain.chainKey}-native-gas`,
+      id: nativePosition?.id || `${chain.chainKey}-native-eth`,
       kind: "gas",
       asset: chain.nativeAsset,
       decimals: chain.nativeDecimals,
+      address: nativePosition?.address || chain.dealerAddress || chain.address,
       dealerBalanceAtomic:
         chain.dealerBalanceAtomic || chain.balanceAtomic || "0",
-      inFlight: 0,
-    }));
+      availableAtomic: nativePosition?.availableAtomic || "0",
+      reservedAtomic: nativePosition?.reservedAtomic || "0",
+      availableMicros: Number(nativePosition?.availableUsdMicros || 0),
+      reservedMicros: Number(nativePosition?.reservedUsdMicros || 0),
+      inFlight: Number(nativePosition?.activeLocks || 0),
+    });
+    });
   const tokenInventory = (snapshot.positions || [])
-    .filter((position) => position.enabled)
+    .filter(
+      (position) =>
+        position.enabled &&
+        position.assetKind !== "native"
+    )
     .map((position) => ({
       ...position,
       kind: "token",
@@ -1543,7 +1559,7 @@ function setFxOpenBay(id) {
 }
 
 function fxGasBayNode(bay) {
-  const dealerAtomic = BigInt(bay.dealerBalanceAtomic || "0");
+  const dealerAtomic = BigInt(bay.availableAtomic || "0");
   const open = fxOpenBay === bay.id;
 
   const card = fxNode("article", open ? "fx-bay fx-gas-bay is-open" : "fx-bay fx-gas-bay");
@@ -1581,14 +1597,18 @@ function fxGasBayNode(bay) {
   rail.append(railFill);
 
   const body = fxNode("div", "fx-bay-body");
-  const actions = fxNode("div", "fx-bay-acts fx-bay-acts-single");
+  const actions = fxNode("div", "fx-bay-acts");
   const fund = fxNode("button", "fx-act fx-act-fill", "ADD ETH");
   fund.type = "button";
   fund.disabled = !(bay.dealerAddress || bay.address);
   fund.addEventListener("click", () =>
     openFxChainDepositSheet(bay.chainId, "dealer")
   );
-  actions.append(fund);
+  const withdraw = fxNode("button", "fx-act", "WITHDRAW");
+  withdraw.type = "button";
+  withdraw.disabled = dealerAtomic <= 0n;
+  withdraw.addEventListener("click", () => openFxWithdrawSheet(bay.id));
+  actions.append(fund, withdraw);
   body.append(actions);
 
   const clip = fxNode("div");
@@ -1682,9 +1702,9 @@ function renderFxStock() {
   const list = $("fx-bays");
   if (!list) return;
 
-  const tokenInventory = fxInventory.filter((bay) => bay.kind !== "gas");
-  const available = tokenInventory.reduce((sum, bay) => sum + bay.availableMicros, 0);
-  const reserved = tokenInventory.reduce((sum, bay) => sum + bay.reservedMicros, 0);
+  const positions = fxInventory;
+  const available = positions.reduce((sum, bay) => sum + bay.availableMicros, 0);
+  const reserved = positions.reduce((sum, bay) => sum + bay.reservedMicros, 0);
   const fundedGasChains = fxChains.reduce(
     (sum, chain) =>
       sum
@@ -1696,7 +1716,7 @@ function renderFxStock() {
   $("fx-stock-total").textContent = formatUsdcDollars(available + reserved);
   $("fx-stock-reserved").textContent = formatUsdcDollars(reserved);
   $("fx-stock-foot").textContent =
-    `${fundedGasChains}/${fxChains.length} CHAINS FUNDED ${MIDDOT} ${tokenInventory.length} TOKEN BAYS`;
+    `${fundedGasChains}/${fxChains.length} CHAINS FUNDED ${MIDDOT} ${positions.length} ASSET BAYS`;
 
   for (const button of document.querySelectorAll("[data-fx-stock-filter]")) {
     button.setAttribute("aria-pressed", button.dataset.fxStockFilter === fxStockFilter ? "true" : "false");
@@ -1944,7 +1964,7 @@ function fxChainOptionNode(chain) {
     fxNode(
       "small",
       null,
-      `${fxAssetAmount(depositedAtomic, chain.nativeDecimals, chain.nativeAsset)} ${MIDDOT} USDC ${tokenEnabled ? "ON" : "OFF"}`,
+      `${fxAssetAmount(depositedAtomic, chain.nativeDecimals, chain.nativeAsset)} ${MIDDOT} TOKENS ${tokenEnabled ? "ON" : "OFF"}`,
     ),
   );
   const groupMeta = fxNode("span", "fx-chain-group-meta");

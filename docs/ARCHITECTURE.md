@@ -184,11 +184,13 @@ the separate reservation countdown. Before any source lock, the requester may
 publish a signed cancellation bound to both the acceptance and reservation;
 all journals then terminate the trade and the dealer releases it. Merely
 closing the screen does not cancel. An external wallet then sends the
-displayed source asset to a domain-separated local requester address; only a
-confirmed post-baseline token transfer received during that reservation can
-start settlement. The signed acceptance binds the arbitrary destination into
-both Waku coordination and the destination HTLC. Refunds return to the local
-requester address, never to an inferred external sender.
+displayed source asset to a domain-separated local requester address. An
+ERC-20 route requires a confirmed post-baseline token transfer; a native route
+requires a confirmed post-baseline ETH balance increase. Only funding received
+during that reservation can start settlement. The signed acceptance binds the
+arbitrary destination into both Waku coordination and the destination HTLC.
+Refunds return to the local requester address, never to an inferred external
+sender.
 
 Dealer keys, requester keys, and broker keys are separately derived from the
 backed-up Cypher wallet. Dealer inventory therefore cannot be satisfied by
@@ -200,15 +202,27 @@ encrypted secret before acceptance, never rebroadcasts uncertain actions, and
 scans HTLC events only from the frozen adapter deployment blocks.
 
 Each FX chain is enabled through its native coin before any token on that
-chain. The desktop independently checks both the dealer and requester role
-wallets against a local minimum-gas policy, supports an optional private local
-RPC override, and refreshes visible inventory through bounded single-flight
-reads. Dealing must be disarmed before a confirmed dealer-wallet withdrawal.
+chain. Native ETH is itself quoteable inventory through the separate frozen
+`evm-native-htlc-v1` capability; it is not routed through or represented by the
+ERC-20 adapter. Source and destination adapter IDs are signed independently on
+every route. A fresh signed relay ETH/USD reference converts native atomic
+amounts into risk values, and native quoting fails closed when that reference
+expires. The desktop subtracts active reservations, an operating gas reserve,
+and the estimated transaction fee before advertising native inventory.
+
+The desktop independently checks both the dealer and requester role wallets
+against a local minimum-gas policy, supports an optional private local RPC
+override, and refreshes visible inventory through bounded single-flight reads.
+Dealing must be disarmed before a confirmed dealer-wallet withdrawal.
 History exposes explicit reconciliation for interrupted trades; restart only
 resumes an owner-armed dealer when the same gas, inventory, and policy gates
 still pass. Scrubbed evidence retains public route, state, timing,
 confirmation, and transaction hashes while excluding role addresses, secrets,
 custom RPC URLs, and private inventory.
+
+The disabled public-testnet cohort is frozen by deployment ID
+`0x2baf66b4211ecbc126916260c0a671e745e3184275744fb15bd5d5069b575fc3`,
+which binds both adapter families on Base Sepolia and Arbitrum Sepolia.
 
 ## Safety
 

@@ -8,7 +8,7 @@ const {
   keccak256,
   zeroPadValue,
 } = require("ethers");
-const { phase5LockId } = require("@versus/network");
+const { FX_NATIVE_ETH_ADDRESS, phase5LockId } = require("@versus/network");
 
 const FX_HTLC_ABI = Object.freeze([
   "function fund(bytes32 lockId,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint256 amount)",
@@ -27,6 +27,15 @@ const FX_TOKEN_ABI = Object.freeze([
   "function transfer(address recipient,uint256 amount) returns (bool)",
   "event Transfer(address indexed from,address indexed to,uint256 value)",
 ]);
+const FX_NATIVE_HTLC_ABI = Object.freeze([
+  "function fund(bytes32 lockId,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp) payable",
+  "function claim(bytes32 lockId,bytes32 secret)",
+  "function refund(bytes32 lockId)",
+  "function getLock(bytes32 lockId) view returns (tuple(address funder,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint8 state,uint256 amount))",
+  "event LockFunded(bytes32 indexed lockId,address indexed funder,address indexed beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint256 amount)",
+  "event LockClaimed(bytes32 indexed lockId,address indexed submitter,address indexed beneficiary,bytes32 secret,uint256 amount)",
+  "event LockRefunded(bytes32 indexed lockId,address indexed submitter,address indexed refundAddress,uint256 amount)",
+]);
 
 const FX_TESTNET_CHAINS = Object.freeze({
   "84532": Object.freeze({
@@ -38,6 +47,9 @@ const FX_TESTNET_CHAINS = Object.freeze({
     tokenAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
     adapterAddress: "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
     adapterDeploymentBlock: 44662322,
+    nativeAdapterAddress: "0x7c917f09e1de03977acc14575b56932aa55da543",
+    nativeAdapterDeploymentBlock: 44762481,
+    nativeGasReserveWei: "100000000000000",
     requiredConfirmations: 2,
   }),
   "421614": Object.freeze({
@@ -49,12 +61,16 @@ const FX_TESTNET_CHAINS = Object.freeze({
     tokenAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
     adapterAddress: "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
     adapterDeploymentBlock: 291630348,
+    nativeAdapterAddress: "0x7c917f09e1de03977acc14575b56932aa55da543",
+    nativeAdapterDeploymentBlock: 292433456,
+    nativeGasReserveWei: "100000000000000",
     requiredConfirmations: 2,
   }),
 });
 
 const TOKEN_INTERFACE = new Interface(FX_TOKEN_ABI);
 const HTLC_INTERFACE = new Interface(FX_HTLC_ABI);
+const NATIVE_HTLC_INTERFACE = new Interface(FX_NATIVE_HTLC_ABI);
 const TRANSFER_TOPIC = id("Transfer(address,address,uint256)");
 
 class FxEvmCohortError extends Error {
@@ -88,6 +104,44 @@ function chainConfiguration(chainId, configurations = FX_TESTNET_CHAINS) {
     throw new FxEvmCohortError(`chain ${key} is unsupported`, "UNSUPPORTED_CHAIN");
   }
   return configuration;
+}
+
+function isNativeAsset(value) {
+  return String(value || "").toLowerCase() === FX_NATIVE_ETH_ADDRESS;
+}
+
+function assetConfiguration(configuration, token) {
+  if (isNativeAsset(token)) {
+    if (!configuration.nativeAdapterAddress) {
+      throw new FxEvmCohortError(
+        "native ETH adapter is not frozen for this chain",
+        "UNSUPPORTED_ASSET"
+      );
+    }
+    return {
+      token: FX_NATIVE_ETH_ADDRESS,
+      adapterAddress: configuration.nativeAdapterAddress,
+      adapterDeploymentBlock: configuration.nativeAdapterDeploymentBlock,
+      abi: FX_NATIVE_HTLC_ABI,
+      interface: NATIVE_HTLC_INTERFACE,
+      native: true,
+    };
+  }
+  const normalized = normalizedAddress(token, "asset token");
+  if (normalized !== configuration.tokenAddress) {
+    throw new FxEvmCohortError(
+      "asset does not match a frozen cohort capability",
+      "UNSUPPORTED_ASSET"
+    );
+  }
+  return {
+    token: normalized,
+    adapterAddress: configuration.adapterAddress,
+    adapterDeploymentBlock: configuration.adapterDeploymentBlock,
+    abi: FX_HTLC_ABI,
+    interface: HTLC_INTERFACE,
+    native: false,
+  };
 }
 
 function lockStateName(value) {
@@ -133,6 +187,10 @@ class FxEvmCohort {
 
   configuration(chainId) {
     return chainConfiguration(chainId, this.configurations);
+  }
+
+  adapterAddress(chainId, token) {
+    return assetConfiguration(this.configuration(chainId), token).adapterAddress;
   }
 
   provider(chainId) {
@@ -183,13 +241,25 @@ class FxEvmCohort {
             "WRONG_CHAIN"
           );
         }
-        const [tokenCode, adapterCode] = await Promise.all([
+        const [tokenCode, adapterCode, nativeAdapterCode] = await Promise.all([
           provider.getCode(configuration.tokenAddress),
           provider.getCode(configuration.adapterAddress),
+          configuration.nativeAdapterAddress
+            ? provider.getCode(configuration.nativeAdapterAddress)
+            : Promise.resolve("0x"),
         ]);
         if (tokenCode === "0x" || adapterCode === "0x") {
           throw new FxEvmCohortError(
             `${configuration.name} cohort contracts are unavailable`,
+            "COHORT_CONTRACT_UNAVAILABLE"
+          );
+        }
+        if (
+          configuration.nativeAdapterAddress &&
+          nativeAdapterCode === "0x"
+        ) {
+          throw new FxEvmCohortError(
+            `${configuration.name} native adapter is unavailable`,
             "COHORT_CONTRACT_UNAVAILABLE"
           );
         }
@@ -210,23 +280,19 @@ class FxEvmCohort {
     requiredAtomic,
   }) {
     const configuration = await this.preflight(chainId);
-    const normalizedToken = normalizedAddress(token, "funding token");
-    if (normalizedToken !== configuration.tokenAddress) {
-      throw new FxEvmCohortError(
-        "funding token does not match the frozen cohort asset",
-        "UNSUPPORTED_ASSET"
-      );
-    }
+    const asset = assetConfiguration(configuration, token);
     const recipient = normalizedAddress(address, "funding address");
     const provider = this.provider(chainId);
-    const contract = this.contractFactory(normalizedToken, FX_TOKEN_ABI, provider);
+    const contract = asset.native
+      ? null
+      : this.contractFactory(asset.token, FX_TOKEN_ABI, provider);
     const [blockNumber, balance] = await Promise.all([
       provider.getBlockNumber(),
-      contract.balanceOf(recipient),
+      asset.native ? provider.getBalance(recipient) : contract.balanceOf(recipient),
     ]);
     return {
       chainId: configuration.chainId,
-      token: normalizedToken,
+      token: asset.token,
       address: recipient,
       requiredAtomic: BigInt(requiredAtomic).toString(),
       baselineBlockNumber: Number(blockNumber),
@@ -237,19 +303,16 @@ class FxEvmCohort {
 
   async tokenBalance(chainId, token, owner = null) {
     const configuration = await this.preflight(chainId);
-    const normalizedToken = normalizedAddress(token, "inventory token");
-    if (normalizedToken !== configuration.tokenAddress) {
-      throw new FxEvmCohortError(
-        "inventory token does not match the frozen cohort asset",
-        "UNSUPPORTED_ASSET"
-      );
-    }
+    const asset = assetConfiguration(configuration, token);
     const address = normalizedAddress(
       owner || this.walletProvider("dealer")?.address,
       "inventory owner"
     );
+    if (asset.native) {
+      return BigInt(await this.provider(chainId).getBalance(address)).toString();
+    }
     const contract = this.contractFactory(
-      normalizedToken,
+      asset.token,
       FX_TOKEN_ABI,
       this.provider(chainId)
     );
@@ -279,13 +342,7 @@ class FxEvmCohort {
     role = "dealer",
   }) {
     const configuration = await this.preflight(chainId);
-    const normalizedToken = normalizedAddress(token, "inventory token");
-    if (normalizedToken !== configuration.tokenAddress) {
-      throw new FxEvmCohortError(
-        "inventory token does not match the frozen cohort asset",
-        "UNSUPPORTED_ASSET"
-      );
-    }
+    const asset = assetConfiguration(configuration, token);
     const recipient = normalizedAddress(destination, "withdrawal destination");
     const amount = BigInt(amountAtomic);
     if (amount <= 0n) {
@@ -296,8 +353,45 @@ class FxEvmCohort {
     }
     const signer = this.wallet(chainId, role);
     const owner = normalizedAddress(await signer.getAddress(), "FX wallet");
+    if (asset.native) {
+      const feeData = await this.provider(chainId).getFeeData();
+      const transfer = { to: recipient, value: amount };
+      const estimatedGas =
+        typeof signer.estimateGas === "function"
+          ? BigInt(await signer.estimateGas(transfer))
+          : 21_000n;
+      const gasLimit = (estimatedGas * 120n + 99n) / 100n;
+      const maxFeePerGas = BigInt(
+        feeData.maxFeePerGas || feeData.gasPrice || 0
+      );
+      const gasReserve = BigInt(configuration.nativeGasReserveWei || 0);
+      const balance = BigInt(await this.provider(chainId).getBalance(owner));
+      const transactionFeeReserve = gasLimit * maxFeePerGas;
+      if (balance < amount + gasReserve + transactionFeeReserve) {
+        throw new FxEvmCohortError(
+          "native inventory withdrawal would consume the operating gas reserve",
+          "GAS_RESERVE_REQUIRED"
+        );
+      }
+      const transaction = await signer.sendTransaction({
+        ...transfer,
+        gasLimit,
+      });
+      const receipt = await this.#confirmedReceipt(
+        configuration.chainId,
+        transaction.hash
+      );
+      return {
+        chainId: configuration.chainId,
+        token: asset.token,
+        destination: recipient,
+        amountAtomic: amount.toString(),
+        transactionHash: receipt.transactionHash,
+        receipt,
+      };
+    }
     const contract = this.contractFactory(
-      normalizedToken,
+      asset.token,
       FX_TOKEN_ABI,
       signer
     );
@@ -315,7 +409,7 @@ class FxEvmCohort {
     );
     return {
       chainId: configuration.chainId,
-      token: normalizedToken,
+      token: asset.token,
       destination: recipient,
       amountAtomic: amount.toString(),
       transactionHash: receipt.transactionHash,
@@ -332,14 +426,37 @@ class FxEvmCohort {
     }
     const configuration = await this.preflight(baseline.chainId);
     const provider = this.provider(configuration.chainId);
-    const token = normalizedAddress(baseline.token, "funding token");
+    const asset = assetConfiguration(configuration, baseline.token);
+    const token = asset.token;
     const recipient = normalizedAddress(baseline.address, "funding address");
-    const contract = this.contractFactory(token, FX_TOKEN_ABI, provider);
+    const contract = asset.native
+      ? null
+      : this.contractFactory(token, FX_TOKEN_ABI, provider);
     const latestBlock = await provider.getBlockNumber();
-    const balance = BigInt(await contract.balanceOf(recipient));
+    const balance = BigInt(
+      asset.native
+        ? await provider.getBalance(recipient)
+        : await contract.balanceOf(recipient)
+    );
     const baselineBalance = BigInt(baseline.baselineBalanceAtomic);
     const balanceIncrease = balance > baselineBalance ? balance - baselineBalance : 0n;
     const required = BigInt(requiredAtomic || baseline.requiredAtomic);
+    if (asset.native) {
+      const confirmations = Math.max(
+        0,
+        latestBlock - Number(baseline.baselineBlockNumber)
+      );
+      return {
+        confirmed:
+          balanceIncrease >= required &&
+          confirmations >= configuration.requiredConfirmations,
+        amountAtomic: balanceIncrease.toString(),
+        inboundAtomic: balanceIncrease.toString(),
+        confirmations,
+        transactionHash: null,
+        blockNumber: confirmations > 0 ? Number(baseline.baselineBlockNumber) + 1 : null,
+      };
+    }
     const logs = latestBlock <= Number(baseline.baselineBlockNumber)
       ? []
       : await provider.getLogs({
@@ -381,19 +498,23 @@ class FxEvmCohort {
     };
   }
 
-  async readLock(chainId, lockId) {
+  async readLock(chainId, lockId, token = null) {
     const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const provider = this.provider(configuration.chainId);
     const adapter = this.contractFactory(
-      configuration.adapterAddress,
-      FX_HTLC_ABI,
+      asset.adapterAddress,
+      asset.abi,
       provider
     );
     const lock = await adapter.getLock(lockId);
     return {
       chainId: configuration.chainId,
-      token: configuration.tokenAddress,
-      adapterAddress: configuration.adapterAddress,
+      token: asset.token,
+      adapterAddress: asset.adapterAddress,
       lockId: String(lockId).toLowerCase(),
       funder: normalizedAddress(lock.funder, "lock funder"),
       beneficiary: normalizedAddress(lock.beneficiary, "lock beneficiary"),
@@ -433,10 +554,15 @@ class FxEvmCohort {
     secretHash,
     refundTimestamp,
     role = "requester",
+    token = null,
   }) {
     const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const lockId = phase5LockId(tradeId, side);
-    const existing = await this.readLock(chainId, lockId);
+    const existing = await this.readLock(chainId, lockId, asset.token);
     if (existing.state !== 0) {
       if (
         existing.state === 1 &&
@@ -454,7 +580,45 @@ class FxEvmCohort {
       );
     }
     const signer = this.wallet(chainId, role);
-    const token = this.contractFactory(
+    const amount = BigInt(amountAtomic);
+    if (asset.native) {
+      const owner = normalizedAddress(await signer.getAddress(), "FX wallet");
+      const adapter = this.contractFactory(
+        asset.adapterAddress,
+        asset.abi,
+        signer
+      );
+      const fundArguments = [
+        lockId,
+        normalizedAddress(beneficiary, "beneficiary"),
+        normalizedAddress(refundAddress, "refund address"),
+        String(secretHash).toLowerCase(),
+        Number(refundTimestamp),
+        { value: amount },
+      ];
+      const feeData = await this.provider(chainId).getFeeData();
+      const maxFeePerGas = BigInt(feeData.maxFeePerGas || feeData.gasPrice || 0);
+      const estimatedGas =
+        typeof adapter.fund.estimateGas === "function"
+          ? BigInt(await adapter.fund.estimateGas(...fundArguments))
+          : 180_000n;
+      const gasReserve = BigInt(configuration.nativeGasReserveWei || 0);
+      const balance = BigInt(await this.provider(chainId).getBalance(owner));
+      if (balance < amount + gasReserve + estimatedGas * maxFeePerGas) {
+        throw new FxEvmCohortError(
+          "native lock would consume the operating gas reserve",
+          "GAS_RESERVE_REQUIRED"
+        );
+      }
+      const transaction = await adapter.fund(...fundArguments);
+      const receipt = await this.#confirmedReceipt(chainId, transaction.hash);
+      return {
+        lock: await this.readLock(chainId, lockId, asset.token),
+        receipt,
+        recovered: false,
+      };
+    }
+    const tokenContract = this.contractFactory(
       configuration.tokenAddress,
       FX_TOKEN_ABI,
       signer
@@ -465,10 +629,14 @@ class FxEvmCohort {
       signer
     );
     const owner = normalizedAddress(await signer.getAddress(), "FX wallet");
-    const amount = BigInt(amountAtomic);
-    const allowance = BigInt(await token.allowance(owner, configuration.adapterAddress));
+    const allowance = BigInt(
+      await tokenContract.allowance(owner, configuration.adapterAddress)
+    );
     if (allowance < amount) {
-      const approval = await token.approve(configuration.adapterAddress, amount);
+      const approval = await tokenContract.approve(
+        configuration.adapterAddress,
+        amount
+      );
       await this.#confirmedReceipt(chainId, approval.hash);
     }
     const transaction = await adapter.fund(
@@ -481,7 +649,7 @@ class FxEvmCohort {
     );
     const receipt = await this.#confirmedReceipt(chainId, transaction.hash);
     return {
-      lock: await this.readLock(chainId, lockId),
+      lock: await this.readLock(chainId, lockId, asset.token),
       receipt,
       recovered: false,
     };
@@ -493,9 +661,15 @@ class FxEvmCohort {
     side,
     secret,
     role = "requester",
+    token = null,
   }) {
+    const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const lockId = phase5LockId(tradeId, side);
-    const existing = await this.readLock(chainId, lockId);
+    const existing = await this.readLock(chainId, lockId, asset.token);
     if (existing.state === 2) {
       return { lock: existing, receipt: null, recovered: true };
     }
@@ -506,14 +680,14 @@ class FxEvmCohort {
       );
     }
     const adapter = this.contractFactory(
-      this.configuration(chainId).adapterAddress,
-      FX_HTLC_ABI,
+      asset.adapterAddress,
+      asset.abi,
       this.wallet(chainId, role)
     );
     const transaction = await adapter.claim(lockId, secret);
     const receipt = await this.#confirmedReceipt(chainId, transaction.hash);
     return {
-      lock: await this.readLock(chainId, lockId),
+      lock: await this.readLock(chainId, lockId, asset.token),
       receipt,
       recovered: false,
     };
@@ -524,9 +698,15 @@ class FxEvmCohort {
     tradeId,
     side,
     role = "requester",
+    token = null,
   }) {
+    const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const lockId = phase5LockId(tradeId, side);
-    const existing = await this.readLock(chainId, lockId);
+    const existing = await this.readLock(chainId, lockId, asset.token);
     if (existing.state === 3) {
       return { lock: existing, receipt: null, recovered: true };
     }
@@ -537,14 +717,14 @@ class FxEvmCohort {
       );
     }
     const adapter = this.contractFactory(
-      this.configuration(chainId).adapterAddress,
-      FX_HTLC_ABI,
+      asset.adapterAddress,
+      asset.abi,
       this.wallet(chainId, role)
     );
     const transaction = await adapter.refund(lockId);
     const receipt = await this.#confirmedReceipt(chainId, transaction.hash);
     return {
-      lock: await this.readLock(chainId, lockId),
+      lock: await this.readLock(chainId, lockId, asset.token),
       receipt,
       recovered: false,
     };
@@ -554,8 +734,13 @@ class FxEvmCohort {
     chainId,
     lockId,
     transactionHash: expectedTransactionHash,
+    token = null,
   }) {
     const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const provider = this.provider(chainId);
     const receipt = await provider.getTransactionReceipt(
       transactionHash(expectedTransactionHash)
@@ -566,7 +751,7 @@ class FxEvmCohort {
     const latest = await provider.getBlockNumber();
     const confirmations = latest - Number(receipt.blockNumber) + 1;
     const block = await provider.getBlock(receipt.blockNumber);
-    const lock = await this.readLock(chainId, lockId);
+    const lock = await this.readLock(chainId, lockId, asset.token);
     return {
       confirmed: confirmations >= configuration.requiredConfirmations,
       canonical: true,
@@ -579,7 +764,18 @@ class FxEvmCohort {
     };
   }
 
-  async extractClaimSecret({ chainId, tradeId, side, transactionHash: hash }) {
+  async extractClaimSecret({
+    chainId,
+    tradeId,
+    side,
+    transactionHash: hash,
+    token = null,
+  }) {
+    const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const provider = this.provider(chainId);
     const receipt = await provider.getTransactionReceipt(transactionHash(hash));
     if (!receipt || Number(receipt.status) !== 1) {
@@ -589,18 +785,18 @@ class FxEvmCohort {
     for (const log of receipt.logs) {
       if (
         normalizedAddress(log.address, "claim log address") !==
-        this.configuration(chainId).adapterAddress
+        asset.adapterAddress
       ) {
         continue;
       }
       try {
-        const parsed = HTLC_INTERFACE.parseLog(log);
+        const parsed = asset.interface.parseLog(log);
         if (
           parsed?.name === "LockClaimed" &&
           String(parsed.args.lockId).toLowerCase() === lockId
         ) {
           const secret = String(parsed.args.secret).toLowerCase();
-          const lock = await this.readLock(chainId, lockId);
+          const lock = await this.readLock(chainId, lockId, asset.token);
           if (keccak256(secret) !== lock.secretHash) {
             throw new FxEvmCohortError("claim secret hash is wrong", "WRONG_SECRET");
           }
@@ -618,21 +814,26 @@ class FxEvmCohort {
     tradeId,
     side,
     eventName,
+    token = null,
   }) {
     const configuration = await this.preflight(chainId);
+    const asset = assetConfiguration(
+      configuration,
+      token || configuration.tokenAddress
+    );
     const provider = this.provider(chainId);
     const lockId = phase5LockId(tradeId, side);
-    const event = HTLC_INTERFACE.getEvent(eventName);
+    const event = asset.interface.getEvent(eventName);
     if (!event) {
       throw new FxEvmCohortError("HTLC event is unsupported", "UNSUPPORTED_EVENT");
     }
     const logs = await provider.getLogs({
-      address: configuration.adapterAddress,
+      address: asset.adapterAddress,
       topics: [
         event.topicHash,
         lockId,
       ],
-      fromBlock: configuration.adapterDeploymentBlock,
+      fromBlock: asset.adapterDeploymentBlock,
       toBlock: "latest",
     });
     const log = logs.at(-1);
@@ -653,11 +854,13 @@ class FxEvmCohort {
 
 module.exports = {
   FX_HTLC_ABI,
+  FX_NATIVE_HTLC_ABI,
   FX_TESTNET_CHAINS,
   FX_TOKEN_ABI,
   FxEvmCohort,
   FxEvmCohortError,
   chainConfiguration,
   lockStateName,
+  isNativeAsset,
   serializableReceipt,
 };
