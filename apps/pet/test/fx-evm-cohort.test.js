@@ -199,6 +199,59 @@ test("native ETH funding is verified from a post-baseline balance increase", asy
   assert.equal(observation.confirmations, 2);
 });
 
+test("native ETH funding plans enough inbound value for the lock, gas, and refund reserve", async () => {
+  let blockNumber = 100;
+  let balance = 0n;
+  const nativeAdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const configuration = {
+    ...FX_TESTNET_CHAINS["84532"],
+    nativeAdapterAddress,
+    nativeAdapterDeploymentBlock: 90,
+    nativeGasReserveWei: "1000",
+  };
+  const provider = {
+    async getNetwork() {
+      return { chainId: 84532n };
+    },
+    async getCode() {
+      return "0x01";
+    },
+    async getBlockNumber() {
+      return blockNumber;
+    },
+    async getBalance() {
+      return balance;
+    },
+    async getFeeData() {
+      return { maxFeePerGas: 10n };
+    },
+  };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": configuration },
+    providerFactory: () => provider,
+  });
+  const baseline = await cohort.captureFunding({
+    chainId: "84532",
+    token: FX_NATIVE_ETH_ADDRESS,
+    address: RECIPIENT,
+    requiredAtomic: "1000000",
+  });
+
+  assert.equal(baseline.sourceGasBufferAtomic, "3126000");
+  assert.equal(baseline.minimumWalletBalanceAtomic, "4126000");
+  assert.equal(baseline.requiredFundingAtomic, "4126000");
+
+  balance = 4_126_000n;
+  blockNumber += 2;
+  const observation = await cohort.verifyFunding({ baseline });
+  assert.equal(observation.confirmed, true);
+  assert.equal(observation.amountAtomic, "4126000");
+});
+
 test("native ETH locks use exact payable value and retain the gas reserve", async () => {
   const nativeAdapterAddress = Wallet.createRandom().address.toLowerCase();
   const configuration = {

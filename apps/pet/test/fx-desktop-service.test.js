@@ -425,6 +425,59 @@ test("an uncertain settlement cannot be executed twice", async () => {
   assert.equal(executions, 1);
 });
 
+test("a missing native gas reserve returns the requester to a precise top-up", async () => {
+  let fundingPlans = 0;
+  const { service, confirmSource } = fixture({
+    async sourceFundingPlanner({ prepared }) {
+      fundingPlans += 1;
+      return {
+        chainId: prepared.inputChainId,
+        token: prepared.inputToken,
+        address: prepared.sourceFundingAddress,
+        requiredAtomic: prepared.inputAmountAtomic,
+        requiredFundingAtomic:
+          fundingPlans === 1 ? prepared.inputAmountAtomic : "1234",
+        sourceGasBufferAtomic: "1234",
+        minimumWalletBalanceAtomic: (
+          BigInt(prepared.inputAmountAtomic) + 1234n
+        ).toString(),
+        baselineBlockNumber: 100 + fundingPlans,
+        baselineBalanceAtomic:
+          fundingPlans === 1 ? "0" : prepared.inputAmountAtomic,
+      };
+    },
+    async settlementExecutor() {
+      const error = new Error(
+        "native lock would consume the operating gas reserve"
+      );
+      error.code = "GAS_RESERVE_REQUIRED";
+      throw error;
+    },
+  });
+  service.setEnabled(true);
+  const quoted = await service.requestQuote({
+    sourcePositionId: "base-sepolia-usdc",
+    destinationPositionId: "arbitrum-sepolia-usdc",
+    outputAmount: "1",
+    destinationAddress: Wallet.createRandom().address,
+  });
+  const accepted = await service.acceptQuote(quoted.tradeId);
+  assert.equal(accepted.funding.amountAtomic, accepted.route.totalInputAtomic);
+
+  confirmSource();
+  await assert.rejects(
+    service.checkFunding(quoted.tradeId),
+    (error) => error.code === "GAS_RESERVE_REQUIRED"
+  );
+  const retry = service.trade(quoted.tradeId);
+  assert.equal(retry.state, "awaiting_source_funds");
+  assert.equal(retry.funding.amountAtomic, "1234");
+  assert.equal(retry.funding.sourceGasBufferAtomic, "1234");
+  assert.equal(retry.lastFailure.code, "GAS_RESERVE_REQUIRED");
+  assert.match(retry.lastFailure.message, /displayed source gas buffer/);
+  assert.equal(fundingPlans, 2);
+});
+
 test("requester quote discovery never arms local dealing", async () => {
   const { service } = fixture();
   assert.equal(service.snapshot().policy.armed, false);

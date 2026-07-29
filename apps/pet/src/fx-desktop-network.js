@@ -1320,6 +1320,22 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         lockId: sourceId,
       },
     };
+    if (
+      source.state === 0 &&
+      destination.state === 0 &&
+      Number(prepared.reservation?.payload?.reservationDeadline || 0) <=
+        this.now()
+    ) {
+      return {
+        state: "failed",
+        lastFailure: {
+          code: "FUNDING_WINDOW_EXPIRED",
+          message:
+            "The dealer reservation expired before a source lock was broadcast. Received source funds remain in the local FX wallet for the next quote",
+          at: new Date(this.now() * 1000).toISOString(),
+        },
+      };
+    }
     return { state: "source_lock_pending" };
   }
 

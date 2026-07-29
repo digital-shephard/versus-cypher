@@ -175,16 +175,20 @@ function publicTrade(trade) {
   return {
     ...safe,
     route: trade.route || (quote ? publicRoute(quote) : null),
-    funding: prepared
-      ? {
+    funding: trade.funding || (
+      prepared
+        ? {
           address: prepared.sourceFundingAddress,
           addressShort: shortAddress(prepared.sourceFundingAddress),
           chainId: prepared.inputChainId,
           token: prepared.inputToken,
           amountAtomic: prepared.inputAmountAtomic,
+          lockAmountAtomic: prepared.inputAmountAtomic,
+          sourceGasBufferAtomic: "0",
           expiresAt: prepared.reservation?.payload?.reservationDeadline || null,
         }
-      : trade.funding || null,
+        : null
+    ),
     endpointPaymentAuthorized: false,
     endpointPaymentSubmitted: false,
   };
@@ -967,7 +971,12 @@ class FxDesktopService extends EventEmitter {
         addressShort: shortAddress(reservedPrepared.sourceFundingAddress),
         chainId: reservedPrepared.inputChainId,
         token: reservedPrepared.inputToken,
-        amountAtomic: reservedPrepared.inputAmountAtomic,
+        amountAtomic:
+          fundingBaseline.requiredFundingAtomic ||
+          reservedPrepared.inputAmountAtomic,
+        lockAmountAtomic: reservedPrepared.inputAmountAtomic,
+        sourceGasBufferAtomic:
+          fundingBaseline.sourceGasBufferAtomic || "0",
         expiresAt: reservation.payload.reservationDeadline,
       },
       timeline: [
@@ -1049,6 +1058,10 @@ class FxDesktopService extends EventEmitter {
         prepared: stored.prepared,
         fundingBaseline: stored.fundingBaseline,
       });
+      const requiredFundingAtomic =
+        stored.funding?.amountAtomic ||
+        stored.fundingBaseline?.requiredFundingAtomic ||
+        stored.prepared.inputAmountAtomic;
       if (this.store.trade(tradeId)?.state !== "awaiting_source_funds") {
         throw new FxDesktopError(
           "The swap changed while funding was being checked",
@@ -1058,11 +1071,11 @@ class FxDesktopService extends EventEmitter {
       if (
         observation?.confirmed !== true ||
         BigInt(observation.amountAtomic || 0) <
-          BigInt(stored.prepared.inputAmountAtomic)
+          BigInt(requiredFundingAtomic)
       ) {
         return {
           detected: false,
-          requiredAtomic: stored.prepared.inputAmountAtomic,
+          requiredAtomic: requiredFundingAtomic,
           observedAtomic: String(observation?.amountAtomic || "0"),
         };
       }
@@ -1091,12 +1104,37 @@ class FxDesktopService extends EventEmitter {
           recoveryPassword: password,
         });
       } catch (error) {
+        const current = this.store.trade(tradeId);
+        let retryFunding = null;
+        if (
+          error?.code === "GAS_RESERVE_REQUIRED" &&
+          typeof this.sourceFundingPlanner === "function"
+        ) {
+          retryFunding = await this.sourceFundingPlanner({
+            trade: publicTrade(current),
+            prepared: current.prepared,
+          });
+        }
         this.store.putTrade({
-          ...this.store.trade(tradeId),
-          state: "source_lock_pending",
+          ...current,
+          state: retryFunding ? "awaiting_source_funds" : "source_lock_pending",
+          fundingBaseline: retryFunding || current.fundingBaseline,
+          funding: retryFunding
+            ? {
+                ...current.funding,
+                amountAtomic:
+                  retryFunding.requiredFundingAtomic ||
+                  current.prepared.inputAmountAtomic,
+                lockAmountAtomic: current.prepared.inputAmountAtomic,
+                sourceGasBufferAtomic:
+                  retryFunding.sourceGasBufferAtomic || "0",
+              }
+            : current.funding,
           lastFailure: {
             code: error.code || "SETTLEMENT_UNCERTAIN",
-            message: error.message || "Settlement status is uncertain",
+            message: retryFunding
+              ? "Add the displayed source gas buffer, then try again"
+              : error.message || "Settlement status is uncertain",
             at: new Date().toISOString(),
           },
         });

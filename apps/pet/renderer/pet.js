@@ -2541,10 +2541,17 @@ function renderFxRequester() {
       : 0;
     const fundingExpired = fundingRemaining === 0;
     $("fx-funding-amount").textContent =
-      `${(Number(funding.amountAtomic) / (10 ** source.decimals)).toFixed(source.decimals)} ${source.asset}`;
+      fxAssetAmount(
+        BigInt(funding.amountAtomic || 0),
+        source.decimals,
+        source.asset,
+        source.decimals,
+      );
     $("fx-funding-address").textContent = funding.addressShort || fxShortAddress(funding.address);
-    $("fx-funding-note").textContent =
-      `${source.asset} on ${source.chain} only. Locks after confirmation.`;
+    const sourceGasBuffer = BigInt(funding.sourceGasBufferAtomic || 0);
+    $("fx-funding-note").textContent = sourceGasBuffer > 0n
+      ? `${source.asset} on ${source.chain} only. Includes a refundable local gas reserve.`
+      : `${source.asset} on ${source.chain} only. Locks after confirmation.`;
     const fundingWindow = $("fx-funding-expiry")?.closest(".fx-funding-window");
     fundingWindow?.classList.toggle("is-expired", fundingExpired);
     fundingWindow?.querySelector("span")?.replaceChildren(

@@ -102,6 +102,8 @@ const NATIVE_HTLC_INTERFACE = new Interface(FX_NATIVE_HTLC_ABI);
 const HTLC_V2_INTERFACE = new Interface(FX_HTLC_V2_ABI);
 const NATIVE_HTLC_V2_INTERFACE = new Interface(FX_NATIVE_HTLC_V2_ABI);
 const TRANSFER_TOPIC = id("Transfer(address,address,uint256)");
+const FX_NATIVE_FUNDING_GAS_UNITS = 250_000n;
+const FX_NATIVE_FUNDING_FEE_BUFFER_BPS = 12_500n;
 
 class FxEvmCohortError extends Error {
   constructor(message, code = "FX_EVM_COHORT_ERROR") {
@@ -358,17 +360,44 @@ class FxEvmCohort {
     const contract = asset.native
       ? null
       : this.contractFactory(asset.token, FX_TOKEN_ABI, provider);
-    const [blockNumber, balance] = await Promise.all([
+    const [blockNumber, balance, feeData] = await Promise.all([
       provider.getBlockNumber(),
       asset.native ? provider.getBalance(recipient) : contract.balanceOf(recipient),
+      asset.native && typeof provider.getFeeData === "function"
+        ? provider.getFeeData()
+        : Promise.resolve(null),
     ]);
+    const lockAmount = BigInt(requiredAtomic);
+    const currentBalance = BigInt(balance);
+    const maxFeePerGas = BigInt(
+      feeData?.maxFeePerGas || feeData?.gasPrice || 0
+    );
+    const bufferedFundingFee =
+      (
+        FX_NATIVE_FUNDING_GAS_UNITS *
+        maxFeePerGas *
+        FX_NATIVE_FUNDING_FEE_BUFFER_BPS +
+        9_999n
+      ) / 10_000n;
+    const sourceGasBuffer = asset.native
+      ? BigInt(configuration.nativeGasReserveWei || 0) + bufferedFundingFee
+      : 0n;
+    const minimumWalletBalance = lockAmount + sourceGasBuffer;
+    const requiredFunding = asset.native
+      ? minimumWalletBalance > currentBalance
+        ? minimumWalletBalance - currentBalance
+        : 0n
+      : lockAmount;
     return {
       chainId: configuration.chainId,
       token: asset.token,
       address: recipient,
-      requiredAtomic: BigInt(requiredAtomic).toString(),
+      requiredAtomic: lockAmount.toString(),
+      requiredFundingAtomic: requiredFunding.toString(),
+      sourceGasBufferAtomic: sourceGasBuffer.toString(),
+      minimumWalletBalanceAtomic: minimumWalletBalance.toString(),
       baselineBlockNumber: Number(blockNumber),
-      baselineBalanceAtomic: BigInt(balance).toString(),
+      baselineBalanceAtomic: currentBalance.toString(),
       capturedAt: new Date().toISOString(),
     };
   }
@@ -524,7 +553,14 @@ class FxEvmCohort {
     );
     const baselineBalance = BigInt(baseline.baselineBalanceAtomic);
     const balanceIncrease = balance > baselineBalance ? balance - baselineBalance : 0n;
-    const required = BigInt(requiredAtomic || baseline.requiredAtomic);
+    const required = BigInt(
+      requiredAtomic ??
+      baseline.requiredFundingAtomic ??
+      baseline.requiredAtomic
+    );
+    const minimumWalletBalance = baseline.minimumWalletBalanceAtomic == null
+      ? null
+      : BigInt(baseline.minimumWalletBalanceAtomic);
     if (asset.native) {
       const confirmations = Math.max(
         0,
@@ -533,6 +569,10 @@ class FxEvmCohort {
       return {
         confirmed:
           balanceIncrease >= required &&
+          (
+            minimumWalletBalance == null ||
+            balance >= minimumWalletBalance
+          ) &&
           confirmations >= configuration.requiredConfirmations,
         amountAtomic: balanceIncrease.toString(),
         inboundAtomic: balanceIncrease.toString(),

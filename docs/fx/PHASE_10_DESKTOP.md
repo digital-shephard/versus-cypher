@@ -14,17 +14,23 @@ disabled by default.
 5. Explicitly accept the quote.
 6. Receive a signed dealer reservation while the dealer commits the exact
    destination output plus a paid execution bounty.
-7. Wait for the app to independently confirm that destination lock and verify
-   that its bounty still covers current destination gas.
-8. Either cancel before source funding or send the exact source asset to the
-   displayed local requester address.
-9. Let the app confirm the post-baseline transfer, fund the source lock, and
-   independently verify the final recipient payout.
+7. Either cancel before source funding or send at least the displayed funding
+   target to the local requester address. For native assets this target
+   includes the signed source amount plus a conservative transaction allowance
+   and the local refund gas reserve.
+8. Let the app confirm the post-baseline transfer and fund the source lock
+   first. The dealer independently verifies that lock before funding the
+   destination.
+9. The dealer claims the source, the revealed secret executes the destination
+   claim, and the app independently verifies the final recipient payout.
 
 The destination may be any valid address selected by the requester. It is
 signed into the acceptance and bound into the destination HTLC. The external
 source wallet is not connected to Versus and is never inferred. If the source
 HTLC must be refunded, funds return to the displayed local requester wallet.
+Unused native funding allowance remains in that local wallet; it is not paid
+to the dealer. If gas changes before broadcast, the funding screen requests
+only the missing top-up instead of leaving the trade stuck in a pending state.
 
 The destination recipient never submits a transaction and does not need the
 destination chain's native gas token. The dealer owns the settlement secret.

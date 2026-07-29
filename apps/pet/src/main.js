@@ -232,7 +232,9 @@ const fxDesktopService = new FxDesktopService({
   sourceFundingVerifier: ({ prepared, fundingBaseline }) =>
     fxEvmCohort.verifyFunding({
       baseline: fundingBaseline,
-      requiredAtomic: prepared.inputAmountAtomic,
+      requiredAtomic:
+        fundingBaseline.requiredFundingAtomic ||
+        prepared.inputAmountAtomic,
     }),
   settlementExecutor: (input) => fxNetworkRuntime.executeRequester(input),
   destinationVerifier: ({ settlement }) => settlement.destinationObservation,
