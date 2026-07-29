@@ -103,6 +103,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     bootstrapPeers = FX_PUBLIC_WAKU_PEERS,
     now = () => Math.floor(Date.now() / 1000),
     brokerObservationWindowMs = 15_000,
+    brokerQuoteSettleWindowMs = 1_250,
     dealerObservationWindowMs = 15_000,
     sessionFactory,
     nativeUsdPriceProvider,
@@ -119,6 +120,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.bootstrapPeers = [...bootstrapPeers];
     this.now = now;
     this.brokerObservationWindowMs = Number(brokerObservationWindowMs);
+    this.brokerQuoteSettleWindowMs = Number(brokerQuoteSettleWindowMs);
     this.dealerObservationWindowMs = Number(dealerObservationWindowMs);
     this.sessionFactory = sessionFactory;
     this.nativeUsdPriceProvider = nativeUsdPriceProvider;
@@ -131,8 +133,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.brokerStart = null;
     this.brokerJournal = null;
     this.requesterSession = null;
+    this.requesterStart = null;
     this.requesterJournal = null;
     this.relayerSession = null;
+    this.relayerStart = null;
     this.relayerJournal = null;
     this.dealer = null;
     this.dealerSession = null;
@@ -264,6 +268,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         signer: this.signer("broker"),
         brokerFeeAtomic: "0",
         observationWindowMs: this.brokerObservationWindowMs,
+        quoteSettleWindowMs: this.brokerQuoteSettleWindowMs,
         now: this.now,
       });
       try {
@@ -306,35 +311,97 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     };
   }
 
+  async warmRequester() {
+    await Promise.all([
+      this.ensureBroker(),
+      this.ensureRequesterSession(),
+      this.ensureRelayerSession(),
+    ]);
+    return this.status();
+  }
+
   async ensureRequesterSession() {
     if (this.requesterSession) return this.requesterSession;
-    const created = this.createSession("requester", "desktop-requester.sqlite");
-    this.requesterSession = created.session;
-    this.requesterJournal = created.journal;
-    await this.requesterSession.start();
-    this.emit("status", this.status());
-    return this.requesterSession;
+    if (this.requesterStart) return this.requesterStart;
+    this.requesterStart = (async () => {
+      const staleSession = this.requesterSession;
+      const staleJournal = this.requesterJournal;
+      this.requesterSession = null;
+      this.requesterJournal = null;
+      await staleSession?.close?.().catch(() => {});
+      staleJournal?.close?.();
+
+      const created = this.createSession(
+        "requester",
+        "desktop-requester.sqlite"
+      );
+      this.requesterSession = created.session;
+      this.requesterJournal = created.journal;
+      try {
+        await created.session.start();
+        this.emit("status", this.status());
+        return this.requesterSession;
+      } catch (error) {
+        this.requesterSession = null;
+        this.requesterJournal = null;
+        await created.session.close?.().catch(() => {});
+        created.journal?.close?.();
+        throw error;
+      }
+    })();
+    try {
+      return await this.requesterStart;
+    } finally {
+      this.requesterStart = null;
+    }
   }
 
   async ensureRelayerSession() {
     if (this.relayerSession) return this.relayerSession;
-    const created = this.createSession("relayer", "desktop-relayer-v2.sqlite");
-    this.relayerSession = created.session;
-    this.relayerJournal = created.journal;
-    this.relayerSession.on("accepted", (envelope) => {
-      if (
-        this.protocolVersion === 2 &&
-        envelope.type === "fx_claim" &&
-        this.#claimSide(this.relayerJournal, envelope) === "source"
-      ) {
-        this.#scheduleRelayDestinationClaimV2(envelope).catch((error) => {
-          this.emit("error", error);
-        });
+    if (this.relayerStart) return this.relayerStart;
+    this.relayerStart = (async () => {
+      const staleSession = this.relayerSession;
+      const staleJournal = this.relayerJournal;
+      this.relayerSession = null;
+      this.relayerJournal = null;
+      await staleSession?.close?.().catch(() => {});
+      staleJournal?.close?.();
+
+      const created = this.createSession(
+        "relayer",
+        "desktop-relayer-v2.sqlite"
+      );
+      this.relayerSession = created.session;
+      this.relayerJournal = created.journal;
+      created.session.on("accepted", (envelope) => {
+        if (
+          this.protocolVersion === 2 &&
+          envelope.type === "fx_claim" &&
+          this.#claimSide(created.journal, envelope) === "source"
+        ) {
+          this.#scheduleRelayDestinationClaimV2(envelope).catch((error) => {
+            this.emit("error", error);
+          });
+        }
+      });
+      try {
+        await created.session.start();
+        await this.#resumeRelayerV2();
+        this.emit("status", this.status());
+        return this.relayerSession;
+      } catch (error) {
+        this.relayerSession = null;
+        this.relayerJournal = null;
+        await created.session.close?.().catch(() => {});
+        created.journal?.close?.();
+        throw error;
       }
-    });
-    await this.relayerSession.start();
-    await this.#resumeRelayerV2();
-    return this.relayerSession;
+    })();
+    try {
+      return await this.relayerStart;
+    } finally {
+      this.relayerStart = null;
+    }
   }
 
   ingestRequesterPackage(proposal, acceptance) {

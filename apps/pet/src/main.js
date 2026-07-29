@@ -207,7 +207,9 @@ const fxNetworkRuntime = new FxDesktopNetworkRuntime({
   walletProvider: fxWalletProvider,
   evm: fxEvmCohort,
   nativeUsdPriceProvider: fxNativeUsdPriceProvider,
-  brokerObservationWindowMs: 25_000,
+  brokerObservationWindowMs: 5_000,
+  brokerQuoteSettleWindowMs: 1_250,
+  dealerObservationWindowMs: 250,
   now: () => Math.floor(networkNowMs() / 1000),
   protocolVersion: 2,
 });
@@ -1668,6 +1670,9 @@ app.whenReady().then(() => {
   applyLaunchAtLogin(settings.launchAtLogin);
   createWindow();
   createTray();
+  fxNetworkRuntime.warmRequester().catch((error) => {
+    console.error("Versus FX requester warm-up error:", error.message);
+  });
   if (chainRainService && loadState()?.phase !== "active") {
     getCachedHatchQuote().catch((error) => {
       console.error("Versus hatch quote prefetch error:", error.message);

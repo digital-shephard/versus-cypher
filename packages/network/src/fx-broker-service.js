@@ -211,10 +211,12 @@ class FxPublicBroker extends EventEmitter {
     signer,
     brokerFeeAtomic = "0",
     observationWindowMs = 15_000,
+    quoteSettleWindowMs = 1_250,
     maxReferenceAgeSeconds,
     maxTrackedTradeSets = 256,
     now = () => Math.floor(Date.now() / 1000),
     sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    waitForQuote,
   } = {}) {
     super();
     if (!session || session.role !== "broker") {
@@ -227,6 +229,7 @@ class FxPublicBroker extends EventEmitter {
     this.signer = signer;
     this.brokerFeeAtomic = String(brokerFeeAtomic);
     this.observationWindowMs = Number(observationWindowMs);
+    this.quoteSettleWindowMs = Number(quoteSettleWindowMs);
     this.maxReferenceAgeSeconds = maxReferenceAgeSeconds;
     this.maxTrackedTradeSets = Number(maxTrackedTradeSets);
     if (!/^\d+$/.test(this.brokerFeeAtomic)) {
@@ -235,6 +238,8 @@ class FxPublicBroker extends EventEmitter {
     if (
       !Number.isSafeInteger(this.observationWindowMs) ||
       this.observationWindowMs < 0 ||
+      !Number.isSafeInteger(this.quoteSettleWindowMs) ||
+      this.quoteSettleWindowMs < 0 ||
       !Number.isSafeInteger(this.maxTrackedTradeSets) ||
       this.maxTrackedTradeSets < 1
     ) {
@@ -242,6 +247,8 @@ class FxPublicBroker extends EventEmitter {
     }
     this.now = now;
     this.sleep = sleep;
+    this.waitForQuote = waitForQuote || ((tradeId, timeoutMs) =>
+      this.waitForFirstQuote(tradeId, timeoutMs));
     this.quotes = new Map();
     this.activeRfqs = new Map();
     this.started = false;
@@ -297,9 +304,46 @@ class FxPublicBroker extends EventEmitter {
       active: this.started && this.session.started,
       broker: this.metrics?.broker || null,
       observationWindowMs: this.observationWindowMs,
+      quoteSettleWindowMs: this.quoteSettleWindowMs,
       openTradeSets: this.quotes.size,
       transport: this.session.transport.status?.() || null,
     };
+  }
+
+  waitForFirstQuote(tradeId, timeoutMs) {
+    if ((this.quotes.get(tradeId) || []).length > 0) {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      let timer;
+      const finish = (found) => {
+        this.off("quote", onQuote);
+        if (timer) clearTimeout(timer);
+        resolve(found);
+      };
+      const onQuote = (quote) => {
+        if (quote.tradeId === tradeId) finish(true);
+      };
+      this.on("quote", onQuote);
+      if ((this.quotes.get(tradeId) || []).length > 0) {
+        finish(true);
+        return;
+      }
+      timer = setTimeout(() => finish(false), timeoutMs);
+    });
+  }
+
+  async collectRouteQuotes(tradeId, maximumWaitMs) {
+    const startedAt = Date.now();
+    if ((this.quotes.get(tradeId) || []).length === 0) {
+      await this.waitForQuote(tradeId, maximumWaitMs);
+    }
+    if ((this.quotes.get(tradeId) || []).length === 0) return;
+    const remainingMs = Math.max(
+      0,
+      maximumWaitMs - (Date.now() - startedAt)
+    );
+    await this.sleep(Math.min(this.quoteSettleWindowMs, remainingMs));
   }
 
   async requestRoute(rfq) {
@@ -336,7 +380,10 @@ class FxPublicBroker extends EventEmitter {
         0,
         (verifiedRfq.payload.quoteDeadline - this.now()) * 1000
       );
-      await this.sleep(Math.min(this.observationWindowMs, remainingMs));
+      await this.collectRouteQuotes(
+        verifiedRfq.tradeId,
+        Math.min(this.observationWindowMs, remainingMs)
+      );
       quotes = [...(this.quotes.get(verifiedRfq.tradeId) || [])];
       if (quotes.length === 0) {
         throw new FxBrokerError(

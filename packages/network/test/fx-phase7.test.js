@@ -443,7 +443,9 @@ async function runningBroker(context, fee, serviceOptions = {}) {
     brokerFeeAtomic: fee,
     observationWindowMs: 0,
     now: () => NOW + 3,
-    sleep: async () => session.emit("accepted", context.quote, { live: true }),
+    waitForQuote: async () =>
+      session.emit("accepted", context.quote, { live: true }),
+    sleep: async () => {},
   });
   await broker.start();
   const httpService = createFxBrokerHttpService({ broker, ...serviceOptions });
@@ -495,10 +497,11 @@ test("broker ignores quotes that do not answer the active signed RFQ", async (t)
     brokerFeeAtomic: "500",
     observationWindowMs: 0,
     now: () => NOW + 3,
-    sleep: async () => {
+    waitForQuote: async () => {
       session.emit("accepted", poison, { live: true });
       session.emit("accepted", context.quote, { live: true });
     },
+    sleep: async () => {},
   });
   await broker.start();
   t.after(() => broker.close());
@@ -508,6 +511,34 @@ test("broker ignores quotes that do not answer the active signed RFQ", async (t)
   assert.equal(proposal.quotes.length, 1);
   assert.equal(broker.metrics.counters.rejectedQuotes, 1);
   assert.equal(broker.status().openTradeSets, 0);
+});
+
+test("broker returns shortly after the first verified quote", async (t) => {
+  const context = await fixture();
+  const signer = Wallet.createRandom();
+  const session = new FakeBrokerSession({ signer, quote: context.quote });
+  const settleSleeps = [];
+  const broker = new FxPublicBroker({
+    session,
+    signer,
+    brokerFeeAtomic: "0",
+    observationWindowMs: 5_000,
+    quoteSettleWindowMs: 1_250,
+    now: () => NOW + 3,
+    waitForQuote: async (_tradeId, timeoutMs) => {
+      assert.equal(timeoutMs, 5_000);
+      session.emit("accepted", context.quote, { live: true });
+    },
+    sleep: async (milliseconds) => settleSleeps.push(milliseconds),
+  });
+  await broker.start();
+  t.after(() => broker.close());
+
+  const proposal = await broker.requestRoute(context.rfq);
+  assert.equal(proposal.route.quoteId, context.quote.id);
+  assert.deepEqual(settleSleeps, [1_250]);
+  assert.equal(broker.status().observationWindowMs, 5_000);
+  assert.equal(broker.status().quoteSettleWindowMs, 1_250);
 });
 
 test("self-routing reports an empty dealer response without exposing compiler internals", async (t) => {
@@ -520,6 +551,7 @@ test("self-routing reports an empty dealer response without exposing compiler in
     brokerFeeAtomic: "0",
     observationWindowMs: 0,
     now: () => NOW + 3,
+    waitForQuote: async () => {},
     sleep: async () => {},
   });
   await broker.start();
