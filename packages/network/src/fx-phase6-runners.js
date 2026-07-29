@@ -1,6 +1,9 @@
 const { EventEmitter } = require("node:events");
 const { randomBytes, hexlify } = require("ethers");
-const { selectSingleDealerRoute } = require("./fx-protocol");
+const {
+  FX_V2_VERSION,
+  selectSingleDealerRoute,
+} = require("./fx-protocol");
 
 function bytes32(value = null) {
   return value || hexlify(randomBytes(32));
@@ -16,6 +19,7 @@ class FxDeterministicDealer extends EventEmitter {
     now = () => Math.floor(Date.now() / 1000),
     setTimer = setTimeout,
     clearTimer = clearTimeout,
+    protocolVersion = 1,
   } = {}) {
     super();
     if (!session || session.role !== "dealer") {
@@ -32,6 +36,10 @@ class FxDeterministicDealer extends EventEmitter {
     this.now = now;
     this.setTimer = setTimer;
     this.clearTimer = clearTimer;
+    this.protocolVersion = Number(protocolVersion);
+    if (![1, FX_V2_VERSION].includes(this.protocolVersion)) {
+      throw new TypeError("deterministic dealer protocol version is unsupported");
+    }
     this.pendingRfqs = new Map();
     this.quotes = new Map();
     this.historicalRfqs = new Map();
@@ -100,7 +108,7 @@ class FxDeterministicDealer extends EventEmitter {
     const expiresAt = Math.min(envelope.expiresAt, createdAt + 10 * 60);
     const reserve = await this.session.publish({
       protocol: "versus-fx",
-      version: 1,
+      version: this.protocolVersion,
       type: "fx_reserve",
       tradeId: envelope.tradeId,
       createdAt,
@@ -156,17 +164,35 @@ class FxDeterministicDealer extends EventEmitter {
       this.emit("skipped", rfq, { reason: "rfq_no_longer_open" });
       return null;
     }
-    const payload = await this.quotePolicy(rfq);
+    const decision = await this.quotePolicy(rfq);
+    const payload =
+      decision &&
+      typeof decision === "object" &&
+      Object.prototype.hasOwnProperty.call(decision, "quote")
+        ? decision.quote
+        : decision;
+    const rejection =
+      decision &&
+      typeof decision === "object" &&
+      Object.prototype.hasOwnProperty.call(decision, "rejection")
+        ? decision.rejection
+        : null;
     if (!payload) {
-      this.emit("skipped", rfq, { reason: "policy_declined" });
+      this.emit("skipped", rfq, {
+        reason: rejection?.code || "policy_declined",
+        detail: rejection?.detail || null,
+      });
       return null;
     }
     const createdAt = this.now();
-    const expiresAt = Math.min(rfq.payload.quoteDeadline, createdAt + 60);
+    const expiresAt = Math.min(
+      rfq.payload.quoteDeadline,
+      createdAt + (this.protocolVersion === FX_V2_VERSION ? 120 : 60)
+    );
     if (expiresAt <= createdAt) return null;
     const quote = await this.session.publish({
       protocol: "versus-fx",
-      version: 1,
+      version: this.protocolVersion,
       type: "fx_quote",
       tradeId: rfq.tradeId,
       createdAt,

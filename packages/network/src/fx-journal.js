@@ -264,9 +264,23 @@ class FxTradeJournal {
   validateLineage(message, currentState) {
     let settlementState = currentState;
     let caseState = this.tradeRow(message.tradeId)?.case_state || "none";
+    const openingRfq =
+      message.type === "fx_rfq"
+        ? null
+        : this.findType(message.tradeId, "fx_rfq");
+    if (openingRfq && openingRfq.version !== message.version) {
+      throw new FxJournalError(
+        "trade messages cannot cross protocol versions",
+        "PROTOCOL_VERSION_MISMATCH"
+      );
+    }
     switch (message.type) {
       case "fx_rfq":
-        settlementState = advanceFxState(settlementState, "publish_rfq");
+        settlementState = advanceFxState(
+          settlementState,
+          "publish_rfq",
+          message.version
+        );
         break;
       case "fx_quote": {
         if (settlementState !== "rfq_open") {
@@ -292,14 +306,20 @@ class FxTradeJournal {
           route.routeId !== message.payload.routeId ||
           route.totalInputAtomic !== message.payload.totalInputAtomic ||
           quote.payload.inputAmountAtomic !== message.payload.dealerInputAmountAtomic ||
-          quote.payload.outputAmountAtomic !== message.payload.outputAmountAtomic
+          quote.payload.outputAmountAtomic !== message.payload.outputAmountAtomic ||
+          (message.version === 2 &&
+            quote.payload.secretHash !== message.payload.secretHash)
         ) {
           throw new FxJournalError(
             "acceptance does not match the locally recomputed route",
             "ROUTE_MISMATCH"
           );
         }
-        settlementState = advanceFxState(settlementState, "accept_quote");
+        settlementState = advanceFxState(
+          settlementState,
+          "accept_quote",
+          message.version
+        );
         break;
       }
       case "fx_reserve": {
@@ -354,7 +374,8 @@ class FxTradeJournal {
         }
         settlementState = advanceFxState(
           settlementState,
-          "cancel_before_source_lock"
+          "cancel_before_source_lock",
+          message.version
         );
         break;
       }
@@ -375,22 +396,38 @@ class FxTradeJournal {
           "fx_rfq",
           message.tradeId
         );
+        const destinationLock = this.findType(
+          message.tradeId,
+          "fx_lock_destination"
+        );
         if (
           !reserve ||
+          (message.version === 2 && !destinationLock) ||
           message.sender !== rfq.sender ||
           message.payload.chainId !== quote.payload.inputChainId ||
           message.payload.token !== quote.payload.inputToken ||
           message.payload.amountAtomic !== accept.payload.totalInputAtomic ||
+          (message.version === 2 &&
+            (message.payload.beneficiaryAmountAtomic !==
+              accept.payload.totalInputAtomic ||
+              message.payload.executorAmountAtomic !== "0")) ||
           message.payload.secretHash !== accept.payload.secretHash ||
           message.payload.refundAddress !== accept.payload.sourceRefundAddress ||
-          message.payload.beneficiary !== reserve.payload.dealerSourceClaimAddress
+          message.payload.beneficiary !== reserve.payload.dealerSourceClaimAddress ||
+          (message.version === 2 &&
+            destinationLock.payload.timeout <
+              message.payload.timeout + this.minimumTimeoutDeltaSeconds)
         ) {
           throw new FxJournalError(
             "source lock does not match accepted route",
             "MALFORMED_LOCK"
           );
         }
-        settlementState = advanceFxState(settlementState, "confirm_source_lock");
+        settlementState = advanceFxState(
+          settlementState,
+          "confirm_source_lock",
+          message.version
+        );
         break;
       }
       case "fx_lock_destination": {
@@ -406,18 +443,31 @@ class FxTradeJournal {
         );
         const reserve = this.findType(message.tradeId, "fx_reserve");
         const sourceLock = this.findType(message.tradeId, "fx_lock_source");
+        const destinationAmount =
+          message.version === 2
+            ? (
+                BigInt(accept.payload.outputAmountAtomic) +
+                BigInt(quote.payload.destinationExecutorAmountAtomic)
+              ).toString()
+            : accept.payload.outputAmountAtomic;
         if (
           !reserve ||
-          !sourceLock ||
+          (message.version === 1 && !sourceLock) ||
           message.sender !== quote.sender ||
           message.payload.chainId !== quote.payload.outputChainId ||
           message.payload.token !== quote.payload.outputToken ||
-          message.payload.amountAtomic !== accept.payload.outputAmountAtomic ||
+          message.payload.amountAtomic !== destinationAmount ||
+          (message.version === 2 &&
+            (message.payload.beneficiaryAmountAtomic !==
+              accept.payload.outputAmountAtomic ||
+              message.payload.executorAmountAtomic !==
+                quote.payload.destinationExecutorAmountAtomic)) ||
           message.payload.secretHash !== accept.payload.secretHash ||
           message.payload.beneficiary !== accept.payload.destinationClaimAddress ||
           message.payload.refundAddress !== reserve.payload.dealerDestinationRefundAddress ||
-          sourceLock.payload.timeout <
-            message.payload.timeout + this.minimumTimeoutDeltaSeconds
+          (message.version === 1 &&
+            sourceLock.payload.timeout <
+              message.payload.timeout + this.minimumTimeoutDeltaSeconds)
         ) {
           throw new FxJournalError(
             "destination lock does not match route or safe timeout order",
@@ -426,7 +476,8 @@ class FxTradeJournal {
         }
         settlementState = advanceFxState(
           settlementState,
-          "confirm_destination_lock"
+          "confirm_destination_lock",
+          message.version
         );
         break;
       }
@@ -446,7 +497,8 @@ class FxTradeJournal {
           settlementState,
           lock.type === "fx_lock_destination"
             ? "confirm_destination_claim"
-            : "confirm_source_claim"
+            : "confirm_source_claim",
+          message.version
         );
         break;
       }
@@ -469,7 +521,8 @@ class FxTradeJournal {
           settlementState,
           lock.type === "fx_lock_destination"
             ? "confirm_destination_refund"
-            : "confirm_source_refund"
+            : "confirm_source_refund",
+          message.version
         );
         break;
       }
@@ -685,6 +738,14 @@ class FxTradeJournal {
       ...stable,
       stateHash: keccak256(toUtf8Bytes(canonicalJson(stable))),
     };
+  }
+
+  tradeIds() {
+    return this.db.prepare(`
+      SELECT trade_id FROM fx_trades
+      WHERE deployment_id = ?
+      ORDER BY updated_at, trade_id
+    `).all(this.deploymentId).map((row) => row.trade_id);
   }
 }
 

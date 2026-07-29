@@ -9,19 +9,30 @@ disabled by default.
 1. Pick the source and destination assets.
 2. Enter the exact amount to receive.
 3. Enter the destination address.
-4. Request a route and inspect its input, spread, broker fee, expected time,
-   and expiry.
+4. Request a route and inspect its principal, spread, relay and gas cost,
+   all-in input, expected time, and expiry.
 5. Explicitly accept the quote.
-6. Receive a signed dealer reservation with a separate funding countdown.
-7. Either cancel the unfunded reservation or send the exact source asset to
-   the displayed local requester address.
-8. Let the app confirm the post-baseline transfer, execute the atomic locks,
-   and independently verify the destination claim.
+6. Receive a signed dealer reservation while the dealer commits the exact
+   destination output plus a paid execution bounty.
+7. Wait for the app to independently confirm that destination lock and verify
+   that its bounty still covers current destination gas.
+8. Either cancel before source funding or send the exact source asset to the
+   displayed local requester address.
+9. Let the app confirm the post-baseline transfer, fund the source lock, and
+   independently verify the final recipient payout.
 
 The destination may be any valid address selected by the requester. It is
 signed into the acceptance and bound into the destination HTLC. The external
 source wallet is not connected to Versus and is never inferred. If the source
 HTLC must be refunded, funds return to the displayed local requester wallet.
+
+The destination recipient never submits a transaction and does not need the
+destination chain's native gas token. The dealer owns the settlement secret.
+Claiming the requester source lock publishes that secret onchain; any executor
+can then claim the destination lock. The contract pays the fixed recipient
+amount first and pays the successful transaction sender a separately quoted
+executor bounty. Neither payout can be redirected by Waku, a broker, or the
+executor.
 
 The requester route picker is built from the frozen adapter catalog, not from
 the local dealer's enabled inventory bays. A device can therefore request any
@@ -69,8 +80,9 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 - The Risk page bounds trade size, aggregate exposure, requester exposure,
   per-asset exposure, gas, overhead, spread, quote lifetime, and reservation
   lifetime.
-- The Phase 8 guard and exposure journal decide whether a reservation can
-  become firm.
+- The Phase 8 exposure journal records V2 destination liability before the
+  dealer broadcasts the funding transaction. `destination_pending` therefore
+  consumes global, requester, and asset capacity and survives restart.
 - The Tape page shows local receipts and terminal outcomes.
 - Stock refreshes use bounded single-flight reads while the relevant FX screen
   is visible. They do not continuously poll every enabled chain in the
@@ -83,9 +95,9 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
   chain time reaches its short timeout, the owner can submit its deterministic
   dealer refund there; exposure is released only after confirmation.
 
-The dealer, requester, and broker identities are domain-separated keys derived
-from the backed-up Cypher wallet. Temporary requester funding is never counted
-as dealer inventory.
+The dealer, requester, broker, and coordination-relayer identities are
+domain-separated keys derived from the backed-up Cypher wallet. Temporary
+requester funding is never counted as dealer inventory.
 
 ## Settlement Truth
 
@@ -103,8 +115,36 @@ the applicable frozen testnet asset and adapter contracts before recognizing:
 Event recovery starts at the frozen adapter deployment blocks, not chain
 genesis. Inventory reads are cached and invalidated when dealer funds move.
 Each quote binds the adapter ID and version independently for its source and
-destination legs. The zero address is the canonical wire identifier for native
-ETH and is never treated as an ERC-20 address.
+destination legs. V1 and V2 messages cannot share a trade journal. The zero
+address is the canonical wire identifier for native ETH and is never treated
+as an ERC-20 address.
+
+V2 settlement is destination-first:
+
+1. The dealer encrypts its settlement secret and signs only its hash.
+2. The dealer durably reserves output plus executor bounty.
+3. The dealer funds the destination V2 adapter for the exact recipient,
+   refund address, hash, timeout, output, and executor liabilities.
+4. The requester independently checks every onchain field and current relay
+   gas coverage before funding source.
+5. The dealer claims source, publishing the secret onchain.
+6. A permissionless executor claims destination. The recipient gets the exact
+   output and the transaction sender gets the fixed bounty.
+
+The current public-testnet V2 deployment is frozen by deployment ID
+`0x361d43afddce9c272db9d4131c6b6b228693b603924de8f7dc09cc67b58bc5df`.
+On Base Sepolia and Arbitrum Sepolia, the native adapter is
+`0x1e933ccffaa2cd384d3df751ff7a25183682dc61` and the manifested ERC-20
+adapter is `0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14`.
+
+Verified explorer links:
+
+| Chain | Adapter | Explorer |
+|---|---|---|
+| Base Sepolia | Native V2 `0x1e933c…dc61` | [code](https://sepolia.basescan.org/address/0x1e933ccffaa2cd384d3df751ff7a25183682dc61#code) |
+| Base Sepolia | ERC-20 V2 `0x0fa115…3c14` | [code](https://sepolia.basescan.org/address/0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14#code) |
+| Arbitrum Sepolia | Native V2 `0x1e933c…dc61` | [code](https://sepolia.arbiscan.io/address/0x1e933ccffaa2cd384d3df751ff7a25183682dc61#code) |
+| Arbitrum Sepolia | ERC-20 V2 `0x0fa115…3c14` | [code](https://sepolia.arbiscan.io/address/0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14#code) |
 
 Native atomic amounts use a signed relay ETH/USD reference for quote and risk
 calculation. The desktop caches a valid reference for no more than three
@@ -114,9 +154,13 @@ Stablecoin-only ERC-20 routes remain independent of ETH pricing.
 
 ## Recovery
 
-- The HTLC secret is encrypted to disk before acceptance.
+- The dealer settlement secret is encrypted to disk before its quote is
+  published. The requester recovery file contains a separate local
+  authentication nonce, never the settlement secret.
 - An explicit pre-funding cancellation is signed by the requester, releases
-  the dealer reservation over Waku, and becomes terminal before any lock.
+  the requester flow over Waku, and prevents source funding. A V2 destination
+  lock that already exists remains dealer exposure until its deterministic
+  refund timeout.
 - Closing the screen is non-destructive; it resumes the reservation instead of
   silently cancelling an order.
 - An uncertain write is reconciled and never automatically replayed.
@@ -138,17 +182,21 @@ Stablecoin-only ERC-20 routes remain independent of ETH pricing.
 
 ## Completion Gate
 
-Automated desktop and network suites cover the requester, dealer, role
-separation, funding verification, recovery, refund, policy, and RPC boundaries.
+Automated desktop, network, Hardhat, and Foundry suites cover exact recipient
+payout, executor bounty payout, requester destination-gas independence,
+reserve-before-fund exposure, gas-spike refusal before source funding, adapter
+version separation, timeout ordering, role separation, funding verification,
+recovery, refund, policy, and RPC boundaries.
 The preview harness proves layout and deterministic screen transitions only; it
 is not settlement evidence.
 
-The desktop now has a real requester path from quote discovery through
-reservation, source-funding verification, HTLC settlement, cancellation,
-status reconciliation, and refund. Dealer arming, bounded inventory refresh,
-native-gas readiness, real withdrawal, owner-visible policy, restart resume,
-persisted trade journals, and scrubbed settlement evidence are connected to
-the FX runtime.
+The desktop now has a real V2 requester path from quote discovery through
+destination reservation, independent destination verification, fresh executor
+gas coverage, source-funding verification, permissionless completion,
+cancellation, status reconciliation, and refund. Dealer arming, bounded
+inventory refresh, native-gas readiness, real withdrawal, owner-visible
+policy, restart resume, persisted trade journals, and scrubbed settlement
+evidence are connected to the FX runtime.
 
 The code-completion portion of Phase 10 is complete. Physical acceptance
 remains open.

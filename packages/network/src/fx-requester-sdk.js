@@ -8,6 +8,7 @@ const {
 } = require("ethers");
 const {
   canonicalJson,
+  FX_V2_VERSION,
   verifyFxEnvelope,
 } = require("./fx-protocol");
 const { signFxMessage } = require("./fx-coordination");
@@ -346,6 +347,7 @@ class FxRequesterFundingSdk {
     queryRoutes = queryBrokerRoutes,
     now = () => Math.floor(Date.now() / 1000),
     randomSecret = () => crypto.randomBytes(32),
+    protocolVersion = 1,
   } = {}) {
     this.deploymentId = hash(deploymentId, "deploymentId");
     if (
@@ -375,6 +377,10 @@ class FxRequesterFundingSdk {
     this.queryRoutes = queryRoutes;
     this.now = now;
     this.randomSecret = randomSecret;
+    this.protocolVersion = Number(protocolVersion);
+    if (![1, FX_V2_VERSION].includes(this.protocolVersion)) {
+      throw new TypeError("requester SDK protocol version is unsupported");
+    }
   }
 
   async quoteFunding({
@@ -383,7 +389,7 @@ class FxRequesterFundingSdk {
     sourceRefundAddress,
     inputOptions,
     tradeId = `0x${crypto.randomBytes(32).toString("hex")}`,
-    quoteLifetimeSeconds = 60,
+    quoteLifetimeSeconds = this.protocolVersion === FX_V2_VERSION ? 120 : 60,
     settlementLifetimeSeconds = 7_200,
     quotePolicy = "lowest_all_in",
     timeoutMs = 20_000,
@@ -418,7 +424,7 @@ class FxRequesterFundingSdk {
     }
     const rfq = await signFxMessage({
       protocol: "versus-fx",
-      version: 1,
+      version: this.protocolVersion,
       deploymentId: this.deploymentId,
       type: "fx_rfq",
       tradeId: hash(tradeId, "tradeId"),
@@ -466,6 +472,12 @@ class FxRequesterFundingSdk {
       );
     }
     const verifiedRfq = verifyFxEnvelope(quote?.rfq, { temporal: false });
+    if (verifiedRfq.version !== this.protocolVersion) {
+      throw new FxRequesterSdkError(
+        "funding quote uses another protocol version",
+        "PROTOCOL_VERSION_MISMATCH"
+      );
+    }
     const proposal = verifyBrokerRouteProposal(quote?.proposal, {
       now: timestamp(this.now(), "network time"),
       deploymentId: this.deploymentId,
@@ -505,6 +517,9 @@ class FxRequesterFundingSdk {
       this.recoveryDirectory,
       `${verifiedRfq.tradeId.slice(2)}.recovery.json`
     );
+    // V1 uses this secret for settlement. V2 deliberately stores only a
+    // requester-local recovery nonce: the selected dealer owns the settlement
+    // secret and commits its hash in the signed quote.
     const recovery = createFxRecoveryPacket({
       filePath: recoveryFile,
       password: recoveryPassword,
@@ -513,8 +528,12 @@ class FxRequesterFundingSdk {
       createdAt: timestamp(this.now(), "network time"),
       secret: this.randomSecret(),
       metadata: {
-        phase: 9,
+        phase: this.protocolVersion === FX_V2_VERSION ? "fx-v2" : 9,
         proposalId: proposal.proposalId,
+        purpose:
+          this.protocolVersion === FX_V2_VERSION
+            ? "requester-recovery-authentication"
+            : "settlement-secret",
       },
     });
     const selectedQuote = proposal.quotes.find(
@@ -539,7 +558,7 @@ class FxRequesterFundingSdk {
     }
     const acceptance = await signFxMessage({
       protocol: "versus-fx",
-      version: 1,
+      version: this.protocolVersion,
       deploymentId: this.deploymentId,
       type: "fx_accept",
       tradeId: verifiedRfq.tradeId,
@@ -555,7 +574,10 @@ class FxRequesterFundingSdk {
         brokerFeeAtomic: proposal.route.brokerFeeAtomic,
         totalInputAtomic: proposal.route.totalInputAtomic,
         outputAmountAtomic: proposal.route.outputAmountAtomic,
-        secretHash: recovery.secretHash,
+        secretHash:
+          this.protocolVersion === FX_V2_VERSION
+            ? selectedQuote.payload.secretHash
+            : recovery.secretHash,
         sourceRefundAddress,
         destinationClaimAddress: destinationAddress,
         sourceAdapterId:
@@ -597,7 +619,10 @@ class FxRequesterFundingSdk {
       outputToken: proposal.route.outputToken,
       outputAmountAtomic: proposal.route.outputAmountAtomic,
       recoveryFile: recovery.filePath,
-      secretHash: recovery.secretHash,
+      secretHash:
+        this.protocolVersion === FX_V2_VERSION
+          ? selectedQuote.payload.secretHash
+          : recovery.secretHash,
       expected,
       endpointPaymentAuthorized: false,
       endpointPaymentSubmitted: false,
@@ -614,6 +639,12 @@ class FxRequesterFundingSdk {
       now: networkNow,
       clockSkewSeconds: 0,
     });
+    if (acceptance.version !== this.protocolVersion) {
+      throw new FxRequesterSdkError(
+        "prepared funding uses another protocol version",
+        "PROTOCOL_VERSION_MISMATCH"
+      );
+    }
     const proposal = verifyBrokerRouteProposal(prepared.proposal, {
       now: acceptance.createdAt,
       deploymentId: this.deploymentId,
@@ -693,8 +724,9 @@ class FxRequesterFundingSdk {
         prepared.sourceRefundAddress,
         "sourceRefundAddress"
       ),
-      secret: recovery.secret,
-      secretHash: recovery.secretHash,
+      secret:
+        acceptance.version === FX_V2_VERSION ? null : recovery.secret,
+      secretHash: acceptance.payload.secretHash,
       recoveryFile: prepared.recoveryFile,
     });
     const observation = normalizeDestinationObservation(

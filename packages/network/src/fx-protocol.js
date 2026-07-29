@@ -8,6 +8,7 @@ const {
 
 const FX_PROTOCOL = "versus-fx";
 const FX_VERSION = 1;
+const FX_V2_VERSION = 2;
 const FX_QUOTE_TYPE = "fixed_exact_output";
 const FX_MAX_CLOCK_SKEW_SECONDS = 300;
 const FX_MAX_REFERENCE_AGE_SECONDS = 60;
@@ -89,6 +90,41 @@ const FX_SETTLEMENT_TRANSITIONS = Object.freeze({
   destination_refunded: Object.freeze({
     confirm_source_refund: "refunded",
   }),
+  complete: Object.freeze({}),
+  refunded: Object.freeze({}),
+  expired: Object.freeze({}),
+  cancelled: Object.freeze({}),
+});
+
+const FX_SETTLEMENT_TRANSITIONS_V2 = Object.freeze({
+  idle: Object.freeze({ publish_rfq: "rfq_open" }),
+  rfq_open: Object.freeze({
+    accept_quote: "quote_accepted",
+    expire_rfq: "expired",
+  }),
+  quote_accepted: Object.freeze({
+    confirm_destination_lock: "destination_locked",
+    cancel_before_source_lock: "cancelled",
+  }),
+  destination_locked: Object.freeze({
+    confirm_source_lock: "source_locked",
+    confirm_destination_refund: "destination_refunded",
+    cancel_before_source_lock: "destination_cancelled",
+  }),
+  destination_cancelled: Object.freeze({
+    confirm_destination_refund: "refunded",
+  }),
+  source_locked: Object.freeze({
+    confirm_source_claim: "source_claimed",
+    confirm_source_refund: "source_refunded",
+  }),
+  source_claimed: Object.freeze({
+    confirm_destination_claim: "complete",
+  }),
+  source_refunded: Object.freeze({
+    confirm_destination_refund: "refunded",
+  }),
+  destination_refunded: Object.freeze({}),
   complete: Object.freeze({}),
   refunded: Object.freeze({}),
   expired: Object.freeze({}),
@@ -427,6 +463,140 @@ function normalizeQuotePayload(value) {
   };
 }
 
+function normalizeQuotePayloadV2(value) {
+  assertAllowedKeys(value, [
+    "rfqId",
+    "inputChainId",
+    "inputToken",
+    "inputAmountAtomic",
+    "outputChainId",
+    "outputToken",
+    "outputAmountAtomic",
+    "quoteType",
+    "referenceSource",
+    "referencePriceMicros",
+    "referenceTimestamp",
+    "spreadBps",
+    "dealerSettlementCostAtomic",
+    "estimatedCompletionSeconds",
+    "adapterId",
+    "adapterVersion",
+    "sourceAdapterId",
+    "sourceAdapterVersion",
+    "destinationAdapterId",
+    "destinationAdapterVersion",
+    "dealerPrincipalAtomic",
+    "dealerSpreadAtomic",
+    "dealerOperatingCostAtomic",
+    "destinationExecutorAmountAtomic",
+    "destinationClaimGasEstimate",
+    "destinationMaxFeePerGas",
+    "gasPriceSource",
+    "gasPriceTimestamp",
+    "secretHash",
+  ], "payload");
+  const base = normalizeQuotePayload({
+    rfqId: value.rfqId,
+    inputChainId: value.inputChainId,
+    inputToken: value.inputToken,
+    inputAmountAtomic: value.inputAmountAtomic,
+    outputChainId: value.outputChainId,
+    outputToken: value.outputToken,
+    outputAmountAtomic: value.outputAmountAtomic,
+    quoteType: value.quoteType,
+    referenceSource: value.referenceSource,
+    referencePriceMicros: value.referencePriceMicros,
+    referenceTimestamp: value.referenceTimestamp,
+    spreadBps: value.spreadBps,
+    dealerSettlementCostAtomic: value.dealerSettlementCostAtomic,
+    estimatedCompletionSeconds: value.estimatedCompletionSeconds,
+    adapterId: value.adapterId,
+    adapterVersion: value.adapterVersion,
+    sourceAdapterId: value.sourceAdapterId,
+    sourceAdapterVersion: value.sourceAdapterVersion,
+    destinationAdapterId: value.destinationAdapterId,
+    destinationAdapterVersion: value.destinationAdapterVersion,
+  });
+  if (
+    base.adapterVersion !== FX_V2_VERSION ||
+    base.sourceAdapterVersion !== FX_V2_VERSION ||
+    base.destinationAdapterVersion !== FX_V2_VERSION
+  ) {
+    throw new FxValidationError(
+      "version-two quotes require version-two adapters",
+      "ADAPTER_VERSION_MISMATCH"
+    );
+  }
+  const dealerPrincipalAtomic = normalizeUintString(
+    value.dealerPrincipalAtomic,
+    "payload.dealerPrincipalAtomic",
+    { allowZero: false }
+  );
+  const dealerSpreadAtomic = normalizeUintString(
+    value.dealerSpreadAtomic,
+    "payload.dealerSpreadAtomic"
+  );
+  const dealerOperatingCostAtomic = normalizeUintString(
+    value.dealerOperatingCostAtomic,
+    "payload.dealerOperatingCostAtomic"
+  );
+  if (
+    BigInt(dealerPrincipalAtomic) +
+      BigInt(dealerSpreadAtomic) +
+      BigInt(dealerOperatingCostAtomic) !==
+    BigInt(base.inputAmountAtomic)
+  ) {
+    throw new FxValidationError(
+      "version-two input must equal principal, spread, and operating cost",
+      "INVALID_ECONOMICS"
+    );
+  }
+  if (base.dealerSettlementCostAtomic !== dealerOperatingCostAtomic) {
+    throw new FxValidationError(
+      "version-two settlement cost must equal disclosed operating cost",
+      "INVALID_ECONOMICS"
+    );
+  }
+  const gasPriceTimestamp = normalizeSafeInteger(
+    value.gasPriceTimestamp,
+    "payload.gasPriceTimestamp",
+    { allowZero: false }
+  );
+  if (gasPriceTimestamp > base.referenceTimestamp) {
+    throw new FxValidationError(
+      "destination gas price cannot postdate the market reference",
+      "INVALID_ECONOMICS"
+    );
+  }
+  return {
+    ...base,
+    dealerPrincipalAtomic,
+    dealerSpreadAtomic,
+    dealerOperatingCostAtomic,
+    destinationExecutorAmountAtomic: normalizeUintString(
+      value.destinationExecutorAmountAtomic,
+      "payload.destinationExecutorAmountAtomic",
+      { allowZero: false }
+    ),
+    destinationClaimGasEstimate: normalizeUintString(
+      value.destinationClaimGasEstimate,
+      "payload.destinationClaimGasEstimate",
+      { allowZero: false }
+    ),
+    destinationMaxFeePerGas: normalizeUintString(
+      value.destinationMaxFeePerGas,
+      "payload.destinationMaxFeePerGas",
+      { allowZero: false }
+    ),
+    gasPriceSource: normalizeIdentifier(
+      value.gasPriceSource,
+      "payload.gasPriceSource"
+    ),
+    gasPriceTimestamp,
+    secretHash: normalizeHash(value.secretHash, "payload.secretHash"),
+  };
+}
+
 function normalizeAcceptPayload(value) {
   assertAllowedKeys(value, [
     "rfqId",
@@ -585,6 +755,65 @@ function normalizeLockPayload(value, envelope) {
   };
 }
 
+function normalizeLockPayloadV2(value, envelope) {
+  assertAllowedKeys(value, [
+    "acceptId",
+    "chainId",
+    "token",
+    "amountAtomic",
+    "beneficiaryAmountAtomic",
+    "executorAmountAtomic",
+    "lockAddress",
+    "beneficiary",
+    "refundAddress",
+    "secretHash",
+    "timeout",
+    "transactionHash",
+    "blockNumber",
+  ], "payload");
+  const beneficiaryAmountAtomic = normalizeUintString(
+    value.beneficiaryAmountAtomic,
+    "payload.beneficiaryAmountAtomic",
+    { allowZero: false }
+  );
+  const executorAmountAtomic = normalizeUintString(
+    value.executorAmountAtomic,
+    "payload.executorAmountAtomic"
+  );
+  const amountAtomic = normalizeUintString(
+    value.amountAtomic,
+    "payload.amountAtomic",
+    { allowZero: false }
+  );
+  if (
+    BigInt(beneficiaryAmountAtomic) + BigInt(executorAmountAtomic) !==
+    BigInt(amountAtomic)
+  ) {
+    throw new FxValidationError(
+      "lock amount must equal beneficiary and executor amounts",
+      "INVALID_ECONOMICS"
+    );
+  }
+  const base = normalizeLockPayload({
+    acceptId: value.acceptId,
+    chainId: value.chainId,
+    token: value.token,
+    amountAtomic,
+    lockAddress: value.lockAddress,
+    beneficiary: value.beneficiary,
+    refundAddress: value.refundAddress,
+    secretHash: value.secretHash,
+    timeout: value.timeout,
+    transactionHash: value.transactionHash,
+    blockNumber: value.blockNumber,
+  }, envelope);
+  return {
+    ...base,
+    beneficiaryAmountAtomic,
+    executorAmountAtomic,
+  };
+}
+
 function normalizeClaimPayload(value) {
   assertAllowedKeys(value, [
     "lockMessageId",
@@ -696,6 +925,13 @@ const PAYLOAD_NORMALIZERS = Object.freeze({
   fx_dispute: normalizeDisputePayload,
 });
 
+const PAYLOAD_NORMALIZERS_V2 = Object.freeze({
+  ...PAYLOAD_NORMALIZERS,
+  fx_quote: normalizeQuotePayloadV2,
+  fx_lock_source: normalizeLockPayloadV2,
+  fx_lock_destination: normalizeLockPayloadV2,
+});
+
 function normalizeFxMessage(input) {
   assertAllowedKeys(input, [
     "protocol",
@@ -716,7 +952,7 @@ function normalizeFxMessage(input) {
   if (input.protocol !== FX_PROTOCOL) {
     throw new FxValidationError("protocol is unsupported");
   }
-  if (input.version !== FX_VERSION) {
+  if (![FX_VERSION, FX_V2_VERSION].includes(input.version)) {
     throw new FxValidationError("version is unsupported");
   }
 
@@ -729,14 +965,17 @@ function normalizeFxMessage(input) {
   const expiresAt = normalizeSafeInteger(input.expiresAt, "expiresAt", { allowZero: false });
   if (
     expiresAt <= createdAt ||
-    expiresAt - createdAt > MAX_LIFETIME_BY_TYPE[type]
+    expiresAt - createdAt >
+      (input.version === FX_V2_VERSION && ["fx_rfq", "fx_quote"].includes(type)
+        ? 300
+        : MAX_LIFETIME_BY_TYPE[type])
   ) {
     throw new FxValidationError(`${type} has an invalid lifetime`);
   }
 
   const envelope = {
     protocol: FX_PROTOCOL,
-    version: FX_VERSION,
+    version: input.version,
     deploymentId: normalizeHash(input.deploymentId, "deploymentId"),
     type,
     tradeId: normalizeHash(input.tradeId, "tradeId"),
@@ -748,7 +987,9 @@ function normalizeFxMessage(input) {
   };
   return {
     ...envelope,
-    payload: PAYLOAD_NORMALIZERS[type](input.payload, envelope),
+    payload: (input.version === FX_V2_VERSION
+      ? PAYLOAD_NORMALIZERS_V2
+      : PAYLOAD_NORMALIZERS)[type](input.payload, envelope),
   };
 }
 
@@ -828,8 +1069,12 @@ function verifyFxEnvelope(envelope, options = {}) {
   };
 }
 
-function advanceFxState(currentState, event) {
-  const transitions = FX_SETTLEMENT_TRANSITIONS[currentState];
+function advanceFxState(currentState, event, version = FX_VERSION) {
+  const transitionMap =
+    version === FX_V2_VERSION
+      ? FX_SETTLEMENT_TRANSITIONS_V2
+      : FX_SETTLEMENT_TRANSITIONS;
+  const transitions = transitionMap[currentState];
   if (!transitions) throw new FxValidationError(`unknown settlement state ${currentState}`);
   const next = transitions[event];
   if (!next) {
@@ -963,7 +1208,9 @@ module.exports = {
   FX_ROLES,
   FX_ROUTE_POLICIES,
   FX_SETTLEMENT_TRANSITIONS,
+  FX_SETTLEMENT_TRANSITIONS_V2,
   FX_VERSION,
+  FX_V2_VERSION,
   FxValidationError,
   advanceFxCaseState,
   advanceFxState,

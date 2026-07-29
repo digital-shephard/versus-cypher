@@ -144,6 +144,60 @@ function temporaryDatabase() {
   };
 }
 
+function v2ExposureFixture({
+  label = "v2-exposure",
+  tradeId = keccak256(toUtf8Bytes(`${label}:trade`)),
+  requester = Wallet.createRandom(),
+  dealer = Wallet.createRandom(),
+} = {}) {
+  const message = (name) => keccak256(toUtf8Bytes(`${label}:${name}`));
+  const rfq = {
+    version: 2,
+    deploymentId: DEPLOYMENT_ID,
+    tradeId,
+    id: message("rfq"),
+    sender: requester.address.toLowerCase(),
+  };
+  const quote = {
+    version: 2,
+    id: message("quote"),
+    sender: dealer.address.toLowerCase(),
+    payload: {
+      inputAmountAtomic: "101000",
+      outputChainId: DESTINATION_CHAIN,
+      outputToken: DESTINATION_TOKEN,
+      outputAmountAtomic: "100000",
+      destinationExecutorAmountAtomic: "2000",
+    },
+  };
+  const accept = {
+    version: 2,
+    id: message("accept"),
+  };
+  const reserve = {
+    version: 2,
+    id: message("reserve"),
+    payload: {
+      reservationDeadline: NOW + 600,
+    },
+  };
+  return {
+    rfq,
+    quote,
+    accept,
+    reserve,
+    expectedSourceLockId: phase5LockId(tradeId, "source"),
+    expectedDestinationLockId: phase5LockId(tradeId, "destination"),
+    destinationRefundTimestamp: NOW + 7_200,
+    exposureValueMicros: "100000",
+    economics: {
+      beneficiaryAmountAtomic: "100000",
+      executorAmountAtomic: "2000",
+      totalDestinationLiabilityAtomic: "102000",
+    },
+  };
+}
+
 async function signedFixture({
   tradeId = `0x${"82".repeat(32)}`,
   requester = Wallet.createRandom(),
@@ -588,6 +642,70 @@ test("exposure and exact package identity survive restart", async () => {
     assert.equal(journal.activeTrades().length, 1);
     assert.equal(journal.exposureSummary().exposureValueMicros, "100000");
     assert.equal(journal.admitSource(firm).packageId, admitted.packageId);
+  } finally {
+    journal.close();
+    database.cleanup();
+  }
+});
+
+test("V2 destination reservation counts before broadcast and survives restart", () => {
+  const database = temporaryDatabase();
+  const policy = {
+    maximumActiveLocksGlobal: 1,
+    maximumActiveLocksPerRequester: 1,
+  };
+  const first = v2ExposureFixture();
+  let journal = new FxPhase8ExposureJournal({
+    filePath: database.filePath,
+    deploymentId: DEPLOYMENT_ID,
+    policy,
+  });
+  try {
+    const pending = journal.reserveDestinationV2(first);
+    assert.equal(pending.state, "destination_pending");
+    assert.equal(journal.activeTrades().length, 1);
+    assert.equal(journal.exposureSummary().exposureValueMicros, "100000");
+    assert.deepEqual(pending.economics, first.economics);
+  } finally {
+    journal.close();
+  }
+
+  journal = new FxPhase8ExposureJournal({
+    filePath: database.filePath,
+    deploymentId: DEPLOYMENT_ID,
+    policy,
+  });
+  try {
+    assert.equal(journal.activeTrades()[0].state, "destination_pending");
+    assert.equal(
+      journal.reserveDestinationV2(first).packageId,
+      journal.activeTrades()[0].packageId
+    );
+    assert.throws(
+      () => journal.reserveDestinationV2(
+        v2ExposureFixture({ label: "second-v2-exposure" })
+      ),
+      (error) => error.code === "EXPOSURE_LIMIT"
+    );
+
+    const destinationLock = {
+      version: 2,
+      type: "fx_lock_destination",
+      id: keccak256(toUtf8Bytes("v2-destination-lock-message")),
+      payload: {
+        transactionHash: keccak256(toUtf8Bytes("v2-destination-lock-tx")),
+        timeout: first.destinationRefundTimestamp,
+      },
+    };
+    const locked = journal.markDestinationLockedV2(
+      first.rfq.tradeId,
+      destinationLock
+    );
+    assert.equal(locked.state, "destination_locked");
+    assert.equal(
+      locked.destinationTransactionHash,
+      destinationLock.payload.transactionHash
+    );
   } finally {
     journal.close();
     database.cleanup();

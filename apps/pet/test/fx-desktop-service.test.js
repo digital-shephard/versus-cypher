@@ -526,6 +526,95 @@ test("public state truncates addresses and evidence excludes private material", 
   assert.match(text, /endpointPaymentSubmitted/);
 });
 
+test("scrubbed quote-rejection telemetry preserves reason codes without private state", async () => {
+  const { root, service } = fixture();
+  const privateInventory = "0xabcabcabcabcabcabcabcabcabcabcabcabcabca";
+  const privateKeyHint = "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+  const cases = [
+    {
+      tradeId: `0x${"11".repeat(32)}`,
+      code: "insufficient_destination_inventory",
+      detail: `available below liability for ${privateInventory}`,
+    },
+    {
+      tradeId: `0x${"22".repeat(32)}`,
+      code: "trade_outside_limits",
+      detail: "output exceeds maximumTradeUsd",
+    },
+    {
+      tradeId: `0x${"33".repeat(32)}`,
+      code: "unsupported_destination",
+      detail: null,
+    },
+    {
+      tradeId: `0x${"44".repeat(32)}`,
+      code: "unsupported_source_route",
+      detail: `secret=${privateKeyHint}`,
+    },
+    {
+      tradeId: `0x${"55".repeat(32)}`,
+      code: "requester_max_input_exceeded",
+      detail: "requester max input too low",
+    },
+  ];
+
+  for (const entry of cases) {
+    service.recordRuntimeTrade({
+      tradeId: entry.tradeId,
+      role: "dealer",
+      state: "quote_rejected",
+      rejection: {
+        code: entry.code,
+        detail: entry.detail,
+      },
+    });
+  }
+
+  const evidencePath = path.join(root, "export", "quote-rejection-evidence.json");
+  service.exportEvidence(evidencePath);
+  const text = fs.readFileSync(evidencePath, "utf8");
+  const evidence = JSON.parse(text);
+  const rejections = evidence.observations.filter(
+    (entry) => entry.category === "quote_rejected"
+  );
+  assert.equal(rejections.length, cases.length);
+  assert.deepEqual(
+    rejections.map((entry) => entry.value).sort(),
+    cases.map((entry) => entry.code).sort()
+  );
+  assert.equal(
+    rejections.some((entry) => entry.failure === "output exceeds maximumTradeUsd"),
+    true
+  );
+  assert.equal(
+    rejections.some((entry) => entry.failure === "requester max input too low"),
+    true
+  );
+  assert.equal(
+    rejections.some(
+      (entry) => entry.failure === "available below liability for 0x[address]"
+    ),
+    true
+  );
+  assert.equal(
+    rejections.some((entry) => entry.failure === "secret=0x[hash]"),
+    true
+  );
+  assert.equal(text.includes(privateInventory), false);
+  assert.equal(text.includes(privateKeyHint), false);
+  assert.equal(text.includes("recovery password"), false);
+  assert.deepEqual(evidence.excluded, [
+    "private_keys",
+    "htlc_secrets",
+    "recovery_passwords",
+    "recipient_addresses",
+    "refund_addresses",
+    "exact_private_inventory",
+    "endpoint_credentials",
+    "private_resource_details",
+  ]);
+});
+
 test("dealer display follows the real runtime instead of a local armed flag", async () => {
   let active = false;
   const calls = [];

@@ -137,6 +137,21 @@ function publicRoute(quote) {
     outputToken: route.outputToken,
     outputAmountAtomic: route.outputAmountAtomic,
     spreadBps: selected.payload.spreadBps,
+    dealerPrincipalAtomic:
+      selected.payload.dealerPrincipalAtomic || route.dealerInputAmountAtomic,
+    dealerSpreadAtomic: selected.payload.dealerSpreadAtomic || "0",
+    dealerOperatingCostAtomic:
+      selected.payload.dealerOperatingCostAtomic ||
+      selected.payload.dealerSettlementCostAtomic ||
+      "0",
+    destinationExecutorAmountAtomic:
+      selected.payload.destinationExecutorAmountAtomic || "0",
+    destinationClaimGasEstimate:
+      selected.payload.destinationClaimGasEstimate || null,
+    destinationMaxFeePerGas:
+      selected.payload.destinationMaxFeePerGas || null,
+    gasPriceSource: selected.payload.gasPriceSource || null,
+    gasPriceTimestamp: selected.payload.gasPriceTimestamp || null,
     estimatedCompletionSeconds: selected.payload.estimatedCompletionSeconds,
     expiresAt: Math.min(
       quote.rfq.expiresAt,
@@ -203,6 +218,7 @@ class FxDesktopService extends EventEmitter {
     nativeUsdPriceProvider,
     chainReadinessRequired = true,
     refreshMinimumAgeMs = 15_000,
+    protocolVersion = 1,
     now = () => Math.floor(Date.now() / 1000),
   } = {}) {
     super();
@@ -235,6 +251,10 @@ class FxDesktopService extends EventEmitter {
       Number(refreshMinimumAgeMs) || 15_000
     );
     this.now = now;
+    this.protocolVersion = Number(protocolVersion);
+    if (![1, 2].includes(this.protocolVersion)) {
+      throw new TypeError("FX desktop protocol version is unsupported");
+    }
     this.requesterOperations = new Set();
     this.lastRefreshAt = 0;
     this.refreshInFlight = null;
@@ -305,6 +325,7 @@ class FxDesktopService extends EventEmitter {
       }),
       queryRoutes: this.queryRoutes,
       now: this.now,
+      protocolVersion: this.protocolVersion,
     });
   }
 
@@ -850,7 +871,10 @@ class FxDesktopService extends EventEmitter {
         }],
         inputChainId: source.chainId,
         inputToken: source.assetAddress,
-        quoteLifetimeSeconds: snapshot.policy.quoteLifetimeSeconds,
+        quoteLifetimeSeconds:
+          this.protocolVersion === 2
+            ? Math.max(120, snapshot.policy.quoteLifetimeSeconds)
+            : Math.min(60, snapshot.policy.quoteLifetimeSeconds),
         settlementLifetimeSeconds: 7_200,
       });
     } catch (error) {
@@ -1302,6 +1326,17 @@ class FxDesktopService extends EventEmitter {
     if (!/^0x[0-9a-f]{64}$/.test(tradeId)) return this.snapshot();
     const previous = this.store.trade(tradeId);
     const state = String(update.state || previous?.state || "requesting");
+    if (state === "quote_rejected") {
+      this.store.observe({
+        tradeId,
+        category: "quote_rejected",
+        value: String(update.rejection?.code || "policy_declined").slice(0, 64),
+        failure: update.rejection?.detail
+          ? String(update.rejection.detail).slice(0, 160)
+          : null,
+      });
+      return this.#emit();
+    }
     const timeline = previous?.timeline || [];
     const lastState = timeline.at(-1)?.state;
     const quotePayload = update.quote?.payload || previous?.quote?.payload || null;

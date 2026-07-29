@@ -8,6 +8,7 @@ const {
 } = require("./fx-phase8-policy");
 
 const ACTIVE_STATES = new Set([
+  "destination_pending",
   "source_firm",
   "destination_locked",
   "destination_claimed",
@@ -22,6 +23,7 @@ const TERMINAL_STATES = new Set([
 const ALL_STATES = new Set([...ACTIVE_STATES, ...TERMINAL_STATES]);
 const SCHEMA_VERSION = 1;
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
+const ZERO_HASH = `0x${"00".repeat(32)}`;
 
 class FxPhase8JournalError extends Error {
   constructor(message, code = "FX_PHASE8_JOURNAL_ERROR") {
@@ -64,6 +66,19 @@ function packageIdentity(verified) {
     destinationLockId: verified.expectedDestinationLockId,
   };
   return keccak256(toUtf8Bytes(canonicalJson(core)));
+}
+
+function packageIdentityV2(input) {
+  return keccak256(toUtf8Bytes(canonicalJson({
+    deploymentId: input.rfq.deploymentId,
+    tradeId: input.rfq.tradeId,
+    rfqId: input.rfq.id,
+    quoteId: input.quote.id,
+    acceptId: input.accept.id,
+    reserveId: input.reserve.id,
+    sourceLockId: input.expectedSourceLockId,
+    destinationLockId: input.expectedDestinationLockId,
+  })));
 }
 
 function rowToTrade(row) {
@@ -204,7 +219,12 @@ class FxPhase8ExposureJournal {
     return this.db.prepare(`
       SELECT * FROM fx_phase8_exposure
       WHERE deployment_id = ?
-        AND state IN ('source_firm', 'destination_locked', 'destination_claimed')
+        AND state IN (
+          'destination_pending',
+          'source_firm',
+          'destination_locked',
+          'destination_claimed'
+        )
       ORDER BY created_at, trade_id
     `).all(this.deploymentId).map(rowToTrade);
   }
@@ -373,6 +393,229 @@ class FxPhase8ExposureJournal {
       try { this.db.exec("ROLLBACK"); } catch {}
       throw error;
     }
+  }
+
+  reserveDestinationV2({
+    rfq,
+    quote,
+    accept,
+    reserve,
+    expectedSourceLockId,
+    expectedDestinationLockId,
+    destinationRefundTimestamp,
+    exposureValueMicros,
+    economics = {},
+  }) {
+    if (
+      rfq?.version !== 2 ||
+      quote?.version !== 2 ||
+      accept?.version !== 2 ||
+      reserve?.version !== 2
+    ) {
+      throw new FxPhase8JournalError(
+        "V2 exposure requires a complete version-two package",
+        "BAD_PACKAGE"
+      );
+    }
+    if (rfq.deploymentId !== this.deploymentId) {
+      throw new FxPhase8JournalError(
+        "destination package belongs to another deployment",
+        "DEPLOYMENT_MISMATCH"
+      );
+    }
+    const tradeId = hash(rfq.tradeId, "tradeId");
+    const sourceLockId = hash(expectedSourceLockId, "source lock id");
+    const destinationLockId = hash(
+      expectedDestinationLockId,
+      "destination lock id"
+    );
+    const packageId = packageIdentityV2({
+      rfq,
+      quote,
+      accept,
+      reserve,
+      expectedSourceLockId: sourceLockId,
+      expectedDestinationLockId: destinationLockId,
+    });
+    const existing = this.trade(tradeId);
+    if (existing) {
+      if (existing.packageId !== packageId) {
+        throw new FxPhase8JournalError(
+          "trade conflicts with its durable destination package",
+          "TRADE_CONFLICT"
+        );
+      }
+      return existing;
+    }
+    const verified = {
+      rfq,
+      route: {
+        outputChainId: quote.payload.outputChainId,
+        outputToken: quote.payload.outputToken,
+      },
+      exposureValueMicros: unsigned(
+        exposureValueMicros,
+        "exposure value micros",
+        { allowZero: false }
+      ),
+    };
+    const now = this.now();
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      const raced = this.trade(tradeId);
+      if (raced) {
+        if (raced.packageId !== packageId) {
+          throw new FxPhase8JournalError(
+            "trade conflicts with its durable destination package",
+            "TRADE_CONFLICT"
+          );
+        }
+        this.db.exec("COMMIT");
+        return raced;
+      }
+      this.assertCapacity(verified);
+      this.db.prepare(`
+        INSERT INTO fx_phase8_exposure(
+          deployment_id, trade_id, package_id, requester, dealer, asset_key,
+          input_amount_atomic, exposure_value_micros, source_lock_id,
+          source_transaction_hash, destination_lock_id,
+          destination_transaction_hash, source_refund_timestamp,
+          destination_refund_timestamp, dealer_deadline, state, package_json,
+          economics_json, created_at, updated_at
+        ) VALUES(
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'destination_pending',
+          ?, ?, ?, ?
+        )
+      `).run(
+        this.deploymentId,
+        tradeId,
+        packageId,
+        rfq.sender,
+        quote.sender,
+        `${quote.payload.outputChainId}:${quote.payload.outputToken}`,
+        unsigned(quote.payload.inputAmountAtomic, "input amount", {
+          allowZero: false,
+        }),
+        verified.exposureValueMicros,
+        sourceLockId,
+        ZERO_HASH,
+        destinationLockId,
+        ZERO_HASH,
+        Number(destinationRefundTimestamp) -
+          this.policy.minimumTimeoutDeltaSeconds,
+        Number(destinationRefundTimestamp),
+        reserve.payload.reservationDeadline,
+        JSON.stringify({ rfq, quote, accept, reserve }),
+        JSON.stringify(economics),
+        now,
+        now
+      );
+      this.db.exec("COMMIT");
+      return this.trade(tradeId);
+    } catch (error) {
+      try { this.db.exec("ROLLBACK"); } catch {}
+      throw error;
+    }
+  }
+
+  markDestinationLockedV2(tradeId, destinationLock) {
+    const trade = this.trade(tradeId);
+    if (!trade) {
+      throw new FxPhase8JournalError("trade is not admitted", "UNKNOWN_TRADE");
+    }
+    if (
+      destinationLock?.version !== 2 ||
+      destinationLock?.type !== "fx_lock_destination" ||
+      destinationLock.payload.transactionHash === ZERO_HASH ||
+      destinationLock.payload.timeout !== trade.destinationRefundTimestamp
+    ) {
+      throw new FxPhase8JournalError(
+        "destination lock does not match the V2 reservation",
+        "LOCK_MISMATCH"
+      );
+    }
+    if (trade.state === "destination_locked") {
+      if (
+        trade.destinationTransactionHash !==
+        destinationLock.payload.transactionHash
+      ) {
+        throw new FxPhase8JournalError(
+          "destination lock conflicts with its durable transaction",
+          "TRADE_CONFLICT"
+        );
+      }
+      return trade;
+    }
+    if (trade.state !== "destination_pending") {
+      throw new FxPhase8JournalError(
+        "destination lock cannot advance this trade",
+        "INVALID_STATE"
+      );
+    }
+    this.db.prepare(`
+      UPDATE fx_phase8_exposure
+      SET state = 'destination_locked', destination_transaction_hash = ?,
+          package_json = ?, updated_at = ?
+      WHERE deployment_id = ? AND trade_id = ?
+    `).run(
+      destinationLock.payload.transactionHash,
+      JSON.stringify({
+        ...trade.package,
+        destinationLock,
+      }),
+      this.now(),
+      this.deploymentId,
+      trade.tradeId
+    );
+    return this.trade(trade.tradeId);
+  }
+
+  attachSourceLockV2(tradeId, sourceLock) {
+    const trade = this.trade(tradeId);
+    if (!trade || trade.state !== "destination_locked") {
+      throw new FxPhase8JournalError(
+        "source lock has no active V2 destination exposure",
+        "UNKNOWN_TRADE"
+      );
+    }
+    if (
+      sourceLock?.version !== 2 ||
+      sourceLock?.type !== "fx_lock_source" ||
+      Number(sourceLock.payload.timeout) +
+        this.policy.minimumTimeoutDeltaSeconds >
+        trade.destinationRefundTimestamp
+    ) {
+      throw new FxPhase8JournalError(
+        "source lock violates the V2 timeout order",
+        "LOCK_MISMATCH"
+      );
+    }
+    if (trade.sourceTransactionHash !== ZERO_HASH) {
+      if (trade.sourceTransactionHash !== sourceLock.payload.transactionHash) {
+        throw new FxPhase8JournalError(
+          "source lock conflicts with its durable transaction",
+          "TRADE_CONFLICT"
+        );
+      }
+      return trade;
+    }
+    this.db.prepare(`
+      UPDATE fx_phase8_exposure
+      SET source_transaction_hash = ?, source_refund_timestamp = ?,
+          package_json = ?, updated_at = ?
+      WHERE deployment_id = ? AND trade_id = ?
+    `).run(
+      sourceLock.payload.transactionHash,
+      sourceLock.payload.timeout,
+      JSON.stringify({
+        ...trade.package,
+        sourceLock,
+      }),
+      this.now(),
+      this.deploymentId,
+      trade.tradeId
+    );
+    return this.trade(trade.tradeId);
   }
 
   markDestinationLocked(tradeId, {

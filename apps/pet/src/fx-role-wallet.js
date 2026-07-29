@@ -10,6 +10,7 @@ const FX_WALLET_ROLES = Object.freeze([
   "requester",
   "dealer",
   "broker",
+  "relayer",
 ]);
 
 function deriveFxRoleWallet(baseWallet, role) {

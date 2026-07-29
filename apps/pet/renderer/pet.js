@@ -2437,7 +2437,10 @@ function renderFxRequester() {
     $("fx-quote-dealer").textContent = fxShortAddress(route.dealer);
     $("fx-quote-spread").textContent = `${route.spreadBps} BPS`;
     $("fx-quote-fee").textContent =
-      `${(Number(route.brokerFeeAtomic) / (10 ** source.decimals)).toFixed(6)} ${source.asset}`;
+      `${(
+        Number(route.dealerOperatingCostAtomic || route.brokerFeeAtomic || 0) /
+        (10 ** source.decimals)
+      ).toFixed(6)} ${source.asset}`;
     $("fx-quote-time").textContent = `${route.estimatedCompletionSeconds}s`;
     $("fx-quote-label").textContent = fxQuoteAcceptActive
       ? "RESERVING DEALER"

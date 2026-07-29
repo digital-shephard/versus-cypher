@@ -36,6 +36,24 @@ const FX_NATIVE_HTLC_ABI = Object.freeze([
   "event LockClaimed(bytes32 indexed lockId,address indexed submitter,address indexed beneficiary,bytes32 secret,uint256 amount)",
   "event LockRefunded(bytes32 indexed lockId,address indexed submitter,address indexed refundAddress,uint256 amount)",
 ]);
+const FX_HTLC_V2_ABI = Object.freeze([
+  "function fund(bytes32 lockId,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint256 beneficiaryAmount,uint256 executorAmount)",
+  "function claim(bytes32 lockId,bytes32 secret)",
+  "function refund(bytes32 lockId)",
+  "function getLock(bytes32 lockId) view returns (tuple(address funder,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint8 state,uint256 beneficiaryAmount,uint256 executorAmount))",
+  "event LockFunded(bytes32 indexed lockId,address indexed funder,address indexed beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint256 beneficiaryAmount,uint256 executorAmount)",
+  "event LockClaimed(bytes32 indexed lockId,address indexed submitter,address indexed beneficiary,bytes32 secret,uint256 beneficiaryAmount,uint256 executorAmount)",
+  "event LockRefunded(bytes32 indexed lockId,address indexed submitter,address indexed refundAddress,uint256 amount)",
+]);
+const FX_NATIVE_HTLC_V2_ABI = Object.freeze([
+  "function fund(bytes32 lockId,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint256 beneficiaryAmount,uint256 executorAmount) payable",
+  "function claim(bytes32 lockId,bytes32 secret)",
+  "function refund(bytes32 lockId)",
+  "function getLock(bytes32 lockId) view returns (tuple(address funder,address beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint8 state,uint256 beneficiaryAmount,uint256 executorAmount))",
+  "event LockFunded(bytes32 indexed lockId,address indexed funder,address indexed beneficiary,address refundAddress,bytes32 secretHash,uint64 refundTimestamp,uint256 beneficiaryAmount,uint256 executorAmount)",
+  "event LockClaimed(bytes32 indexed lockId,address indexed submitter,address indexed beneficiary,bytes32 secret,uint256 beneficiaryAmount,uint256 executorAmount)",
+  "event LockRefunded(bytes32 indexed lockId,address indexed submitter,address indexed refundAddress,uint256 amount)",
+]);
 
 const FX_TESTNET_CHAINS = Object.freeze({
   "84532": Object.freeze({
@@ -49,6 +67,11 @@ const FX_TESTNET_CHAINS = Object.freeze({
     adapterDeploymentBlock: 44662322,
     nativeAdapterAddress: "0x7c917f09e1de03977acc14575b56932aa55da543",
     nativeAdapterDeploymentBlock: 44762481,
+    adapterV2Address: "0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14",
+    adapterV2DeploymentBlock: 44781962,
+    nativeAdapterV2Address: "0x1e933ccffaa2cd384d3df751ff7a25183682dc61",
+    nativeAdapterV2DeploymentBlock: 44781959,
+    tokenDecimals: 6,
     nativeGasReserveWei: "100000000000000",
     requiredConfirmations: 2,
   }),
@@ -63,6 +86,11 @@ const FX_TESTNET_CHAINS = Object.freeze({
     adapterDeploymentBlock: 291630348,
     nativeAdapterAddress: "0x7c917f09e1de03977acc14575b56932aa55da543",
     nativeAdapterDeploymentBlock: 292433456,
+    adapterV2Address: "0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14",
+    adapterV2DeploymentBlock: 292589984,
+    nativeAdapterV2Address: "0x1e933ccffaa2cd384d3df751ff7a25183682dc61",
+    nativeAdapterV2DeploymentBlock: 292589965,
+    tokenDecimals: 6,
     nativeGasReserveWei: "100000000000000",
     requiredConfirmations: 2,
   }),
@@ -71,6 +99,8 @@ const FX_TESTNET_CHAINS = Object.freeze({
 const TOKEN_INTERFACE = new Interface(FX_TOKEN_ABI);
 const HTLC_INTERFACE = new Interface(FX_HTLC_ABI);
 const NATIVE_HTLC_INTERFACE = new Interface(FX_NATIVE_HTLC_ABI);
+const HTLC_V2_INTERFACE = new Interface(FX_HTLC_V2_ABI);
+const NATIVE_HTLC_V2_INTERFACE = new Interface(FX_NATIVE_HTLC_V2_ABI);
 const TRANSFER_TOPIC = id("Transfer(address,address,uint256)");
 
 class FxEvmCohortError extends Error {
@@ -110,9 +140,20 @@ function isNativeAsset(value) {
   return String(value || "").toLowerCase() === FX_NATIVE_ETH_ADDRESS;
 }
 
-function assetConfiguration(configuration, token) {
+function assetConfiguration(configuration, token, settlementVersion = 1) {
+  const version = Number(settlementVersion);
+  if (![1, 2].includes(version)) {
+    throw new FxEvmCohortError(
+      "settlement adapter version is unsupported",
+      "UNSUPPORTED_ADAPTER"
+    );
+  }
   if (isNativeAsset(token)) {
-    if (!configuration.nativeAdapterAddress) {
+    const adapterAddress =
+      version === 2
+        ? configuration.nativeAdapterV2Address
+        : configuration.nativeAdapterAddress;
+    if (!adapterAddress) {
       throw new FxEvmCohortError(
         "native ETH adapter is not frozen for this chain",
         "UNSUPPORTED_ASSET"
@@ -120,11 +161,16 @@ function assetConfiguration(configuration, token) {
     }
     return {
       token: FX_NATIVE_ETH_ADDRESS,
-      adapterAddress: configuration.nativeAdapterAddress,
-      adapterDeploymentBlock: configuration.nativeAdapterDeploymentBlock,
-      abi: FX_NATIVE_HTLC_ABI,
-      interface: NATIVE_HTLC_INTERFACE,
+      adapterAddress,
+      adapterDeploymentBlock:
+        version === 2
+          ? configuration.nativeAdapterV2DeploymentBlock
+          : configuration.nativeAdapterDeploymentBlock,
+      abi: version === 2 ? FX_NATIVE_HTLC_V2_ABI : FX_NATIVE_HTLC_ABI,
+      interface:
+        version === 2 ? NATIVE_HTLC_V2_INTERFACE : NATIVE_HTLC_INTERFACE,
       native: true,
+      settlementVersion: version,
     };
   }
   const normalized = normalizedAddress(token, "asset token");
@@ -136,11 +182,16 @@ function assetConfiguration(configuration, token) {
   }
   return {
     token: normalized,
-    adapterAddress: configuration.adapterAddress,
-    adapterDeploymentBlock: configuration.adapterDeploymentBlock,
-    abi: FX_HTLC_ABI,
-    interface: HTLC_INTERFACE,
+    adapterAddress:
+      version === 2 ? configuration.adapterV2Address : configuration.adapterAddress,
+    adapterDeploymentBlock:
+      version === 2
+        ? configuration.adapterV2DeploymentBlock
+        : configuration.adapterDeploymentBlock,
+    abi: version === 2 ? FX_HTLC_V2_ABI : FX_HTLC_ABI,
+    interface: version === 2 ? HTLC_V2_INTERFACE : HTLC_INTERFACE,
     native: false,
+    settlementVersion: version,
   };
 }
 
@@ -170,6 +221,7 @@ class FxEvmCohort {
       new Contract(address, abi, runner),
     walletFactory = (privateKey, provider) =>
       new Wallet(privateKey, provider),
+    settlementVersion = 1,
   } = {}) {
     if (typeof walletProvider !== "function") {
       throw new TypeError("FX EVM cohort requires a wallet provider");
@@ -180,6 +232,10 @@ class FxEvmCohort {
     this.providerFactory = providerFactory;
     this.contractFactory = contractFactory;
     this.walletFactory = walletFactory;
+    this.settlementVersion = Number(settlementVersion);
+    if (![1, 2].includes(this.settlementVersion)) {
+      throw new TypeError("FX EVM cohort settlement version is unsupported");
+    }
     this.providers = new Map();
     this.preflights = new Map();
     this.rpcOverrides = new Map();
@@ -190,7 +246,11 @@ class FxEvmCohort {
   }
 
   adapterAddress(chainId, token) {
-    return assetConfiguration(this.configuration(chainId), token).adapterAddress;
+    return assetConfiguration(
+      this.configuration(chainId),
+      token,
+      this.settlementVersion
+    ).adapterAddress;
   }
 
   provider(chainId) {
@@ -241,11 +301,19 @@ class FxEvmCohort {
             "WRONG_CHAIN"
           );
         }
+        const adapterAddress =
+          this.settlementVersion === 2
+            ? configuration.adapterV2Address
+            : configuration.adapterAddress;
+        const nativeAdapterAddress =
+          this.settlementVersion === 2
+            ? configuration.nativeAdapterV2Address
+            : configuration.nativeAdapterAddress;
         const [tokenCode, adapterCode, nativeAdapterCode] = await Promise.all([
           provider.getCode(configuration.tokenAddress),
-          provider.getCode(configuration.adapterAddress),
-          configuration.nativeAdapterAddress
-            ? provider.getCode(configuration.nativeAdapterAddress)
+          provider.getCode(adapterAddress),
+          nativeAdapterAddress
+            ? provider.getCode(nativeAdapterAddress)
             : Promise.resolve("0x"),
         ]);
         if (tokenCode === "0x" || adapterCode === "0x") {
@@ -255,7 +323,7 @@ class FxEvmCohort {
           );
         }
         if (
-          configuration.nativeAdapterAddress &&
+          nativeAdapterAddress &&
           nativeAdapterCode === "0x"
         ) {
           throw new FxEvmCohortError(
@@ -280,7 +348,11 @@ class FxEvmCohort {
     requiredAtomic,
   }) {
     const configuration = await this.preflight(chainId);
-    const asset = assetConfiguration(configuration, token);
+    const asset = assetConfiguration(
+      configuration,
+      token,
+      this.settlementVersion
+    );
     const recipient = normalizedAddress(address, "funding address");
     const provider = this.provider(chainId);
     const contract = asset.native
@@ -303,7 +375,11 @@ class FxEvmCohort {
 
   async tokenBalance(chainId, token, owner = null) {
     const configuration = await this.preflight(chainId);
-    const asset = assetConfiguration(configuration, token);
+    const asset = assetConfiguration(
+      configuration,
+      token,
+      this.settlementVersion
+    );
     const address = normalizedAddress(
       owner || this.walletProvider("dealer")?.address,
       "inventory owner"
@@ -342,7 +418,11 @@ class FxEvmCohort {
     role = "dealer",
   }) {
     const configuration = await this.preflight(chainId);
-    const asset = assetConfiguration(configuration, token);
+    const asset = assetConfiguration(
+      configuration,
+      token,
+      this.settlementVersion
+    );
     const recipient = normalizedAddress(destination, "withdrawal destination");
     const amount = BigInt(amountAtomic);
     if (amount <= 0n) {
@@ -426,7 +506,11 @@ class FxEvmCohort {
     }
     const configuration = await this.preflight(baseline.chainId);
     const provider = this.provider(configuration.chainId);
-    const asset = assetConfiguration(configuration, baseline.token);
+    const asset = assetConfiguration(
+      configuration,
+      baseline.token,
+      this.settlementVersion
+    );
     const token = asset.token;
     const recipient = normalizedAddress(baseline.address, "funding address");
     const contract = asset.native
@@ -502,7 +586,8 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const provider = this.provider(configuration.chainId);
     const adapter = this.contractFactory(
@@ -523,7 +608,17 @@ class FxEvmCohort {
       timeout: Number(lock.refundTimestamp),
       state: Number(lock.state),
       stateName: lockStateName(lock.state),
-      amountAtomic: BigInt(lock.amount).toString(),
+      beneficiaryAmountAtomic: BigInt(
+        asset.settlementVersion === 2 ? lock.beneficiaryAmount : lock.amount
+      ).toString(),
+      executorAmountAtomic: BigInt(
+        asset.settlementVersion === 2 ? lock.executorAmount : 0
+      ).toString(),
+      amountAtomic: BigInt(
+        asset.settlementVersion === 2
+          ? BigInt(lock.beneficiaryAmount) + BigInt(lock.executorAmount)
+          : lock.amount
+      ).toString(),
     };
   }
 
@@ -549,6 +644,8 @@ class FxEvmCohort {
     tradeId,
     side,
     amountAtomic,
+    beneficiaryAmountAtomic = amountAtomic,
+    executorAmountAtomic = "0",
     beneficiary,
     refundAddress,
     secretHash,
@@ -559,14 +656,26 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const lockId = phase5LockId(tradeId, side);
+    const beneficiaryAmount = BigInt(beneficiaryAmountAtomic);
+    const executorAmount = BigInt(executorAmountAtomic);
+    const amount = beneficiaryAmount + executorAmount;
+    if (amount !== BigInt(amountAtomic)) {
+      throw new FxEvmCohortError(
+        "lock amount does not equal beneficiary plus executor liabilities",
+        "INVALID_AMOUNT"
+      );
+    }
     const existing = await this.readLock(chainId, lockId, asset.token);
     if (existing.state !== 0) {
       if (
         existing.state === 1 &&
         existing.amountAtomic === BigInt(amountAtomic).toString() &&
+        existing.beneficiaryAmountAtomic === beneficiaryAmount.toString() &&
+        existing.executorAmountAtomic === executorAmount.toString() &&
         existing.beneficiary === normalizedAddress(beneficiary, "beneficiary") &&
         existing.refundAddress === normalizedAddress(refundAddress, "refund address") &&
         existing.secretHash === String(secretHash).toLowerCase() &&
@@ -580,7 +689,6 @@ class FxEvmCohort {
       );
     }
     const signer = this.wallet(chainId, role);
-    const amount = BigInt(amountAtomic);
     if (asset.native) {
       const owner = normalizedAddress(await signer.getAddress(), "FX wallet");
       const adapter = this.contractFactory(
@@ -594,6 +702,9 @@ class FxEvmCohort {
         normalizedAddress(refundAddress, "refund address"),
         String(secretHash).toLowerCase(),
         Number(refundTimestamp),
+        ...(asset.settlementVersion === 2
+          ? [beneficiaryAmount, executorAmount]
+          : []),
         { value: amount },
       ];
       const feeData = await this.provider(chainId).getFeeData();
@@ -619,34 +730,45 @@ class FxEvmCohort {
       };
     }
     const tokenContract = this.contractFactory(
-      configuration.tokenAddress,
+      asset.token,
       FX_TOKEN_ABI,
       signer
     );
     const adapter = this.contractFactory(
-      configuration.adapterAddress,
-      FX_HTLC_ABI,
+      asset.adapterAddress,
+      asset.abi,
       signer
     );
     const owner = normalizedAddress(await signer.getAddress(), "FX wallet");
     const allowance = BigInt(
-      await tokenContract.allowance(owner, configuration.adapterAddress)
+      await tokenContract.allowance(owner, asset.adapterAddress)
     );
     if (allowance < amount) {
       const approval = await tokenContract.approve(
-        configuration.adapterAddress,
+        asset.adapterAddress,
         amount
       );
       await this.#confirmedReceipt(chainId, approval.hash);
     }
-    const transaction = await adapter.fund(
-      lockId,
-      normalizedAddress(beneficiary, "beneficiary"),
-      normalizedAddress(refundAddress, "refund address"),
-      String(secretHash).toLowerCase(),
-      Number(refundTimestamp),
-      amount
-    );
+    const transaction =
+      asset.settlementVersion === 2
+        ? await adapter.fund(
+            lockId,
+            normalizedAddress(beneficiary, "beneficiary"),
+            normalizedAddress(refundAddress, "refund address"),
+            String(secretHash).toLowerCase(),
+            Number(refundTimestamp),
+            beneficiaryAmount,
+            executorAmount
+          )
+        : await adapter.fund(
+            lockId,
+            normalizedAddress(beneficiary, "beneficiary"),
+            normalizedAddress(refundAddress, "refund address"),
+            String(secretHash).toLowerCase(),
+            Number(refundTimestamp),
+            amount
+          );
     const receipt = await this.#confirmedReceipt(chainId, transaction.hash);
     return {
       lock: await this.readLock(chainId, lockId, asset.token),
@@ -666,7 +788,8 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const lockId = phase5LockId(tradeId, side);
     const existing = await this.readLock(chainId, lockId, asset.token);
@@ -703,7 +826,8 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const lockId = phase5LockId(tradeId, side);
     const existing = await this.readLock(chainId, lockId, asset.token);
@@ -739,7 +863,8 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const provider = this.provider(chainId);
     const receipt = await provider.getTransactionReceipt(
@@ -774,7 +899,8 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const provider = this.provider(chainId);
     const receipt = await provider.getTransactionReceipt(transactionHash(hash));
@@ -819,7 +945,8 @@ class FxEvmCohort {
     const configuration = await this.preflight(chainId);
     const asset = assetConfiguration(
       configuration,
-      token || configuration.tokenAddress
+      token || configuration.tokenAddress,
+      this.settlementVersion
     );
     const provider = this.provider(chainId);
     const lockId = phase5LockId(tradeId, side);
@@ -854,7 +981,9 @@ class FxEvmCohort {
 
 module.exports = {
   FX_HTLC_ABI,
+  FX_HTLC_V2_ABI,
   FX_NATIVE_HTLC_ABI,
+  FX_NATIVE_HTLC_V2_ABI,
   FX_TESTNET_CHAINS,
   FX_TOKEN_ABI,
   FxEvmCohort,

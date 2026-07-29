@@ -49,7 +49,7 @@ const FX_POLICY_BOUNDS = Object.freeze({
   maximumOverheadBps: [0, 10_000],
   minimumSpreadBps: [1, 10_000],
   inventoryPremiumBps: [0, 10_000],
-  quoteLifetimeSeconds: [10, 60],
+  quoteLifetimeSeconds: [10, 300],
   reservationSeconds: [30, 600],
 });
 
@@ -620,7 +620,11 @@ class FxDesktopStore {
         durationMs: Number.isFinite(entry.durationMs)
           ? entry.durationMs
           : null,
-        failure: entry.failure || null,
+        failure: entry.failure
+          ? String(entry.failure)
+              .replace(/0x[a-fA-F0-9]{64}/g, "0x[hash]")
+              .replace(/0x[a-fA-F0-9]{40}/g, "0x[address]")
+          : null,
         transactionHash:
           /^0x[0-9a-fA-F]{64}$/.test(String(entry.transactionHash || ""))
             ? entry.transactionHash
