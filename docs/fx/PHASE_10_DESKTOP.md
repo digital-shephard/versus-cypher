@@ -46,6 +46,10 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 - Dealer mode is disabled by default.
 - The owner explicitly enables the FX lab and then separately arms dealing.
 - Supported inventory positions are selected on the Stock page.
+- Enabling, disabling, funding, or draining a supported chain while dealing is
+  armed rebuilds the live dealer route set when its usable-position topology
+  changes. Repeated balance polls with the same routes do not restart the
+  dealer, and the owner does not need to restart or cycle the dealer switch.
 - Native ETH is a genuine inventory asset on Base Sepolia and Arbitrum
   Sepolia, not merely a gas-readiness indicator. A chain toggle enables its
   native ETH bay; the owner may then enable the chain's ERC-20 bay separately.

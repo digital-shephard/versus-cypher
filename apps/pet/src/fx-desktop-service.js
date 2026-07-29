@@ -70,6 +70,13 @@ function usableDealerPositions(snapshot) {
   return snapshot.positions.filter((position) => position.usable);
 }
 
+function dealerRouteSignature(positions) {
+  return positions
+    .map((position) => position.id)
+    .sort()
+    .join("|");
+}
+
 function address(value, label) {
   const normalized = String(value || "").trim();
   if (!isAddress(normalized)) {
@@ -231,6 +238,7 @@ class FxDesktopService extends EventEmitter {
     this.requesterOperations = new Set();
     this.lastRefreshAt = 0;
     this.refreshInFlight = null;
+    this.dealerRouteSignature = "";
     for (const chain of this.store.snapshot().chains || []) {
       if (chain.rpcUrl) {
         this.dealerController?.setRpcUrl?.(chain.chainId, chain.rpcUrl);
@@ -250,6 +258,23 @@ class FxDesktopService extends EventEmitter {
       throw new FxDesktopError("local FX identity is unavailable", "WALLET_UNAVAILABLE");
     }
     return new Wallet(wallet.privateKey);
+  }
+
+  async #syncDealerRoutes(snapshot) {
+    if (!this.dealerController?.status?.().dealer?.active) {
+      this.dealerRouteSignature = "";
+      return false;
+    }
+    if (!this.dealerController?.updateDealer) return false;
+    const positions = usableDealerPositions(snapshot);
+    const signature = dealerRouteSignature(positions);
+    if (signature === this.dealerRouteSignature) return false;
+    await this.dealerController.updateDealer({
+      policy: snapshot.policy,
+      positions,
+    });
+    this.dealerRouteSignature = signature;
+    return true;
   }
 
   #sdk() {
@@ -474,6 +499,8 @@ class FxDesktopService extends EventEmitter {
         });
       }
     }
+    const finalSnapshot = this.snapshot();
+    await this.#syncDealerRoutes(finalSnapshot);
     this.lastRefreshAt = Date.now();
     return this.#emit();
   }
@@ -492,6 +519,7 @@ class FxDesktopService extends EventEmitter {
   async setEnabled(enabled) {
     if (enabled !== true && this.dealerController?.status?.().dealer?.active) {
       await this.dealerController.disarmDealer();
+      this.dealerRouteSignature = "";
     }
     this.store.setEnabled(enabled === true);
     if (enabled === true) {
@@ -573,19 +601,25 @@ class FxDesktopService extends EventEmitter {
         policy: nextPolicy,
         positions: usableDealerPositions(current),
       });
+      this.dealerRouteSignature = dealerRouteSignature(
+        usableDealerPositions(current)
+      );
     } else if (
       requested.armed === false &&
       this.dealerController?.status?.().dealer?.active
     ) {
       await this.dealerController.disarmDealer();
+      this.dealerRouteSignature = "";
     } else if (
       !("armed" in requested) &&
       this.dealerController?.status?.().dealer?.active
     ) {
+      const positions = usableDealerPositions(current);
       await this.dealerController.updateDealer({
         policy: nextPolicy,
-        positions: usableDealerPositions(current),
+        positions,
       });
+      this.dealerRouteSignature = dealerRouteSignature(positions);
     }
     this.store.setPolicy({
       ...requested,
@@ -614,10 +648,12 @@ class FxDesktopService extends EventEmitter {
     this.store.setPositionEnabled(String(id || ""), enabled === true);
     if (this.dealerController?.status?.().dealer?.active) {
       const state = this.snapshot();
+      const positions = usableDealerPositions(state);
       await this.dealerController.updateDealer({
         policy: state.policy,
-        positions: usableDealerPositions(state),
+        positions,
       });
+      this.dealerRouteSignature = dealerRouteSignature(positions);
     }
     return this.#emit();
   }
@@ -711,8 +747,12 @@ class FxDesktopService extends EventEmitter {
         policy: state.policy,
         positions: usableDealerPositions(snapshot),
       });
+      this.dealerRouteSignature = dealerRouteSignature(
+        usableDealerPositions(snapshot)
+      );
       this.store.setPolicy({ armed: true });
     } catch (error) {
+      this.dealerRouteSignature = "";
       this.store.setPolicy({ armed: false });
       this.store.observe({
         category: "dealer_resume",

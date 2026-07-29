@@ -529,6 +529,7 @@ test("public state truncates addresses and evidence excludes private material", 
 test("dealer display follows the real runtime instead of a local armed flag", async () => {
   let active = false;
   const calls = [];
+  const updates = [];
   const dealerController = {
     status() {
       return { dealer: { configured: true, active } };
@@ -541,8 +542,9 @@ test("dealer display follows the real runtime instead of a local armed flag", as
       calls.push("disarm");
       active = false;
     },
-    async updateDealer() {
+    async updateDealer(input) {
       calls.push("update");
+      updates.push(input);
     },
   };
   const { service } = fixture({ dealerController });
@@ -552,9 +554,17 @@ test("dealer display follows the real runtime instead of a local armed flag", as
   assert.equal(service.snapshot().policy.armed, true);
   await service.setPolicy({ minimumSpreadBps: 40 });
   assert.deepEqual(calls, ["arm", "update"]);
+  await service.setChainSettings("84532", { enabled: true });
+  assert.deepEqual(calls, ["arm", "update", "update"]);
+  assert.equal(
+    updates[1].positions.some(
+      (position) => position.id === "base-sepolia-eth"
+    ),
+    true
+  );
   await service.setEnabled(false);
   assert.equal(service.snapshot().policy.armed, false);
-  assert.deepEqual(calls, ["arm", "update", "disarm"]);
+  assert.deepEqual(calls, ["arm", "update", "update", "disarm"]);
 });
 
 test("dealer arming fails closed when no distributed dealer exists", async () => {
@@ -756,6 +766,76 @@ test("dealer input support does not require duplicate output inventory", async (
     armedPositions.map((position) => position.id),
     ["base-sepolia-eth", "arbitrum-sepolia-eth"]
   );
+});
+
+test("funding a newly usable chain hot-reloads dealer routes once", async () => {
+  const dealer = Wallet.createRandom().address.toLowerCase();
+  const requesterRole = Wallet.createRandom().address.toLowerCase();
+  let active = false;
+  let baseFunded = false;
+  const armed = [];
+  const updates = [];
+  const dealerController = {
+    status: () => ({ dealer: { configured: true, active } }),
+    async chainGasSnapshot(chains) {
+      return chains.map((chain) => ({
+        chainId: chain.chainId,
+        dealer: {
+          address: dealer,
+          balanceAtomic:
+            chain.chainId === "84532" && !baseFunded
+              ? "0"
+              : "1000000000000000000",
+        },
+        requester: {
+          address: requesterRole,
+          balanceAtomic: "1000000000000000",
+        },
+      }));
+    },
+    async inventorySnapshot(positions) {
+      return positions.map((position) => ({
+        id: position.id,
+        address: dealer,
+        availableAtomic:
+          position.id === "arbitrum-sepolia-eth"
+            ? "500000000000000000"
+            : "0",
+        reservedAtomic: "0",
+        activeLocks: 0,
+      }));
+    },
+    async armDealer({ positions }) {
+      armed.push(positions.map((position) => position.id));
+      active = true;
+    },
+    async updateDealer({ positions }) {
+      updates.push(positions.map((position) => position.id));
+    },
+  };
+  const { service } = fixture({
+    dealerController,
+    chainReadinessRequired: true,
+    nativeUsdPriceProvider: async () => "2000000000",
+  });
+  service.store.setPositionEnabled("base-sepolia-usdc", false);
+  service.store.setPositionEnabled("arbitrum-sepolia-usdc", false);
+  await service.setEnabled(true);
+  await service.setChainSettings("84532", { enabled: true });
+  await service.setChainSettings("421614", { enabled: true });
+  await service.setPolicy({ armed: true });
+
+  assert.deepEqual(armed, [["arbitrum-sepolia-eth"]]);
+
+  baseFunded = true;
+  await service.refresh({ force: true });
+  assert.deepEqual(updates, [[
+    "base-sepolia-eth",
+    "arbitrum-sepolia-eth",
+  ]]);
+
+  await service.refresh({ force: true });
+  assert.equal(updates.length, 1);
 });
 
 test("an explicitly armed dealer resumes after restart", async () => {
