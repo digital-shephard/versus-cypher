@@ -306,9 +306,10 @@ class FxDesktopService extends EventEmitter {
           position.enabled === true &&
           (
             !this.chainReadinessRequired ||
-            (chain?.enabled === true && chain?.gasReady === true)
+            (chain?.enabled === true && chain?.dealerGasReady === true)
           ),
         gasReady: chain?.gasReady === true,
+        dealerGasReady: chain?.dealerGasReady === true,
       };
     });
     return {
@@ -560,7 +561,7 @@ class FxDesktopService extends EventEmitter {
       const chain = snapshot.chains.find(
         (candidate) => candidate.chainId === position?.chainId
       );
-      if (!chain?.enabled || !chain?.gasReady) {
+      if (!chain?.enabled || !chain?.dealerGasReady) {
         throw new FxDesktopError(
           `Enable and fund ${chain?.chain || "this chain"} ${chain?.nativeAsset || "gas"} first`,
           "CHAIN_GAS_REQUIRED"

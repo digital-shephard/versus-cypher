@@ -1236,30 +1236,35 @@ const FX_RISK_CONTROLS = {
     format: (value) => (value < 120 ? `${value}s` : `${value / 60}m`),
   },
   requesterExposureUsd: {
+    readout: "fx-risk-requester-exposure",
     steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500],
     format: (value) => `$${value.toLocaleString("en-US")}`,
     label: "PER REQUESTER",
     policyKey: "maximumRequesterExposureUsd",
   },
   assetExposureUsd: {
+    readout: "fx-risk-asset-exposure",
     steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
     format: (value) => `$${value.toLocaleString("en-US")}`,
     label: "PER ASSET",
     policyKey: "maximumAssetExposureUsd",
   },
   maxGasUsd: {
+    readout: "fx-risk-max-gas",
     steps: [0, 1, 2, 5, 10, 25, 50, 100],
     format: (value) => `$${value.toLocaleString("en-US")}`,
     label: "MAX GAS",
     policyKey: "maximumGasUsd",
   },
   overheadBps: {
+    readout: "fx-risk-overhead",
     steps: [0, 25, 50, 100, 200, 500, 1000],
     format: (value) => `${value} BPS`,
     label: "MAX OVERHEAD",
     policyKey: "maximumOverheadBps",
   },
   inventoryPremiumBps: {
+    readout: "fx-risk-inventory-premium",
     steps: [0, 5, 10, 25, 50, 100, 250],
     format: (value) => `${value} BPS`,
     label: "INVENTORY PREMIUM",
@@ -1279,6 +1284,7 @@ const FX_TAPE_DEMO_RECEIPTS = [
 function emptyFxInventory() {
   return FX_SUPPORTED_POSITIONS.map((bay) => ({
     ...bay,
+    kind: "token",
     address: null,
     availableMicros: 0,
     reservedMicros: 0,
@@ -1304,6 +1310,7 @@ let fxSheetBay = null;
 let fxSheetChain = null;
 let fxSheetChainRole = "dealer";
 let fxStockFilter = "all";
+let fxExpandedChains = new Set();
 let fxTapeDemoTimers = [];
 let fxDesktopSnapshot = null;
 let fxRequesterTrade = null;
@@ -1331,6 +1338,20 @@ function fxAtomicMicros(value, decimals = 6) {
   if (decimals === 6) return Number(atomic);
   if (decimals > 6) return Number(atomic / (10n ** BigInt(decimals - 6)));
   return Number(atomic * (10n ** BigInt(6 - decimals)));
+}
+
+function fxAssetAmount(value, decimals = 18, asset = "ETH", maxFractionDigits = 6) {
+  const atomic = BigInt(String(value || "0"));
+  const scale = 10n ** BigInt(decimals);
+  const whole = atomic / scale;
+  const remainder = atomic % scale;
+  const digits = Math.max(0, Math.min(decimals, maxFractionDigits));
+  const fraction = remainder
+    .toString()
+    .padStart(decimals, "0")
+    .slice(0, digits)
+    .replace(/0+$/, "");
+  return `${whole}${fraction ? `.${fraction}` : ""} ${asset}`;
 }
 
 function fxTradeReceipt(trade) {
@@ -1375,10 +1396,26 @@ function applyFxSnapshot(snapshot) {
     chainKey: chain.chainKey?.includes("arbitrum") ? "arbitrum" : "base",
     balanceUsd: Number(chain.balanceUsd || 0),
   }));
-  fxInventory = (snapshot.positions || [])
+  const gasInventory = fxChains
+    .filter((chain) =>
+      chain.enabled === true
+      || BigInt(chain.dealerBalanceAtomic || chain.balanceAtomic || "0") > 0n
+    )
+    .map((chain) => ({
+      ...chain,
+      id: `${chain.chainKey}-native-gas`,
+      kind: "gas",
+      asset: chain.nativeAsset,
+      decimals: chain.nativeDecimals,
+      dealerBalanceAtomic:
+        chain.dealerBalanceAtomic || chain.balanceAtomic || "0",
+      inFlight: 0,
+    }));
+  const tokenInventory = (snapshot.positions || [])
     .filter((position) => position.enabled)
     .map((position) => ({
       ...position,
+      kind: "token",
       chainKey: position.chainKey.includes("arbitrum") ? "arbitrum" : "base",
       availableMicros: fxAtomicMicros(position.availableAtomic, position.decimals),
       reservedMicros: fxAtomicMicros(position.reservedAtomic, position.decimals),
@@ -1389,6 +1426,7 @@ function applyFxSnapshot(snapshot) {
       ),
       inFlight: position.activeLocks,
     }));
+  fxInventory = [...gasInventory, ...tokenInventory];
   fxRisk.armed = snapshot.policy?.armed === true;
   fxRisk.maxTradeUsd = Number(snapshot.policy?.maximumTradeUsd || 50);
   fxRisk.maxExposureUsd = Number(snapshot.policy?.maximumExposureUsd || 1000);
@@ -1464,16 +1502,26 @@ function fxBayOf(id) {
 
 function fxVisibleInventory() {
   const filtered = fxInventory.filter((bay) => {
-    const funded = bay.availableMicros + bay.reservedMicros > 0;
-    const active = bay.reservedMicros > 0 || bay.inFlight > 0;
+    const funded = bay.kind === "gas"
+      ? BigInt(bay.dealerBalanceAtomic || "0") > 0n
+      : bay.availableMicros + bay.reservedMicros > 0;
+    const active = bay.kind === "token"
+      && (bay.reservedMicros > 0 || bay.inFlight > 0);
     if (fxStockFilter === "funded") return funded;
     if (fxStockFilter === "active") return active;
     return true;
   });
   return filtered.sort((a, b) => {
     const priority = (bay) => {
-      if (bay.reservedMicros > 0 || bay.inFlight > 0) return 0;
-      if (bay.availableMicros + bay.reservedMicros > 0) return 1;
+      if (
+        bay.kind === "token"
+        && (bay.reservedMicros > 0 || bay.inFlight > 0)
+      ) return 0;
+      if (
+        bay.kind === "gas"
+          ? BigInt(bay.dealerBalanceAtomic || "0") > 0n
+          : bay.availableMicros + bay.reservedMicros > 0
+      ) return 1;
       return 2;
     };
     return priority(a) - priority(b)
@@ -1494,7 +1542,65 @@ function setFxOpenBay(id) {
   openCard?.scrollIntoView({ block: "start" });
 }
 
+function fxGasBayNode(bay) {
+  const dealerAtomic = BigInt(bay.dealerBalanceAtomic || "0");
+  const open = fxOpenBay === bay.id;
+
+  const card = fxNode("article", open ? "fx-bay fx-gas-bay is-open" : "fx-bay fx-gas-bay");
+  card.dataset.positionId = bay.id;
+  card.dataset.chain = bay.chainKey;
+  card.dataset.kind = "gas";
+  card.dataset.state = dealerAtomic > 0n ? "stocked" : "idle";
+
+  const head = fxNode("button", "fx-bay-head");
+  head.type = "button";
+  head.setAttribute("aria-expanded", open ? "true" : "false");
+  head.append(fxNode("span", "fx-bay-mark"));
+
+  const identity = fxNode("span", "fx-bay-id");
+  identity.append(
+    fxNode("b", null, bay.asset),
+    fxNode("small", null, bay.chain),
+  );
+  const figure = fxNode("span", "fx-bay-figure");
+  figure.append(
+    fxNode(
+      "b",
+      null,
+      fxAssetAmount(dealerAtomic, bay.decimals, bay.asset),
+    ),
+  );
+  head.append(identity, figure, fxNode("span", "fx-bay-caret"));
+  head.addEventListener("click", () =>
+    setFxOpenBay(fxOpenBay === bay.id ? null : bay.id)
+  );
+
+  const rail = fxNode("div", "fx-bay-rail");
+  const railFill = fxNode("i");
+  railFill.style.width = bay.dealerGasReady ? "100%" : "0%";
+  rail.append(railFill);
+
+  const body = fxNode("div", "fx-bay-body");
+  const actions = fxNode("div", "fx-bay-acts fx-bay-acts-single");
+  const fund = fxNode("button", "fx-act fx-act-fill", "ADD ETH");
+  fund.type = "button";
+  fund.disabled = !(bay.dealerAddress || bay.address);
+  fund.addEventListener("click", () =>
+    openFxChainDepositSheet(bay.chainId, "dealer")
+  );
+  actions.append(fund);
+  body.append(actions);
+
+  const clip = fxNode("div");
+  clip.append(body);
+  const drawer = fxNode("div", "fx-bay-drawer");
+  drawer.append(clip);
+  card.append(head, rail, drawer);
+  return card;
+}
+
 function fxBayNode(bay) {
+  if (bay.kind === "gas") return fxGasBayNode(bay);
   const provisioned = Boolean(bay.address);
   const stocked = bay.availableMicros + bay.reservedMicros;
   const open = fxOpenBay === bay.id;
@@ -1576,15 +1682,21 @@ function renderFxStock() {
   const list = $("fx-bays");
   if (!list) return;
 
-  const available = fxInventory.reduce((sum, bay) => sum + bay.availableMicros, 0);
-  const reserved = fxInventory.reduce((sum, bay) => sum + bay.reservedMicros, 0);
-  const provisioned = fxInventory.filter((bay) => Boolean(bay.address)).length;
+  const tokenInventory = fxInventory.filter((bay) => bay.kind !== "gas");
+  const available = tokenInventory.reduce((sum, bay) => sum + bay.availableMicros, 0);
+  const reserved = tokenInventory.reduce((sum, bay) => sum + bay.reservedMicros, 0);
+  const fundedGasChains = fxChains.reduce(
+    (sum, chain) =>
+      sum
+      + Number(BigInt(chain.dealerBalanceAtomic || chain.balanceAtomic || "0") > 0n),
+    0,
+  );
   const visible = fxVisibleInventory();
 
   $("fx-stock-total").textContent = formatUsdcDollars(available + reserved);
   $("fx-stock-reserved").textContent = formatUsdcDollars(reserved);
   $("fx-stock-foot").textContent =
-    `${provisioned}/${fxInventory.length} READY ${MIDDOT} NOT RUNWAY`;
+    `${fundedGasChains}/${fxChains.length} CHAINS FUNDED ${MIDDOT} ${tokenInventory.length} TOKEN BAYS`;
 
   for (const button of document.querySelectorAll("[data-fx-stock-filter]")) {
     button.setAttribute("aria-pressed", button.dataset.fxStockFilter === fxStockFilter ? "true" : "false");
@@ -1765,16 +1877,16 @@ function fxPositionOptionNode(position) {
     || current.activeLocks > 0
   ));
 
-  const row = fxNode("div", "fx-position-option");
+  const row = fxNode("div", "fx-position-option fx-token-option");
   const identity = fxNode("span");
   identity.append(
     fxNode("b", null, position.asset),
     fxNode(
       "small",
       null,
-      chain?.gasReady
-        ? `${position.chain} ${MIDDOT} LIMIT $${fxRisk.assetExposureUsd}`
-        : `${position.chain} ${MIDDOT} FUND ${chain?.nativeAsset || "GAS"} FIRST`
+      chain?.dealerGasReady
+        ? `INVENTORY ASSET ${MIDDOT} LIMIT $${fxRisk.assetExposureUsd}`
+        : `INVENTORY ASSET ${MIDDOT} FUND ${chain?.nativeAsset || "GAS"} FIRST`
     ),
   );
 
@@ -1783,10 +1895,10 @@ function fxPositionOptionNode(position) {
   toggle.setAttribute("role", "switch");
   toggle.setAttribute("aria-label", `${position.asset} on ${position.chain}`);
   toggle.setAttribute("aria-checked", selected ? "true" : "false");
-  toggle.disabled = locked || (!selected && !chain?.gasReady);
+  toggle.disabled = locked || (!selected && !chain?.dealerGasReady);
   toggle.title = locked
     ? "Empty this position before removing it"
-    : !chain?.gasReady
+    : !chain?.dealerGasReady
       ? `Enable and fund ${chain?.nativeAsset || "gas"} first`
       : "";
   toggle.append(fxNode("i"));
@@ -1807,81 +1919,61 @@ function fxPositionOptionNode(position) {
   return row;
 }
 
-function fxAdvancedLimitNode(key) {
-  const control = FX_RISK_CONTROLS[key];
-  const row = fxNode("div", "fx-position-option fx-limit-option");
-  const identity = fxNode("span");
-  identity.append(
-    fxNode("b", null, control.label),
-    fxNode("small", null, key === "assetExposureUsd"
-      ? "APPLIES TO EACH ENABLED ASSET"
-      : "OWNER LIMIT"),
-  );
-  const stepper = fxNode("span", "fx-stepper");
-  const index = control.steps.indexOf(fxRisk[key]);
-  for (const direction of [-1, 1]) {
-    const button = fxNode("button", null, direction < 0 ? "\u2212" : "+");
-    button.type = "button";
-    button.disabled = index + direction < 0 ||
-      index + direction >= control.steps.length;
-    button.addEventListener("click", async () => {
-      const next = control.steps.indexOf(fxRisk[key]) + direction;
-      if (next < 0 || next >= control.steps.length) return;
-      button.disabled = true;
-      try {
-        applyFxSnapshot(
-          await window.versus.fxSetPolicy({
-            [control.policyKey]: control.steps[next],
-          })
-        );
-        renderFxPositionOptions();
-      } catch (error) {
-        toast(error.message || "limit unchanged");
-      }
-    });
-    if (direction < 0) stepper.append(button);
-    else {
-      stepper.append(
-        fxNode("b", null, control.format(fxRisk[key])),
-        button
-      );
-    }
-  }
-  row.append(identity, stepper);
-  return row;
-}
-
 function fxChainOptionNode(chain) {
-  const row = fxNode("section", "fx-chain-option");
-  const head = fxNode("div", "fx-position-option");
+  const depositedAtomic =
+    BigInt(chain.dealerBalanceAtomic || chain.balanceAtomic || "0");
+  const positions = FX_SUPPORTED_POSITIONS
+    .filter((position) => position.chainId === chain.chainId);
+  const tokenEnabled = positions.some((position) =>
+    (fxDesktopSnapshot?.positions || []).some(
+      (current) => current.id === position.id && current.enabled === true
+    )
+  );
+  const expanded = fxExpandedChains.has(chain.chainId);
+  const row = fxNode(
+    "section",
+    expanded ? "fx-chain-group" : "fx-chain-group is-collapsed",
+  );
+  const groupHead = fxNode("button", "fx-chain-group-head");
+  groupHead.type = "button";
+  groupHead.setAttribute("aria-expanded", expanded ? "true" : "false");
+  groupHead.setAttribute("aria-label", `${expanded ? "Collapse" : "Expand"} ${chain.chain}`);
+  const groupIdentity = fxNode("span", "fx-chain-group-identity");
+  groupIdentity.append(
+    fxNode("b", null, chain.chain),
+    fxNode(
+      "small",
+      null,
+      `${fxAssetAmount(depositedAtomic, chain.nativeDecimals, chain.nativeAsset)} ${MIDDOT} USDC ${tokenEnabled ? "ON" : "OFF"}`,
+    ),
+  );
+  const groupMeta = fxNode("span", "fx-chain-group-meta");
+  groupMeta.append(
+    fxNode("small", null, "TESTNET"),
+    fxNode("i", "fx-chain-caret"),
+  );
+  groupHead.append(groupIdentity, groupMeta);
+  groupHead.addEventListener("click", () => {
+    const willExpand = row.classList.contains("is-collapsed");
+    row.classList.toggle("is-collapsed", !willExpand);
+    groupHead.setAttribute("aria-expanded", willExpand ? "true" : "false");
+    groupHead.setAttribute("aria-label", `${willExpand ? "Collapse" : "Expand"} ${chain.chain}`);
+    body.inert = !willExpand;
+    body.setAttribute("aria-hidden", willExpand ? "false" : "true");
+    if (willExpand) fxExpandedChains.add(chain.chainId);
+    else fxExpandedChains.delete(chain.chainId);
+  });
+
+  const head = fxNode("div", "fx-position-option fx-native-option");
   const identity = fxNode("span");
-  const readyRoles =
-    Number(chain.dealerGasReady === true) +
-    Number(chain.requesterGasReady === true);
-  const readiness = chain.gasReady
-    ? `GAS 2/2 ${MIDDOT} READY`
-    : chain.enabled
-      ? `GAS ${readyRoles}/2 ${MIDDOT} $${chain.minimumGasUsd || 1} EACH`
-      : "CHAIN OFF";
+  const readiness = chain.enabled
+    ? `${fxAssetAmount(depositedAtomic, chain.nativeDecimals, chain.nativeAsset)} DEPOSITED`
+    : "CHAIN OFF";
   identity.append(
-    fxNode("b", null, `${chain.chain.split(" ")[0]} ${chain.nativeAsset}`),
+    fxNode("b", null, chain.nativeAsset),
     fxNode("small", null, readiness),
   );
   const controls = fxNode("span", "fx-chain-controls");
-  const roleActions = fxNode("div", "fx-chain-funding");
-  for (const [role, label, available] of [
-    ["dealer", "DEALER", chain.dealerAddress || chain.address],
-    ["requester", "SWAP", chain.requesterAddress],
-  ]) {
-    if (!available) continue;
-    const fund = fxNode("button", "fx-mini", `FUND ${label}`);
-    fund.type = "button";
-    fund.title = `Fund ${label.toLowerCase()} gas`;
-    fund.addEventListener("click", () =>
-      openFxChainDepositSheet(chain.chainId, role)
-    );
-    roleActions.append(fund);
-  }
   const toggle = fxNode("button", "fx-position-toggle");
   toggle.type = "button";
   toggle.setAttribute("role", "switch");
@@ -1934,33 +2026,24 @@ function fxChainOptionNode(chain) {
     if (event.key === "Enter") input.blur();
   });
   rpc.append(input);
-  row.append(head, roleActions, rpc);
+  const bodyClip = fxNode("div");
+  bodyClip.append(
+    head,
+    ...positions.map(fxPositionOptionNode),
+    rpc,
+  );
+  const body = fxNode("div", "fx-chain-group-body");
+  body.inert = !expanded;
+  body.setAttribute("aria-hidden", expanded ? "false" : "true");
+  body.append(bodyClip);
+  row.append(groupHead, body);
   return row;
 }
 
 function renderFxPositionOptions() {
   const host = $("fx-position-options");
   if (!host) return;
-  const nodes = [];
-  for (const chain of fxChains) {
-    nodes.push(fxChainOptionNode(chain));
-    nodes.push(
-      ...FX_SUPPORTED_POSITIONS
-        .filter((position) => position.chainId === chain.chainId)
-        .map(fxPositionOptionNode)
-    );
-  }
-  const label = fxNode("div", "fx-position-section-label", "LIMITS");
-  nodes.push(
-    label,
-    ...[
-      "requesterExposureUsd",
-      "assetExposureUsd",
-      "maxGasUsd",
-      "overheadBps",
-      "inventoryPremiumBps",
-    ].map(fxAdvancedLimitNode)
-  );
+  const nodes = fxChains.map(fxChainOptionNode);
   host.replaceChildren(...nodes);
 }
 
@@ -2705,7 +2788,6 @@ function wireFxControls() {
   wireFxAddressInput($("fx-swap-recipient"));
   wireFxAddressInput($("fx-withdraw-dest"));
   $("fx-add-position")?.addEventListener("click", openFxAddPositionSheet);
-  $("fx-risk-assets")?.addEventListener("click", openFxAddPositionSheet);
   $("fx-refresh-stock")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -2789,7 +2871,7 @@ function wireFxControls() {
       const next = control.steps.indexOf(fxRisk[key]) + Number(rawDirection);
       if (next < 0 || next >= control.steps.length) return;
       const nextValue = control.steps[next];
-      const policyKey = ({
+      const policyKey = control.policyKey || ({
         maxTradeUsd: "maximumTradeUsd",
         maxExposureUsd: "maximumExposureUsd",
         minSpreadBps: "minimumSpreadBps",

@@ -136,6 +136,7 @@ const WIN_H = 640;
 
 /** Local demo stand-in for the roughly $10 funded hatch. */
 const DEMO_DEPOSIT_WEI = "3000000000000000";
+const DEMO_DEPOSIT_USD_MICROS = 10_000_000n;
 
 let mainWindow = null;
 let tray = null;
@@ -207,7 +208,14 @@ const fxDesktopService = new FxDesktopService({
     const quote = await getCachedHatchQuote();
     const swapWei = BigInt(quote?.swapWei || 0);
     const quotedUsdMicros = BigInt(quote?.quotedRunwayMicros || 0);
-    if (swapWei <= 0n || quotedUsdMicros <= 0n) return 0n;
+    if (swapWei <= 0n || quotedUsdMicros <= 0n) {
+      if (!app.isPackaged && process.env.VERSUS_FX_DEVELOPMENT === "1") {
+        return (
+          DEMO_DEPOSIT_USD_MICROS * 10n ** 18n
+        ) / BigInt(DEMO_DEPOSIT_WEI);
+      }
+      return 0n;
+    }
     return (quotedUsdMicros * 10n ** 18n) / swapWei;
   },
   now: () => Math.floor(networkNowMs() / 1000),

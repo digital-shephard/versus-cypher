@@ -425,7 +425,7 @@ test("dealer arming fails closed when no distributed dealer exists", async () =>
   assert.equal(service.snapshot().policy.armed, false);
 });
 
-test("native role gas gates token support and inventory withdrawal is onchain", async () => {
+test("dealer native gas gates token support independently of personal swap gas", async () => {
   const rpcCalls = [];
   const withdrawals = [];
   const dealer = Wallet.createRandom().address.toLowerCase();
@@ -444,7 +444,7 @@ test("native role gas gates token support and inventory withdrawal is onchain", 
         },
         requester: {
           address: requesterRole,
-          balanceAtomic: "1000000000000000",
+          balanceAtomic: "0",
         },
       }));
     },
@@ -479,9 +479,9 @@ test("native role gas gates token support and inventory withdrawal is onchain", 
     enabled: true,
     rpcUrl: "https://rpc.example",
   });
-  assert.equal(ready.chains[0].gasReady, true);
+  assert.equal(ready.chains[0].gasReady, false);
   assert.equal(ready.chains[0].dealerGasReady, true);
-  assert.equal(ready.chains[0].requesterGasReady, true);
+  assert.equal(ready.chains[0].requesterGasReady, false);
   assert.deepEqual(rpcCalls, [{
     chainId: "84532",
     rpcUrl: "https://rpc.example/",

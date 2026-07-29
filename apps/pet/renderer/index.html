@@ -355,7 +355,7 @@
                 </span>
               </div>
               <div class="fx-stock-summary">
-                <span><small>STOCKED</small><b id="fx-stock-total">$0.00</b></span>
+                <span><small>USDC STOCK</small><b id="fx-stock-total">$0.00</b></span>
                 <span><small>RESERVED</small><b id="fx-stock-reserved">$0.00</b></span>
               </div>
               <div class="fx-stock-filters" role="toolbar" aria-label="Filter inventory positions">
@@ -380,10 +380,7 @@
             <section class="fx-panel fx-risk-panel hidden" data-fx-panel="risk" aria-label="FX dealer risk controls">
               <div class="fx-panel-title">
                 <span>RISK</span>
-                <span class="fx-title-actions">
-                  <button type="button" id="fx-risk-assets" class="fx-text-action">ASSETS</button>
-                  <b class="fx-state"><i aria-hidden="true"></i><em class="fx-state-label">DISARMED</em></b>
-                </span>
+                <b class="fx-state"><i aria-hidden="true"></i><em class="fx-state-label">DISARMED</em></b>
               </div>
               <div class="fx-risk-scroll">
                 <div class="fx-risk-master">
@@ -433,6 +430,51 @@
                     <button type="button" data-fx-step="reservationSec:-1" aria-label="Shorten source lock window">&minus;</button>
                     <b id="fx-risk-reservation">90s</b>
                     <button type="button" data-fx-step="reservationSec:1" aria-label="Extend source lock window">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>PER REQUESTER</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="requesterExposureUsd:-1" aria-label="Lower requester exposure limit">&minus;</button>
+                    <b id="fx-risk-requester-exposure">$100</b>
+                    <button type="button" data-fx-step="requesterExposureUsd:1" aria-label="Raise requester exposure limit">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>PER ASSET</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="assetExposureUsd:-1" aria-label="Lower asset exposure limit">&minus;</button>
+                    <b id="fx-risk-asset-exposure">$500</b>
+                    <button type="button" data-fx-step="assetExposureUsd:1" aria-label="Raise asset exposure limit">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>MAX GAS</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="maxGasUsd:-1" aria-label="Lower maximum gas cost">&minus;</button>
+                    <b id="fx-risk-max-gas">$5</b>
+                    <button type="button" data-fx-step="maxGasUsd:1" aria-label="Raise maximum gas cost">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>MAX OVERHEAD</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="overheadBps:-1" aria-label="Lower maximum overhead">&minus;</button>
+                    <b id="fx-risk-overhead">100 BPS</b>
+                    <button type="button" data-fx-step="overheadBps:1" aria-label="Raise maximum overhead">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>INVENTORY PREMIUM</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="inventoryPremiumBps:-1" aria-label="Lower inventory premium">&minus;</button>
+                    <b id="fx-risk-inventory-premium">0 BPS</b>
+                    <button type="button" data-fx-step="inventoryPremiumBps:1" aria-label="Raise inventory premium">+</button>
                   </span>
                 </div>
 
