@@ -2,28 +2,28 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { normalizeSettings, publicSettings } = require("../src/settings");
 
-test("FX development remains disabled when the build does not expose it", () => {
+test("FX development availability follows the build gate", () => {
   const settings = normalizeSettings(
     { fxDevelopmentEnabled: true },
     { fxDevelopmentAvailable: false }
   );
-  assert.equal(settings.fxDevelopmentEnabled, false);
+  assert.equal("fxDevelopmentEnabled" in settings, false);
+  assert.equal(
+    publicSettings({ ...settings, fxDevelopmentAvailable: false })
+      .fxDevelopmentAvailable,
+    false
+  );
 });
 
-test("FX development can be enabled only under an explicit development gate", () => {
+test("legacy FX laboratory preference is not exposed as a user toggle", () => {
   const settings = {
     ...normalizeSettings(
-      { fxDevelopmentEnabled: true },
+      { fxDevelopmentEnabled: false },
       { fxDevelopmentAvailable: true }
     ),
     fxDevelopmentAvailable: true,
   };
-  assert.equal(settings.fxDevelopmentEnabled, true);
-  assert.deepEqual(
-    {
-      available: publicSettings(settings).fxDevelopmentAvailable,
-      enabled: publicSettings(settings).fxDevelopmentEnabled,
-    },
-    { available: true, enabled: true }
-  );
+  const publicState = publicSettings(settings);
+  assert.equal(publicState.fxDevelopmentAvailable, true);
+  assert.equal("fxDevelopmentEnabled" in publicState, false);
 });

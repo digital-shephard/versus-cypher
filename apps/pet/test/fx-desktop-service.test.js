@@ -379,18 +379,9 @@ test("an uncertain settlement cannot be executed twice", async () => {
   assert.equal(executions, 1);
 });
 
-test("desktop requester stays disabled but quote discovery ignores dealer size limits", async () => {
+test("requester quote discovery never arms local dealing", async () => {
   const { service } = fixture();
-  await assert.rejects(
-    service.requestQuote({
-      sourcePositionId: "base-sepolia-usdc",
-      destinationPositionId: "arbitrum-sepolia-usdc",
-      outputAmount: "1",
-      destinationAddress: Wallet.createRandom().address,
-    }),
-    (error) => error.code === "FX_DISABLED"
-  );
-  service.setEnabled(true);
+  assert.equal(service.snapshot().policy.armed, false);
   for (const [outputAmount, outputDisplay] of [
     ["0.01", "0.01 USDC"],
     ["51", "51.0 USDC"],
@@ -404,6 +395,7 @@ test("desktop requester stays disabled but quote discovery ignores dealer size l
     assert.equal(quoted.state, "quoted");
     assert.equal(quoted.outputAmountDisplay, outputDisplay);
   }
+  assert.equal(service.snapshot().policy.armed, false);
 });
 
 test("native requester quotes bind the native adapter and atomic ETH input", async () => {
@@ -475,13 +467,13 @@ test("native requester quotes bind the native adapter and atomic ETH input", asy
   );
   assert.equal(
     observedRfq.payload.inputOptions[0].maxInputAtomic,
-    "505000000000000"
+    ((1n << 256n) - 1n).toString()
   );
   assert.equal(quoted.route.inputToken, FX_NATIVE_ETH_ADDRESS);
   assert.equal(quoted.route.totalInputAtomic, "501250000000000");
 });
 
-test("native requester quotes fail closed without a fresh ETH/USD price", async () => {
+test("native requester quote discovery does not require a local ETH/USD price", async () => {
   let routeCalls = 0;
   const { service } = fixture({
     nativeUsdPriceProvider: async () => {
@@ -489,7 +481,9 @@ test("native requester quotes fail closed without a fresh ETH/USD price", async 
     },
     async queryRoutes() {
       routeCalls += 1;
-      throw new Error("must not query");
+      const error = new Error("broker unavailable");
+      error.code = "BROKER_DOWN";
+      throw error;
     },
   });
   service.store.setPositionEnabled("base-sepolia-eth", true);
@@ -502,9 +496,29 @@ test("native requester quotes fail closed without a fresh ETH/USD price", async 
       outputAmount: "1",
       destinationAddress: Wallet.createRandom().address,
     }),
-    (error) => error.code === "STALE_PRICE"
+    (error) => error.code === "BROKER_DOWN"
   );
-  assert.equal(routeCalls, 0);
+  assert.equal(routeCalls, 1);
+});
+
+test("requester quotes default the recipient to the local requester wallet", async () => {
+  const { service, requester } = fixture();
+  service.setEnabled(true);
+
+  const quoted = await service.requestQuote({
+    sourcePositionId: "base-sepolia-usdc",
+    destinationPositionId: "arbitrum-sepolia-usdc",
+    outputAmount: "1",
+  });
+
+  assert.equal(
+    quoted.destination.address,
+    requester.address.toLowerCase()
+  );
+  assert.equal(
+    service.snapshot().requesterAddress,
+    requester.address.toLowerCase()
+  );
 });
 
 test("public state truncates addresses and evidence excludes private material", async () => {
@@ -637,7 +651,6 @@ test("dealer display follows the real runtime instead of a local armed flag", as
     },
   };
   const { service } = fixture({ dealerController });
-  await service.setEnabled(true);
   assert.equal(service.snapshot().policy.armed, false);
   await service.setPolicy({ armed: true });
   assert.equal(service.snapshot().policy.armed, true);
@@ -651,14 +664,13 @@ test("dealer display follows the real runtime instead of a local armed flag", as
     ),
     true
   );
-  await service.setEnabled(false);
+  await service.setPolicy({ armed: false });
   assert.equal(service.snapshot().policy.armed, false);
   assert.deepEqual(calls, ["arm", "update", "update", "disarm"]);
 });
 
 test("dealer arming fails closed when no distributed dealer exists", async () => {
   const { service } = fixture();
-  await service.setEnabled(true);
   await assert.rejects(
     service.setPolicy({ armed: true }),
     (error) => error.code === "DEALER_UNAVAILABLE"

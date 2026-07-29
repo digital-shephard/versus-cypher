@@ -461,15 +461,6 @@
                 </div>
 
                 <div class="fx-risk-row">
-                  <span class="fx-risk-label"><b>MAX OVERHEAD</b></span>
-                  <span class="fx-stepper">
-                    <button type="button" data-fx-step="overheadBps:-1" aria-label="Lower maximum overhead">&minus;</button>
-                    <b id="fx-risk-overhead">100 BPS</b>
-                    <button type="button" data-fx-step="overheadBps:1" aria-label="Raise maximum overhead">+</button>
-                  </span>
-                </div>
-
-                <div class="fx-risk-row">
                   <span class="fx-risk-label"><b>INVENTORY PREMIUM</b></span>
                   <span class="fx-stepper">
                     <button type="button" data-fx-step="inventoryPremiumBps:-1" aria-label="Lower inventory premium">&minus;</button>
@@ -520,25 +511,35 @@
                 <span>TESTNET</span>
               </header>
 
+              <section class="fx-asset-picker hidden" id="fx-asset-picker" role="dialog" aria-modal="true" aria-label="Choose swap asset">
+                <header class="fx-asset-picker-head">
+                  <button type="button" id="fx-asset-picker-back" aria-label="Back to swap">&lt;</button>
+                  <strong id="fx-asset-picker-title">CHOOSE ASSET</strong>
+                  <span>TESTNET</span>
+                </header>
+                <p id="fx-asset-picker-prompt">YOU PAY WITH</p>
+                <div class="fx-asset-picker-options" id="fx-asset-picker-options"></div>
+              </section>
+
               <div class="fx-requester-scroll" id="fx-requester-swap-view">
                 <div id="fx-requester-compose">
                   <div class="fx-swap-pair">
-                    <label class="fx-swap-leg">
-                      <small>YOU SEND</small>
-                      <select id="fx-swap-source" aria-label="Asset to send"></select>
-                    </label>
+                    <div class="fx-swap-leg">
+                      <small>YOU PAY WITH</small>
+                      <button type="button" class="fx-asset-trigger" id="fx-swap-source" aria-label="Choose asset to send" aria-haspopup="dialog"></button>
+                    </div>
                     <button type="button" id="fx-swap-flip" class="fx-swap-flip" aria-label="Reverse assets">&#8645;</button>
-                    <label class="fx-swap-leg">
-                      <small>YOU RECEIVE</small>
+                    <div class="fx-swap-leg">
+                      <small>YOU RECEIVE EXACTLY</small>
                       <span class="fx-swap-output-row">
                         <input id="fx-swap-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount to receive" />
-                        <select id="fx-swap-destination" aria-label="Asset to receive"></select>
+                        <button type="button" class="fx-asset-trigger" id="fx-swap-destination" aria-label="Choose asset to receive" aria-haspopup="dialog"></button>
                       </span>
-                    </label>
+                    </div>
                   </div>
 
                   <label class="fx-swap-address">
-                    <small>RECIPIENT</small>
+                    <small>RECIPIENT &middot; YOUR CYPHER</small>
                     <input id="fx-swap-recipient" type="text" spellcheck="false" autocomplete="off" placeholder="0x destination address" />
                   </label>
 
@@ -550,16 +551,23 @@
                 <section class="fx-quote-result hidden" id="fx-quote-result" aria-live="polite">
                   <header><span id="fx-quote-label">BEST VERIFIED QUOTE</span><time id="fx-quote-expiry">--</time></header>
                   <div class="fx-quote-main">
-                    <small>YOU SEND AT MOST</small>
+                    <small>YOU SEND</small>
                     <strong id="fx-quote-input">--</strong>
                     <span id="fx-quote-route">--</span>
                   </div>
                   <dl>
+                    <div><dt>YOU RECEIVE</dt><dd id="fx-quote-output">--</dd></div>
+                    <div><dt>TOTAL COST</dt><dd id="fx-quote-cost">--</dd></div>
                     <div><dt>DEALER</dt><dd id="fx-quote-dealer">--</dd></div>
-                    <div><dt>SPREAD</dt><dd id="fx-quote-spread">--</dd></div>
-                    <div><dt>RELAY + GAS</dt><dd id="fx-quote-fee">--</dd></div>
                     <div><dt>EST. TIME</dt><dd id="fx-quote-time">--</dd></div>
                   </dl>
+                  <details class="fx-quote-details">
+                    <summary>FEE DETAILS</summary>
+                    <dl>
+                      <div><dt>SPREAD</dt><dd id="fx-quote-spread">--</dd></div>
+                      <div><dt>NETWORK + EXECUTION</dt><dd id="fx-quote-fee">--</dd></div>
+                    </dl>
+                  </details>
                   <button type="button" class="fx-requester-primary" id="fx-accept-quote">ACCEPT QUOTE</button>
                 </section>
 
@@ -662,7 +670,6 @@
           </form>
           <div id="settings-device-panel" class="settings-panel hidden">
             <label class="settings-check"><input id="setting-launch-login" type="checkbox" /><span>Start Versus at login</span></label>
-            <label id="setting-fx-development-row" class="settings-check hidden"><input id="setting-fx-development" type="checkbox" /><span>Enable FX laboratory</span></label>
             <p class="settings-update-status">YOUR INVITE CODE</p>
             <button type="button" id="btn-copy-referral" class="settings-wide-action">No Cypher yet</button>
             <label>Referral pool USDC<input id="setting-referral-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="1.00" /></label>

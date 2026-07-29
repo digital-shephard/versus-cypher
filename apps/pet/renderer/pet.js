@@ -731,13 +731,6 @@ function renderSettings(settings) {
   if ($("setting-brain-auto")) $("setting-brain-auto").checked = brain.autostart !== false;
   if ($("setting-referral-funding")) $("setting-referral-funding").checked = Boolean(settings?.allowReferralFunding);
   if ($("setting-launch-login")) $("setting-launch-login").checked = Boolean(settings?.launchAtLogin);
-  $("setting-fx-development-row")?.classList.toggle(
-    "hidden",
-    settings?.fxDevelopmentAvailable !== true
-  );
-  if ($("setting-fx-development")) {
-    $("setting-fx-development").checked = Boolean(settings?.fxDevelopmentEnabled);
-  }
   if ($("settings-wallet-address")) $("settings-wallet-address").textContent = wallet?.address || "Wallet not loaded";
   if ($("btn-backup-wallet")) {
     $("btn-backup-wallet").textContent = bond?.phase === "active" && bond?.agentId ? "Back up all" : "Back up wallet";
@@ -869,7 +862,6 @@ function settingsInput() {
   return {
     launchAtLogin: Boolean($("setting-launch-login")?.checked),
     allowReferralFunding: Boolean($("setting-referral-funding")?.checked),
-    fxDevelopmentEnabled: Boolean($("setting-fx-development")?.checked),
     brain: {
       kind: $("setting-brain-kind")?.value || "off",
       provider: $("setting-brain-kind")?.value || "off",
@@ -1256,13 +1248,6 @@ const FX_RISK_CONTROLS = {
     label: "MAX GAS",
     policyKey: "maximumGasUsd",
   },
-  overheadBps: {
-    readout: "fx-risk-overhead",
-    steps: [0, 25, 50, 100, 200, 500, 1000],
-    format: (value) => `${value} BPS`,
-    label: "MAX OVERHEAD",
-    policyKey: "maximumOverheadBps",
-  },
   inventoryPremiumBps: {
     readout: "fx-risk-inventory-premium",
     steps: [0, 5, 10, 25, 50, 100, 250],
@@ -1315,6 +1300,7 @@ let fxTapeDemoTimers = [];
 let fxDesktopSnapshot = null;
 let fxRequesterTrade = null;
 let fxRequesterView = "swap";
+let fxAssetPickerTarget = null;
 let fxQuoteRefreshActive = false;
 let fxQuoteRefreshRetryAt = 0;
 let fxQuoteAcceptActive = false;
@@ -1330,7 +1316,6 @@ const fxRisk = {
   requesterExposureUsd: 100,
   assetExposureUsd: 500,
   maxGasUsd: 5,
-  overheadBps: 100,
   inventoryPremiumBps: 0,
 };
 
@@ -1457,7 +1442,6 @@ function applyFxSnapshot(snapshot) {
     snapshot.policy?.maximumAssetExposureUsd || 500
   );
   fxRisk.maxGasUsd = Number(snapshot.policy?.maximumGasUsd || 5);
-  fxRisk.overheadBps = Number(snapshot.policy?.maximumOverheadBps || 100);
   fxRisk.inventoryPremiumBps = Number(
     snapshot.policy?.inventoryPremiumBps || 0
   );
@@ -1873,8 +1857,6 @@ function renderFxRisk() {
     foot.textContent = pendingArmed
       ? "VERIFYING INVENTORY · STARTING DEALER"
       : "CLOSING DEALER · SAVING STATE";
-  } else if (fxDesktopSnapshot?.enabled !== true) {
-    foot.textContent = "FX IS OFF \u2014 REQUESTS AND DEALING DISABLED";
   } else if (!fxRisk.armed) {
     foot.textContent = "DEALING OFF \u2014 NOTHING QUOTED";
   } else {
@@ -2232,36 +2214,124 @@ function fxPositionLabel(position) {
   return `${position.asset} \u00b7 ${position.chain}`;
 }
 
-function fxRequesterPositionLabel(position) {
+function fxRequesterPositions() {
+  return (
+    fxDesktopSnapshot?.supportedPositions ||
+    fxDesktopSnapshot?.positions ||
+    FX_SUPPORTED_POSITIONS
+  );
+}
+
+function fxRequesterPosition(id) {
+  return fxRequesterPositions().find((position) => position.id === id) || null;
+}
+
+function fxSetRequesterAsset(button, position) {
+  if (!button || !position) return;
   const chain = {
     "BASE SEPOLIA": "BASE",
     "ARBITRUM SEPOLIA": "ARB",
   }[position.chain] || position.chain;
-  return `${position.asset} \u00b7 ${chain}`;
+  button.dataset.positionId = position.id;
+  button.replaceChildren(
+    fxNode("b", null, position.asset),
+    fxNode("span", null, chain),
+    fxNode("i", null, "\u203a"),
+  );
 }
 
 function fxPopulateRequesterAssets() {
-  const positions =
-    fxDesktopSnapshot?.supportedPositions ||
-    fxDesktopSnapshot?.positions ||
-    FX_SUPPORTED_POSITIONS;
+  const positions = fxRequesterPositions();
   for (const [id, preferred] of [
     ["fx-swap-source", "base-sepolia-usdc"],
     ["fx-swap-destination", "arbitrum-sepolia-usdc"],
   ]) {
-    const select = $(id);
-    if (!select) continue;
-    const current = select.value || preferred;
-    select.replaceChildren(...positions.map((position) => {
-      const option = document.createElement("option");
-      option.value = position.id;
-      option.textContent = fxRequesterPositionLabel(position);
-      return option;
-    }));
-    select.value = positions.some((position) => position.id === current)
-      ? current
-      : positions[0]?.id || "";
+    const button = $(id);
+    if (!button) continue;
+    const current = button.dataset.positionId || preferred;
+    const selected =
+      positions.find((position) => position.id === current) ||
+      positions[0];
+    fxSetRequesterAsset(button, selected);
   }
+  const recipient = $("fx-swap-recipient");
+  if (recipient && !recipient.value.trim() && fxDesktopSnapshot?.requesterAddress) {
+    recipient.value = fxDesktopSnapshot.requesterAddress;
+  }
+}
+
+function closeFxAssetPicker() {
+  fxAssetPickerTarget = null;
+  $("fx-asset-picker")?.classList.add("hidden");
+  for (const element of [
+    document.querySelector(".fx-requester-head"),
+    $("fx-requester-swap-view"),
+  ]) {
+    if (!element) continue;
+    element.inert = false;
+    element.removeAttribute("aria-hidden");
+  }
+}
+
+function chooseFxRequesterAsset(positionId) {
+  const target = fxAssetPickerTarget;
+  const targetButton = target === "source"
+    ? $("fx-swap-source")
+    : $("fx-swap-destination");
+  const otherButton = target === "source"
+    ? $("fx-swap-destination")
+    : $("fx-swap-source");
+  const selected = fxRequesterPosition(positionId);
+  if (!targetButton || !otherButton || !selected) return;
+
+  const previousId = targetButton.dataset.positionId;
+  if (otherButton.dataset.positionId === selected.id) {
+    const previous = fxRequesterPosition(previousId);
+    if (previous) fxSetRequesterAsset(otherButton, previous);
+  }
+  fxSetRequesterAsset(targetButton, selected);
+  closeFxAssetPicker();
+}
+
+function openFxAssetPicker(target) {
+  fxAssetPickerTarget = target === "destination" ? "destination" : "source";
+  const currentId = $(
+    fxAssetPickerTarget === "source"
+      ? "fx-swap-source"
+      : "fx-swap-destination"
+  )?.dataset.positionId;
+  $("fx-asset-picker-prompt").textContent =
+    fxAssetPickerTarget === "source" ? "YOU PAY WITH" : "YOU RECEIVE";
+  const options = $("fx-asset-picker-options");
+  options.replaceChildren(...fxRequesterPositions().map((position) => {
+    const selected = position.id === currentId;
+    const button = fxNode(
+      "button",
+      selected ? "fx-asset-option is-selected" : "fx-asset-option"
+    );
+    button.type = "button";
+    button.setAttribute("aria-pressed", selected ? "true" : "false");
+    button.append(
+      fxNode("span", "fx-asset-option-mark", position.asset.slice(0, 1)),
+      fxNode("span", "fx-asset-option-name", null),
+      fxNode("span", "fx-asset-option-state", selected ? "SELECTED" : "\u203a"),
+    );
+    button.querySelector(".fx-asset-option-name").append(
+      fxNode("b", null, position.asset),
+      fxNode("small", null, position.chain),
+    );
+    button.addEventListener("click", () => chooseFxRequesterAsset(position.id));
+    return button;
+  }));
+  for (const element of [
+    document.querySelector(".fx-requester-head"),
+    $("fx-requester-swap-view"),
+  ]) {
+    if (!element) continue;
+    element.inert = true;
+    element.setAttribute("aria-hidden", "true");
+  }
+  $("fx-asset-picker")?.classList.remove("hidden");
 }
 
 function fxRequesterError(message = "") {
@@ -2403,9 +2473,7 @@ function renderFxRequester() {
   $("fx-requester-compose").classList.toggle("hidden", Boolean(fxRequesterTrade));
   if (getQuotes) {
     getQuotes.disabled = requesterPositions.length < 2;
-    getQuotes.textContent = fxDesktopSnapshot?.enabled
-      ? "GET QUOTES"
-      : "TURN ON FX";
+    getQuotes.textContent = "GET QUOTES";
     getQuotes.classList.toggle("hidden", Boolean(fxRequesterTrade));
   }
 
@@ -2431,16 +2499,32 @@ function renderFxRequester() {
     const route = quote.route;
     const source = quote.source;
     const destination = quote.destination;
+    const totalInput = BigInt(route.totalInputAtomic || 0);
+    const principal = BigInt(
+      route.dealerPrincipalAtomic || route.totalInputAtomic || 0
+    );
+    const totalCost = totalInput > principal ? totalInput - principal : 0n;
+    const totalCostBps =
+      principal > 0n
+        ? Number((totalCost * 10_000n + principal - 1n) / principal)
+        : 0;
     $("fx-quote-input").textContent = quote.inputAmountDisplay;
+    $("fx-quote-output").textContent = quote.outputAmountDisplay;
+    $("fx-quote-cost").textContent =
+      `${fxAssetAmount(totalCost, source.decimals, source.asset)} \u00b7 ${
+        (totalCostBps / 100).toFixed(2)
+      }%`;
     $("fx-quote-route").textContent =
       `${source.asset} ${source.chain} \u2192 ${destination.asset} ${destination.chain}`;
     $("fx-quote-dealer").textContent = fxShortAddress(route.dealer);
     $("fx-quote-spread").textContent = `${route.spreadBps} BPS`;
     $("fx-quote-fee").textContent =
-      `${(
-        Number(route.dealerOperatingCostAtomic || route.brokerFeeAtomic || 0) /
-        (10 ** source.decimals)
-      ).toFixed(6)} ${source.asset}`;
+      fxAssetAmount(
+        BigInt(route.dealerOperatingCostAtomic || 0) +
+          BigInt(route.brokerFeeAtomic || 0),
+        source.decimals,
+        source.asset
+      );
     $("fx-quote-time").textContent = `${route.estimatedCompletionSeconds}s`;
     $("fx-quote-label").textContent = fxQuoteAcceptActive
       ? "RESERVING DEALER"
@@ -2627,6 +2711,7 @@ function openFxRequester(view = "swap") {
 }
 
 function closeFxRequester() {
+  closeFxAssetPicker();
   $("fx-requester")?.classList.add("hidden");
   fxRequesterError("");
 }
@@ -2654,6 +2739,10 @@ function returnToFxSwapMain() {
 }
 
 function navigateBackFromFxRequester() {
+  if (fxAssetPickerTarget) {
+    closeFxAssetPicker();
+    return;
+  }
   const state = fxRequesterTrade?.state;
   if (fxRequesterView === "history") {
     closeFxRequester();
@@ -2689,21 +2778,6 @@ async function submitFxQuoteRequest() {
     fxRequesterError("No requester routes are available in this build.");
     return;
   }
-  if (fxDesktopSnapshot?.enabled !== true) {
-    button.disabled = true;
-    button.textContent = "TURNING ON...";
-    try {
-      applyFxSnapshot(await window.versus.fxSetEnabled(true));
-      button.textContent = "GET QUOTES";
-    } catch (error) {
-      fxRequesterError(
-        fxRequesterErrorMessage(error, "FX could not be enabled.")
-      );
-    } finally {
-      button.disabled = false;
-    }
-    return;
-  }
   button.disabled = true;
   button.textContent = "REQUESTING...";
   fxRequesterStatus(
@@ -2713,8 +2787,8 @@ async function submitFxQuoteRequest() {
   $("fx-funding-result").classList.add("hidden");
   try {
     fxRequesterTrade = await window.versus.fxRequestQuote({
-      sourcePositionId: $("fx-swap-source").value,
-      destinationPositionId: $("fx-swap-destination").value,
+      sourcePositionId: $("fx-swap-source").dataset.positionId,
+      destinationPositionId: $("fx-swap-destination").dataset.positionId,
       outputAmount: $("fx-swap-amount").value,
       destinationAddress: fxAddressInputValue($("fx-swap-recipient")),
     });
@@ -2897,8 +2971,22 @@ function wireFxControls() {
   $("fx-swap-flip")?.addEventListener("click", () => {
     const source = $("fx-swap-source");
     const destination = $("fx-swap-destination");
-    [source.value, destination.value] = [destination.value, source.value];
+    const sourcePosition = fxRequesterPosition(source.dataset.positionId);
+    const destinationPosition = fxRequesterPosition(
+      destination.dataset.positionId
+    );
+    fxSetRequesterAsset(source, destinationPosition);
+    fxSetRequesterAsset(destination, sourcePosition);
   });
+  $("fx-swap-source")?.addEventListener(
+    "click",
+    () => openFxAssetPicker("source")
+  );
+  $("fx-swap-destination")?.addEventListener(
+    "click",
+    () => openFxAssetPicker("destination")
+  );
+  $("fx-asset-picker-back")?.addEventListener("click", closeFxAssetPicker);
   $("fx-export-evidence")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
@@ -2926,9 +3014,6 @@ function wireFxControls() {
     fxDealerTogglePending = targetArmed ? "arming" : "disarming";
     renderFxRisk();
     try {
-      if (fxDesktopSnapshot?.enabled !== true) {
-        applyFxSnapshot(await window.versus.fxSetEnabled(true));
-      }
       applyFxSnapshot(
         await window.versus.fxSetPolicy({ armed: targetArmed })
       );
@@ -5101,17 +5186,6 @@ $("settings-brain-panel")?.addEventListener("submit", async (event) => {
 });
 
 $("setting-launch-login")?.addEventListener("change", async () => {
-  setSettingsStatus("SAVING");
-  try {
-    currentSettings = await window.versus.saveSettings(settingsInput());
-    renderSettings(currentSettings);
-    setSettingsStatus("SAVED");
-  } catch (error) {
-    setSettingsStatus(settingsErrorMessage(error), true);
-  }
-});
-
-$("setting-fx-development")?.addEventListener("change", async () => {
   setSettingsStatus("SAVING");
   try {
     currentSettings = await window.versus.saveSettings(settingsInput());

@@ -69,6 +69,7 @@ let fxCaptureSnapshot = {
   enabled: true,
   environment: "public-testnet",
   productionFunds: false,
+  requesterAddress: "0xB0B000000000000000000000000000000000CAFE",
   brokerConfigured: true,
   settlementConfigured: true,
   policy: {
@@ -190,6 +191,9 @@ function fxCaptureTrade(state = "quoted") {
       dealer: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
       spreadBps: 25,
       brokerFeeAtomic: "10000",
+      dealerPrincipalAtomic: "10000000",
+      dealerSpreadAtomic: "25000",
+      dealerOperatingCostAtomic: "0",
       estimatedCompletionSeconds: 24,
       expiresAt: Math.floor(Date.now() / 1000) + 30,
       totalInputAtomic: "10035000",
@@ -295,10 +299,6 @@ function stubIpc() {
   }));
   ipcMain.handle("fx:copyAddress", (_event, { address }) => address);
   ipcMain.handle("fx:snapshot", () => structuredClone(fxCaptureSnapshot));
-  ipcMain.handle("fx:setEnabled", (_event, { enabled }) => {
-    fxCaptureSnapshot.enabled = enabled === true;
-    return structuredClone(fxCaptureSnapshot);
-  });
   ipcMain.handle("fx:setPolicy", (_event, { patch }) => {
     fxCaptureSnapshot.policy = { ...fxCaptureSnapshot.policy, ...patch };
     return structuredClone(fxCaptureSnapshot);

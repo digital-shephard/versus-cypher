@@ -313,7 +313,8 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.match(html, /id="fx-add-position"[\s\S]*data-fx-stock-filter="all"[\s\S]*data-fx-stock-filter="funded"[\s\S]*data-fx-stock-filter="active"/);
   assert.match(html, /<small>STOCK VALUE<\/small>/);
   assert.match(html, /id="fx-add-position-sheet"[\s\S]*fx-position-back[\s\S]*SUPPORTED ASSETS[\s\S]*id="fx-position-options"/);
-  assert.match(html, /data-fx-panel="risk"[\s\S]*PER REQUESTER[\s\S]*PER ASSET[\s\S]*MAX GAS[\s\S]*MAX OVERHEAD[\s\S]*INVENTORY PREMIUM/);
+  assert.match(html, /data-fx-panel="risk"[\s\S]*PER REQUESTER[\s\S]*PER ASSET[\s\S]*MAX GAS[\s\S]*INVENTORY PREMIUM/);
+  assert.doesNotMatch(html, /MAX OVERHEAD|fx-risk-overhead/);
   assert.doesNotMatch(html, /id="fx-position-done"|id="fx-position-note"/);
   assert.doesNotMatch(html, /id="fx-position-contract"|id="fx-position-capacity"/);
   assert.match(renderer, /const FX_SUPPORTED_POSITIONS = \[[\s\S]*id: "base-sepolia-usdc"[\s\S]*id: "arbitrum-sepolia-usdc"/);
@@ -366,9 +367,13 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   const roles = fs.readFileSync(path.join(root, "src", "fx-role-wallet.js"), "utf8");
   const capture = fs.readFileSync(path.join(root, "scripts", "capture-views.js"), "utf8");
 
-  assert.match(html, /YOU SEND[\s\S]*YOU RECEIVE[\s\S]*RECIPIENT[\s\S]*GET QUOTES/);
+  assert.match(html, /YOU PAY WITH[\s\S]*YOU RECEIVE EXACTLY[\s\S]*RECIPIENT[\s\S]*GET QUOTES/);
+  assert.match(html, /id="fx-asset-picker"[\s\S]*id="fx-asset-picker-options"/);
+  assert.match(html, /id="fx-swap-source"[^>]*aria-haspopup="dialog"/);
+  assert.match(html, /id="fx-swap-destination"[^>]*aria-haspopup="dialog"/);
+  assert.doesNotMatch(html, /<select id="fx-swap-(?:source|destination)"/);
   assert.match(html, /id="fx-requester-status" role="status"/);
-  assert.match(html, /BEST VERIFIED QUOTE[\s\S]*ACCEPT QUOTE[\s\S]*SEND EXACTLY[\s\S]*I SENT IT[\s\S]*CANCEL SWAP/);
+  assert.match(html, /BEST VERIFIED QUOTE[\s\S]*YOU SEND[\s\S]*YOU RECEIVE[\s\S]*TOTAL COST[\s\S]*FEE DETAILS[\s\S]*ACCEPT QUOTE[\s\S]*SEND EXACTLY[\s\S]*I SENT IT[\s\S]*CANCEL SWAP/);
   assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
   assert.match(html, /id="fx-settlement-done">DONE/);
   assert.match(html, /id="fx-requester-compose"/);
@@ -377,10 +382,33 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.doesNotMatch(html, /CONNECT WALLET/i);
   assert.match(renderer, /function fxShortAddress[\s\S]*\u2026/);
   assert.match(renderer, /fxDesktopSnapshot\?\.supportedPositions/);
+  assert.match(renderer, /fxDesktopSnapshot\?\.requesterAddress/);
   assert.doesNotMatch(renderer, /SET UP ASSETS/);
+  assert.doesNotMatch(html, /Enable FX laboratory|setting-fx-development/);
+  assert.doesNotMatch(preload, /fxSetEnabled|fx:setEnabled/);
+  assert.doesNotMatch(main, /fx:setEnabled/);
   assert.match(service, /function supportedPositionOf[\s\S]*FX_DEFAULT_POSITIONS\.find/);
   assert.doesNotMatch(service, /function positionOf/);
+  assert.match(service, /FX_QUOTE_DISCOVERY_MAX_INPUT_ATOMIC[\s\S]*maxInputAtomic: FX_QUOTE_DISCOVERY_MAX_INPUT_ATOMIC/);
+  assert.doesNotMatch(service, /snapshot\.policy\.maximumOverheadBps/);
   assert.match(renderer, /destinationAddress: fxAddressInputValue/);
+  assert.match(renderer, /function openFxAssetPicker[\s\S]*fx-asset-picker-options/);
+  assert.match(renderer, /sourcePositionId: \$\("fx-swap-source"\)\.dataset\.positionId/);
+  assert.match(renderer, /destinationPositionId: \$\("fx-swap-destination"\)\.dataset\.positionId/);
+  assert.doesNotMatch(renderer, /TURN ON FX/);
+  const requesterSubmit = renderer.slice(
+    renderer.indexOf("async function submitFxQuoteRequest"),
+    renderer.indexOf("async function acceptFxQuote")
+  );
+  assert.match(requesterSubmit, /fxRequestQuote/);
+  assert.doesNotMatch(requesterSubmit, /fxSetEnabled|fxSetPolicy/);
+  const dealerToggle = renderer.slice(
+    renderer.indexOf('$("fx-risk-armed")?.addEventListener'),
+    renderer.indexOf('for (const button of document.querySelectorAll("[data-fx-step]")')
+  );
+  assert.match(dealerToggle, /fxSetPolicy\(\{ armed: targetArmed \}\)/);
+  assert.doesNotMatch(dealerToggle, /fxSetEnabled/);
+  assert.doesNotMatch(service, /Enable the FX lab before requesting a quote/);
   assert.match(renderer, /SEARCHING ONLINE DEALERS \\u00b7 THIS CAN TAKE A FEW SECONDS/);
   assert.match(renderer, /fxRequesterTrade\.state === "refund_wait"[\s\S]*fxRefund/);
   assert.match(renderer, /function cancelFxTrade[\s\S]*window\.versus\.fxCancel/);

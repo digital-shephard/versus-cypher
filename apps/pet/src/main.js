@@ -832,7 +832,6 @@ function saveSettings(input) {
     version: merged.version,
     launchAtLogin: merged.launchAtLogin,
     allowReferralFunding: merged.allowReferralFunding,
-    fxDevelopmentEnabled: merged.fxDevelopmentEnabled,
     brain,
     encryptedApiKey: apiKey ? safeStorage.encryptString(apiKey).toString("base64") : null,
   };
@@ -1816,10 +1815,6 @@ registerIpcHandle("fx:copyAddress", (_event, payload) => {
 
 registerIpcHandle("fx:snapshot", (_event, payload) =>
   fxDesktopService.refresh({ force: payload?.force === true })
-);
-
-registerIpcHandle("fx:setEnabled", (_event, payload) =>
-  fxDesktopService.setEnabled(payload?.enabled === true)
 );
 
 registerIpcHandle("fx:setPolicy", (_event, payload) =>

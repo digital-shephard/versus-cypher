@@ -99,7 +99,12 @@ class FxTradeJournal {
     this.db.exec(
       "PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;"
     );
-    this.migrate();
+    try {
+      this.migrate();
+    } catch (error) {
+      try { this.db.close(); } catch {}
+      throw error;
+    }
   }
 
   migrate() {

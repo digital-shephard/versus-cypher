@@ -52,6 +52,48 @@ function deadlineTimer(milliseconds, message, code) {
   return { promise, cancel: () => clearTimeout(handle) };
 }
 
+function openDeploymentJournal({
+  dataDirectory,
+  filePath,
+  deploymentId,
+  create,
+}) {
+  try {
+    return create();
+  } catch (error) {
+    if (error?.code !== "DEPLOYMENT_MISMATCH") throw error;
+    const archiveDirectory = path.join(
+      dataDirectory,
+      "deployment-archive",
+      `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`
+    );
+    fs.mkdirSync(archiveDirectory, { recursive: true, mode: 0o700 });
+    const archivedFiles = [];
+    for (const suffix of ["", "-wal", "-shm"]) {
+      const source = `${filePath}${suffix}`;
+      if (!fs.existsSync(source)) continue;
+      const destination = path.join(
+        archiveDirectory,
+        `${path.basename(filePath)}${suffix}`
+      );
+      fs.renameSync(source, destination);
+      archivedFiles.push(path.basename(destination));
+    }
+    fs.writeFileSync(
+      path.join(archiveDirectory, "archive.json"),
+      `${JSON.stringify({
+        version: 1,
+        reason: "deployment_mismatch",
+        currentDeploymentId: deploymentId,
+        archivedAt: new Date().toISOString(),
+        files: archivedFiles,
+      }, null, 2)}\n`,
+      { encoding: "utf8", mode: 0o600, flag: "wx" }
+    );
+    return create();
+  }
+}
+
 class FxDesktopNetworkRuntime extends EventEmitter {
   constructor({
     dataDirectory,
@@ -170,11 +212,17 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     if (typeof this.sessionFactory === "function") {
       return this.sessionFactory({ role, fileName, signer: this.signer(role) });
     }
-    const journal = new FxTradeJournal({
-      filePath: path.join(this.dataDirectory, fileName),
+    const filePath = path.join(this.dataDirectory, fileName);
+    const journal = openDeploymentJournal({
+      dataDirectory: this.dataDirectory,
+      filePath,
       deploymentId: this.deploymentId,
-      now: this.now,
-      minimumTimeoutDeltaSeconds: this.protocolVersion === 2 ? 3_600 : 60,
+      create: () => new FxTradeJournal({
+        filePath,
+        deploymentId: this.deploymentId,
+        now: this.now,
+        minimumTimeoutDeltaSeconds: this.protocolVersion === 2 ? 3_600 : 60,
+      }),
     });
     const transport = new FxWakuTransport({
       deploymentId: this.deploymentId,
@@ -1067,11 +1115,20 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const created = this.createSession("dealer", "desktop-dealer.sqlite");
     this.dealerSession = created.session;
     this.dealerJournal = created.journal;
-    this.exposureJournal = new FxPhase8ExposureJournal({
-      filePath: path.join(this.dataDirectory, "desktop-exposure.sqlite"),
+    const exposureFilePath = path.join(
+      this.dataDirectory,
+      "desktop-exposure.sqlite"
+    );
+    this.exposureJournal = openDeploymentJournal({
+      dataDirectory: this.dataDirectory,
+      filePath: exposureFilePath,
       deploymentId: this.deploymentId,
-      policy: this.#phase8Policy(),
-      now: this.now,
+      create: () => new FxPhase8ExposureJournal({
+        filePath: exposureFilePath,
+        deploymentId: this.deploymentId,
+        policy: this.#phase8Policy(),
+        now: this.now,
+      }),
     });
     const dealerAddress = (
       await this.signer("dealer").getAddress()

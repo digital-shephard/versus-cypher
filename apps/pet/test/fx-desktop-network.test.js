@@ -114,6 +114,50 @@ test("desktop self-routing waits for one internal broker startup", async (t) => 
   assert.equal(left.status().active, true);
 });
 
+test("a new deployment preserves mismatched journals before starting fresh", (t) => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), "versus-fx-deployment-migration-")
+  );
+  const oldDeploymentId = `0x${"11".repeat(32)}`;
+  const newDeploymentId = `0x${"22".repeat(32)}`;
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const { runtime: oldRuntime } = fixture({}, {
+    dataDirectory: root,
+    deploymentId: oldDeploymentId,
+  });
+  const oldSession = oldRuntime.createSession(
+    "requester",
+    "desktop-requester.sqlite"
+  );
+  oldSession.journal.close();
+
+  const { runtime: newRuntime } = fixture({}, {
+    dataDirectory: root,
+    deploymentId: newDeploymentId,
+  });
+  const newSession = newRuntime.createSession(
+    "requester",
+    "desktop-requester.sqlite"
+  );
+  assert.equal(newSession.journal.deploymentId, newDeploymentId);
+  newSession.journal.close();
+
+  const archiveRoot = path.join(root, "deployment-archive");
+  const archives = fs.readdirSync(archiveRoot);
+  assert.equal(archives.length, 1);
+  const archiveDirectory = path.join(archiveRoot, archives[0]);
+  assert.equal(
+    fs.existsSync(path.join(archiveDirectory, "desktop-requester.sqlite")),
+    true
+  );
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(archiveDirectory, "archive.json"), "utf8")
+  );
+  assert.equal(manifest.reason, "deployment_mismatch");
+  assert.equal(manifest.currentDeploymentId, newDeploymentId);
+});
+
 test("desktop FX inventory belongs only to the dealer role", async () => {
   const { runtime, roles, calls } = fixture();
   const positions = await runtime.inventorySnapshot([{

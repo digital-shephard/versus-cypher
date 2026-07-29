@@ -36,7 +36,6 @@ contextBridge.exposeInMainWorld("versus", {
   fxAddressQr: (address) => ipcRenderer.invoke("fx:addressQr", { address }),
   fxCopyAddress: (address) => ipcRenderer.invoke("fx:copyAddress", { address }),
   fxSnapshot: (force = false) => ipcRenderer.invoke("fx:snapshot", { force }),
-  fxSetEnabled: (enabled) => ipcRenderer.invoke("fx:setEnabled", { enabled }),
   fxSetPolicy: (patch) => ipcRenderer.invoke("fx:setPolicy", { patch }),
   fxSetPositionEnabled: (id, enabled) =>
     ipcRenderer.invoke("fx:setPositionEnabled", { id, enabled }),

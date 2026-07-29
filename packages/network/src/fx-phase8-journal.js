@@ -131,7 +131,8 @@ class FxPhase8ExposureJournal {
     this.db.exec(
       "PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000;"
     );
-    this.db.exec(`
+    try {
+      this.db.exec(`
       CREATE TABLE IF NOT EXISTS fx_phase8_meta (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -173,8 +174,12 @@ class FxPhase8ExposureJournal {
         FOREIGN KEY(deployment_id, trade_id)
           REFERENCES fx_phase8_exposure(deployment_id, trade_id)
       ) STRICT;
-    `);
-    this.assertMetadata();
+      `);
+      this.assertMetadata();
+    } catch (error) {
+      try { this.db.close(); } catch {}
+      throw error;
+    }
   }
 
   assertMetadata() {

@@ -22,8 +22,6 @@ function normalizeSettings(input = {}, { fxDevelopmentAvailable = false } = {}) 
     version: 1,
     launchAtLogin: Boolean(input.launchAtLogin),
     allowReferralFunding: Boolean(input.allowReferralFunding),
-    fxDevelopmentEnabled:
-      fxDevelopmentAvailable && input.fxDevelopmentEnabled === true,
     brain: {
       kind,
       provider: String(brain.provider || kind).trim().slice(0, 40),
@@ -56,7 +54,6 @@ function publicSettings(settings) {
     launchAtLogin: settings.launchAtLogin,
     allowReferralFunding: settings.allowReferralFunding,
     fxDevelopmentAvailable: settings.fxDevelopmentAvailable === true,
-    fxDevelopmentEnabled: settings.fxDevelopmentEnabled === true,
     brain: { ...settings.brain, apiKey: "", hasApiKey: Boolean(settings.brain.apiKey) },
   };
 }

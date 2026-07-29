@@ -19,6 +19,7 @@ const {
 } = require("./fx-desktop-network");
 
 const FX_DESKTOP_DEPLOYMENT_ID = FX_PUBLIC_TESTNET_DEPLOYMENT_ID;
+const FX_QUOTE_DISCOVERY_MAX_INPUT_ATOMIC = ((1n << 256n) - 1n).toString();
 
 class FxDesktopError extends Error {
   constructor(message, code = "FX_DESKTOP_ERROR") {
@@ -331,6 +332,7 @@ class FxDesktopService extends EventEmitter {
 
   snapshot() {
     const state = this.store.snapshot();
+    const requesterAddress = this.#wallet().address.toLowerCase();
     const dealerStatus = this.dealerController?.status?.().dealer || {
       configured: false,
       active: false,
@@ -396,6 +398,7 @@ class FxDesktopService extends EventEmitter {
       },
       environment: "public-testnet",
       productionFunds: false,
+      requesterAddress,
       brokerConfigured:
         this.brokerEndpoints.length > 0 || typeof this.queryRoutes === "function",
       settlementConfigured:
@@ -591,6 +594,9 @@ class FxDesktopService extends EventEmitter {
   async setPolicy(patch) {
     const requested = object(patch, "FX policy");
     if (requested.armed === true) {
+      if (!this.store.snapshot().enabled) {
+        await this.setEnabled(true);
+      }
       await this.refresh({ force: true });
     }
     const current = this.snapshot();
@@ -600,12 +606,6 @@ class FxDesktopService extends EventEmitter {
         throw new FxDesktopError(
           "This build cannot run an FX dealer",
           "DEALER_UNAVAILABLE"
-        );
-      }
-      if (!current.enabled) {
-        throw new FxDesktopError(
-          "Turn on FX before arming the dealer",
-          "FX_DISABLED"
         );
       }
       const positions = quoteableDealerPositions(
@@ -797,9 +797,6 @@ class FxDesktopService extends EventEmitter {
     sourceRefundAddress,
   } = {}) {
     const snapshot = this.store.snapshot();
-    if (!snapshot.enabled) {
-      throw new FxDesktopError("Enable the FX lab before requesting a quote", "FX_DISABLED");
-    }
     const source = supportedPositionOf(sourcePositionId, "source asset");
     const destination = supportedPositionOf(
       destinationPositionId,
@@ -813,44 +810,14 @@ class FxDesktopService extends EventEmitter {
       destination.decimals,
       "receive amount"
     );
-    const usesNative =
-      source.assetKind === "native" || destination.assetKind === "native";
-    let nativeUsdPriceMicros = 1_000_000n;
-    if (usesNative) {
-      try {
-        nativeUsdPriceMicros = BigInt(await this.nativeUsdPriceProvider?.());
-      } catch {
-        nativeUsdPriceMicros = 0n;
-      }
-      if (nativeUsdPriceMicros <= 0n) {
-        throw new FxDesktopError(
-          "A fresh trusted ETH/USD quote is required",
-          "STALE_PRICE"
-        );
-      }
-    }
-    const outputUsdMicros =
-      destination.assetKind === "native"
-        ? (BigInt(outputAtomic) * nativeUsdPriceMicros) / 10n ** 18n
-        : BigInt(outputAtomic);
-    const recipient = address(destinationAddress, "destination");
+    const recipient = address(
+      destinationAddress || this.#wallet().address,
+      "destination"
+    );
     const refund = address(
       sourceRefundAddress || this.#wallet().address,
       "refund address"
     );
-    const maximumInputUsdMicros =
-      (outputUsdMicros * BigInt(10_000 + snapshot.policy.maximumOverheadBps) +
-        9_999n) /
-      10_000n;
-    const maximumInputAtomic =
-      source.assetKind === "native"
-        ? (
-            (maximumInputUsdMicros * 10n ** 18n +
-              nativeUsdPriceMicros -
-              1n) /
-            nativeUsdPriceMicros
-          ).toString()
-        : maximumInputUsdMicros.toString();
     const startedAt = Date.now();
     const sdk = this.#sdk();
     let quote;
@@ -867,7 +834,9 @@ class FxDesktopService extends EventEmitter {
         inputOptions: [{
           chainId: source.chainId,
           token: source.assetAddress,
-          maxInputAtomic: maximumInputAtomic,
+          // RFQs discover the market; they do not authorize spending. The
+          // requester approves the exact signed total only after seeing it.
+          maxInputAtomic: FX_QUOTE_DISCOVERY_MAX_INPUT_ATOMIC,
         }],
         inputChainId: source.chainId,
         inputToken: source.assetAddress,
