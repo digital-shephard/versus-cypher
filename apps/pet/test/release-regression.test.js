@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
 const repositoryRoot = path.join(root, "..", "..");
@@ -375,6 +376,30 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.match(html, /id="fx-requester-status" role="status"/);
   assert.match(html, /BEST VERIFIED QUOTE[\s\S]*YOU SEND[\s\S]*YOU RECEIVE[\s\S]*TOTAL COST[\s\S]*FEE DETAILS[\s\S]*ACCEPT QUOTE[\s\S]*SEND AT LEAST[\s\S]*I SENT IT[\s\S]*CANCEL SWAP/);
   assert.match(renderer, /WALLET FUNDED[\s\S]*LOCK SOURCE FUNDS/);
+  assert.match(
+    renderer,
+    /function fxHumanQuoteAmount[\s\S]*firstMeaningful \+ 3[\s\S]*atomic \+ quantum - 1n/,
+  );
+  const formattingStart = renderer.indexOf("function fxAssetAmount");
+  const formattingEnd = renderer.indexOf(
+    "function fxTradeReceipt",
+    formattingStart
+  );
+  const formatting = {};
+  vm.runInNewContext(
+    `${renderer.slice(formattingStart, formattingEnd)}
+      result = [
+        fxHumanQuoteAmount("1049006799854901", 18, "ETH"),
+        fxHumanQuoteAmount("898750299839876", 18, "ETH"),
+        fxHumanQuoteAmount("1234567", 6, "USDC"),
+      ];`,
+    formatting
+  );
+  assert.deepEqual(Array.from(formatting.result), [
+    "0.00105 ETH",
+    "0.000899 ETH",
+    "1.24 USDC",
+  ]);
   assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
   assert.match(html, /id="fx-settlement-done">DONE/);
   assert.match(html, /id="fx-requester-compose"/);

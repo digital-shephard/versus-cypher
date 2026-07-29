@@ -1340,6 +1340,23 @@ function fxAssetAmount(value, decimals = 18, asset = "ETH", maxFractionDigits = 
   return `${whole}${fraction ? `.${fraction}` : ""} ${asset}`;
 }
 
+function fxHumanQuoteAmount(value, decimals = 18, asset = "ETH") {
+  const atomic = BigInt(String(value || "0"));
+  if (atomic <= 0n) return `0 ${asset}`;
+  const scale = 10n ** BigInt(decimals);
+  let fractionDigits = Math.min(2, decimals);
+  if (atomic < scale) {
+    const fractional = atomic.toString().padStart(decimals, "0");
+    const firstMeaningful = fractional.search(/[1-9]/);
+    fractionDigits = firstMeaningful < 0
+      ? 0
+      : Math.min(decimals, firstMeaningful + 3);
+  }
+  const quantum = 10n ** BigInt(decimals - fractionDigits);
+  const rounded = ((atomic + quantum - 1n) / quantum) * quantum;
+  return fxAssetAmount(rounded, decimals, asset, fractionDigits);
+}
+
 function fxTradeReceipt(trade) {
   const settled = ["funds_ready", "complete"].includes(trade.state);
   const refunded = trade.state === "refunded";
@@ -2508,7 +2525,8 @@ function renderFxRequester() {
       principal > 0n
         ? Number((totalCost * 10_000n + principal - 1n) / principal)
         : 0;
-    $("fx-quote-input").textContent = quote.inputAmountDisplay;
+    $("fx-quote-input").textContent =
+      fxHumanQuoteAmount(totalInput, source.decimals, source.asset);
     $("fx-quote-output").textContent = quote.outputAmountDisplay;
     $("fx-quote-cost").textContent =
       `${fxAssetAmount(totalCost, source.decimals, source.asset)} \u00b7 ${
@@ -2544,11 +2562,10 @@ function renderFxRequester() {
     $("fx-funding-label").textContent =
       requiredFunding > 0n ? "SEND AT LEAST" : "WALLET FUNDED";
     $("fx-funding-amount").textContent = requiredFunding > 0n
-      ? fxAssetAmount(
+      ? fxHumanQuoteAmount(
         BigInt(funding.amountAtomic || 0),
         source.decimals,
         source.asset,
-        source.decimals,
       )
       : "READY";
     $("fx-funding-address").textContent = funding.addressShort || fxShortAddress(funding.address);
