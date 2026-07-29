@@ -374,6 +374,7 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.doesNotMatch(html, /<select id="fx-swap-(?:source|destination)"/);
   assert.match(html, /id="fx-requester-status" role="status"/);
   assert.match(html, /BEST VERIFIED QUOTE[\s\S]*YOU SEND[\s\S]*YOU RECEIVE[\s\S]*TOTAL COST[\s\S]*FEE DETAILS[\s\S]*ACCEPT QUOTE[\s\S]*SEND AT LEAST[\s\S]*I SENT IT[\s\S]*CANCEL SWAP/);
+  assert.match(renderer, /WALLET FUNDED[\s\S]*LOCK SOURCE FUNDS/);
   assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
   assert.match(html, /id="fx-settlement-done">DONE/);
   assert.match(html, /id="fx-requester-compose"/);

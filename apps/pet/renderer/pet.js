@@ -2540,16 +2540,22 @@ function renderFxRequester() {
       ? Math.max(0, Number(funding.expiresAt) - Math.floor(networkNowMs() / 1000))
       : 0;
     const fundingExpired = fundingRemaining === 0;
-    $("fx-funding-amount").textContent =
-      fxAssetAmount(
+    const requiredFunding = BigInt(funding.amountAtomic || 0);
+    $("fx-funding-label").textContent =
+      requiredFunding > 0n ? "SEND AT LEAST" : "WALLET FUNDED";
+    $("fx-funding-amount").textContent = requiredFunding > 0n
+      ? fxAssetAmount(
         BigInt(funding.amountAtomic || 0),
         source.decimals,
         source.asset,
         source.decimals,
-      );
+      )
+      : "READY";
     $("fx-funding-address").textContent = funding.addressShort || fxShortAddress(funding.address);
     const sourceGasBuffer = BigInt(funding.sourceGasBufferAtomic || 0);
-    $("fx-funding-note").textContent = sourceGasBuffer > 0n
+    $("fx-funding-note").textContent = requiredFunding === 0n
+      ? "Existing local funds cover the source lock and refund gas reserve."
+      : sourceGasBuffer > 0n
       ? `${source.asset} on ${source.chain} only. Includes a refundable local gas reserve.`
       : `${source.asset} on ${source.chain} only. Locks after confirmation.`;
     const fundingWindow = $("fx-funding-expiry")?.closest(".fx-funding-window");
@@ -2564,7 +2570,9 @@ function renderFxRequester() {
       fxRequesterTrade.state === "awaiting_source_funds"
         ? fundingExpired
           ? "CLOSE EXPIRED ORDER"
-          : "I SENT IT"
+          : requiredFunding > 0n
+            ? "I SENT IT"
+            : "LOCK SOURCE FUNDS"
         : "CHECK STATUS";
     $("fx-cancel-trade").classList.toggle("hidden", fundingExpired);
     $("fx-cancel-trade").disabled = fxCancelActive;
