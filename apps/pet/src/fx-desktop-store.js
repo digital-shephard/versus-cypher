@@ -263,12 +263,19 @@ function normalizeLoadedState(value) {
       const loaded = Array.isArray(value.positions)
         ? value.positions.find((candidate) => candidate.id === fallback.id)
         : null;
+      const loadedChain = Array.isArray(value.chains)
+        ? value.chains.find(
+            (candidate) => candidate.chainId === fallback.chainId
+          )
+        : null;
       return {
         ...fallback,
         ...(loaded || {}),
         enabled:
-          Number(value.version) === FX_DESKTOP_STATE_VERSION &&
-          loaded?.enabled === true,
+          fallback.assetKind === "native"
+            ? loadedChain?.enabled === true
+            : Number(value.version) === FX_DESKTOP_STATE_VERSION &&
+              loaded?.enabled === true,
         availableAtomic: /^\d+$/.test(String(loaded?.availableAtomic || ""))
           ? String(loaded.availableAtomic)
           : "0",

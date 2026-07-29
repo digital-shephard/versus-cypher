@@ -311,7 +311,7 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
 
   assert.match(html, /id="fx-add-position"[\s\S]*data-fx-stock-filter="all"[\s\S]*data-fx-stock-filter="funded"[\s\S]*data-fx-stock-filter="active"/);
-  assert.match(html, /<small>USDC STOCK<\/small>/);
+  assert.match(html, /<small>STOCK VALUE<\/small>/);
   assert.match(html, /id="fx-add-position-sheet"[\s\S]*fx-position-back[\s\S]*SUPPORTED ASSETS[\s\S]*id="fx-position-options"/);
   assert.match(html, /data-fx-panel="risk"[\s\S]*PER REQUESTER[\s\S]*PER ASSET[\s\S]*MAX GAS[\s\S]*MAX OVERHEAD[\s\S]*INVENTORY PREMIUM/);
   assert.doesNotMatch(html, /id="fx-position-done"|id="fx-position-note"/);

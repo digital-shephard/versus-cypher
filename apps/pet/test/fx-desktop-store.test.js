@@ -115,6 +115,36 @@ test("FX chains persist role gas readiness and protect enabled token positions",
   }
 });
 
+test("enabled chains migrate their native ETH position into inventory", () => {
+  const temporary = temporaryStore();
+  try {
+    const store = new FxDesktopStore({ filePath: temporary.filePath });
+    store.setChainSettings("84532", { enabled: true });
+    assert.equal(
+      store.snapshot().positions.find(
+        (position) => position.id === "base-sepolia-eth"
+      ).enabled,
+      false
+    );
+
+    const restored = new FxDesktopStore({ filePath: temporary.filePath });
+    assert.equal(
+      restored.snapshot().positions.find(
+        (position) => position.id === "base-sepolia-eth"
+      ).enabled,
+      true
+    );
+    assert.equal(
+      restored.snapshot().positions.find(
+        (position) => position.id === "arbitrum-sepolia-eth"
+      ).enabled,
+      false
+    );
+  } finally {
+    temporary.cleanup();
+  }
+});
+
 test("FX desktop trade history persists and scrubbed evidence excludes private state", () => {
   const temporary = temporaryStore();
   const tradeId = `0x${"ab".repeat(32)}`;
