@@ -375,6 +375,10 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.doesNotMatch(html, /id="fx-copy-funding"[^>]*>COPY ADDRESS/);
   assert.doesNotMatch(html, /CONNECT WALLET/i);
   assert.match(renderer, /function fxShortAddress[\s\S]*\u2026/);
+  assert.match(renderer, /fxDesktopSnapshot\?\.supportedPositions/);
+  assert.doesNotMatch(renderer, /SET UP ASSETS/);
+  assert.match(service, /function supportedPositionOf[\s\S]*FX_DEFAULT_POSITIONS\.find/);
+  assert.doesNotMatch(service, /function positionOf/);
   assert.match(renderer, /destinationAddress: fxAddressInputValue/);
   assert.match(renderer, /fxRequesterTrade\.state === "refund_wait"[\s\S]*fxRefund/);
   assert.match(renderer, /function cancelFxTrade[\s\S]*window\.versus\.fxCancel/);

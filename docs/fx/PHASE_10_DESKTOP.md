@@ -23,6 +23,11 @@ signed into the acceptance and bound into the destination HTLC. The external
 source wallet is not connected to Versus and is never inferred. If the source
 HTLC must be refunded, funds return to the displayed local requester wallet.
 
+The requester route picker is built from the frozen adapter catalog, not from
+the local dealer's enabled inventory bays. A device can therefore request any
+supported route without stocking or dealing either asset. Inventory toggles
+only control which quotes that device may supply as a dealer.
+
 Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 
 ## Dealer Flow

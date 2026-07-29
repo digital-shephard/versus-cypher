@@ -1319,6 +1319,7 @@ let fxQuoteRefreshActive = false;
 let fxQuoteRefreshRetryAt = 0;
 let fxQuoteAcceptActive = false;
 let fxCancelActive = false;
+let fxDealerTogglePending = null;
 const fxRisk = {
   armed: false,
   maxTradeUsd: 250,
@@ -1837,12 +1838,25 @@ function renderFxRisk() {
   if (!panel || !screen) return;
 
   const armed = fxRisk.armed ? "true" : "false";
+  const pendingArmed = fxDealerTogglePending === "arming";
+  const switchArmed = fxDealerTogglePending
+    ? pendingArmed
+    : fxRisk.armed;
+  const stateLabel = fxDealerTogglePending
+    ? (pendingArmed ? "ARMING" : "DISARMING")
+    : (fxRisk.armed ? "DEALING" : "DISARMED");
   screen.dataset.armed = armed;
   panel.dataset.armed = armed;
   for (const label of document.querySelectorAll(".fx-state-label")) {
-    label.textContent = fxRisk.armed ? "DEALING" : "DISARMED";
+    label.textContent = stateLabel;
   }
-  $("fx-risk-armed").setAttribute("aria-checked", armed);
+  const toggle = $("fx-risk-armed");
+  toggle.setAttribute("aria-checked", switchArmed ? "true" : "false");
+  toggle.setAttribute(
+    "aria-busy",
+    fxDealerTogglePending ? "true" : "false"
+  );
+  toggle.disabled = Boolean(fxDealerTogglePending);
 
   for (const [key, control] of Object.entries(FX_RISK_CONTROLS)) {
     const readout = control.readout ? $(control.readout) : null;
@@ -1855,7 +1869,11 @@ function renderFxRisk() {
   }
 
   const foot = $("fx-risk-foot");
-  if (fxDesktopSnapshot?.enabled !== true) {
+  if (fxDealerTogglePending) {
+    foot.textContent = pendingArmed
+      ? "VERIFYING INVENTORY · STARTING DEALER"
+      : "CLOSING DEALER · SAVING STATE";
+  } else if (fxDesktopSnapshot?.enabled !== true) {
     foot.textContent = "FX IS OFF \u2014 REQUESTS AND DEALING DISABLED";
   } else if (!fxRisk.armed) {
     foot.textContent = "DEALING OFF \u2014 NOTHING QUOTED";
@@ -2223,11 +2241,10 @@ function fxRequesterPositionLabel(position) {
 }
 
 function fxPopulateRequesterAssets() {
-  const positions = (fxDesktopSnapshot?.positions || FX_SUPPORTED_POSITIONS)
-    .filter((position) =>
-      position.usable === true ||
-      (!("usable" in position) && position.enabled !== false)
-    );
+  const positions =
+    fxDesktopSnapshot?.supportedPositions ||
+    fxDesktopSnapshot?.positions ||
+    FX_SUPPORTED_POSITIONS;
   for (const [id, preferred] of [
     ["fx-swap-source", "base-sepolia-usdc"],
     ["fx-swap-destination", "arbitrum-sepolia-usdc"],
@@ -2367,17 +2384,13 @@ function renderFxRequester() {
   }
 
   const getQuotes = $("fx-get-quotes");
-  const requesterPositions = (fxDesktopSnapshot?.positions || []).filter(
-    (position) => position.usable === true
-  );
+  const requesterPositions = fxDesktopSnapshot?.supportedPositions || [];
   $("fx-requester-compose").classList.toggle("hidden", Boolean(fxRequesterTrade));
   if (getQuotes) {
     getQuotes.disabled = requesterPositions.length < 2;
-    getQuotes.textContent = requesterPositions.length < 2
-      ? "SET UP ASSETS"
-      : fxDesktopSnapshot?.enabled
-        ? "GET QUOTES"
-        : "TURN ON FX";
+    getQuotes.textContent = fxDesktopSnapshot?.enabled
+      ? "GET QUOTES"
+      : "TURN ON FX";
     getQuotes.classList.toggle("hidden", Boolean(fxRequesterTrade));
   }
 
@@ -2652,12 +2665,9 @@ function scrollFxRequesterToBottom() {
 async function submitFxQuoteRequest() {
   const button = $("fx-get-quotes");
   fxRequesterError("");
-  const requesterPositions = (fxDesktopSnapshot?.positions || []).filter(
-    (position) => position.usable === true
-  );
+  const requesterPositions = fxDesktopSnapshot?.supportedPositions || [];
   if (requesterPositions.length < 2) {
-    closeFxRequester();
-    openFxAddPositionSheet();
+    fxRequesterError("No requester routes are available in this build.");
     return;
   }
   if (fxDesktopSnapshot?.enabled !== true) {
@@ -2873,13 +2883,22 @@ function wireFxControls() {
   }
 
   $("fx-risk-armed")?.addEventListener("click", async () => {
+    if (fxDealerTogglePending) return;
+    const targetArmed = !fxRisk.armed;
+    fxDealerTogglePending = targetArmed ? "arming" : "disarming";
+    renderFxRisk();
     try {
       if (fxDesktopSnapshot?.enabled !== true) {
         applyFxSnapshot(await window.versus.fxSetEnabled(true));
       }
-      applyFxSnapshot(await window.versus.fxSetPolicy({ armed: !fxRisk.armed }));
+      applyFxSnapshot(
+        await window.versus.fxSetPolicy({ armed: targetArmed })
+      );
     } catch (error) {
       toast(error.message || "dealer policy unchanged");
+    } finally {
+      fxDealerTogglePending = null;
+      renderFxRisk();
     }
   });
 

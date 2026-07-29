@@ -672,9 +672,12 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.inventoryCache = null;
     this.dealerPolicy = { ...policy };
     this.dealerPositions = positions.filter((position) => position.enabled);
-    for (const position of this.dealerPositions) {
-      await this.evm.preflight(position.chainId);
-    }
+    const chainIds = [
+      ...new Set(this.dealerPositions.map((position) => position.chainId)),
+    ];
+    await Promise.all(
+      chainIds.map((chainId) => this.evm.preflight(chainId))
+    );
     const created = this.createSession("dealer", "desktop-dealer.sqlite");
     this.dealerSession = created.session;
     this.dealerJournal = created.journal;

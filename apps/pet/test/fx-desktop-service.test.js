@@ -215,6 +215,39 @@ test("desktop requester binds arbitrary recipient and completes only after verif
   assert.equal(completed.endpointPaymentSubmitted, false);
 });
 
+test("requester routes do not depend on this device's dealer inventory toggles", async () => {
+  const { service } = fixture();
+  service.store.setPositionEnabled("base-sepolia-usdc", false);
+  service.store.setPositionEnabled("arbitrum-sepolia-usdc", false);
+  service.setEnabled(true);
+
+  const snapshot = service.snapshot();
+  assert.equal(
+    snapshot.positions.some((position) => position.enabled),
+    false
+  );
+  assert.deepEqual(
+    snapshot.supportedPositions.map((position) => position.id),
+    [
+      "base-sepolia-eth",
+      "base-sepolia-usdc",
+      "arbitrum-sepolia-eth",
+      "arbitrum-sepolia-usdc",
+    ]
+  );
+
+  const quoted = await service.requestQuote({
+    sourcePositionId: "base-sepolia-usdc",
+    destinationPositionId: "arbitrum-sepolia-usdc",
+    outputAmount: "1",
+    destinationAddress: Wallet.createRandom().address,
+  });
+
+  assert.equal(quoted.state, "quoted");
+  assert.equal(quoted.sourcePositionId, "base-sepolia-usdc");
+  assert.equal(quoted.destinationPositionId, "arbitrum-sepolia-usdc");
+});
+
 test("timely acceptance survives the original quote expiry", async () => {
   const { service, confirmSource, advanceTime } = fixture();
   service.setEnabled(true);

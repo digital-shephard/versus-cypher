@@ -4079,6 +4079,23 @@ body {
 
 .fx-switch[aria-checked="true"] i { transform: translateX(18px); }
 
+.fx-switch[aria-busy="true"] {
+  cursor: wait;
+}
+
+.fx-switch[aria-busy="true"] i {
+  animation: fx-switch-arming 760ms ease-in-out infinite alternate;
+}
+
+@keyframes fx-switch-arming {
+  from { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
+  to {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.45),
+      0 0 7px rgba(111, 224, 205, 0.9);
+  }
+}
+
 .fx-stepper {
   flex: none;
   display: flex;

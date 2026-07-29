@@ -45,13 +45,11 @@ function decimalAtomic(value, decimals, label) {
   }
 }
 
-function positionOf(snapshot, id, label) {
-  const position = snapshot.positions.find((candidate) => candidate.id === id);
-  if (
-    !position ||
-    position.enabled !== true ||
-    position.usable === false
-  ) {
+function supportedPositionOf(id, label) {
+  const position = FX_DEFAULT_POSITIONS.find(
+    (candidate) => candidate.id === id
+  );
+  if (!position) {
     throw new FxDesktopError(`${label} is unsupported`, "UNSUPPORTED_ASSET");
   }
   return position;
@@ -743,9 +741,8 @@ class FxDesktopService extends EventEmitter {
     if (!snapshot.enabled) {
       throw new FxDesktopError("Enable the FX lab before requesting a quote", "FX_DISABLED");
     }
-    const source = positionOf(snapshot, sourcePositionId, "source asset");
-    const destination = positionOf(
-      snapshot,
+    const source = supportedPositionOf(sourcePositionId, "source asset");
+    const destination = supportedPositionOf(
       destinationPositionId,
       "destination asset"
     );
