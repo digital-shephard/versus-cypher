@@ -248,7 +248,15 @@ fxDesktopService.on("changed", (snapshot) => {
   sendRenderer("fx:changed", snapshot);
 });
 fxNetworkRuntime.on("trade", (update) => {
-  fxDesktopService.recordRuntimeTrade(update);
+  try {
+    fxDesktopService.recordRuntimeTrade(update);
+  } catch (error) {
+    console.error("Versus FX trade persistence error:", error.message);
+    healthMonitor.report(error, {
+      channel: "fx",
+      operation: "trade_persistence",
+    });
+  }
 });
 fxNetworkRuntime.on("status", () => {
   sendRenderer("fx:changed", fxDesktopService.snapshot());

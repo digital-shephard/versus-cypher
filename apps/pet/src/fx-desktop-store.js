@@ -8,6 +8,7 @@ const FX_TRADE_STATES = Object.freeze([
   "requesting",
   "quoted",
   "accepted",
+  "reserved",
   "awaiting_source_funds",
   "source_funds_detected",
   "source_lock_pending",
@@ -208,6 +209,31 @@ function normalizeLoadedState(value) {
     return initialState();
   }
   const defaults = initialState();
+  const trades = Array.isArray(value.trades)
+    ? value.trades.map((trade) => {
+        if (
+          !["accepted", "reserved"].includes(trade?.state) ||
+          trade?.prepared
+        ) {
+          return trade;
+        }
+        const at = trade.updatedAt || value.updatedAt || defaults.updatedAt;
+        return {
+          ...trade,
+          state: "failed",
+          lastFailure: {
+            code: "RESERVATION_PREPARATION_INTERRUPTED",
+            message:
+              "The dealer reservation was not fully prepared. No source funds were authorized",
+            at,
+          },
+          timeline: [
+            ...(Array.isArray(trade.timeline) ? trade.timeline : []),
+            { state: "failed", at },
+          ],
+        };
+      })
+    : [];
   const state = {
     ...defaults,
     version: FX_DESKTOP_STATE_VERSION,
@@ -287,7 +313,7 @@ function normalizeLoadedState(value) {
           : 0,
       };
     }),
-    trades: Array.isArray(value.trades) ? value.trades : [],
+    trades,
     observations: Array.isArray(value.observations)
       ? value.observations.slice(-512)
       : [],

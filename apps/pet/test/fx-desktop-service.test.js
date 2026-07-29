@@ -21,13 +21,18 @@ const TOKEN = "0xcba3d9354dd4c30bb6961abb4473a6340486e01b";
 const NOW = 1_785_200_000;
 
 function fixture(overrides = {}) {
+  const {
+    reservationObserver,
+    ...serviceOverrides
+  } = overrides;
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-desktop-"));
   const requester = Wallet.createRandom();
   const broker = Wallet.createRandom();
   const dealer = Wallet.createRandom();
   let sourceConfirmed = false;
   let currentNow = NOW;
-  const service = new FxDesktopService({
+  let service;
+  service = new FxDesktopService({
     statePath: path.join(root, "state.json"),
     recoveryDirectory: path.join(root, "recovery"),
     walletProvider: () => ({
@@ -106,7 +111,7 @@ function fixture(overrides = {}) {
       };
     },
     async reservationExecutor({ proposal, acceptance }) {
-      return signFxMessage({
+      const reservation = await signFxMessage({
         protocol: "versus-fx",
         version: 1,
         deploymentId: FX_DESKTOP_DEPLOYMENT_ID,
@@ -124,6 +129,8 @@ function fixture(overrides = {}) {
           reservationDeadline: acceptance.expiresAt,
         },
       }, dealer);
+      reservationObserver?.({ service, acceptance, reservation });
+      return reservation;
     },
     async cancellationExecutor({ acceptance, reserve }) {
       return signFxMessage({
@@ -160,7 +167,7 @@ function fixture(overrides = {}) {
       };
     },
     chainReadinessRequired: false,
-    ...overrides,
+    ...serviceOverrides,
   });
   service.store.setPositionEnabled("base-sepolia-usdc", true);
   service.store.setPositionEnabled("arbitrum-sepolia-usdc", true);
@@ -216,6 +223,45 @@ test("desktop requester binds arbitrary recipient and completes only after verif
   assert.equal(completed.receipt.destinationAddress, recipient.toLowerCase());
   assert.equal(completed.endpointPaymentAuthorized, false);
   assert.equal(completed.endpointPaymentSubmitted, false);
+});
+
+test("requester reservation telemetry cannot interrupt accepted quote persistence", async () => {
+  const { service } = fixture({
+    reservationObserver({ service: observedService, acceptance, reservation }) {
+      observedService.recordRuntimeTrade({
+        tradeId: acceptance.tradeId,
+        role: "requester",
+        state: "accepted",
+        fundingEligibleUntil: acceptance.expiresAt,
+      });
+      observedService.recordRuntimeTrade({
+        tradeId: reservation.tradeId,
+        role: "requester",
+        state: "reserved",
+        fundingEligibleUntil: reservation.payload.reservationDeadline,
+      });
+    },
+  });
+  const quoted = await service.requestQuote({
+    sourcePositionId: "base-sepolia-usdc",
+    destinationPositionId: "arbitrum-sepolia-usdc",
+    outputAmount: "1",
+  });
+
+  const accepted = await service.acceptQuote(quoted.tradeId);
+
+  assert.equal(accepted.state, "awaiting_source_funds");
+  assert.equal(
+    service.store.trade(quoted.tradeId).prepared.reservation.type,
+    "fx_reserve"
+  );
+  assert.deepEqual(
+    service.store
+      .trade(quoted.tradeId)
+      .timeline.slice(-3)
+      .map((entry) => entry.state),
+    ["accepted", "reserved", "awaiting_source_funds"]
+  );
 });
 
 test("requester routes do not depend on this device's dealer inventory toggles", async () => {

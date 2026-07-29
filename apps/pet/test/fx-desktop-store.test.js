@@ -44,6 +44,26 @@ test("FX desktop state is disabled, disarmed, and restart durable", () => {
   }
 });
 
+test("FX desktop state persists the requester reservation handoff", () => {
+  const temporary = temporaryStore();
+  try {
+    const store = new FxDesktopStore({ filePath: temporary.filePath });
+    const tradeId = `0x${"12".repeat(32)}`;
+    store.putTrade({ tradeId, role: "requester", state: "accepted" });
+    store.putTrade({ tradeId, role: "requester", state: "reserved" });
+    assert.equal(store.trade(tradeId).state, "reserved");
+
+    const restored = new FxDesktopStore({ filePath: temporary.filePath });
+    assert.equal(restored.trade(tradeId).state, "failed");
+    assert.equal(
+      restored.trade(tradeId).lastFailure.code,
+      "RESERVATION_PREPARATION_INTERRUPTED"
+    );
+  } finally {
+    temporary.cleanup();
+  }
+});
+
 test("FX desktop inventory cannot disable a funded or reserved position", () => {
   const temporary = temporaryStore();
   try {

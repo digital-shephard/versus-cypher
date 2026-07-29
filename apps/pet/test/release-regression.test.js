@@ -414,6 +414,10 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.match(main, /brokerQuoteSettleWindowMs: 1_250/);
   assert.match(main, /dealerObservationWindowMs: 250/);
   assert.match(main, /fxNetworkRuntime\.warmRequester\(\)/);
+  assert.match(
+    main,
+    /fxNetworkRuntime\.on\("trade"[\s\S]*try \{[\s\S]*recordRuntimeTrade\(update\)[\s\S]*trade_persistence/
+  );
   assert.match(renderer, /fxRequesterTrade\.state === "refund_wait"[\s\S]*fxRefund/);
   assert.match(renderer, /function cancelFxTrade[\s\S]*window\.versus\.fxCancel/);
   assert.match(renderer, /function scrollFxRequesterToBottom[\s\S]*scroll\.scrollHeight/);
