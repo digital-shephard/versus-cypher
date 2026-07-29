@@ -1860,7 +1860,7 @@ function renderFxRisk() {
   } else if (!fxRisk.armed) {
     foot.textContent = "DEALING OFF \u2014 NOTHING QUOTED";
   } else {
-    foot.textContent = "REFUND: DEALER 10m \u00b7 REQUESTER 2h";
+    foot.textContent = "AUTO REFUND: DEALER 10m \u00b7 REQUESTER 2h";
   }
 }
 

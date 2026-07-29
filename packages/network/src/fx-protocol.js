@@ -103,20 +103,16 @@ const FX_SETTLEMENT_TRANSITIONS_V2 = Object.freeze({
     expire_rfq: "expired",
   }),
   quote_accepted: Object.freeze({
-    confirm_destination_lock: "destination_locked",
+    confirm_source_lock: "source_locked",
     cancel_before_source_lock: "cancelled",
   }),
-  destination_locked: Object.freeze({
-    confirm_source_lock: "source_locked",
-    confirm_destination_refund: "destination_refunded",
-    cancel_before_source_lock: "destination_cancelled",
-  }),
-  destination_cancelled: Object.freeze({
-    confirm_destination_refund: "refunded",
-  }),
   source_locked: Object.freeze({
-    confirm_source_claim: "source_claimed",
+    confirm_destination_lock: "destination_locked",
     confirm_source_refund: "source_refunded",
+  }),
+  destination_locked: Object.freeze({
+    confirm_source_claim: "source_claimed",
+    confirm_destination_refund: "destination_refunded",
   }),
   source_claimed: Object.freeze({
     confirm_destination_claim: "complete",

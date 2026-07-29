@@ -196,6 +196,16 @@ arbitrary destination into both Waku coordination and the destination HTLC.
 Refunds return to the local requester address, never to an inferred external
 sender.
 
+V2 settlement is source-first. The dealer commits a durably encrypted secret
+hash in its quote; after reservation, the requester locks source against that
+hash. Only an independently verified source lock permits the dealer to fund
+destination. The dealer then claims source, revealing the secret, and normally
+executes the destination claim itself to receive the signed executor bounty.
+The destination remains permissionlessly claimable for liveness. Restart-safe
+client keepers automatically submit eligible source and destination refunds,
+while fixed onchain refund addresses prevent either keeper from redirecting
+funds.
+
 Dealer keys, requester keys, and broker keys are separately derived from the
 backed-up Cypher wallet. Dealer inventory therefore cannot be satisfied by
 temporary requester funding. Dealer quoting remains disabled by default and

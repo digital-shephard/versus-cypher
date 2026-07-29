@@ -407,7 +407,6 @@ class FxTradeJournal {
         );
         if (
           !reserve ||
-          (message.version === 2 && !destinationLock) ||
           message.sender !== rfq.sender ||
           message.payload.chainId !== quote.payload.inputChainId ||
           message.payload.token !== quote.payload.inputToken ||
@@ -418,10 +417,7 @@ class FxTradeJournal {
               message.payload.executorAmountAtomic !== "0")) ||
           message.payload.secretHash !== accept.payload.secretHash ||
           message.payload.refundAddress !== accept.payload.sourceRefundAddress ||
-          message.payload.beneficiary !== reserve.payload.dealerSourceClaimAddress ||
-          (message.version === 2 &&
-            destinationLock.payload.timeout <
-              message.payload.timeout + this.minimumTimeoutDeltaSeconds)
+          message.payload.beneficiary !== reserve.payload.dealerSourceClaimAddress
         ) {
           throw new FxJournalError(
             "source lock does not match accepted route",
@@ -457,7 +453,7 @@ class FxTradeJournal {
             : accept.payload.outputAmountAtomic;
         if (
           !reserve ||
-          (message.version === 1 && !sourceLock) ||
+          !sourceLock ||
           message.sender !== quote.sender ||
           message.payload.chainId !== quote.payload.outputChainId ||
           message.payload.token !== quote.payload.outputToken ||
@@ -470,9 +466,8 @@ class FxTradeJournal {
           message.payload.secretHash !== accept.payload.secretHash ||
           message.payload.beneficiary !== accept.payload.destinationClaimAddress ||
           message.payload.refundAddress !== reserve.payload.dealerDestinationRefundAddress ||
-          (message.version === 1 &&
-            sourceLock.payload.timeout <
-              message.payload.timeout + this.minimumTimeoutDeltaSeconds)
+          sourceLock.payload.timeout <
+            message.payload.timeout + this.minimumTimeoutDeltaSeconds
         ) {
           throw new FxJournalError(
             "destination lock does not match route or safe timeout order",

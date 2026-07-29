@@ -320,7 +320,7 @@ test("requester cancellation publishes a signed pre-lock release", async () => {
   assert.equal(cancellation.payload.reason, "owner_cancelled");
 });
 
-test("dealer restart exposes an expired destination lock and refunds it once", async () => {
+test("dealer restart automatically refunds an expired destination lock once", async () => {
   const tradeId = `0x${"77".repeat(32)}`;
   const lockId = `0x${"88".repeat(32)}`;
   const destinationMessageId = `0x${"99".repeat(32)}`;
@@ -385,11 +385,13 @@ test("dealer restart exposes an expired destination lock and refunds it once", a
   };
 
   const recoveries = await runtime.reconcileDealerExposure({ force: true });
-  assert.equal(recoveries[0].refund.eligible, true);
-  const result = await runtime.refundDealerTrade(tradeId);
-  assert.equal(result.state, "refunded");
+  assert.deepEqual(recoveries, []);
+  await runtime.reconcileDealerExposure({ force: true });
   assert.equal(terminal, "destination_refunded");
-  assert.deepEqual(calls.at(-1), ["refund", "dealer"]);
+  assert.deepEqual(
+    calls.filter((entry) => entry[0] === "refund"),
+    [["refund", "dealer"]]
+  );
   assert.equal(published[0].type, "fx_refund");
   assert.equal(published[0].payload.lockMessageId, destinationMessageId);
   assert.equal(published[0].payload.transactionHash, refundHash);

@@ -407,7 +407,7 @@ class FxPhase8ExposureJournal {
     reserve,
     expectedSourceLockId,
     expectedDestinationLockId,
-    destinationRefundTimestamp,
+    destinationRefundTimestamp = 0,
     exposureValueMicros,
     economics = {},
   }) {
@@ -506,8 +506,10 @@ class FxPhase8ExposureJournal {
         ZERO_HASH,
         destinationLockId,
         ZERO_HASH,
-        Number(destinationRefundTimestamp) -
-          this.policy.minimumTimeoutDeltaSeconds,
+        destinationRefundTimestamp > 0
+          ? Number(destinationRefundTimestamp) +
+            this.policy.minimumTimeoutDeltaSeconds
+          : 0,
         Number(destinationRefundTimestamp),
         reserve.payload.reservationDeadline,
         JSON.stringify({ rfq, quote, accept, reserve }),
@@ -521,6 +523,64 @@ class FxPhase8ExposureJournal {
       try { this.db.exec("ROLLBACK"); } catch {}
       throw error;
     }
+  }
+
+  firmSourceV2(tradeId, sourceLock, destinationRefundTimestamp) {
+    const trade = this.trade(tradeId);
+    if (!trade) {
+      throw new FxPhase8JournalError("trade is not admitted", "UNKNOWN_TRADE");
+    }
+    const destinationTimeout = Number(destinationRefundTimestamp);
+    if (
+      sourceLock?.version !== 2 ||
+      sourceLock?.type !== "fx_lock_source" ||
+      !Number.isSafeInteger(destinationTimeout) ||
+      destinationTimeout <= 0 ||
+      Number(sourceLock.payload.timeout) <
+        destinationTimeout + this.policy.minimumTimeoutDeltaSeconds
+    ) {
+      throw new FxPhase8JournalError(
+        "source lock violates the V2 source-first timeout order",
+        "LOCK_MISMATCH"
+      );
+    }
+    if (trade.state === "source_firm") {
+      if (
+        trade.sourceTransactionHash !== sourceLock.payload.transactionHash ||
+        trade.destinationRefundTimestamp !== destinationTimeout
+      ) {
+        throw new FxPhase8JournalError(
+          "source lock conflicts with its durable V2 package",
+          "TRADE_CONFLICT"
+        );
+      }
+      return trade;
+    }
+    if (trade.state !== "destination_pending") {
+      throw new FxPhase8JournalError(
+        "source lock cannot advance this V2 trade",
+        "INVALID_STATE"
+      );
+    }
+    this.db.prepare(`
+      UPDATE fx_phase8_exposure
+      SET state = 'source_firm', source_transaction_hash = ?,
+          source_refund_timestamp = ?, destination_refund_timestamp = ?,
+          package_json = ?, updated_at = ?
+      WHERE deployment_id = ? AND trade_id = ?
+    `).run(
+      sourceLock.payload.transactionHash,
+      sourceLock.payload.timeout,
+      destinationTimeout,
+      JSON.stringify({
+        ...trade.package,
+        sourceLock,
+      }),
+      this.now(),
+      this.deploymentId,
+      trade.tradeId
+    );
+    return this.trade(trade.tradeId);
   }
 
   markDestinationLockedV2(tradeId, destinationLock) {
@@ -551,7 +611,7 @@ class FxPhase8ExposureJournal {
       }
       return trade;
     }
-    if (trade.state !== "destination_pending") {
+    if (!["source_firm", "destination_pending"].includes(trade.state)) {
       throw new FxPhase8JournalError(
         "destination lock cannot advance this trade",
         "INVALID_STATE"

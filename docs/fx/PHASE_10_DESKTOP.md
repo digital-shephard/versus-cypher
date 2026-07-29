@@ -119,20 +119,28 @@ destination legs. V1 and V2 messages cannot share a trade journal. The zero
 address is the canonical wire identifier for native ETH and is never treated
 as an ERC-20 address.
 
-V2 settlement is destination-first:
+V2 settlement is source-first:
 
 1. The dealer encrypts its settlement secret and signs only its hash.
 2. The dealer durably reserves output plus executor bounty.
-3. The dealer funds the destination V2 adapter for the exact recipient,
-   refund address, hash, timeout, output, and executor liabilities.
-4. The requester independently checks every onchain field and current relay
-   gas coverage before funding source.
+3. The requester checks current executor-gas coverage, then funds the source
+   V2 adapter against the signed hash.
+4. The dealer independently verifies every source-lock field and confirmation
+   before funding the destination V2 adapter for the exact recipient, refund
+   address, hash, shorter timeout, output, and executor liabilities.
 5. The dealer claims source, publishing the secret onchain.
-6. A permissionless executor claims destination. The recipient gets the exact
-   output and the transaction sender gets the fixed bounty.
+6. The dealer normally executes the permissionless destination claim and
+   receives its fixed executor bounty. Any other executor may provide the same
+   liveness fallback without redirecting either payout.
+7. Restart-safe keepers automatically submit eligible source or destination
+   refunds exactly once; the fixed contracts always return funds to their
+   signed refund addresses.
 
 The current public-testnet V2 deployment is frozen by deployment ID
-`0x361d43afddce9c272db9d4131c6b6b228693b603924de8f7dc09cc67b58bc5df`.
+`0x517ee196f582bd7ee83db57bb722a0d90ef2d0abe941c4e4307dadad62ebb19e`.
+It reuses the already verified ownerless V2 contracts while assigning a new
+coordination deployment ID so destination-first clients cannot share topics
+or journals with source-first clients.
 On Base Sepolia and Arbitrum Sepolia, the native adapter is
 `0x1e933ccffaa2cd384d3df751ff7a25183682dc61` and the manifested ERC-20
 adapter is `0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14`.
@@ -184,16 +192,18 @@ Stablecoin-only ERC-20 routes remain independent of ETH pricing.
 
 Automated desktop, network, Hardhat, and Foundry suites cover exact recipient
 payout, executor bounty payout, requester destination-gas independence,
-reserve-before-fund exposure, gas-spike refusal before source funding, adapter
+source-first funding, reserve-before-fund exposure, gas-spike refusal before
+source funding, automatic exactly-once recovery, adapter
 version separation, timeout ordering, role separation, funding verification,
 recovery, refund, policy, and RPC boundaries.
 The preview harness proves layout and deterministic screen transitions only; it
 is not settlement evidence.
 
 The desktop now has a real V2 requester path from quote discovery through
-destination reservation, independent destination verification, fresh executor
-gas coverage, source-funding verification, permissionless completion,
-cancellation, status reconciliation, and refund. Dealer arming, bounded
+source funding, dealer-side source verification, independent destination
+verification, fresh executor gas coverage, dealer-executed permissionless
+completion, cancellation, status reconciliation, and automatic refund. Dealer
+arming, bounded
 inventory refresh, native-gas readiness, real withdrawal, owner-visible
 policy, restart resume, persisted trade journals, and scrubbed settlement
 evidence are connected to the FX runtime.

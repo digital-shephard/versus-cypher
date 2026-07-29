@@ -519,6 +519,14 @@ A separate basic sanity test showed that these are not general question-answerin
   `0x2baf66b4211ecbc126916260c0a671e745e3184275744fb15bd5d5069b575fc3`;
   this checkpoint authorizes neither mainnet nor production funds.
 
+- [x] Move exact-payout V2 settlement to a separate source-first coordination
+  deployment: dealer quotes commit a durable secret hash, requester source
+  locks are independently verified before destination inventory moves, the
+  dealer normally executes destination delivery for the fixed bounty, and
+  restart-safe keepers reclaim expired locks exactly once. The new deployment
+  ID prevents old destination-first clients from sharing Waku topics or
+  journals; the already verified ownerless testnet contracts are reused.
+
 - [x] Turn a confirmed class transition into one restart-safe graduation ritual: a layered ship arrives, an independently animated rig centers across all 29 Cypher silhouettes, the Cypher is lifted away, the completed ocean drains, and the new zero-agent class receives the returning raft. Same-class and day changes cannot trigger it.
 
 - [x] Implement the persistent unseen raft-thought queue described in the linked design draft.

@@ -294,7 +294,7 @@ test("the FX wheel opens a dedicated surface while MODE keeps cycling its tabs",
   assert.match(renderer, /steps: \[1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500\]/);
   assert.match(renderer, /steps: \[1, 5, 10, 15, 25, 40, 60, 100\]/);
   assert.match(renderer, /function setFxRiskValue\(key, value\)[\s\S]*value > fxRisk\.maxExposureUsd[\s\S]*fxRisk\.maxExposureUsd = value[\s\S]*value < fxRisk\.maxTradeUsd[\s\S]*fxRisk\.maxTradeUsd = value/);
-  assert.match(renderer, /REFUND: DEALER 10m \\u00b7 REQUESTER 2h/);
+  assert.match(renderer, /AUTO REFUND: DEALER 10m \\u00b7 REQUESTER 2h/);
   assert.doesNotMatch(html, /id="fx-risk-assets"[^>]*>ASSETS/);
   assert.doesNotMatch(renderer, /fx-risk-assets/);
   assert.doesNotMatch(html, /fx-risk-chains|fx-risk-allow/);

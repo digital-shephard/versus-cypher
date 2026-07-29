@@ -14,13 +14,14 @@ The frozen public-testnet families are:
 1. The dealer creates and durably encrypts the settlement secret.
 2. The dealer quote commits the secret hash, exact output, executor bounty,
    adapters, gas estimate, gas ceiling, spread, and operating cost.
-3. The dealer reserves destination liability before broadcasting funds.
-4. The dealer funds destination for the exact recipient amount plus executor
-   bounty.
-5. The requester independently verifies the destination lock and current
-   executor-gas coverage before funding source.
+3. The dealer reserves destination liability without moving inventory.
+4. The requester checks current executor-gas coverage and funds source against
+   the dealer's signed hash.
+5. The dealer independently verifies the canonical source lock and only then
+   funds destination for the exact recipient amount plus executor bounty.
 6. The dealer claims source and reveals the secret onchain.
-7. Any transaction sender may use that secret to claim destination. The
+7. The dealer normally uses that secret to claim destination and collect the
+   executor bounty. Any transaction sender may provide the same fallback. The
    contract pays the fixed recipient and the fixed executor bounty atomically.
 
 The requester recovery nonce is not the settlement secret and cannot claim
@@ -58,8 +59,8 @@ The executor cannot reduce the recipient amount or replace either address.
 - Adapter runtime code, constructor policy, token code, and token decimals
   match the frozen deployment manifest.
 - The dealer preserves its encrypted secret until source funding is firm.
-- The requester checks the destination lock and current execution economics
-  before source funding.
+- The requester checks current execution economics before source funding and
+  independently verifies the destination lock before treating output as ready.
 - At least one executor can acquire enough destination gas to submit a claim
   while its bounty remains economical.
 
@@ -79,18 +80,20 @@ truth. Each client reads the frozen contracts independently.
 
 ## Exposure And Recovery
 
-The dealer journal counts `destination_pending` as active exposure before the
-funding transaction is broadcast. Pending, funded, claimed, and refundable
-states survive restart.
+The dealer journal counts the signed reservation as active exposure before
+either lock is broadcast. Pending, source-firm, destination-funded, claimed,
+and refundable states survive restart.
 
-If the requester cancels or never funds source, the dealer cannot immediately
-withdraw destination funds. The fixed destination timeout remains the bound on
-that griefing cost. After timeout, anyone may submit the refund, but funds
-always return to the fixed dealer refund address.
+If the requester cancels or never funds source, the reservation expires and
+dealer inventory is released without an onchain transaction. If the dealer
+disappears after source funding, the requester recovers after the longer source
+timeout. If destination funding occurs but settlement stalls, its shorter
+timeout returns inventory to the fixed dealer refund address.
 
 If the dealer claims source, the secret is public chain data. Any executor may
 finish destination delivery. A stale or inadequate bounty is rejected by the
-requester before source funding; gas can still move after that check.
+requester before source funding; gas can still move after that check. Both
+desktop roles poll durable journals and automatically submit eligible refunds.
 
 ## Residual Risks
 
@@ -98,9 +101,10 @@ requester before source funding; gas can still move after that check.
 - A complete destination outage can delay claim until recovery.
 - A chain reorganization can invalidate evidence observed before configured
   finality.
-- A malicious requester can consume dealer time until the destination refund.
-- A malicious dealer can lock destination and never proceed; the dealer, not
-  the requester, bears that locked capital before source funding.
+- A malicious requester can consume a bounded offchain reservation but cannot
+  force destination inventory onchain without first locking source.
+- A malicious dealer can leave requester source funds unavailable until their
+  longer refund timeout.
 - A rejecting native recipient contract can make its fixed payout fail.
 - An issuer-controlled ERC-20 can freeze or strand funds.
 - A leaked dealer secret before source funding lets someone claim destination,
@@ -110,13 +114,13 @@ requester before source funding; gas can still move after that check.
 
 ## No-Go Conditions
 
-Do not fund source when:
+Do not fund destination or claim source when:
 
-- destination lock fields differ from the signed acceptance
+- source lock fields differ from the signed acceptance and reservation
 - destination timeout differs from independently read chain state
 - destination refund address differs from the dealer reservation
 - executor bounty does not cover the current bounded gas estimate
-- source timeout is not safely earlier than destination timeout
+- source timeout is not safely later than destination timeout
 - adapter or token code differs from the manifest
 - required recovery state is missing or corrupt
 - either chain lacks the configured confirmation evidence
@@ -124,7 +128,10 @@ Do not fund source when:
 ## Frozen Testnet Deployment
 
 Deployment ID:
-`0x361d43afddce9c272db9d4131c6b6b228693b603924de8f7dc09cc67b58bc5df`
+`0x517ee196f582bd7ee83db57bb722a0d90ef2d0abe941c4e4307dadad62ebb19e`
+
+This source-first coordination deployment reuses the same verified ownerless
+contracts as the legacy destination-first checkpoint.
 
 Base Sepolia:
 

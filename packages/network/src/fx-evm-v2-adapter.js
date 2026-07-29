@@ -2,7 +2,13 @@ const { Interface, getAddress, isAddress, keccak256 } = require("ethers");
 
 const FX_EVM_V2_SCHEMA = "versus-fx-evm-v2-capabilities";
 const FX_EVM_V2_SCHEMA_VERSION = 2;
-const FX_EVM_V2_DEPLOYMENT_MODE = "dealer-secret-destination-first";
+const FX_EVM_V2_DEPLOYMENT_MODE = "dealer-secret-source-first";
+const FX_EVM_V2_LEGACY_DEPLOYMENT_MODE =
+  "dealer-secret-destination-first";
+const FX_EVM_V2_DEPLOYMENT_MODES = new Set([
+  FX_EVM_V2_DEPLOYMENT_MODE,
+  FX_EVM_V2_LEGACY_DEPLOYMENT_MODE,
+]);
 const FX_EVM_V2_NATIVE_ID = "evm-native-htlc-v2";
 const FX_EVM_V2_ERC20_ID = "evm-htlc-v2";
 const FX_EVM_V2_VERSION = 2;
@@ -228,7 +234,7 @@ function validateEvmV2Manifest(input) {
   if (
     input.schema !== FX_EVM_V2_SCHEMA ||
     input.schemaVersion !== FX_EVM_V2_SCHEMA_VERSION ||
-    input.settlementMode !== FX_EVM_V2_DEPLOYMENT_MODE
+    !FX_EVM_V2_DEPLOYMENT_MODES.has(input.settlementMode)
   ) {
     throw new FxEvmV2AdapterError("V2 adapter manifest schema is unsupported");
   }
@@ -238,7 +244,7 @@ function validateEvmV2Manifest(input) {
   const normalized = {
     schema: FX_EVM_V2_SCHEMA,
     schemaVersion: FX_EVM_V2_SCHEMA_VERSION,
-    settlementMode: FX_EVM_V2_DEPLOYMENT_MODE,
+    settlementMode: input.settlementMode,
     builds: {
       native: normalizeBuild(input.builds.native, "native"),
       erc20: normalizeBuild(input.builds.erc20, "erc20"),
@@ -328,6 +334,53 @@ function validateDestinationFirstTimeouts({
   };
 }
 
+function validateSourceFirstTimeouts({
+  now,
+  sourceRefundTimestamp,
+  destinationRefundTimestamp,
+  sourceCapability,
+  destinationCapability,
+}) {
+  const current = uint(now, "now", 1);
+  const source = uint(sourceRefundTimestamp, "sourceRefundTimestamp", current + 1);
+  const destination = uint(
+    destinationRefundTimestamp,
+    "destinationRefundTimestamp",
+    current + 1
+  );
+  for (const [label, timeout, capability] of [
+    ["source", source, sourceCapability],
+    ["destination", destination, destinationCapability],
+  ]) {
+    const duration = timeout - current;
+    if (
+      duration < capability.timeoutPolicy.minimumSeconds ||
+      duration > capability.timeoutPolicy.maximumSeconds
+    ) {
+      throw new FxEvmV2AdapterError(
+        `${label} timeout violates adapter policy`,
+        "BAD_TIMEOUT"
+      );
+    }
+  }
+  const minimumGap = Math.max(
+    sourceCapability.timeoutPolicy.minimumCrossChainDeltaSeconds,
+    destinationCapability.timeoutPolicy.minimumCrossChainDeltaSeconds,
+    destinationCapability.timeoutPolicy.minimumDestinationRelayWindowSeconds
+  );
+  if (source - destination < minimumGap) {
+    throw new FxEvmV2AdapterError(
+      "source timeout must safely follow destination timeout",
+      "UNSAFE_TIMEOUT_ORDER"
+    );
+  }
+  return {
+    sourceRefundTimestamp: source,
+    destinationRefundTimestamp: destination,
+    deltaSeconds: source - destination,
+  };
+}
+
 async function read(provider, iface, to, fragment) {
   const data = iface.encodeFunctionData(fragment);
   const result = await provider.call({ to, data });
@@ -407,5 +460,6 @@ module.exports = {
   preflightEvmV2Capability,
   selectEvmV2Capability,
   validateDestinationFirstTimeouts,
+  validateSourceFirstTimeouts,
   validateEvmV2Manifest,
 };

@@ -22,7 +22,7 @@ const {
 } = require("../src/fx-desktop-network");
 
 const DEPLOYMENT_ID =
-  "0x361d43afddce9c272db9d4131c6b6b228693b603924de8f7dc09cc67b58bc5df";
+  "0x517ee196f582bd7ee83db57bb722a0d90ef2d0abe941c4e4307dadad62ebb19e";
 const BASE = "84532";
 const ARBITRUM = "421614";
 const NATIVE_ADAPTER = "0x1e933ccffaa2cd384d3df751ff7a25183682dc61";
@@ -111,6 +111,7 @@ class FakeV2Evm {
     this.payouts = new Map();
     this.block = 10_000;
     this.maxFeePerGas = 1_000_000n;
+    this.now = NOW;
   }
 
   configuration(chainId) {
@@ -131,7 +132,7 @@ class FakeV2Evm {
 
   provider(chainId) {
     return {
-      getBlock: async () => ({ timestamp: NOW, number: this.block }),
+      getBlock: async () => ({ timestamp: this.now, number: this.block }),
       getFeeData: async () => ({
         maxFeePerGas: this.maxFeePerGas,
         gasPrice: this.maxFeePerGas,
@@ -243,6 +244,9 @@ class FakeV2Evm {
   async claimLock(input) {
     const key = this.key(input.chainId, input.tradeId, input.side);
     const lock = this.locks.get(key);
+    if (lock?.state === 2) {
+      return { lock: structuredClone(lock), receipt: null, recovered: true };
+    }
     if (!lock || lock.state !== 1) {
       throw new Error("lock is not claimable");
     }
@@ -270,6 +274,30 @@ class FakeV2Evm {
     );
     this.actions.push({
       action: "claim",
+      chainId: String(input.chainId),
+      side: input.side,
+      role: input.role,
+    });
+    return { lock: structuredClone(lock), receipt, recovered: false };
+  }
+
+  async refundLock(input) {
+    const key = this.key(input.chainId, input.tradeId, input.side);
+    const lock = this.locks.get(key);
+    if (!lock || lock.state !== 1 || this.now < lock.timeout) {
+      throw new Error("lock is not refundable");
+    }
+    lock.state = 3;
+    lock.stateName = "refunded";
+    const receipt = this.transaction(
+      `refund:${input.chainId}:${input.tradeId}:${input.side}`
+    );
+    this.events.set(
+      `${input.chainId}:${input.tradeId}:${input.side}:LockRefunded`,
+      receipt
+    );
+    this.actions.push({
+      action: "refund",
       chainId: String(input.chainId),
       side: input.side,
       role: input.role,
@@ -344,7 +372,7 @@ test("V2 delivers exact destination funds through a paid relay with no requester
     evm,
     deploymentId: DEPLOYMENT_ID,
     bootstrapPeers: ["relay-a"],
-    now: () => NOW,
+    now: () => evm.now,
     brokerObservationWindowMs: 25,
     dealerObservationWindowMs: 0,
     nativeUsdPriceProvider: async () => 3_000_000_000n,
@@ -352,7 +380,7 @@ test("V2 delivers exact destination funds through a paid relay with no requester
     sessionFactory: sessionFactory({
       root,
       bus,
-      now: () => NOW,
+      now: () => evm.now,
     }),
   });
   t.after(async () => {
@@ -398,7 +426,7 @@ test("V2 delivers exact destination funds through a paid relay with no requester
     settlementExecutor: (input) => runtime.executeRequester(input),
     destinationVerifier: async ({ settlement }) =>
       settlement.destinationObservation,
-    now: () => NOW,
+    now: () => evm.now,
     protocolVersion: 2,
   });
   const outputAmount = "1000000000000000";
@@ -507,8 +535,8 @@ test("V2 delivers exact destination funds through a paid relay with no requester
       role,
     })),
     [
-      { action: "fund", chainId: ARBITRUM, side: "destination", role: "dealer" },
       { action: "fund", chainId: BASE, side: "source", role: "requester" },
+      { action: "fund", chainId: ARBITRUM, side: "destination", role: "dealer" },
       { action: "claim", chainId: BASE, side: "source", role: "dealer" },
       { action: "claim", chainId: ARBITRUM, side: "destination", role: "dealer" },
     ]
@@ -544,6 +572,37 @@ function actionCount(evm, action, side) {
   return evm.actions.filter(
     (entry) => entry.action === action && entry.side === side
   ).length;
+}
+
+async function prepareHarnessSwap(harness, runtime) {
+  const sdk = harness.createSdk(runtime);
+  const quote = await sdk.quoteFunding({
+    requirement: {
+      source: "manual",
+      outputChainId: ARBITRUM,
+      outputToken: FX_NATIVE_ETH_ADDRESS,
+      outputAmountAtomic: "1000000000000000",
+    },
+    destinationAddress: harness.recipient.address,
+    sourceRefundAddress: harness.roles.requester.address,
+    inputOptions: [{
+      chainId: BASE,
+      token: FX_NATIVE_ETH_ADDRESS,
+      maxInputAtomic: "2000000000000000",
+    }],
+    inputChainId: BASE,
+    inputToken: FX_NATIVE_ETH_ADDRESS,
+    tradeId: harness.tradeId,
+  });
+  const prepared = await sdk.prepareExternalFunding({
+    quote,
+    recoveryPassword: "v2 recovery password",
+    ownerApproved: true,
+  });
+  const reserve = await runtime.reserveRequester({
+    acceptance: prepared.acceptance,
+  });
+  return { sdk, prepared, reserve };
 }
 
 function v2Harness(t, { tradeId = `0x${"42".repeat(32)}` } = {}) {
@@ -592,7 +651,7 @@ function v2Harness(t, { tradeId = `0x${"42".repeat(32)}` } = {}) {
     evm,
     deploymentId: DEPLOYMENT_ID,
     bootstrapPeers: ["relay-a"],
-    now: () => NOW,
+    now: () => evm.now,
     brokerObservationWindowMs: 25,
     dealerObservationWindowMs: 0,
     nativeUsdPriceProvider: async () => 3_000_000_000n,
@@ -600,7 +659,7 @@ function v2Harness(t, { tradeId = `0x${"42".repeat(32)}` } = {}) {
     sessionFactory: sessionFactory({
       root,
       bus,
-      now: () => NOW,
+      now: () => evm.now,
     }),
   });
   const createRuntime = () => {
@@ -618,7 +677,7 @@ function v2Harness(t, { tradeId = `0x${"42".repeat(32)}` } = {}) {
     settlementExecutor: (input) => runtime.executeRequester(input),
     destinationVerifier: async ({ settlement }) =>
       settlement.destinationObservation,
-    now: () => NOW,
+    now: () => evm.now,
     protocolVersion: 2,
   });
   t.after(async () => {
@@ -644,7 +703,7 @@ function v2Harness(t, { tradeId = `0x${"42".repeat(32)}` } = {}) {
   };
 }
 
-test("V2 dealer resumes after restart once the destination lock is funded", async (t) => {
+test("V2 dealer resumes after restart once the source lock is funded", async (t) => {
   const harness = v2Harness(t, { tradeId: `0x${"43".repeat(32)}` });
   let runtime = harness.createRuntime();
   t.after(async () => {
@@ -655,6 +714,14 @@ test("V2 dealer resumes after restart once the destination lock is funded", asyn
     policy: harness.policy,
     positions: harness.positions,
   });
+  let blockDestinationFund = true;
+  const fundLock = harness.evm.fundLock.bind(harness.evm);
+  harness.evm.fundLock = async (input) => {
+    if (input.side === "destination" && blockDestinationFund) {
+      throw new Error("simulated crash before destination funding");
+    }
+    return fundLock(input);
+  };
   const sdk = harness.createSdk(runtime);
   const quote = await sdk.quoteFunding({
     requirement: {
@@ -682,27 +749,28 @@ test("V2 dealer resumes after restart once the destination lock is funded", asyn
   const reserve = await runtime.reserveRequester({
     acceptance: prepared.acceptance,
   });
-  await waitUntil(
-    () => actionCount(harness.evm, "fund", "destination") === 1,
-    { label: "destination fund" }
-  );
+  sdk.executePreparedFunding({
+    prepared: { ...prepared, reservation: reserve },
+    recoveryPassword: "v2 recovery password",
+  }).catch(() => {});
   await waitUntil(
     () => runtime.exposureJournal.trade(prepared.tradeId)?.state ===
-      "destination_locked",
-    { label: "destination_locked exposure" }
+      "source_firm",
+    { label: "source_firm exposure" }
   );
-  assert.equal(actionCount(harness.evm, "fund", "destination"), 1);
-  assert.equal(actionCount(harness.evm, "fund", "source"), 0);
+  assert.equal(actionCount(harness.evm, "fund", "destination"), 0);
+  assert.equal(actionCount(harness.evm, "fund", "source"), 1);
 
   await runtime.close();
+  blockDestinationFund = false;
   runtime = harness.createRuntime();
   await runtime.armDealer({
     policy: harness.policy,
     positions: harness.positions,
   });
-  assert.equal(
-    runtime.exposureJournal.trade(prepared.tradeId)?.state,
-    "destination_locked"
+  await waitUntil(
+    () => actionCount(harness.evm, "fund", "destination") === 1,
+    { label: "resumed destination fund" }
   );
   assert.equal(actionCount(harness.evm, "fund", "destination"), 1);
 
@@ -713,6 +781,7 @@ test("V2 dealer resumes after restart once the destination lock is funded", asyn
   });
   assert.equal(result.fundsReady, true);
   assert.equal(actionCount(harness.evm, "fund", "destination"), 1);
+  assert.equal(actionCount(harness.evm, "fund", "source"), 1);
   assert.equal(actionCount(harness.evm, "claim", "destination"), 1);
   assert.equal(
     harness.evm.payouts.get(harness.recipient.address.toLowerCase()),
@@ -806,6 +875,56 @@ test("V2 relayer resumes destination claim after restart once source is claimed"
   );
 });
 
+test("V2 dealer recovers a source claim that crashed before coordination publish", async (t) => {
+  const harness = v2Harness(t, { tradeId: `0x${"48".repeat(32)}` });
+  let runtime = harness.createRuntime();
+  t.after(async () => {
+    await runtime.close().catch(() => {});
+  });
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: harness.positions,
+  });
+  const publish = runtime.dealerSession.publish.bind(runtime.dealerSession);
+  let blockSourceClaimMessage = true;
+  runtime.dealerSession.publish = async (message) => {
+    if (
+      blockSourceClaimMessage &&
+      message.type === "fx_claim"
+    ) {
+      blockSourceClaimMessage = false;
+      throw new Error("simulated crash before source claim publication");
+    }
+    return publish(message);
+  };
+  const { sdk, prepared, reserve } = await prepareHarnessSwap(
+    harness,
+    runtime
+  );
+  sdk.executePreparedFunding({
+    prepared: { ...prepared, reservation: reserve },
+    recoveryPassword: "v2 recovery password",
+  }).catch(() => {});
+  await waitUntil(
+    () => actionCount(harness.evm, "claim", "source") === 1,
+    { label: "unpublished source claim" }
+  );
+  assert.equal(actionCount(harness.evm, "claim", "destination"), 0);
+
+  await runtime.close();
+  runtime = harness.createRuntime();
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: harness.positions,
+  });
+  await waitUntil(
+    () => actionCount(harness.evm, "claim", "destination") === 1,
+    { label: "destination claim after source claim recovery" }
+  );
+  assert.equal(actionCount(harness.evm, "claim", "source"), 1);
+  assert.equal(actionCount(harness.evm, "claim", "destination"), 1);
+});
+
 test("V2 destination claim executes exactly once after recovery", async (t) => {
   const harness = v2Harness(t, { tradeId: `0x${"45".repeat(32)}` });
   let runtime = harness.createRuntime();
@@ -893,5 +1012,102 @@ test("V2 destination claim executes exactly once after recovery", async (t) => {
   assert.equal(
     runtime.relayerJournal.snapshot(prepared.tradeId).settlementState,
     "complete"
+  );
+});
+
+test("V2 dealer automatically refunds an expired destination lock exactly once", async (t) => {
+  const harness = v2Harness(t, { tradeId: `0x${"46".repeat(32)}` });
+  const runtime = harness.createRuntime();
+  t.after(async () => {
+    await runtime.close().catch(() => {});
+  });
+  const claimLock = harness.evm.claimLock.bind(harness.evm);
+  harness.evm.claimLock = async (input) => {
+    if (input.side === "source") {
+      throw new Error("simulated dealer outage before source claim");
+    }
+    return claimLock(input);
+  };
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: harness.positions,
+  });
+  const { sdk, prepared, reserve } = await prepareHarnessSwap(
+    harness,
+    runtime
+  );
+  sdk.executePreparedFunding({
+    prepared: { ...prepared, reservation: reserve },
+    recoveryPassword: "v2 recovery password",
+  }).catch(() => {});
+  await waitUntil(
+    () => runtime.exposureJournal.trade(prepared.tradeId)?.state ===
+      "destination_locked",
+    { label: "destination lock before automatic refund" }
+  );
+  const destination = await harness.evm.readLock(
+    ARBITRUM,
+    phase5LockId(prepared.tradeId, "destination"),
+    FX_NATIVE_ETH_ADDRESS
+  );
+  harness.evm.now = destination.timeout;
+  await runtime.reconcileAutomaticRecoveries();
+  await runtime.reconcileAutomaticRecoveries();
+  assert.equal(actionCount(harness.evm, "refund", "destination"), 1);
+  assert.equal(
+    runtime.exposureJournal.trade(prepared.tradeId).state,
+    "destination_refunded"
+  );
+});
+
+test("V2 requester automatically refunds an expired source lock exactly once", async (t) => {
+  const harness = v2Harness(t, { tradeId: `0x${"47".repeat(32)}` });
+  const runtime = harness.createRuntime();
+  t.after(async () => {
+    await runtime.close().catch(() => {});
+  });
+  const fundLock = harness.evm.fundLock.bind(harness.evm);
+  harness.evm.fundLock = async (input) => {
+    if (input.side === "destination") {
+      throw new Error("simulated dealer outage before destination funding");
+    }
+    return fundLock(input);
+  };
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: harness.positions,
+  });
+  const { sdk, prepared, reserve } = await prepareHarnessSwap(
+    harness,
+    runtime
+  );
+  sdk.executePreparedFunding({
+    prepared: { ...prepared, reservation: reserve },
+    recoveryPassword: "v2 recovery password",
+  }).catch(() => {});
+  await waitUntil(
+    () => runtime.exposureJournal.trade(prepared.tradeId)?.state ===
+      "source_firm",
+    { label: "source lock before automatic refund" }
+  );
+  const source = await harness.evm.readLock(
+    BASE,
+    phase5LockId(prepared.tradeId, "source"),
+    FX_NATIVE_ETH_ADDRESS
+  );
+  await runtime.disarmDealer();
+  harness.evm.now = source.timeout;
+  await runtime.reconcileAutomaticRecoveries();
+  await runtime.reconcileAutomaticRecoveries();
+  assert.equal(actionCount(harness.evm, "refund", "source"), 1);
+  assert.equal(
+    (
+      await harness.evm.readLock(
+        BASE,
+        phase5LockId(prepared.tradeId, "source"),
+        FX_NATIVE_ETH_ADDRESS
+      )
+    ).state,
+    3
   );
 });

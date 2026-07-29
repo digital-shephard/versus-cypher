@@ -132,13 +132,13 @@ test("V2 lock binds exact recipient and executor liabilities", () => {
   );
 });
 
-test("V2 state machine is destination-first and source-claim-first", () => {
-  assert.equal(advanceFxState("quote_accepted", "confirm_destination_lock", 2), "destination_locked");
-  assert.equal(advanceFxState("destination_locked", "confirm_source_lock", 2), "source_locked");
-  assert.equal(advanceFxState("source_locked", "confirm_source_claim", 2), "source_claimed");
+test("V2 state machine is source-first and source-claim-first", () => {
+  assert.equal(advanceFxState("quote_accepted", "confirm_source_lock", 2), "source_locked");
+  assert.equal(advanceFxState("source_locked", "confirm_destination_lock", 2), "destination_locked");
+  assert.equal(advanceFxState("destination_locked", "confirm_source_claim", 2), "source_claimed");
   assert.equal(advanceFxState("source_claimed", "confirm_destination_claim", 2), "complete");
   assert.throws(
-    () => advanceFxState("quote_accepted", "confirm_source_lock", 2),
+    () => advanceFxState("quote_accepted", "confirm_destination_lock", 2),
     { code: "INVALID_STATE_TRANSITION" }
   );
   assert.throws(
@@ -147,17 +147,13 @@ test("V2 state machine is destination-first and source-claim-first", () => {
   );
 });
 
-test("V2 cancellation preserves a funded destination lock until its refund", () => {
+test("V2 cancellation is allowed only before the requester source lock", () => {
   assert.equal(
-    advanceFxState("destination_locked", "cancel_before_source_lock", 2),
-    "destination_cancelled"
-  );
-  assert.equal(
-    advanceFxState("destination_cancelled", "confirm_destination_refund", 2),
-    "refunded"
+    advanceFxState("quote_accepted", "cancel_before_source_lock", 2),
+    "cancelled"
   );
   assert.throws(
-    () => advanceFxState("destination_cancelled", "confirm_source_lock", 2),
+    () => advanceFxState("source_locked", "cancel_before_source_lock", 2),
     { code: "INVALID_STATE_TRANSITION" }
   );
 });
