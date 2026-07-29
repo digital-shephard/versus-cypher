@@ -340,7 +340,8 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.match(renderer, /function renderFxPositionOptions\(\)[\s\S]*host\.replaceChildren\(\.\.\.nodes\)/);
   assert.doesNotMatch(renderer, /function fxAdvancedLimitNode|fx-position-section-label", "LIMITS"/);
   assert.match(renderer, /const policyKey = control\.policyKey \|\|/);
-  assert.match(main, /DEMO_DEPOSIT_USD_MICROS = 10_000_000n[\s\S]*!app\.isPackaged && process\.env\.VERSUS_FX_DEVELOPMENT === "1"/);
+  assert.doesNotMatch(main, /DEMO_DEPOSIT_USD_MICROS|3333333333/);
+  assert.match(main, /fresh signed relay ETH\/USD quote is unavailable/);
   assert.match(renderer, /setFxDemo\(on = true\)[\s\S]*fxStockFilter = "all";\s*fxOpenBay = null;/);
   assert.match(renderer, /window\.versus\.fxSetPositionEnabled\(position\.id, !selected\)/);
   assert.match(css, /\.fx-stock-filters \{[\s\S]*grid-template-columns: repeat\(3, 1fr\)/);

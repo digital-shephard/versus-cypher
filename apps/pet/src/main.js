@@ -134,9 +134,8 @@ const registerIpcHandle = createTrustedIpcRegistrar(ipcMain, TRUSTED_RENDERER_UR
 const WIN_W = 454;
 const WIN_H = 640;
 
-/** Local demo stand-in for the roughly $10 funded hatch. */
+/** Local demo stand-in for the funded hatch amount, never for market pricing. */
 const DEMO_DEPOSIT_WEI = "3000000000000000";
-const DEMO_DEPOSIT_USD_MICROS = 10_000_000n;
 
 let mainWindow = null;
 let tray = null;
@@ -179,21 +178,11 @@ const fxNativeUsdPriceProvider = async () => {
     !Number.isSafeInteger(quoteValidUntil) ||
     quoteValidUntil < nowSeconds
   ) {
-    if (!app.isPackaged && process.env.VERSUS_FX_DEVELOPMENT === "1") {
-      return (
-        DEMO_DEPOSIT_USD_MICROS * 10n ** 18n
-      ) / BigInt(DEMO_DEPOSIT_WEI);
-    }
     throw new Error("fresh signed relay ETH/USD quote is unavailable");
   }
   const swapWei = BigInt(quote?.swapWei || 0);
   const quotedUsdMicros = BigInt(quote?.quotedRunwayMicros || 0);
   if (swapWei <= 0n || quotedUsdMicros <= 0n) {
-    if (!app.isPackaged && process.env.VERSUS_FX_DEVELOPMENT === "1") {
-      return (
-        DEMO_DEPOSIT_USD_MICROS * 10n ** 18n
-      ) / BigInt(DEMO_DEPOSIT_WEI);
-    }
     throw new Error("fresh relay ETH/USD quote is unavailable");
   }
   return (quotedUsdMicros * 10n ** 18n) / swapWei;
