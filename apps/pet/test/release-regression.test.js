@@ -378,6 +378,10 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.match(renderer, /WALLET FUNDED[\s\S]*LOCK SOURCE FUNDS/);
   assert.match(
     renderer,
+    /function openFxRequester[\s\S]*trade\.state !== "quoted"[\s\S]*fxRequesterTrade\?\.state === "quoted"[\s\S]*fxRequesterTrade = null/,
+  );
+  assert.match(
+    renderer,
     /function fxHumanQuoteAmount[\s\S]*firstMeaningful \+ 3[\s\S]*atomic \+ quantum - 1n/,
   );
   const formattingStart = renderer.indexOf("function fxAssetAmount");

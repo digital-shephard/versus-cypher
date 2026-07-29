@@ -2728,8 +2728,12 @@ function openFxRequester(view = "swap") {
   fxRequesterView = view;
   if (view === "swap") {
     const resumable = (fxDesktopSnapshot?.trades || []).find((trade) =>
+      trade.state !== "quoted" &&
       !["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(trade.state)
     );
+    if (fxRequesterTrade?.state === "quoted") {
+      fxRequesterTrade = null;
+    }
     if (
       !fxRequesterTrade ||
       ["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(fxRequesterTrade.state)
