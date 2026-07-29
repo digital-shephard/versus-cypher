@@ -510,6 +510,29 @@ test("broker ignores quotes that do not answer the active signed RFQ", async (t)
   assert.equal(broker.status().openTradeSets, 0);
 });
 
+test("self-routing reports an empty dealer response without exposing compiler internals", async (t) => {
+  const context = await fixture();
+  const signer = Wallet.createRandom();
+  const session = new FakeBrokerSession({ signer, quote: null });
+  const broker = new FxPublicBroker({
+    session,
+    signer,
+    brokerFeeAtomic: "0",
+    observationWindowMs: 0,
+    now: () => NOW + 3,
+    sleep: async () => {},
+  });
+  await broker.start();
+  t.after(() => broker.close());
+
+  await assert.rejects(
+    broker.requestRoute(context.rfq),
+    (error) =>
+      error.code === "NO_DEALER_QUOTES" &&
+      error.message === "No dealer returned a quote for this route and amount"
+  );
+});
+
 test("requester queries brokers concurrently and rejects a bad response locally", async (t) => {
   const context = await fixture();
   const expensive = await runningBroker(context, "800");

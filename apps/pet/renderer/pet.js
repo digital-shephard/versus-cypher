@@ -2271,6 +2271,21 @@ function fxRequesterError(message = "") {
   host.classList.toggle("hidden", !message);
 }
 
+function fxRequesterStatus(message = "") {
+  const host = $("fx-requester-status");
+  if (!host) return;
+  host.textContent = message;
+  host.classList.toggle("hidden", !message);
+}
+
+function fxRequesterErrorMessage(error, fallback) {
+  const message = String(error?.message || "").trim();
+  if (!message) return fallback;
+  return message
+    .replace(/^Error invoking remote method '[^']+':\s*/i, "")
+    .replace(/^[A-Za-z][A-Za-z0-9]*Error:\s*/, "");
+}
+
 function fxTimelineLabel(state) {
   return ({
     requesting: "Request sent",
@@ -2665,6 +2680,7 @@ function scrollFxRequesterToBottom() {
 async function submitFxQuoteRequest() {
   const button = $("fx-get-quotes");
   fxRequesterError("");
+  fxRequesterStatus("");
   const requesterPositions = fxDesktopSnapshot?.supportedPositions || [];
   if (requesterPositions.length < 2) {
     fxRequesterError("No requester routes are available in this build.");
@@ -2677,7 +2693,9 @@ async function submitFxQuoteRequest() {
       applyFxSnapshot(await window.versus.fxSetEnabled(true));
       button.textContent = "GET QUOTES";
     } catch (error) {
-      fxRequesterError(error.message || "FX could not be enabled.");
+      fxRequesterError(
+        fxRequesterErrorMessage(error, "FX could not be enabled.")
+      );
     } finally {
       button.disabled = false;
     }
@@ -2685,6 +2703,9 @@ async function submitFxQuoteRequest() {
   }
   button.disabled = true;
   button.textContent = "REQUESTING...";
+  fxRequesterStatus(
+    "SEARCHING ONLINE DEALERS \u00b7 THIS CAN TAKE A FEW SECONDS"
+  );
   $("fx-quote-result").classList.add("hidden");
   $("fx-funding-result").classList.add("hidden");
   try {
@@ -2698,8 +2719,11 @@ async function submitFxQuoteRequest() {
     renderFxRequester();
     $("fx-quote-result")?.scrollIntoView({ block: "start", behavior: "smooth" });
   } catch (error) {
-    fxRequesterError(error.message || "No verified quote was returned.");
+    fxRequesterError(
+      fxRequesterErrorMessage(error, "No verified quote was returned.")
+    );
   } finally {
+    fxRequesterStatus("");
     button.disabled = false;
     button.textContent = "GET QUOTES";
   }
@@ -2721,7 +2745,9 @@ async function acceptFxQuote() {
     renderFxRequester();
     scrollFxRequesterToBottom();
   } catch (error) {
-    fxRequesterError(error.message || "The quote could not be accepted.");
+    fxRequesterError(
+      fxRequesterErrorMessage(error, "The quote could not be accepted.")
+    );
   } finally {
     fxQuoteAcceptActive = false;
     button.disabled = false;
@@ -2752,7 +2778,9 @@ async function checkFxFunding(trigger = null) {
       behavior: "smooth",
     });
   } catch (error) {
-    fxRequesterError(error.message || "Funding could not be verified.");
+    fxRequesterError(
+      fxRequesterErrorMessage(error, "Funding could not be verified.")
+    );
   } finally {
     button.disabled = false;
     button.textContent = fxRequesterTrade?.state === "awaiting_source_funds"
@@ -2779,7 +2807,9 @@ async function cancelFxTrade() {
     await refreshFxSnapshot();
     renderFxRequester();
   } catch (error) {
-    fxRequesterError(error.message || "The swap could not be cancelled.");
+    fxRequesterError(
+      fxRequesterErrorMessage(error, "The swap could not be cancelled.")
+    );
   } finally {
     fxCancelActive = false;
     button.disabled = false;
@@ -2807,7 +2837,12 @@ async function refundFxTrade() {
     await refreshFxSnapshot();
     renderFxRequester();
   } catch (error) {
-    fxRequesterError(error.message || "The source refund could not be confirmed.");
+    fxRequesterError(
+      fxRequesterErrorMessage(
+        error,
+        "The source refund could not be confirmed."
+      )
+    );
   } finally {
     button.disabled = false;
     button.textContent = "REFUND SOURCE";

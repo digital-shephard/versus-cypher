@@ -176,7 +176,11 @@ resource-delivery evidence.
 Phase 10 places that requester and dealer machinery behind the desktop's
 physical FX surface. The requester chooses an exact-output pair and amount,
 enters any valid destination address, compares locally verified quote data,
-and explicitly accepts one route. Quote prices expire until acceptance. A
+and explicitly accepts one route. Quote discovery accepts any positive
+representable amount; requester devices do not reuse their local dealer size
+policy as an RFQ gate. Each dealer independently applies its own order,
+inventory, gas, and exposure limits and may simply return no quote. Quote
+prices expire until acceptance. A
 timely acceptance is published immediately over Waku and must receive the
 selected dealer's signed reservation before the funding address appears; the
 original quote deadline no longer applies after that point. The LCD displays
@@ -200,6 +204,11 @@ guards. Waku transports signed coordination only; chain reads independently
 decide lock, claim, completion, and refund state. Recovery persists an
 encrypted secret before acceptance, never rebroadcasts uncertain actions, and
 scans HTLC events only from the frozen adapter deployment blocks.
+
+Dealer route admission separates the two legs: the destination asset requires
+unreserved output inventory, while an enabled source asset requires only the
+source-chain gas needed to claim the requester's lock. A dealer does not need
+duplicate source inventory merely to accept that asset.
 
 Each FX chain is enabled through its native coin before any token on that
 chain. Native ETH is itself quoteable inventory through the separate frozen

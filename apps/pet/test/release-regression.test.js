@@ -367,6 +367,7 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   const capture = fs.readFileSync(path.join(root, "scripts", "capture-views.js"), "utf8");
 
   assert.match(html, /YOU SEND[\s\S]*YOU RECEIVE[\s\S]*RECIPIENT[\s\S]*GET QUOTES/);
+  assert.match(html, /id="fx-requester-status" role="status"/);
   assert.match(html, /BEST VERIFIED QUOTE[\s\S]*ACCEPT QUOTE[\s\S]*SEND EXACTLY[\s\S]*I SENT IT[\s\S]*CANCEL SWAP/);
   assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
   assert.match(html, /id="fx-settlement-done">DONE/);
@@ -380,6 +381,7 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.match(service, /function supportedPositionOf[\s\S]*FX_DEFAULT_POSITIONS\.find/);
   assert.doesNotMatch(service, /function positionOf/);
   assert.match(renderer, /destinationAddress: fxAddressInputValue/);
+  assert.match(renderer, /SEARCHING ONLINE DEALERS \\u00b7 THIS CAN TAKE A FEW SECONDS/);
   assert.match(renderer, /fxRequesterTrade\.state === "refund_wait"[\s\S]*fxRefund/);
   assert.match(renderer, /function cancelFxTrade[\s\S]*window\.versus\.fxCancel/);
   assert.match(renderer, /function scrollFxRequesterToBottom[\s\S]*scroll\.scrollHeight/);

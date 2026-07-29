@@ -9,7 +9,7 @@ const {
   FxDesktopNetworkRuntime,
 } = require("../src/fx-desktop-network");
 
-function fixture(overrides = {}) {
+function fixture(overrides = {}, runtimeOverrides = {}) {
   const requester = Wallet.createRandom();
   const dealer = Wallet.createRandom();
   const broker = Wallet.createRandom();
@@ -64,9 +64,55 @@ function fixture(overrides = {}) {
     }),
     evm,
     now: () => 1000,
+    ...runtimeOverrides,
   });
   return { runtime, roles, calls };
 }
+
+test("desktop self-routing waits for one internal broker startup", async (t) => {
+  let releaseStartup;
+  const startupGate = new Promise((resolve) => {
+    releaseStartup = resolve;
+  });
+  let brokerStarts = 0;
+  const { runtime } = fixture({}, {
+    sessionFactory({ role, signer }) {
+      const session = new EventEmitter();
+      session.role = role;
+      session.signer = signer;
+      session.address = signer.address;
+      session.started = false;
+      session.start = async () => {
+        if (role === "broker") {
+          brokerStarts += 1;
+          await startupGate;
+        }
+        session.started = true;
+      };
+      session.close = async () => {
+        session.started = false;
+      };
+      session.status = () => ({ active: session.started });
+      session.transport = {
+        status: () => ({ started: session.started }),
+      };
+      return {
+        session,
+        journal: { close() {} },
+      };
+    },
+  });
+  t.after(() => runtime.close());
+
+  const first = runtime.ensureBroker();
+  const second = runtime.ensureBroker();
+  releaseStartup();
+  const [left, right] = await Promise.all([first, second]);
+
+  assert.equal(left, right);
+  assert.equal(brokerStarts, 1);
+  assert.equal(left.status().active, true);
+});
 
 test("desktop FX inventory belongs only to the dealer role", async () => {
   const { runtime, roles, calls } = fixture();

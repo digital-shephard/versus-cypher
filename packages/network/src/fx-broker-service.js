@@ -338,6 +338,12 @@ class FxPublicBroker extends EventEmitter {
       );
       await this.sleep(Math.min(this.observationWindowMs, remainingMs));
       quotes = [...(this.quotes.get(verifiedRfq.tradeId) || [])];
+      if (quotes.length === 0) {
+        throw new FxBrokerError(
+          "No dealer returned a quote for this route and amount",
+          "NO_DEALER_QUOTES"
+        );
+      }
       proposal = await createBrokerRouteProposal({
         signer: this.signer,
         rfq: verifiedRfq,

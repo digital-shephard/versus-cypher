@@ -28,6 +28,17 @@ the local dealer's enabled inventory bays. A device can therefore request any
 supported route without stocking or dealing either asset. Inventory toggles
 only control which quotes that device may supply as a dealer.
 
+Quote discovery accepts any positive representable exact-output amount. The
+requester's local dealer minimum and maximum do not reject the RFQ. Every
+dealer independently applies its own trade-size, inventory, gas, and exposure
+policy, so an unsupported size returns no quote instead of a local policy
+error.
+
+The desktop runs its zero-fee self-routing broker internally. Owners never
+start or configure a broker sidecar for ordinary desktop swaps. Concurrent
+requests share one startup operation, and a failed startup remains retryable
+instead of leaving a half-started broker cached in the app.
+
 Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 
 ## Dealer Flow
@@ -41,6 +52,10 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 - Native positions reserve configured operating ETH plus the estimated
   transaction fee before advertising inventory, locking, or withdrawing.
   `MAX GAS` remains a USD risk/cost limit, not a separate balance.
+- Route admission treats source support and destination inventory separately.
+  The destination asset must have enough unreserved stock; the source asset
+  only needs to be enabled with dealer-role gas on its chain so the dealer can
+  claim the requester's lock.
 - Both the dealer and requester role wallets must still satisfy the displayed
   native-gas readiness threshold before ERC-20 positions on that chain become
   usable. A quoteable native-only position can arm dealing without a USDC bay.

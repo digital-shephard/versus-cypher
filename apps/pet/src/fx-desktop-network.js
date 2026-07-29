@@ -76,6 +76,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.nativeUsdPriceProvider = nativeUsdPriceProvider;
     this.nativePrice = null;
     this.broker = null;
+    this.brokerStart = null;
     this.brokerJournal = null;
     this.requesterSession = null;
     this.requesterJournal = null;
@@ -180,19 +181,41 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   async ensureBroker() {
-    if (this.broker) return this.broker;
-    const created = this.createSession("broker", "desktop-broker.sqlite");
-    this.brokerJournal = created.journal;
-    this.broker = new FxPublicBroker({
-      session: created.session,
-      signer: this.signer("broker"),
-      brokerFeeAtomic: "0",
-      observationWindowMs: this.brokerObservationWindowMs,
-      now: this.now,
-    });
-    await this.broker.start();
-    this.emit("status", this.status());
-    return this.broker;
+    if (this.broker?.status?.().active) return this.broker;
+    if (this.brokerStart) return this.brokerStart;
+    this.brokerStart = (async () => {
+      const staleBroker = this.broker;
+      const staleJournal = this.brokerJournal;
+      this.broker = null;
+      this.brokerJournal = null;
+      await staleBroker?.close?.().catch(() => {});
+      staleJournal?.close?.();
+
+      const created = this.createSession("broker", "desktop-broker.sqlite");
+      const broker = new FxPublicBroker({
+        session: created.session,
+        signer: this.signer("broker"),
+        brokerFeeAtomic: "0",
+        observationWindowMs: this.brokerObservationWindowMs,
+        now: this.now,
+      });
+      try {
+        await broker.start();
+        this.broker = broker;
+        this.brokerJournal = created.journal;
+        this.emit("status", this.status());
+        return broker;
+      } catch (error) {
+        await broker.close().catch(() => {});
+        created.journal?.close?.();
+        throw error;
+      }
+    })();
+    try {
+      return await this.brokerStart;
+    } finally {
+      this.brokerStart = null;
+    }
   }
 
   async queryRoutes({ rfq }) {

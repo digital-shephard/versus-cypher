@@ -2813,6 +2813,17 @@ body {
   opacity: 0.5;
 }
 
+.fx-requester-status {
+  margin-top: 7px;
+  padding: 6px 7px;
+  border: 1px solid rgba(117, 232, 213, 0.48);
+  border-radius: 3px;
+  background: rgba(9, 58, 49, 0.72);
+  color: var(--fx-aqua);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
 .fx-requester-error {
   margin-top: 7px;
   padding: 6px 7px;

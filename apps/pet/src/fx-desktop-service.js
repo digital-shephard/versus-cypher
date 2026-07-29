@@ -66,6 +66,10 @@ function quoteableDealerPositions(snapshot, requireFunding) {
   );
 }
 
+function usableDealerPositions(snapshot) {
+  return snapshot.positions.filter((position) => position.usable);
+}
+
 function address(value, label) {
   const normalized = String(value || "").trim();
   if (!isAddress(normalized)) {
@@ -567,7 +571,7 @@ class FxDesktopService extends EventEmitter {
       }
       await this.dealerController.armDealer({
         policy: nextPolicy,
-        positions,
+        positions: usableDealerPositions(current),
       });
     } else if (
       requested.armed === false &&
@@ -580,10 +584,7 @@ class FxDesktopService extends EventEmitter {
     ) {
       await this.dealerController.updateDealer({
         policy: nextPolicy,
-        positions: quoteableDealerPositions(
-          current,
-          this.chainReadinessRequired
-        ),
+        positions: usableDealerPositions(current),
       });
     }
     this.store.setPolicy({
@@ -615,10 +616,7 @@ class FxDesktopService extends EventEmitter {
       const state = this.snapshot();
       await this.dealerController.updateDealer({
         policy: state.policy,
-        positions: quoteableDealerPositions(
-          state,
-          this.chainReadinessRequired
-        ),
+        positions: usableDealerPositions(state),
       });
     }
     return this.#emit();
@@ -711,7 +709,7 @@ class FxDesktopService extends EventEmitter {
     try {
       await this.dealerController.armDealer({
         policy: state.policy,
-        positions,
+        positions: usableDealerPositions(snapshot),
       });
       this.store.setPolicy({ armed: true });
     } catch (error) {
@@ -774,16 +772,6 @@ class FxDesktopService extends EventEmitter {
       destination.assetKind === "native"
         ? (BigInt(outputAtomic) * nativeUsdPriceMicros) / 10n ** 18n
         : BigInt(outputAtomic);
-    const outputUsd = Number(outputUsdMicros) / 1_000_000;
-    if (
-      outputUsd < snapshot.policy.minimumTradeUsd ||
-      outputUsd > snapshot.policy.maximumTradeUsd
-    ) {
-      throw new FxDesktopError(
-        `Amount must be between $${snapshot.policy.minimumTradeUsd} and $${snapshot.policy.maximumTradeUsd}`,
-        "POLICY_REJECTED"
-      );
-    }
     const recipient = address(destinationAddress, "destination");
     const refund = address(
       sourceRefundAddress || this.#wallet().address,

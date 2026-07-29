@@ -38,6 +38,9 @@ function fixture(overrides = {}) {
     brokerEndpoints: [],
     now: () => currentNow,
     async queryRoutes({ rfq }) {
+      const outputAmountAtomic = BigInt(rfq.payload.outputAmountAtomic);
+      const inputAmountAtomic =
+        ((outputAmountAtomic * 10_025n + 9_999n) / 10_000n).toString();
       const quote = await signFxMessage({
         protocol: "versus-fx",
         version: 1,
@@ -52,10 +55,10 @@ function fixture(overrides = {}) {
           rfqId: rfq.id,
           inputChainId: "84532",
           inputToken: TOKEN,
-          inputAmountAtomic: "1002500",
+          inputAmountAtomic,
           outputChainId: "421614",
           outputToken: TOKEN,
-          outputAmountAtomic: "1000000",
+          outputAmountAtomic: outputAmountAtomic.toString(),
           quoteType: "fixed_exact_output",
           referenceSource: "desktop:test",
           referencePriceMicros: "1000000",
@@ -376,7 +379,7 @@ test("an uncertain settlement cannot be executed twice", async () => {
   assert.equal(executions, 1);
 });
 
-test("desktop requester stays disabled and enforces local limits", async () => {
+test("desktop requester stays disabled but quote discovery ignores dealer size limits", async () => {
   const { service } = fixture();
   await assert.rejects(
     service.requestQuote({
@@ -388,15 +391,19 @@ test("desktop requester stays disabled and enforces local limits", async () => {
     (error) => error.code === "FX_DISABLED"
   );
   service.setEnabled(true);
-  await assert.rejects(
-    service.requestQuote({
+  for (const [outputAmount, outputDisplay] of [
+    ["0.01", "0.01 USDC"],
+    ["51", "51.0 USDC"],
+  ]) {
+    const quoted = await service.requestQuote({
       sourcePositionId: "base-sepolia-usdc",
       destinationPositionId: "arbitrum-sepolia-usdc",
-      outputAmount: "51",
+      outputAmount,
       destinationAddress: Wallet.createRandom().address,
-    }),
-    (error) => error.code === "POLICY_REJECTED"
-  );
+    });
+    assert.equal(quoted.state, "quoted");
+    assert.equal(quoted.outputAmountDisplay, outputDisplay);
+  }
 });
 
 test("native requester quotes bind the native adapter and atomic ETH input", async () => {
@@ -691,6 +698,64 @@ test("a funded native ETH position can arm without a USDC token bay", async () =
   assert.equal(armedPositions.length, 1);
   assert.equal(armedPositions[0].id, "base-sepolia-eth");
   assert.equal(armedPositions[0].assetKind, "native");
+});
+
+test("dealer input support does not require duplicate output inventory", async () => {
+  const dealer = Wallet.createRandom().address.toLowerCase();
+  const requesterRole = Wallet.createRandom().address.toLowerCase();
+  let active = false;
+  let armedPositions = null;
+  const dealerController = {
+    status: () => ({ dealer: { configured: true, active } }),
+    setRpcUrl() {},
+    async chainGasSnapshot(chains) {
+      return chains.map((chain) => ({
+        chainId: chain.chainId,
+        dealer: {
+          address: dealer,
+          balanceAtomic: "1000000000000000000",
+        },
+        requester: {
+          address: requesterRole,
+          balanceAtomic: "1000000000000000",
+        },
+      }));
+    },
+    async inventorySnapshot(positions) {
+      return positions.map((position) => ({
+        id: position.id,
+        address: dealer,
+        availableAtomic:
+          position.id === "arbitrum-sepolia-eth"
+            ? "500000000000000000"
+            : "0",
+        reservedAtomic: "0",
+        activeLocks: 0,
+      }));
+    },
+    async armDealer({ positions }) {
+      armedPositions = positions;
+      active = true;
+    },
+  };
+  const { service } = fixture({
+    dealerController,
+    chainReadinessRequired: true,
+    nativeUsdPriceProvider: async () => "2000000000",
+  });
+  service.store.setPositionEnabled("base-sepolia-usdc", false);
+  service.store.setPositionEnabled("arbitrum-sepolia-usdc", false);
+  await service.setEnabled(true);
+  await service.setChainSettings("84532", { enabled: true });
+  await service.setChainSettings("421614", { enabled: true });
+
+  const armed = await service.setPolicy({ armed: true });
+
+  assert.equal(armed.policy.armed, true);
+  assert.deepEqual(
+    armedPositions.map((position) => position.id),
+    ["base-sepolia-eth", "arbitrum-sepolia-eth"]
+  );
 });
 
 test("an explicitly armed dealer resumes after restart", async () => {
