@@ -1,0 +1,223 @@
+{
+  "schema": "versus-fx-evm-v3-capabilities",
+  "schemaVersion": 3,
+  "settlementMode": "requester-secret-source-first-compact",
+  "builds": {
+    "native": {
+      "adapterId": "evm-native-htlc-v3",
+      "adapterVersion": 3,
+      "contract": "EvmNativeHtlcV3",
+      "sourcePath": "versus/contracts/fx/EvmNativeHtlcV3.sol",
+      "sourceTag": "agentic-fx-requester-secret-v3",
+      "compiler": "0.8.26",
+      "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0xa23e6d5118ca862eb55fb7d70e2b1cb5b7ec94c403cf101e29797d2e31b6d1b6",
+      "creationCodeHash": "0xc661336012b2e2629502dd380520ca449b875d447db917826ba741df3c4e0d54",
+      "runtimeTemplateHash": "0x7c425905df36ba2ceeedbef5e0cefd2d44fe16f32c671c5a3f3fc117d8d007ce",
+      "creationCodeBytes": 3223,
+      "runtimeTemplateBytes": 2875
+    },
+    "erc20": {
+      "adapterId": "evm-htlc-v3",
+      "adapterVersion": 3,
+      "contract": "EvmHtlcV3",
+      "sourcePath": "versus/contracts/fx/EvmHtlcV3.sol",
+      "sourceTag": "agentic-fx-requester-secret-v3",
+      "compiler": "0.8.26",
+      "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0xfcdef75ab5add995a809a2631cab73f6e6b72e40ee6bee7e91b8a6b1c7e01921",
+      "creationCodeHash": "0x9fabd7ae8433f0e1696e94b1faf83a0138d297d3b293909ef80b1de32c181e3f",
+      "runtimeTemplateHash": "0x742f48b4fc1caf97f55a02da259ea78ba744f76f0198c901d178a5f5bba18cfd",
+      "creationCodeBytes": 5657,
+      "runtimeTemplateBytes": 5047
+    }
+  },
+  "capabilities": [
+    {
+      "chainId": "84532",
+      "native": {
+        "adapterAddress": "0x9ff9e978801b7819fa4169638814543028d0c0f2",
+        "runtimeCodeHash": "0x41690a8f1d61c02dfa80d021f7fea384718d8203f379a9677de960db647e7d9b",
+        "deploymentBlock": 44804172,
+        "assetId": "native:eth"
+      },
+      "erc20": {
+        "adapterAddress": "0xb9c06839b81421e0899510706300d1f1b2623a18",
+        "runtimeCodeHash": "0xf87ead5cb8f791b62bc044901a13cb2850055a49d4652083c6407425870647d8",
+        "deploymentBlock": 44804174,
+        "asset": {
+          "address": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "runtimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b",
+          "symbol": "tUSDC",
+          "decimals": 6,
+          "standard": "ERC20"
+        }
+      },
+      "confirmationPolicy": {
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 12
+      },
+      "timeoutPolicy": {
+        "minimumSeconds": 60,
+        "maximumSeconds": 604800,
+        "minimumCrossChainDeltaSeconds": 3600,
+        "minimumDestinationRelayWindowSeconds": 3600
+      }
+    },
+    {
+      "chainId": "421614",
+      "native": {
+        "adapterAddress": "0x9ff9e978801b7819fa4169638814543028d0c0f2",
+        "runtimeCodeHash": "0x4a2d48e907b541f3934e2a57368b0a82abc1af6420170d00c592bcbee19b3453",
+        "deploymentBlock": 292768615,
+        "assetId": "native:eth"
+      },
+      "erc20": {
+        "adapterAddress": "0xb9c06839b81421e0899510706300d1f1b2623a18",
+        "runtimeCodeHash": "0x4c6e9222f59791ee1f7dc14853884626fe972a220a8de9fc7f02507f94425404",
+        "deploymentBlock": 292768635,
+        "asset": {
+          "address": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "runtimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b",
+          "symbol": "tUSDC",
+          "decimals": 6,
+          "standard": "ERC20"
+        }
+      },
+      "confirmationPolicy": {
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 20
+      },
+      "timeoutPolicy": {
+        "minimumSeconds": 60,
+        "maximumSeconds": 604800,
+        "minimumCrossChainDeltaSeconds": 3600,
+        "minimumDestinationRelayWindowSeconds": 3600
+      }
+    }
+  ],
+  "deploymentId": "0x1edf9c4dca5cbcb8b1875f4ce950844237258367d51e5d02dc3de577b3088494",
+  "coordinationDomain": "0x6d2d3f9784460521d35605b450e5a46fc1c068df7724265c8f12fec7f1693b2c",
+  "evidence": {
+    "84532": {
+      "deployer": "0xc69f8ec01a8e86ed071b410683ba005c8a925cf8",
+      "native": {
+        "transactionHash": "0x9c3e544e389def167e39e22c3e753c769ae296435030eaa04bc0306f9285bba3",
+        "gasUsed": "678993",
+        "constructorArguments": {
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800
+        },
+        "explorerUrl": "https://sepolia.basescan.org/address/0x9ff9e978801b7819fa4169638814543028d0c0f2#code",
+        "verification": {
+          "status": "verified",
+          "sourceVerified": true,
+          "verifiedAt": "2026-07-30T02:09:18.125Z"
+        }
+      },
+      "erc20": {
+        "transactionHash": "0x93baaa68234cbcaceaafc0aeb26715d3123fbe37b80eb8d71348e933e5767493",
+        "gasUsed": "1155083",
+        "constructorArguments": {
+          "asset": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "expectedDecimals": 6,
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800
+        },
+        "explorerUrl": "https://sepolia.basescan.org/address/0xb9c06839b81421e0899510706300d1f1b2623a18#code",
+        "verification": {
+          "status": "verified",
+          "sourceVerified": true,
+          "verifiedAt": "2026-07-30T02:09:18.125Z"
+        }
+      },
+      "preflight": {
+        "chainId": "84532",
+        "native": {
+          "adapterAddress": "0x9ff9e978801b7819fa4169638814543028d0c0f2",
+          "runtimeCodeHash": "0x41690a8f1d61c02dfa80d021f7fea384718d8203f379a9677de960db647e7d9b",
+          "deploymentBlock": 44804172,
+          "adapterVersion": 3,
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800,
+          "domainSeparator": "0x7dc236c8042215b61a765352160108e4ba3d4f716a12af2dc74ccd01e5e0b861"
+        },
+        "erc20": {
+          "adapterAddress": "0xb9c06839b81421e0899510706300d1f1b2623a18",
+          "runtimeCodeHash": "0xf87ead5cb8f791b62bc044901a13cb2850055a49d4652083c6407425870647d8",
+          "deploymentBlock": 44804174,
+          "adapterVersion": 3,
+          "asset": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "assetDecimals": 6,
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800,
+          "domainSeparator": "0x90086ed926f1aeab646b5803be2bfe378b5374a47fc43615c7d564919192c1ea"
+        },
+        "tokenRuntimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b"
+      }
+    },
+    "421614": {
+      "deployer": "0xc69f8ec01a8e86ed071b410683ba005c8a925cf8",
+      "native": {
+        "transactionHash": "0xd9eb08fd74b6f76d2b19cb0ac9dd723705af759cb421404589c76cd7b09e0e5b",
+        "gasUsed": "740525",
+        "constructorArguments": {
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800
+        },
+        "explorerUrl": "https://sepolia.arbiscan.io/address/0x9ff9e978801b7819fa4169638814543028d0c0f2#code",
+        "verification": {
+          "status": "verified",
+          "sourceVerified": true,
+          "verifiedAt": "2026-07-30T02:09:44.276Z"
+        }
+      },
+      "erc20": {
+        "transactionHash": "0x2030071ed313dc5dd3236c23446600819903ebd3d6668eb17909555f5861f0e3",
+        "gasUsed": "1252113",
+        "constructorArguments": {
+          "asset": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "expectedDecimals": 6,
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800
+        },
+        "explorerUrl": "https://sepolia.arbiscan.io/address/0xb9c06839b81421e0899510706300d1f1b2623a18#code",
+        "verification": {
+          "status": "verified",
+          "sourceVerified": true,
+          "verifiedAt": "2026-07-30T02:09:44.276Z"
+        }
+      },
+      "preflight": {
+        "chainId": "421614",
+        "native": {
+          "adapterAddress": "0x9ff9e978801b7819fa4169638814543028d0c0f2",
+          "runtimeCodeHash": "0x4a2d48e907b541f3934e2a57368b0a82abc1af6420170d00c592bcbee19b3453",
+          "deploymentBlock": 292768615,
+          "adapterVersion": 3,
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800,
+          "domainSeparator": "0xc2139668cea840d69e8630459bbac8909b04831c0e95894cb159e01a00b41321"
+        },
+        "erc20": {
+          "adapterAddress": "0xb9c06839b81421e0899510706300d1f1b2623a18",
+          "runtimeCodeHash": "0x4c6e9222f59791ee1f7dc14853884626fe972a220a8de9fc7f02507f94425404",
+          "deploymentBlock": 292768635,
+          "adapterVersion": 3,
+          "asset": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "assetDecimals": 6,
+          "minimumLockDuration": 60,
+          "maximumLockDuration": 604800,
+          "domainSeparator": "0xf2982f6f72998d3463d90701f4064d971882ebd7696f5087ac7fe4f9fd0fea1d"
+        },
+        "tokenRuntimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b"
+      }
+    }
+  }
+}
