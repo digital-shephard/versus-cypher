@@ -522,6 +522,32 @@ test("public broker ingress accepts a non-Cypher signed RFQ and exposes signed m
   );
 });
 
+test("public x402 ingress enforces its independent per-IP request ceiling", async (t) => {
+  const context = await fixture();
+  const service = await runningBroker(context, "0", {
+    x402SwapHandler: async (_request, response) => {
+      response.writeHead(202, { "content-type": "application/json" });
+      response.end("{}");
+      return true;
+    },
+    maxX402RequestsPerMinutePerIp: 1,
+  });
+  t.after(async () => {
+    await service.httpService.close();
+    await service.broker.close();
+  });
+
+  const first = await fetch(`${service.url}/v1/fx/swaps`, {
+    method: "POST",
+  });
+  assert.equal(first.status, 202);
+  const second = await fetch(`${service.url}/v1/fx/swaps`, {
+    method: "POST",
+  });
+  assert.equal(second.status, 429);
+  assert.equal((await second.json()).error, "rate_limited");
+});
+
 test("broker ignores quotes that do not answer the active signed RFQ", async (t) => {
   const context = await fixture();
   const poison = structuredClone(context.quote);

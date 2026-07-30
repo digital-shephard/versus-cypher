@@ -33,6 +33,16 @@ function integer(name, fallback) {
 }
 
 async function loadSigner() {
+  const sources = [
+    process.env.FX_PHASE7_BROKER_KEYSTORE,
+    process.env.FX_PHASE7_BROKER_PRIVATE_KEY,
+    process.env.FX_PHASE7_BROKER_PRIVATE_KEY_FILE,
+  ].filter(Boolean);
+  if (sources.length !== 1) {
+    throw new Error(
+      "configure exactly one FX broker identity source"
+    );
+  }
   if (process.env.FX_PHASE7_BROKER_KEYSTORE) {
     return Wallet.fromEncryptedJson(
       fs.readFileSync(path.resolve(process.env.FX_PHASE7_BROKER_KEYSTORE), "utf8"),
@@ -42,8 +52,11 @@ async function loadSigner() {
   if (process.env.FX_PHASE7_BROKER_PRIVATE_KEY) {
     return new Wallet(process.env.FX_PHASE7_BROKER_PRIVATE_KEY);
   }
-  throw new Error(
-    "FX_PHASE7_BROKER_KEYSTORE or FX_PHASE7_BROKER_PRIVATE_KEY is required"
+  return new Wallet(
+    fs.readFileSync(
+      path.resolve(process.env.FX_PHASE7_BROKER_PRIVATE_KEY_FILE),
+      "utf8"
+    ).trim()
   );
 }
 
@@ -164,6 +177,22 @@ async function main() {
     x402SwapHandler,
     host: process.env.FX_PHASE7_BROKER_HOST || "127.0.0.1",
     port: integer("FX_PHASE7_BROKER_PORT", 8787),
+    maxRequestsPerMinutePerIp: integer(
+      "FX_PHASE7_HTTP_ROUTES_PER_MINUTE_PER_IP",
+      12
+    ),
+    maxConcurrentRouteRequests: integer(
+      "FX_PHASE7_HTTP_MAX_CONCURRENT_ROUTES",
+      32
+    ),
+    maxX402RequestsPerMinutePerIp: integer(
+      "FX_X402_HTTP_REQUESTS_PER_MINUTE_PER_IP",
+      120
+    ),
+    maxConcurrentX402Requests: integer(
+      "FX_X402_HTTP_MAX_CONCURRENT_REQUESTS",
+      32
+    ),
   });
   const url = await service.listen();
   process.stdout.write(`${JSON.stringify({
