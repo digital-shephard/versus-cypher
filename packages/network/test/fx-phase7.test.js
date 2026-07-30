@@ -522,6 +522,29 @@ test("public broker ingress accepts a non-Cypher signed RFQ and exposes signed m
   );
 });
 
+test("broker proposal validation tolerates bounded wall-clock skew", async () => {
+  const context = await fixture();
+
+  assert.doesNotThrow(() =>
+    verifyBrokerRouteProposal(context.proposal, { now: NOW - 3 })
+  );
+  assert.throws(
+    () =>
+      verifyBrokerRouteProposal(context.proposal, {
+        now: NOW - 4,
+        clockSkewSeconds: 0,
+      }),
+    (error) => error.code === "EXPIRED_PROPOSAL"
+  );
+  assert.throws(
+    () =>
+      verifyBrokerRouteProposal(context.proposal, {
+        now: context.proposal.expiresAt + 6,
+      }),
+    (error) => error.code === "EXPIRED_PROPOSAL"
+  );
+});
+
 test("public x402 ingress enforces its independent per-IP request ceiling", async (t) => {
   const context = await fixture();
   const service = await runningBroker(context, "0", {

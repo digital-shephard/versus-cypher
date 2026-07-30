@@ -16,6 +16,7 @@ const FX_BROKER_FEE_VOUCHER_SCHEMA = "versus-fx-broker-fee-voucher";
 const FX_BROKER_METRICS_SCHEMA = "versus-fx-broker-metrics";
 const FX_BROKER_VERSION = 1;
 const FX_BROKER_PAYMENT_MODE = "verified-completion-v1";
+const FX_BROKER_CLOCK_SKEW_SECONDS = 5;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
 const SIGNATURE_PATTERN = /^0x[0-9a-fA-F]{130}$/;
@@ -274,6 +275,7 @@ function verifyBrokerRouteProposal(input, {
   rfqId,
   maxReferenceAgeSeconds,
   temporal = true,
+  clockSkewSeconds = FX_BROKER_CLOCK_SKEW_SECONDS,
 } = {}) {
   exactKeys(input, [
     "schema",
@@ -299,10 +301,22 @@ function verifyBrokerRouteProposal(input, {
   const broker = address(input.broker, "broker");
   const issuedAt = integer(input.issuedAt, "issuedAt", { allowZero: false });
   const expiresAt = integer(input.expiresAt, "expiresAt", { allowZero: false });
-  if (expiresAt <= issuedAt || (temporal && (issuedAt > now || expiresAt < now))) {
+  const clockSkew = integer(clockSkewSeconds, "clockSkewSeconds");
+  if (clockSkew > 300) {
+    throw new FxBrokerError("clockSkewSeconds must not exceed 300");
+  }
+  if (
+    expiresAt <= issuedAt ||
+    (temporal && (
+      issuedAt > now + clockSkew ||
+      expiresAt < now - clockSkew
+    ))
+  ) {
     throw new FxBrokerError("broker proposal lifetime is invalid", "EXPIRED_PROPOSAL");
   }
-  const validationNow = temporal ? now : issuedAt;
+  // Recompute the route at its signed issuance time. Local wall-clock skew
+  // must not change deterministic quote selection.
+  const validationNow = issuedAt;
   const rfq = verifyFxEnvelope(input.rfq, {
     now: validationNow,
     clockSkewSeconds: 0,
@@ -750,6 +764,7 @@ class FxBrokerFeeLedger {
 
 module.exports = {
   FX_BROKER_FEE_VOUCHER_SCHEMA,
+  FX_BROKER_CLOCK_SKEW_SECONDS,
   FX_BROKER_METRICS_SCHEMA,
   FX_BROKER_PAYMENT_MODE,
   FX_BROKER_ROUTE_SCHEMA,
