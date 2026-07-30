@@ -2862,7 +2862,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const feeData = await provider.getFeeData();
     const currentMaxFeePerGas =
       this.protocolVersion === 3
-        ? v3BufferedGasPrice(feeData)
+        ? BigInt(feeData.gasPrice || feeData.maxFeePerGas || 0)
         : BigInt(feeData.maxFeePerGas || feeData.gasPrice || 0);
     if (currentMaxFeePerGas <= 0n) {
       throw new FxDesktopNetworkError(

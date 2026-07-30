@@ -385,6 +385,60 @@ test("HTLC event recovery starts at the frozen adapter deployment block", async 
   );
 });
 
+test("HTLC event recovery pages restrictive public RPC block ranges", async () => {
+  const configuration = {
+    ...FX_TESTNET_CHAINS["84532"],
+    adapterDeploymentBlock: 100,
+  };
+  const filters = [];
+  const provider = {
+    async getNetwork() {
+      return { chainId: 84532n };
+    },
+    async getCode() {
+      return "0x01";
+    },
+    async getBlockNumber() {
+      return 5_100;
+    },
+    async getLogs(filter) {
+      assert.ok(
+        Number(filter.toBlock) - Number(filter.fromBlock) < 2_000,
+        "each public RPC query must stay within 2,000 blocks"
+      );
+      filters.push(filter);
+      return [];
+    },
+  };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": configuration },
+    providerFactory: () => provider,
+    contractFactory: () => ({}),
+  });
+
+  await assert.rejects(
+    cohort.findLockEvent({
+      chainId: "84532",
+      tradeId: `0x${"45".repeat(32)}`,
+      side: "source",
+      eventName: "LockFunded",
+    }),
+    (error) => error.code === "MISSING_CHAIN_EVENT"
+  );
+  assert.deepEqual(
+    filters.map(({ fromBlock, toBlock }) => [fromBlock, toBlock]),
+    [
+      [100, 2_099],
+      [2_100, 4_099],
+      [4_100, 5_100],
+    ]
+  );
+});
+
 test("V3 preflight binds runtime code, adapter version, durations, token, and decimals", async () => {
   const erc20Code = "0x6001";
   const nativeCode = "0x6002";

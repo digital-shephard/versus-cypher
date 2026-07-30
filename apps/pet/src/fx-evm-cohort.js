@@ -380,6 +380,42 @@ class FxEvmCohort {
     return this.providers.get(configuration.chainId);
   }
 
+  async #getLogs(provider, filter) {
+    if (
+      filter.toBlock === "latest" &&
+      typeof provider.getBlockNumber !== "function"
+    ) {
+      return provider.getLogs(filter);
+    }
+    const fromBlock = Number(filter.fromBlock);
+    const toBlock = filter.toBlock === "latest"
+      ? Number(await provider.getBlockNumber())
+      : Number(filter.toBlock);
+    if (toBlock < fromBlock) {
+      return provider.getLogs(filter);
+    }
+    if (
+      !Number.isSafeInteger(fromBlock) ||
+      !Number.isSafeInteger(toBlock) ||
+      fromBlock < 0 ||
+      toBlock < 0
+    ) {
+      return [];
+    }
+    const logs = [];
+    for (let start = fromBlock; start <= toBlock; start += 2_000) {
+      const end = Math.min(toBlock, start + 1_999);
+      logs.push(
+        ...(await provider.getLogs({
+          ...filter,
+          fromBlock: start,
+          toBlock: end,
+        }))
+      );
+    }
+    return logs;
+  }
+
   setRpcUrl(chainId, rpcUrl = "") {
     const configuration = this.configuration(chainId);
     const normalized = String(rpcUrl || "").trim();
@@ -765,7 +801,7 @@ class FxEvmCohort {
     }
     const logs = latestBlock <= Number(baseline.baselineBlockNumber)
       ? []
-      : await provider.getLogs({
+      : await this.#getLogs(provider, {
           address: token,
           topics: [
             TRANSFER_TOPIC,
@@ -878,7 +914,7 @@ class FxEvmCohort {
         );
       } else {
         const event = asset.interface.getEvent("LockFunded");
-        logs = await provider.getLogs({
+        logs = await this.#getLogs(provider, {
           address: asset.adapterAddress,
           topics: [event.topicHash, null, String(lockId).toLowerCase()],
           fromBlock: asset.adapterDeploymentBlock,
@@ -1421,7 +1457,7 @@ class FxEvmCohort {
           let lock;
           if (asset.settlementVersion === 3) {
             const fundedEvent = asset.interface.getEvent("LockFunded");
-            const fundedLogs = await provider.getLogs({
+            const fundedLogs = await this.#getLogs(provider, {
               address: asset.adapterAddress,
               topics: [
                 fundedEvent.topicHash,
@@ -1497,7 +1533,7 @@ class FxEvmCohort {
       );
       lockDigest = fundedLock.lockDigest;
     }
-    const logs = await provider.getLogs({
+    const logs = await this.#getLogs(provider, {
       address: asset.adapterAddress,
       topics: [
         event.topicHash,

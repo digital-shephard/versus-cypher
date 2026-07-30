@@ -1146,6 +1146,9 @@ test("V3 pays an arbitrary recipient and executor before the dealer claims sourc
     "V3 must commit the requester's crash-safe secret"
   );
 
+  // The quote prepaid a 20% margin at 1,000,000 wei. A later 10% rise
+  // must not be buffered a second time and reject an otherwise funded swap.
+  harness.evm.maxFeePerGas = 1_100_000n;
   const result = await sdk.executePreparedFunding({
     prepared: { ...prepared, reservation: reserve },
     recoveryPassword: "v2 recovery password",
