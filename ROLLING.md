@@ -527,6 +527,27 @@ A separate basic sanity test showed that these are not general question-answerin
   ID prevents old destination-first clients from sharing Waku topics or
   journals; the already verified ownerless testnet contracts are reused.
 
+- [x] Build and adversarially test an ownerless requester-secret V3 contract
+  candidate with commitment-only state, exact recipient and executor payouts,
+  compact rollup calldata, reproducible bytecode evidence, and stateful
+  solvency invariants. The four trustless native transactions estimate below
+  one cent at the measured public-testnet fee point; the benchmark remains
+  below one cent all-in with a 12 bps spread. This is local candidate evidence,
+  not a deployed protocol promotion.
+
+- [x] Record 5 bps as the initial configurable dealer-spread default for V3
+  same-asset low-cost L2 routes. Measured execution cost and any necessary
+  inventory/rebalancing cost remain explicit quote inputs rather than being
+  silently subsidized by that spread. Requesters receive one all-inclusive
+  quote and do not configure dealer economics. Dealers may select 1-25 bps;
+  physical public-testnet evidence must still validate the default before V3
+  supersedes V2.
+
+- [ ] Independently review V3, deploy and verify it on both public testnets,
+  freeze a new non-interoperable coordination domain, wire the desktop and
+  network adapters, and repeat successful, restart, and timeout/refund
+  acceptance before superseding V2.
+
 - [x] Turn a confirmed class transition into one restart-safe graduation ritual: a layered ship arrives, an independently animated rig centers across all 29 Cypher silhouettes, the Cypher is lifted away, the completed ocean drains, and the new zero-agent class receives the returning raft. Same-class and day changes cannot trigger it.
 
 - [x] Implement the persistent unseen raft-thought queue described in the linked design draft.

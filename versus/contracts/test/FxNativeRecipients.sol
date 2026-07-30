@@ -34,3 +34,52 @@ contract FxNativeReentrantRecipient {
         );
     }
 }
+
+interface IEvmNativeHtlcV3 {
+    struct Terms {
+        bytes32 tradeId;
+        address funder;
+        address beneficiary;
+        bytes32 secretHash;
+        uint64 refundTimestamp;
+        uint128 beneficiaryAmount;
+        uint128 executorAmount;
+    }
+
+    function claim(Terms calldata terms, bytes32 secret) external;
+}
+
+contract FxNativeV3ReentrantRecipient {
+    IEvmNativeHtlcV3 public immutable adapter;
+    IEvmNativeHtlcV3.Terms private terms;
+    bytes32 private secret;
+    bool public attempted;
+    bool public succeeded;
+
+    constructor(address adapter_) {
+        adapter = IEvmNativeHtlcV3(adapter_);
+    }
+
+    function configure(
+        IEvmNativeHtlcV3.Terms calldata terms_,
+        bytes32 secret_
+    ) external {
+        terms = terms_;
+        secret = secret_;
+    }
+
+    receive() external payable {
+        attempted = true;
+        (succeeded, ) = address(adapter).call(
+            abi.encodeCall(IEvmNativeHtlcV3.claim, (terms, secret))
+        );
+    }
+}
+
+contract FxForceNative {
+    constructor() payable {}
+
+    function force(address payable recipient) external {
+        selfdestruct(recipient);
+    }
+}

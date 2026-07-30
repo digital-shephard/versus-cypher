@@ -76,3 +76,29 @@ contract FxCallbackToken is FxDecimalToken {
         }
     }
 }
+
+contract FxArbitraryCallbackToken is FxDecimalToken {
+    address public callbackTarget;
+    bytes public callbackData;
+    bool public callbackAttempted;
+    bool public callbackSucceeded;
+
+    constructor() FxDecimalToken(6) {}
+
+    function configureCallback(address target, bytes calldata data) external {
+        callbackTarget = target;
+        callbackData = data;
+    }
+
+    function _update(address from, address to, uint256 value) internal override {
+        super._update(from, to, value);
+        if (
+            from != address(0) &&
+            to == callbackTarget &&
+            !callbackAttempted
+        ) {
+            callbackAttempted = true;
+            (callbackSucceeded, ) = callbackTarget.call(callbackData);
+        }
+    }
+}
