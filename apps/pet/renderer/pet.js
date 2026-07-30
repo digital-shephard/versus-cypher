@@ -1202,6 +1202,16 @@ const FX_SUPPORTED_CHAINS = [
 ];
 
 const FX_RISK_CONTROLS = {
+  minTradeUsd: {
+    readout: "fx-risk-min-trade",
+    steps: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 5, 10, 25, 50],
+    format: (value) =>
+      `$${value.toLocaleString("en-US", {
+        minimumFractionDigits: value < 1 ? 2 : 0,
+        maximumFractionDigits: 2,
+      })}`,
+    policyKey: "minimumTradeUsd",
+  },
   maxTradeUsd: {
     readout: "fx-risk-max-trade",
     steps: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500],
@@ -1308,6 +1318,7 @@ let fxCancelActive = false;
 let fxDealerTogglePending = null;
 const fxRisk = {
   armed: false,
+  minTradeUsd: 0.01,
   maxTradeUsd: 250,
   maxExposureUsd: 1000,
   minSpreadBps: 25,
@@ -1447,6 +1458,7 @@ function applyFxSnapshot(snapshot) {
     }));
   fxInventory = [...gasInventory, ...tokenInventory];
   fxRisk.armed = snapshot.policy?.armed === true;
+  fxRisk.minTradeUsd = Number(snapshot.policy?.minimumTradeUsd ?? 0.01);
   fxRisk.maxTradeUsd = Number(snapshot.policy?.maximumTradeUsd || 50);
   fxRisk.maxExposureUsd = Number(snapshot.policy?.maximumExposureUsd || 1000);
   fxRisk.minSpreadBps = Number(snapshot.policy?.minimumSpreadBps || 25);

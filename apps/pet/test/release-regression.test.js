@@ -342,6 +342,9 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.match(renderer, /const policyKey = control\.policyKey \|\|/);
   assert.doesNotMatch(main, /DEMO_DEPOSIT_USD_MICROS|3333333333/);
   assert.match(main, /fresh signed relay ETH\/USD quote is unavailable/);
+  assert.match(renderer, /minTradeUsd:\s*0\.01/);
+  assert.match(renderer, /policyKey:\s*"minimumTradeUsd"/);
+  assert.match(html, /id="fx-risk-min-trade">\$0\.01/);
   assert.match(
     main,
     /async function getFxReferenceHatchQuote\(\)[\s\S]*app\.isPackaged[\s\S]*VERSUS_FX_DEVELOPMENT[\s\S]*versus\/deployments\/base\.json[\s\S]*quoteHatchTarget/

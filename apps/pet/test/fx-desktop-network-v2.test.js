@@ -406,7 +406,7 @@ test("V2 delivers exact destination funds through a paid relay with no requester
   ];
   await runtime.armDealer({
     policy: {
-      minimumTradeUsd: 1,
+      minimumTradeUsd: 0.01,
       maximumTradeUsd: 50,
       maximumExposureUsd: 1_000,
       maximumRequesterExposureUsd: 100,

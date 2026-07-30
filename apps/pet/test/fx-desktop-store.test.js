@@ -22,13 +22,14 @@ test("FX desktop state is disabled, disarmed, and restart durable", () => {
     const store = new FxDesktopStore({ filePath: temporary.filePath });
     assert.equal(store.snapshot().enabled, false);
     assert.equal(store.snapshot().policy.armed, false);
+    assert.equal(store.snapshot().policy.minimumTradeUsd, 0.01);
     assert.throws(
       () => store.setPolicy({ armed: true }),
       /enabled before dealing/
     );
     store.setEnabled(true);
     store.setPolicy({
-      minimumTradeUsd: 1,
+      minimumTradeUsd: 0.25,
       maximumTradeUsd: 25,
       maximumExposureUsd: 100,
       maximumRequesterExposureUsd: 20,
@@ -38,7 +39,33 @@ test("FX desktop state is disabled, disarmed, and restart durable", () => {
     const restored = new FxDesktopStore({ filePath: temporary.filePath });
     assert.equal(restored.snapshot().enabled, true);
     assert.equal(restored.snapshot().policy.armed, true);
+    assert.equal(restored.snapshot().policy.minimumTradeUsd, 0.25);
     assert.equal(restored.snapshot().policy.maximumTradeUsd, 25);
+  } finally {
+    temporary.cleanup();
+  }
+});
+
+test("FX desktop migrates the old hidden one-dollar minimum to one cent", () => {
+  const temporary = temporaryStore();
+  try {
+    fs.writeFileSync(
+      temporary.filePath,
+      `${JSON.stringify({
+        version: 3,
+        enabled: true,
+        policy: {
+          minimumTradeUsd: 1,
+        },
+      })}\n`,
+      "utf8"
+    );
+    const store = new FxDesktopStore({ filePath: temporary.filePath });
+    assert.equal(store.snapshot().policy.minimumTradeUsd, 0.01);
+    assert.throws(
+      () => store.setPolicy({ minimumTradeUsd: 0.001 }),
+      /whole cents/
+    );
   } finally {
     temporary.cleanup();
   }

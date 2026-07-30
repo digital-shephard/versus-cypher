@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const FX_DESKTOP_STATE_VERSION = 3;
+const FX_DESKTOP_STATE_VERSION = 4;
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
 const FX_TRADE_STATES = Object.freeze([
   "draft",
@@ -28,7 +28,7 @@ const FX_TRADE_STATES = Object.freeze([
 
 const FX_DEFAULT_POLICY = Object.freeze({
   armed: false,
-  minimumTradeUsd: 1,
+  minimumTradeUsd: 0.01,
   maximumTradeUsd: 50,
   maximumExposureUsd: 1_000,
   maximumRequesterExposureUsd: 100,
@@ -42,7 +42,7 @@ const FX_DEFAULT_POLICY = Object.freeze({
 });
 
 const FX_POLICY_BOUNDS = Object.freeze({
-  minimumTradeUsd: [1, 10_000],
+  minimumTradeUsd: [0.01, 10_000],
   maximumTradeUsd: [1, 100_000],
   maximumExposureUsd: [1, 1_000_000],
   maximumRequesterExposureUsd: [1, 1_000_000],
@@ -172,6 +172,22 @@ function integer(value, label, [minimum, maximum]) {
   return normalized;
 }
 
+function usd(value, label, [minimum, maximum]) {
+  const normalized = Number(value);
+  const cents = Math.round(normalized * 100);
+  if (
+    !Number.isFinite(normalized) ||
+    Math.abs(cents / 100 - normalized) > Number.EPSILON ||
+    normalized < minimum ||
+    normalized > maximum
+  ) {
+    throw new Error(
+      `${label} must be between ${minimum} and ${maximum} in whole cents`
+    );
+  }
+  return cents / 100;
+}
+
 function atomic(value, label) {
   const normalized = String(value);
   if (!/^\d+$/.test(normalized)) {
@@ -206,7 +222,7 @@ function atomicWrite(filePath, value) {
 function normalizeLoadedState(value, deploymentId = null) {
   if (
     !value ||
-    ![1, 2, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
+    ![1, 2, 3, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
   ) {
     return initialState(deploymentId);
   }
@@ -325,11 +341,16 @@ function normalizeLoadedState(value, deploymentId = null) {
       : defaults.updatedAt,
   };
   for (const [key, bounds] of Object.entries(FX_POLICY_BOUNDS)) {
-    state.policy[key] = integer(
-      value.policy?.[key] ?? defaults.policy[key],
-      key,
-      bounds
-    );
+    const loadedValue =
+      key === "minimumTradeUsd" &&
+      Number(value.version) < FX_DESKTOP_STATE_VERSION &&
+      value.policy?.minimumTradeUsd === 1
+        ? defaults.policy.minimumTradeUsd
+        : value.policy?.[key] ?? defaults.policy[key];
+    state.policy[key] =
+      key === "minimumTradeUsd"
+        ? usd(loadedValue, key, bounds)
+        : integer(loadedValue, key, bounds);
   }
   state.policy.armed = value.policy?.armed === true;
   return state;
@@ -416,7 +437,10 @@ class FxDesktopStore {
       }
       const bounds = FX_POLICY_BOUNDS[key];
       if (!bounds) throw new Error(`unsupported FX policy field ${key}`);
-      this.state.policy[key] = integer(value, key, bounds);
+      this.state.policy[key] =
+        key === "minimumTradeUsd"
+          ? usd(value, key, bounds)
+          : integer(value, key, bounds);
     }
     if (this.state.policy.minimumTradeUsd > this.state.policy.maximumTradeUsd) {
       throw new Error("minimum trade cannot exceed maximum trade");

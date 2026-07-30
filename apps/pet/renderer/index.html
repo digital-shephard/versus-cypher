@@ -389,6 +389,15 @@
                 </div>
 
                 <div class="fx-risk-row">
+                  <span class="fx-risk-label"><b>MIN TRADE</b></span>
+                  <span class="fx-stepper">
+                    <button type="button" data-fx-step="minTradeUsd:-1" aria-label="Lower minimum trade size">&minus;</button>
+                    <b id="fx-risk-min-trade">$0.01</b>
+                    <button type="button" data-fx-step="minTradeUsd:1" aria-label="Raise minimum trade size">+</button>
+                  </span>
+                </div>
+
+                <div class="fx-risk-row">
                   <span class="fx-risk-label"><b>MAX TRADE</b></span>
                   <span class="fx-stepper">
                     <button type="button" data-fx-step="maxTradeUsd:-1" aria-label="Lower maximum trade size">&minus;</button>

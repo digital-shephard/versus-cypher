@@ -39,7 +39,18 @@ class FxDesktopNetworkError extends Error {
 }
 
 function dollarsToMicros(value) {
-  return (BigInt(Number(value)) * 1_000_000n).toString();
+  const normalized = String(value).trim();
+  if (!/^\d+(?:\.\d{1,6})?$/.test(normalized)) {
+    throw new FxDesktopNetworkError(
+      "USD policy value must use at most six decimal places",
+      "INVALID_USD_POLICY"
+    );
+  }
+  const [whole, fraction = ""] = normalized.split(".");
+  return (
+    BigInt(whole) * 1_000_000n +
+    BigInt(`${fraction}000000`.slice(0, 6))
+  ).toString();
 }
 
 function mergedPolicy(current, patch = {}) {
@@ -2481,7 +2492,9 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   #phase8Policy() {
     const policy = this.dealerPolicy || {};
     return {
-      minimumTradeInputAtomic: dollarsToMicros(policy.minimumTradeUsd || 1),
+      minimumTradeInputAtomic: dollarsToMicros(
+        policy.minimumTradeUsd ?? 0.01
+      ),
       maximumTradeInputAtomic: dollarsToMicros(policy.maximumTradeUsd || 50),
       maximumRequesterGasInputAtomic: dollarsToMicros(policy.maximumGasUsd || 5),
       maximumOverheadBps: Number(policy.maximumOverheadBps || 100),
