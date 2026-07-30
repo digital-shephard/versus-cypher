@@ -596,11 +596,20 @@
                 </section>
 
                 <section class="fx-settlement-result hidden" id="fx-settlement-result" aria-live="polite">
-                  <div class="fx-settlement-lamp" aria-hidden="true"></div>
+                  <div class="fx-settlement-animation" aria-hidden="true">
+                    <span class="fx-settlement-token fx-settlement-token-source">
+                      <b id="fx-settlement-source-asset">--</b>
+                      <small id="fx-settlement-source-chain">SOURCE</small>
+                    </span>
+                    <span class="fx-settlement-track"><i></i><i></i><i></i></span>
+                    <span class="fx-settlement-token fx-settlement-token-destination">
+                      <b id="fx-settlement-destination-asset">--</b>
+                      <small id="fx-settlement-destination-chain">DEST</small>
+                    </span>
+                  </div>
                   <small id="fx-settlement-kicker">SETTLEMENT</small>
                   <strong id="fx-settlement-state">CHECKING SOURCE FUNDS</strong>
                   <p id="fx-settlement-detail">Chain confirmation decides what happens next.</p>
-                  <ol id="fx-settlement-timeline"></ol>
                   <button type="button" class="fx-requester-secondary hidden" id="fx-refund-trade">REFUND SOURCE</button>
                   <button type="button" class="fx-requester-secondary hidden" id="fx-check-status">CHECK STATUS</button>
                   <button type="button" class="fx-requester-primary hidden" id="fx-settlement-done">DONE</button>

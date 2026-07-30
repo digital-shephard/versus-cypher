@@ -418,6 +418,9 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   ]);
   assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
   assert.match(html, /id="fx-settlement-done">DONE/);
+  assert.match(html, /id="fx-settlement-source-asset">--/);
+  assert.match(html, /id="fx-settlement-destination-asset">--/);
+  assert.doesNotMatch(html, /id="fx-settlement-timeline"/);
   assert.match(html, /id="fx-requester-compose"/);
   assert.match(html, /id="fx-requester-title" aria-label="Back to swap form">SWAP/);
   assert.doesNotMatch(html, /id="fx-copy-funding"[^>]*>COPY ADDRESS/);

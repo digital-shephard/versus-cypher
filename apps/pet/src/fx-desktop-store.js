@@ -16,6 +16,7 @@ const FX_TRADE_STATES = Object.freeze([
   "source_lock_confirmed",
   "destination_lock_pending",
   "destination_lock_confirmed",
+  "secret_revealed",
   "destination_claimed",
   "source_claimed",
   "funds_ready",

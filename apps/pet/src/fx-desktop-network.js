@@ -29,6 +29,26 @@ const FX_V2_SOURCE_REFUND_SECONDS = 7_200;
 const FX_V2_DESTINATION_REFUND_SECONDS = 600;
 const FX_V2_MINIMUM_TIMEOUT_DELTA_SECONDS = 3_600;
 const FX_RECOVERY_POLL_MS = 15_000;
+const FX_BPS_SCALE = 10_000n;
+const FX_V3_GAS_PRICE_BUFFER_BPS = 12_000n;
+// Rounded from the public compact-V3 measurements in docs/fx/V3_COST_MEASUREMENT_2026-07-30.md.
+const FX_V3_GAS_UNITS = Object.freeze({
+  "84532": Object.freeze({
+    sourceClaim: 40_000n,
+    destinationFund: 51_000n,
+    destinationClaim: 60_000n,
+  }),
+  "421614": Object.freeze({
+    sourceClaim: 85_000n,
+    destinationFund: 61_000n,
+    destinationClaim: 85_000n,
+  }),
+});
+const FX_V3_FALLBACK_GAS_UNITS = Object.freeze({
+  sourceClaim: 100_000n,
+  destinationFund: 100_000n,
+  destinationClaim: 100_000n,
+});
 
 class FxDesktopNetworkError extends Error {
   constructor(message, code = "FX_DESKTOP_NETWORK_ERROR") {
@@ -55,6 +75,27 @@ function dollarsToMicros(value) {
 
 function mergedPolicy(current, patch = {}) {
   return { ...(current || {}), ...(patch || {}) };
+}
+
+function ceilDiv(numerator, denominator) {
+  return (numerator + denominator - 1n) / denominator;
+}
+
+function v3GasUnits(chainId, leg) {
+  return (
+    FX_V3_GAS_UNITS[String(chainId)] || FX_V3_FALLBACK_GAS_UNITS
+  )[leg];
+}
+
+function v3BufferedGasPrice(feeData) {
+  const currentGasPrice = BigInt(
+    feeData?.gasPrice || feeData?.maxFeePerGas || 0
+  );
+  if (currentGasPrice <= 0n) return 0n;
+  return ceilDiv(
+    currentGasPrice * FX_V3_GAS_PRICE_BUFFER_BPS,
+    FX_BPS_SCALE
+  );
 }
 
 function deadlineTimer(milliseconds, message, code) {
@@ -2606,22 +2647,39 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       .provider(destination.chainId)
       .getFeeData();
     const destinationMaxFeePerGas =
-      BigInt(
-        destinationFeeData.maxFeePerGas ||
-          destinationFeeData.gasPrice ||
-          1
-      ) * 2n;
-    const destinationClaimGasEstimate = 160_000n;
+      this.protocolVersion === 3
+        ? v3BufferedGasPrice(destinationFeeData)
+        : BigInt(
+            destinationFeeData.maxFeePerGas ||
+              destinationFeeData.gasPrice ||
+              1
+          ) * 2n;
+    if (destinationMaxFeePerGas <= 0n) {
+      throw new FxDesktopNetworkError(
+        "destination gas price is unavailable",
+        "EXECUTOR_GAS_UNAVAILABLE"
+      );
+    }
+    const destinationClaimGasEstimate =
+      this.protocolVersion === 3
+        ? v3GasUnits(destination.chainId, "destinationClaim")
+        : 160_000n;
     const destinationClaimGasWei =
       destinationClaimGasEstimate * destinationMaxFeePerGas;
     const destinationExecutorValueMicros =
-      (destinationClaimGasWei * nativePriceMicros) / 10n ** 18n +
-      10_000n;
+      this.protocolVersion === 3
+        ? ceilDiv(
+            destinationClaimGasWei * nativePriceMicros,
+            10n ** 18n
+          )
+        : (destinationClaimGasWei * nativePriceMicros) / 10n ** 18n +
+          10_000n;
     const destinationExecutorAmount =
       destination.assetAddress === FX_NATIVE_ETH_ADDRESS
-        ? destinationClaimGasWei +
-          ((10_000n * 10n ** 18n + nativePriceMicros - 1n) /
-            nativePriceMicros)
+        ? this.protocolVersion === 3
+          ? destinationClaimGasWei
+          : destinationClaimGasWei +
+            ceilDiv(10_000n * 10n ** 18n, nativePriceMicros)
         : destinationExecutorValueMicros;
     const destinationLiability = output + destinationExecutorAmount;
     const balance = BigInt(
@@ -2667,14 +2725,29 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const dealerSpreadAtomic =
       (dealerPrincipalAtomic * BigInt(spreadBps) + 9_999n) / 10_000n;
     const sourceFeeData = await this.evm.provider(input.chainId).getFeeData();
-    const sourceMaxFeePerGas = BigInt(
-      sourceFeeData.maxFeePerGas || sourceFeeData.gasPrice || 1
-    ) * 2n;
+    const sourceMaxFeePerGas =
+      this.protocolVersion === 3
+        ? v3BufferedGasPrice(sourceFeeData)
+        : BigInt(
+            sourceFeeData.maxFeePerGas || sourceFeeData.gasPrice || 1
+          ) * 2n;
+    if (sourceMaxFeePerGas <= 0n) {
+      throw new FxDesktopNetworkError(
+        "source gas price is unavailable",
+        "DEALER_GAS_UNAVAILABLE"
+      );
+    }
     const dealerGasWei =
-      360_000n * sourceMaxFeePerGas +
-      240_000n * destinationMaxFeePerGas;
+      this.protocolVersion === 3
+        ? v3GasUnits(input.chainId, "sourceClaim") * sourceMaxFeePerGas +
+          v3GasUnits(destination.chainId, "destinationFund") *
+            destinationMaxFeePerGas
+        : 360_000n * sourceMaxFeePerGas +
+          240_000n * destinationMaxFeePerGas;
     const dealerOperatingValueMicros =
-      (dealerGasWei * nativePriceMicros) / 10n ** 18n +
+      (this.protocolVersion === 3
+        ? ceilDiv(dealerGasWei * nativePriceMicros, 10n ** 18n)
+        : (dealerGasWei * nativePriceMicros) / 10n ** 18n) +
       destinationExecutorValueMicros;
     const dealerOperatingCostAtomic = this.#assetAmountForMicros(
       dealerOperatingValueMicros,
@@ -2787,9 +2860,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   async #assertDestinationExecutorSufficientV2(quote) {
     const provider = this.evm.provider(quote.payload.outputChainId);
     const feeData = await provider.getFeeData();
-    const currentMaxFeePerGas = BigInt(
-      feeData.maxFeePerGas || feeData.gasPrice || 0
-    );
+    const currentMaxFeePerGas =
+      this.protocolVersion === 3
+        ? v3BufferedGasPrice(feeData)
+        : BigInt(feeData.maxFeePerGas || feeData.gasPrice || 0);
     if (currentMaxFeePerGas <= 0n) {
       throw new FxDesktopNetworkError(
         "destination gas price is unavailable",
@@ -3548,22 +3622,34 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         blockNumber = receipt.blockNumber;
       }
     }
-    const destinationClaim = await this.relayerSession.publish({
-      protocol: "versus-fx",
-      version: 3,
-      type: "fx_claim",
-      tradeId: reveal.tradeId,
-      createdAt: this.now(),
-      expiresAt: this.now() + 30 * 24 * 60 * 60,
-      payload: {
-        lockMessageId: destinationLock.id,
-        chainId: destinationLock.payload.chainId,
-        transactionHash,
-        blockNumber: String(blockNumber),
-        secretHash: destinationLock.payload.secretHash,
-        beneficiary: destinationLock.payload.beneficiary,
-      },
-    });
+    let destinationClaim;
+    try {
+      destinationClaim = await this.relayerSession.publish({
+        protocol: "versus-fx",
+        version: 3,
+        type: "fx_claim",
+        tradeId: reveal.tradeId,
+        createdAt: this.now(),
+        expiresAt: this.now() + 30 * 24 * 60 * 60,
+        payload: {
+          lockMessageId: destinationLock.id,
+          chainId: destinationLock.payload.chainId,
+          transactionHash,
+          blockNumber: String(blockNumber),
+          secretHash: destinationLock.payload.secretHash,
+          beneficiary: destinationLock.payload.beneficiary,
+        },
+      });
+    } catch (error) {
+      if (error?.code !== "ACTION_REPLAY") throw error;
+      destinationClaim = this.#messageForLock(
+        journal,
+        reveal.tradeId,
+        destinationLock.id,
+        "fx_claim"
+      );
+      if (!destinationClaim) throw error;
+    }
     this.emit("trade", {
       tradeId: reveal.tradeId,
       role: "relayer",

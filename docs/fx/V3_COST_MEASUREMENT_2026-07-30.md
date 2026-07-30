@@ -86,6 +86,25 @@ npm run fx:estimate:v3:live --prefix versus
 
 The command is read-only but requires access to the two public RPC endpoints.
 
+## Desktop Quote Policy
+
+The V3 desktop dealer quotes the compact happy path rather than carrying the
+legacy V2 gas envelope forward:
+
+- Base Sepolia: 40,000 source-claim gas, 51,000 destination-fund gas, and
+  60,000 destination-claim gas
+- Arbitrum Sepolia: 85,000 source-claim gas, 61,000 destination-fund gas, and
+  85,000 destination-claim gas
+- unknown test chains: 100,000 gas per dealer or executor leg
+- current RPC `gasPrice`, with one 20% fee-rate margin
+- no additional fixed one-cent executor premium
+
+The rounded units are intentionally above the measured public-testnet values
+where direct measurements exist. The quote includes the dealer's source claim,
+dealer destination fund, and permissionless destination execution. Requester
+source-funding gas remains a separate wallet cost. A fee increase beyond the
+quoted margin fails closed before source funding and requires a fresh quote.
+
 ## Sub-Penny Result
 
 For the benchmark's approximately `$1.6167` output:

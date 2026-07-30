@@ -2387,24 +2387,25 @@ function fxRequesterErrorMessage(error, fallback) {
 
 function fxTimelineLabel(state) {
   return ({
-    requesting: "Request sent",
-    quoted: "Quote verified",
-    accepted: "Quote accepted",
+    requesting: "Finding dealers",
+    quoted: "Quote ready",
+    accepted: "Reserving dealer",
     reserved: "Dealer reserved",
-    awaiting_source_funds: "Waiting for source funds",
+    awaiting_source_funds: "Waiting for your funds",
     source_funds_detected: "Source funds detected",
-    source_lock_pending: "Source lock pending",
-    source_lock_confirmed: "Source lock confirmed",
-    destination_lock_pending: "Destination lock pending",
-    destination_lock_confirmed: "Destination lock confirmed",
-    destination_claimed: "Destination claimed",
-    source_claimed: "Source claimed",
-    funds_ready: "Destination funds verified",
-    complete: "Complete",
-    refund_wait: "Refund waiting period",
-    refunded: "Refunded",
-    cancelled: "Cancelled",
-    failed: "Stopped",
+    source_lock_pending: "Locking source funds",
+    source_lock_confirmed: "Source funds locked",
+    destination_lock_pending: "Dealer is locking destination",
+    destination_lock_confirmed: "Destination funds locked",
+    secret_revealed: "Releasing destination funds",
+    destination_claimed: "Destination funds sent",
+    source_claimed: "Paying dealer",
+    funds_ready: "Swap complete",
+    complete: "Swap complete",
+    refund_wait: "Waiting for refund unlock",
+    refunded: "Refund complete",
+    cancelled: "Swap cancelled",
+    failed: "Swap stopped",
   })[state] || state.replaceAll("_", " ");
 }
 
@@ -2619,6 +2620,22 @@ function renderFxRequester() {
       "failed",
     ].includes(fxRequesterTrade.state);
     const swapComplete = ["funds_ready", "complete"].includes(fxRequesterTrade.state);
+    const sourceChain = String(fxRequesterTrade.source?.chain || "SOURCE")
+      .replace(" SEPOLIA", "");
+    const destinationChain = String(
+      fxRequesterTrade.destination?.chain || "DEST"
+    ).replace(" SEPOLIA", "");
+    $("fx-settlement-source-asset").textContent =
+      fxRequesterTrade.source?.asset || "--";
+    $("fx-settlement-source-chain").textContent = sourceChain;
+    $("fx-settlement-destination-asset").textContent =
+      fxRequesterTrade.destination?.asset || "--";
+    $("fx-settlement-destination-chain").textContent = destinationChain;
+    $("fx-settlement-result").classList.toggle("is-complete", swapComplete);
+    $("fx-settlement-result").classList.toggle(
+      "is-failed",
+      ["failed", "cancelled"].includes(fxRequesterTrade.state)
+    );
     $("fx-settlement-kicker").textContent = swapComplete ? "SETTLED" : "SETTLEMENT";
     $("fx-settlement-state").textContent = swapComplete
       ? "SWAP COMPLETE"
@@ -2648,11 +2665,6 @@ function renderFxRequester() {
                 fxRequesterTrade.refundEligibleAt,
               )}. Refunds are not instant.`
         : "Chain confirmation decides what happens next.";
-    const timeline = $("fx-settlement-timeline");
-    timeline.replaceChildren(...(fxRequesterTrade.timeline || []).map((event) => {
-      const item = fxNode("li", "is-complete", fxTimelineLabel(event.state));
-      return item;
-    }));
     const refund = $("fx-refund-trade");
     const refundReady =
       fxRequesterTrade.state === "refund_wait" &&

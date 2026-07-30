@@ -381,6 +381,91 @@ test("out-of-order dependencies are bounded and replayed after their RFQ arrives
   assert.equal(journal.snapshot(tradeId).messages.length, 2);
 });
 
+test("desktop recovery accepts signed expired history without weakening live ingress", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-recovery-"));
+  const now = { value: 1_800_150_000 };
+  const bus = new FakeWakuBus();
+  const requester = Wallet.createRandom();
+  const journal = createJournal(directory, "receiver", now);
+  const session = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: Wallet.createRandom(),
+    role: "broker",
+    journal,
+    transport: createTransport(bus, now),
+    now: () => now.value,
+  });
+  t.after(async () => {
+    await session.close();
+    journal.close();
+  });
+  await session.start();
+
+  const expiredAt = now.value - 600;
+  const envelope = await signFxMessage({
+    protocol: "versus-fx",
+    version: 1,
+    deploymentId: DEPLOYMENT_ID,
+    type: "fx_rfq",
+    tradeId: "0x" + "32".repeat(32),
+    role: "requester",
+    sequence: "1",
+    createdAt: expiredAt - 30,
+    expiresAt: expiredAt,
+    payload: {
+      ...rfqPayload(now),
+      quoteDeadline: expiredAt - 5,
+      settlementDeadline: now.value + 3_600,
+    },
+  }, requester);
+
+  assert.deepEqual(session.ingest(envelope), {
+    status: "rejected",
+    error: "EXPIRED_MESSAGE",
+  });
+  assert.equal(
+    session.ingest(envelope, { desktopRecovery: true }).status,
+    "accepted"
+  );
+  assert.equal(journal.snapshot(envelope.tradeId).messages.length, 1);
+});
+
+test("local publish preserves the journal replay code for idempotent recovery", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-replay-"));
+  const now = { value: 1_800_175_000 };
+  const bus = new FakeWakuBus();
+  const journal = createJournal(directory, "requester", now);
+  const session = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: Wallet.createRandom(),
+    role: "requester",
+    journal,
+    transport: createTransport(bus, now),
+    now: () => now.value,
+  });
+  t.after(async () => {
+    await session.close();
+    journal.close();
+  });
+  await session.start();
+  const tradeId = "0x" + "33".repeat(32);
+  const message = {
+    protocol: "versus-fx",
+    version: 1,
+    type: "fx_rfq",
+    tradeId,
+    createdAt: now.value,
+    expiresAt: now.value + 60,
+    payload: rfqPayload(now),
+  };
+
+  await session.publish(message);
+  await assert.rejects(
+    session.publish({ ...message, createdAt: now.value + 1 }),
+    (error) => error.code === "ACTION_REPLAY"
+  );
+});
+
 test("duplicate delivery is idempotent and RFQ floods are rejected before journaling", async (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-phase6-flood-"));
   const now = { value: 1_800_200_000 };

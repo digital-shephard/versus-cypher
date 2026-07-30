@@ -91,6 +91,24 @@ test("FX desktop state persists the requester reservation handoff", () => {
   }
 });
 
+test("FX desktop state persists the V3 secret-revealed settlement step", () => {
+  const temporary = temporaryStore();
+  try {
+    const tradeId = `0x${"34".repeat(32)}`;
+    const store = new FxDesktopStore({ filePath: temporary.filePath });
+    store.putTrade({
+      tradeId,
+      role: "requester",
+      state: "secret_revealed",
+    });
+
+    const restored = new FxDesktopStore({ filePath: temporary.filePath });
+    assert.equal(restored.trade(tradeId).state, "secret_revealed");
+  } finally {
+    temporary.cleanup();
+  }
+});
+
 test("FX desktop inventory cannot disable a funded or reserved position", () => {
   const temporary = temporaryStore();
   try {

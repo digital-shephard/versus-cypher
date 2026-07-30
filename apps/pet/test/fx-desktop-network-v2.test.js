@@ -604,7 +604,7 @@ async function prepareHarnessSwap(harness, runtime) {
   const reserve = await runtime.reserveRequester({
     acceptance: prepared.acceptance,
   });
-  return { sdk, prepared, reserve };
+  return { sdk, quote, prepared, reserve };
 }
 
 function v2Harness(t, {
@@ -1182,6 +1182,44 @@ test("V3 pays an arbitrary recipient and executor before the dealer claims sourc
     { label: "dealer source settlement completion" }
   );
   assert.equal(runtime.exposureJournal.activeTrades().length, 0);
+});
+
+test("V3 quotes compact measured gas without a fixed executor premium", async (t) => {
+  const harness = v2Harness(t, {
+    tradeId: `0x${"55".repeat(32)}`,
+    protocolVersion: 3,
+  });
+  const runtime = harness.createRuntime();
+  t.after(async () => {
+    await runtime.close().catch(() => {});
+  });
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: harness.positions,
+  });
+
+  const { quote } = await prepareHarnessSwap(harness, runtime);
+  const selected = quote.proposal.quotes.find(
+    (candidate) => candidate.id === quote.proposal.route.quoteId
+  );
+
+  assert.equal(selected.payload.destinationClaimGasEstimate, "85000");
+  assert.equal(selected.payload.destinationMaxFeePerGas, "1200000");
+  assert.equal(
+    selected.payload.destinationExecutorAmountAtomic,
+    "102000000000",
+    "the executor receives measured gas plus the shared margin, not a fixed cent"
+  );
+  assert.equal(selected.payload.dealerPrincipalAtomic, "1000000000000000");
+  assert.equal(selected.payload.dealerSpreadAtomic, "2500000000000");
+  assert.equal(
+    selected.payload.dealerOperatingCostAtomic,
+    "223333333334"
+  );
+  assert.equal(
+    selected.payload.inputAmountAtomic,
+    "1002723333333334"
+  );
 });
 
 test("V3 dealer resumes a source claim after crashing behind destination execution", async (t) => {

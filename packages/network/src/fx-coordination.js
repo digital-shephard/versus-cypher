@@ -134,8 +134,11 @@ class FxCoordinationSession extends EventEmitter {
     }
   }
 
-  admission(envelope, { history = false } = {}) {
-    const verified = verifyFxEnvelope(envelope, { now: this.now() });
+  admission(envelope, { history = false, desktopRecovery = false } = {}) {
+    const verified = verifyFxEnvelope(envelope, {
+      now: this.now(),
+      temporal: desktopRecovery !== true,
+    });
     if (verified.deploymentId !== this.deploymentId) {
       const error = new Error("FX envelope belongs to another deployment");
       error.code = "DEPLOYMENT_MISMATCH";
@@ -189,7 +192,7 @@ class FxCoordinationSession extends EventEmitter {
       if (admitted.duplicate) return { status: "duplicate" };
       const result = this.journal.apply(admitted.envelope, {
         now: this.now(),
-        temporal: true,
+        temporal: metadata.desktopRecovery !== true,
       });
       this.remember(admitted.envelope.id);
       if (
@@ -228,7 +231,7 @@ class FxCoordinationSession extends EventEmitter {
         try {
           const result = this.journal.apply(entry.envelope, {
             now: this.now(),
-            temporal: true,
+            temporal: entry.metadata.desktopRecovery !== true,
           });
           this.pending.delete(id);
           this.remember(id);
@@ -271,7 +274,11 @@ class FxCoordinationSession extends EventEmitter {
     }, this.signer);
     const local = this.ingest(envelope, { local: true });
     if (local.status === "rejected" || local.status === "pending") {
-      throw new Error(`local FX message was not accepted: ${local.error || local.status}`);
+      const error = new Error(
+        `local FX message was not accepted: ${local.error || local.status}`
+      );
+      error.code = local.error || local.status;
+      throw error;
     }
     await this.transport.publish(envelope);
     return envelope;
