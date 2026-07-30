@@ -157,6 +157,8 @@ let updateService = null;
 let pendingRestoreRecovery = null;
 let hatchQuoteCache = null;
 let hatchQuoteInFlight = null;
+let fxReferenceQuoteService = null;
+let fxReferenceQuoteCache = null;
 let foregroundRefreshInFlight = null;
 let publicClassRefreshInFlight = null;
 let networkClockOffsetMs = 0;
@@ -169,7 +171,7 @@ const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
 const fxWalletProvider = fxRoleWalletProvider(ensureWallet);
 const fxNativeUsdPriceProvider = async () => {
-  const quote = await getCachedHatchQuote();
+  const quote = await getFxReferenceHatchQuote();
   const quoteValidUntil = Number(quote?.validUntil || 0);
   const nowSeconds = Math.floor(networkNowMs() / 1000);
   if (
@@ -303,6 +305,50 @@ async function getCachedHatchQuote() {
       });
   }
   return hatchQuoteInFlight;
+}
+
+async function getFxReferenceHatchQuote() {
+  try {
+    const quote = await getCachedHatchQuote();
+    if (quote) return quote;
+  } catch (error) {
+    if (
+      app.isPackaged ||
+      process.env.VERSUS_FX_DEVELOPMENT !== "1"
+    ) {
+      throw error;
+    }
+  }
+  if (
+    app.isPackaged ||
+    process.env.VERSUS_FX_DEVELOPMENT !== "1"
+  ) {
+    return null;
+  }
+  const now = Date.now();
+  if (
+    fxReferenceQuoteCache &&
+    now - fxReferenceQuoteCache.at < HATCH_QUOTE_MAX_AGE_MS
+  ) {
+    return fxReferenceQuoteCache.quote;
+  }
+  if (!fxReferenceQuoteService) {
+    const deploymentPath = path.resolve(
+      __dirname,
+      "../../../versus/deployments/base.json"
+    );
+    if (!fs.existsSync(deploymentPath)) return null;
+    fxReferenceQuoteService = createChainRainService(
+      loadChainConfig({
+        ...process.env,
+        VERSUS_DEPLOYMENT: deploymentPath,
+      })
+    );
+  }
+  const quote = await fxReferenceQuoteService.quoteHatchTarget();
+  updateNetworkClockOffset(quote.clockOffsetMs);
+  fxReferenceQuoteCache = { quote, at: Date.now() };
+  return quote;
 }
 
 function publishHealth(snapshot = healthMonitor.snapshot()) {
