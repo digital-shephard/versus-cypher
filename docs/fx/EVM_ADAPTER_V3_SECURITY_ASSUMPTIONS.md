@@ -29,8 +29,12 @@ The candidate families are:
 5. The requester independently verifies every destination term and its
    confirmations. Only then may it disclose the secret to the executor
    network.
-6. Any executor may reveal the secret onchain. The contract atomically pays
-   the fixed recipient and the fixed bounty to the successful submitter.
+6. The quote-signing dealer is the preferred executor and submits the
+   destination claim immediately. Other nodes wait a deterministic grace
+   period, recheck signed coordination evidence and onchain state, and submit
+   only when the preferred claim is still absent. The contract remains
+   permissionless and atomically pays the fixed recipient and the fixed bounty
+   to the successful submitter.
 7. The dealer observes the revealed secret and claims the source lock.
 
 The dealer cannot claim source before the requester reveals the secret. The
@@ -123,9 +127,10 @@ reviewed. One ERC-20 deployment is bound to one token and its expected
 decimals.
 
 The executor chooses only whether to submit. It cannot change the recipient,
-recipient amount, refund destination, timeout, or bounty. A zero-bounty source
-lock remains permissionlessly claimable but normally is claimed by its dealer
-beneficiary.
+recipient amount, refund destination, timeout, or bounty. Offchain coordination
+gives the authenticated quote-signing dealer first execution, but does not add
+contract authority or exclusivity. A zero-bounty source lock remains
+permissionlessly claimable but normally is claimed by its dealer beneficiary.
 
 ## Trusted
 

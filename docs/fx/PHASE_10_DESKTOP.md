@@ -22,8 +22,9 @@ disabled by default.
    first. The dealer independently verifies that lock before funding the
    destination.
 9. After independently verifying the destination lock, the requester reveals
-   its persisted secret. A permissionless executor completes the destination
-   payout, then the dealer uses the same onchain secret to claim the source.
+   its persisted secret. The signed dealer gets the first execution window,
+   while permissionless fallback executors stand by. The destination payout
+   completes, then the dealer uses the same onchain secret to claim the source.
 
 The destination may be any valid address selected by the requester. It is
 signed into the acceptance and bound into the destination HTLC. The external
@@ -36,11 +37,15 @@ only the missing top-up instead of leaving the trade stuck in a pending state.
 The destination recipient never submits a transaction and does not need the
 destination chain's native gas token. The requester owns the settlement
 secret and persists it encrypted before source funding. The requester reveals
-it only after independently confirming the exact destination lock. Any
-executor can then claim that lock; the contract atomically pays the fixed
-recipient amount and the separately quoted bounty to the successful
-transaction sender. The dealer reads the disclosed secret and claims source.
-Neither payout can be redirected by Waku, a broker, or the executor.
+it only after independently confirming the exact destination lock. The
+quote-signing dealer submits the destination claim immediately. Other nodes
+wait a deterministic 15-30 second grace period, then recheck both Waku and the
+destination contract before acting. The contract remains permissionless: if
+the dealer is offline, a fallback executor can claim the lock and restore
+liveness. The contract atomically pays the fixed recipient amount and the
+separately quoted bounty to the successful transaction sender. The dealer
+reads the disclosed secret and claims source. Neither payout can be redirected
+by Waku, a broker, or the executor.
 
 The requester route picker is built from the frozen adapter catalog, not from
 the local dealer's enabled inventory bays. A device can therefore request any
@@ -138,16 +143,20 @@ V3 settlement is requester-secret and source-first:
    lock digest, terms, runtime, and confirmations before funding destination.
 5. The requester independently verifies the exact destination funding
    transaction, recipient, output, bounty, hash, and shorter timeout.
-6. The requester reveals the secret. A permissionless executor atomically
-   pays the fixed recipient and receives the fixed bounty.
+6. The requester reveals the secret. The signed dealer claims destination
+   immediately. Permissionless executors use a deterministic fallback delay,
+   recheck settlement state, and intervene only if the preferred claim is
+   still absent. The successful caller atomically pays the fixed recipient and
+   receives the fixed bounty.
 7. The dealer extracts the same secret from the destination claim and claims
    source. Restart recovery and refunds remain bound to the exact original
    funding transaction and lock digest.
 
 In the current desktop cohort, the dealer app also runs the permissionless
-destination execution service. Its dealer wallet submits that claim and earns
-the fixed executor bounty. The recipient does not run the app, sign a
-transaction, or hold destination-chain gas.
+destination execution service. Its standing dealer gas wallet is the preferred
+executor, submits immediately, and normally earns the fixed executor bounty.
+Other online desktops remain delayed fallbacks. The recipient does not run the
+app, sign a transaction, or hold destination-chain gas.
 
 The current public-testnet V3 deployment is frozen by deployment ID
 `0x1edf9c4dca5cbcb8b1875f4ce950844237258367d51e5d02dc3de577b3088494`

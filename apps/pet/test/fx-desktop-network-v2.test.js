@@ -19,6 +19,7 @@ const {
 } = require("@versus/network");
 const {
   FxDesktopNetworkRuntime,
+  v3ExecutorDelayMs,
 } = require("../src/fx-desktop-network");
 
 const DEPLOYMENT_ID =
@@ -575,6 +576,35 @@ function actionCount(evm, action, side) {
     (entry) => entry.action === action && entry.side === side
   ).length;
 }
+
+test("V3 gives the signed dealer first execution and staggers fallback nodes", () => {
+  const tradeId = `0x${"77".repeat(32)}`;
+  const preferredExecutor = Wallet.createRandom().address;
+  const fallbackExecutor = Wallet.createRandom().address;
+
+  assert.equal(
+    v3ExecutorDelayMs({
+      tradeId,
+      preferredExecutor,
+      localExecutor: preferredExecutor.toUpperCase(),
+    }),
+    0
+  );
+
+  const firstDelay = v3ExecutorDelayMs({
+    tradeId,
+    preferredExecutor,
+    localExecutor: fallbackExecutor,
+  });
+  const repeatedDelay = v3ExecutorDelayMs({
+    tradeId,
+    preferredExecutor,
+    localExecutor: fallbackExecutor,
+  });
+  assert.equal(firstDelay, repeatedDelay);
+  assert.ok(firstDelay >= 15_000);
+  assert.ok(firstDelay <= 30_000);
+});
 
 async function prepareHarnessSwap(harness, runtime) {
   const sdk = harness.createSdk(runtime);

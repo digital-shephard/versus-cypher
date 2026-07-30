@@ -31,6 +31,8 @@ const FX_V2_MINIMUM_TIMEOUT_DELTA_SECONDS = 3_600;
 const FX_RECOVERY_POLL_MS = 15_000;
 const FX_BPS_SCALE = 10_000n;
 const FX_V3_GAS_PRICE_BUFFER_BPS = 12_000n;
+const FX_V3_EXECUTOR_FALLBACK_BASE_MS = 15_000;
+const FX_V3_EXECUTOR_FALLBACK_JITTER_MS = 15_000;
 // Rounded from the public compact-V3 measurements in docs/fx/V3_COST_MEASUREMENT_2026-07-30.md.
 const FX_V3_GAS_UNITS = Object.freeze({
   "84532": Object.freeze({
@@ -96,6 +98,27 @@ function v3BufferedGasPrice(feeData) {
     currentGasPrice * FX_V3_GAS_PRICE_BUFFER_BPS,
     FX_BPS_SCALE
   );
+}
+
+function v3ExecutorDelayMs({
+  tradeId,
+  preferredExecutor,
+  localExecutor,
+  baseDelayMs = FX_V3_EXECUTOR_FALLBACK_BASE_MS,
+  jitterMs = FX_V3_EXECUTOR_FALLBACK_JITTER_MS,
+}) {
+  const preferred = String(preferredExecutor || "").toLowerCase();
+  const local = String(localExecutor || "").toLowerCase();
+  if (preferred && preferred === local) return 0;
+
+  const base = Math.max(0, Number(baseDelayMs) || 0);
+  const jitterRange = Math.max(0, Number(jitterMs) || 0);
+  if (jitterRange === 0) return base;
+  const digest = crypto
+    .createHash("sha256")
+    .update(`${String(tradeId || "").toLowerCase()}:${local}`)
+    .digest();
+  return base + (digest.readUInt32BE(0) % (jitterRange + 1));
 }
 
 function deadlineTimer(milliseconds, message, code) {
@@ -167,6 +190,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     sessionFactory,
     nativeUsdPriceProvider,
     protocolVersion = 1,
+    executorFallbackBaseMs = FX_V3_EXECUTOR_FALLBACK_BASE_MS,
+    executorFallbackJitterMs = FX_V3_EXECUTOR_FALLBACK_JITTER_MS,
+    wait = (milliseconds) =>
+      new Promise((resolve) => setTimeout(resolve, milliseconds)),
   } = {}) {
     super();
     if (!dataDirectory || typeof walletProvider !== "function" || !evm) {
@@ -185,8 +212,20 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.sessionFactory = sessionFactory;
     this.nativeUsdPriceProvider = nativeUsdPriceProvider;
     this.protocolVersion = Number(protocolVersion);
+    this.executorFallbackBaseMs = Math.max(
+      0,
+      Number(executorFallbackBaseMs) || 0
+    );
+    this.executorFallbackJitterMs = Math.max(
+      0,
+      Number(executorFallbackJitterMs) || 0
+    );
+    this.wait = wait;
     if (![1, 2, 3].includes(this.protocolVersion)) {
       throw new TypeError("FX desktop protocol version is unsupported");
+    }
+    if (typeof this.wait !== "function") {
+      throw new TypeError("FX desktop executor wait must be a function");
     }
     this.nativePrice = null;
     this.broker = null;
@@ -3517,6 +3556,29 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       "fx_claim"
     );
     if (existingClaim) return existingClaim;
+    const executorDelayMs = v3ExecutorDelayMs({
+      tradeId: reveal.tradeId,
+      preferredExecutor: quote.sender,
+      localExecutor: this.dealerAddress(),
+      baseDelayMs: this.executorFallbackBaseMs,
+      jitterMs: this.executorFallbackJitterMs,
+    });
+    if (executorDelayMs > 0) {
+      this.emit("trade", {
+        tradeId: reveal.tradeId,
+        role: "relayer",
+        state: "executor_fallback_wait",
+        delayMs: executorDelayMs,
+      });
+      await this.wait(executorDelayMs);
+      const preferredClaim = this.#messageForLock(
+        journal,
+        reveal.tradeId,
+        destinationLock.id,
+        "fx_claim"
+      );
+      if (preferredClaim) return preferredClaim;
+    }
     const destinationObservation = await this.evm.verifyLockEnvelope({
       chainId: destinationLock.payload.chainId,
       lockId: phase5LockId(reveal.tradeId, "destination"),
@@ -4004,4 +4066,5 @@ module.exports = {
   FxDesktopNetworkRuntime,
   dollarsToMicros,
   mergedPolicy,
+  v3ExecutorDelayMs,
 };
