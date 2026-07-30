@@ -173,6 +173,28 @@ beneficiary, transaction, and confirmations. It then stops. The requester's
 own x402 client may spend those funds later, producing separate payment and
 resource-delivery evidence.
 
+A later public-testnet composition exposes the complete requester-secret V3
+swap through the existing broker HTTP service. It uses x402's `402`,
+`PAYMENT-REQUIRED`, `PAYMENT-SIGNATURE`, and `PAYMENT-RESPONSE` mechanics with
+the custom `versus-atomic-fx-v3` scheme. One requester SDK call performs
+separate acceptance and source-funding challenges because a safe source HTLC
+cannot be constructed until the selected dealer signs its reservation and
+source beneficiary. The signed RFQ commits to the destination, source refund,
+secret hash, and exact asset pair. The endpoint accepts only a raw source
+transaction whose signer, chain, adapter, calldata, and value exactly match
+the frozen V3 funding template, and broadcasts the same transaction at most
+once.
+
+The requester then announces the confirmed source lock, polls public trade
+status, and reveals its locally encrypted secret only after a matching
+destination lock arrives. The endpoint relays that signed reveal and waits for
+completion. It never receives a signing key and cannot redirect either HTLC.
+Its private swap journal excludes raw transactions and plaintext secrets;
+the secret becomes visible to its normal Waku coordination journal only at
+the same moment it is intentionally published to the network. This endpoint
+is disabled by default, restricted to the frozen Base Sepolia and Arbitrum
+Sepolia V3 manifest, and does not authorize mainnet.
+
 Phase 10 places that requester and dealer machinery behind the desktop's
 physical FX surface. The requester chooses an exact-output pair and amount,
 enters any valid destination address, compares locally verified quote data,

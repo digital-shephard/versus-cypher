@@ -1,5 +1,10 @@
 # Phase 9 Requester Funding SDK
 
+> The original Phase 9 SDK intentionally stops after preparing requester
+> funds. The later public-testnet x402 composition that performs the complete
+> V3 atomic swap is documented in
+> [`X402_SWAP_ENDPOINT.md`](./X402_SWAP_ENDPOINT.md).
+
 Phase 9 lets an ordinary wallet request exact-output Agentic FX funding without
 hatching a Cypher. It does not let Versus spend the resulting funds.
 

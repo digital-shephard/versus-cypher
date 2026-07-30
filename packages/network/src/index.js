@@ -17,6 +17,7 @@ module.exports = {
   ...require("./fx-journal"),
   ...require("./fx-network-clock"),
   ...require("./fx-waku-transport"),
+  ...require("./fx-x402-swap"),
   ...require("./fx-phase5-coordinator"),
   ...require("./fx-phase5-journal"),
   ...require("./fx-phase5-route"),

@@ -567,10 +567,13 @@ function json(response, status, body, headers = {}) {
 function createFxBrokerHttpService({
   broker,
   x402DataGate = null,
+  x402SwapHandler = null,
   host = "127.0.0.1",
   port = 0,
   maxRequestsPerMinutePerIp = 12,
   maxConcurrentRouteRequests = 32,
+  maxX402RequestsPerMinutePerIp = 120,
+  maxConcurrentX402Requests = 32,
 }) {
   if (!broker || typeof broker.requestRoute !== "function") {
     throw new TypeError("HTTP broker service requires a broker");
@@ -579,30 +582,43 @@ function createFxBrokerHttpService({
     !Number.isSafeInteger(maxRequestsPerMinutePerIp) ||
     maxRequestsPerMinutePerIp < 1 ||
     !Number.isSafeInteger(maxConcurrentRouteRequests) ||
-    maxConcurrentRouteRequests < 1
+    maxConcurrentRouteRequests < 1 ||
+    !Number.isSafeInteger(maxX402RequestsPerMinutePerIp) ||
+    maxX402RequestsPerMinutePerIp < 1 ||
+    !Number.isSafeInteger(maxConcurrentX402Requests) ||
+    maxConcurrentX402Requests < 1
   ) {
     throw new TypeError("HTTP broker limits must be positive integers");
   }
   const requestWindows = new Map();
+  const x402RequestWindows = new Map();
   let activeRouteRequests = 0;
-  function admitRouteRequest(request) {
+  let activeX402Requests = 0;
+  function admitRequest(request, windows, maximum) {
     const now = Date.now();
     const key = String(request.socket.remoteAddress || "unknown");
-    let window = requestWindows.get(key);
+    let window = windows.get(key);
     if (!window || now - window.startedAt >= 60_000) {
       window = { startedAt: now, count: 0 };
-      requestWindows.set(key, window);
+      windows.set(key, window);
     }
     window.count += 1;
-    if (requestWindows.size > 1024) {
-      for (const [candidate, entry] of requestWindows) {
-        if (now - entry.startedAt >= 60_000) requestWindows.delete(candidate);
+    if (windows.size > 1024) {
+      for (const [candidate, entry] of windows) {
+        if (now - entry.startedAt >= 60_000) windows.delete(candidate);
       }
-      while (requestWindows.size > 1024) {
-        requestWindows.delete(requestWindows.keys().next().value);
+      while (windows.size > 1024) {
+        windows.delete(windows.keys().next().value);
       }
     }
-    return window.count <= maxRequestsPerMinutePerIp;
+    return window.count <= maximum;
+  }
+  function admitRouteRequest(request) {
+    return admitRequest(
+      request,
+      requestWindows,
+      maxRequestsPerMinutePerIp
+    );
   }
 
   const server = http.createServer(async (request, response) => {
@@ -615,6 +631,39 @@ function createFxBrokerHttpService({
           "access-control-allow-headers": `content-type,${PAYMENT_SIGNATURE}`,
         }).end();
         return;
+      }
+      if (
+        x402SwapHandler &&
+        (
+          url.pathname === "/v1/fx/swaps" ||
+          /^\/v1\/fx\/swaps\/0x[0-9a-fA-F]{64}(?:\/(?:source-lock|reveal))?$/.test(
+            url.pathname
+          )
+        )
+      ) {
+        if (!admitRequest(
+          request,
+          x402RequestWindows,
+          maxX402RequestsPerMinutePerIp
+        )) {
+          json(response, 429, { error: "rate_limited" }, {
+            "retry-after": "60",
+          });
+          return;
+        }
+        if (activeX402Requests >= maxConcurrentX402Requests) {
+          json(response, 503, { error: "broker_overloaded" }, {
+            "retry-after": "5",
+          });
+          return;
+        }
+        activeX402Requests += 1;
+        try {
+          const handled = await x402SwapHandler(request, response);
+          if (handled) return;
+        } finally {
+          activeX402Requests -= 1;
+        }
       }
       if (request.method === "GET" && url.pathname === "/health") {
         json(response, broker.status().active ? 200 : 503, {

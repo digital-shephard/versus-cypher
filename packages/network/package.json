@@ -9,6 +9,11 @@
       "types": "./types/fx-requester-sdk.d.ts",
       "require": "./src/fx-requester-sdk.js",
       "default": "./src/fx-requester-sdk.js"
+    },
+    "./fx-x402": {
+      "types": "./types/fx-x402-swap.d.ts",
+      "require": "./src/fx-x402-swap.js",
+      "default": "./src/fx-x402-swap.js"
     }
   },
   "license": "MIT",
@@ -29,6 +34,8 @@
     "fx:phase7:compare": "node scripts/fx-phase7-compare.js",
     "fx:phase8:public-proof": "node scripts/fx-phase8-public-broker-proof.js",
     "fx:phase9:handoff": "node scripts/fx-phase9-requester-handoff.js",
+    "fx:x402:broker": "node scripts/fx-phase7-broker.js",
+    "fx:x402:request": "node scripts/fx-x402-requester.js",
     "demo": "node scripts/demo.js",
     "waku:smoke": "node scripts/waku-smoke.js",
     "test": "node --test test/*.test.js"

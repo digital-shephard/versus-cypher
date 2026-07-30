@@ -1,12 +1,15 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { Wallet } = require("ethers");
+const { JsonRpcProvider, Wallet } = require("ethers");
 const {
   FxCoordinationSession,
   FxPublicBroker,
   FxTradeJournal,
   FxWakuTransport,
+  FxX402SwapCoordinator,
+  FxX402SwapStore,
   createFxBrokerHttpService,
+  createFxX402SwapHttpHandler,
 } = require("../src");
 
 const DEFAULT_BOOTSTRAPS = [
@@ -91,8 +94,61 @@ async function main() {
     observationWindowMs: integer("FX_PHASE7_OBSERVATION_WINDOW_MS", 15_000),
   });
   await broker.start();
+  let x402Coordinator = null;
+  let x402SwapHandler = null;
+  if (process.env.FX_X402_SWAP_ENABLED === "1") {
+    const manifestPath = path.resolve(
+      process.env.FX_X402_V3_MANIFEST ||
+        path.join(
+          __dirname,
+          "../../../versus/deployments/fx/phase12-v3-public-testnet.json"
+        )
+    );
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    if (manifest.deploymentId !== deploymentId) {
+      throw new Error("FX x402 manifest and coordination deployment differ");
+    }
+    const chainIds = manifest.capabilities
+      .map((item) => String(item.chainId))
+      .sort();
+    if (chainIds.join(",") !== "421614,84532") {
+      throw new Error("FX x402 runtime is restricted to the public testnets");
+    }
+    x402Coordinator = new FxX402SwapCoordinator({
+      broker,
+      session,
+      manifest,
+      providers: {
+        "84532": new JsonRpcProvider(
+          required("FX_X402_BASE_SEPOLIA_RPC_URL"),
+          84532,
+          { staticNetwork: true }
+        ),
+        "421614": new JsonRpcProvider(
+          required("FX_X402_ARBITRUM_SEPOLIA_RPC_URL"),
+          421614,
+          { staticNetwork: true }
+        ),
+      },
+      store: new FxX402SwapStore({
+        directory: path.join(dataDirectory, "x402-swaps"),
+      }),
+      sourceRefundSeconds: integer(
+        "FX_X402_SOURCE_REFUND_SECONDS",
+        7_200
+      ),
+      reservationTimeoutMs: integer(
+        "FX_X402_RESERVATION_TIMEOUT_MS",
+        30_000
+      ),
+    });
+    x402SwapHandler = createFxX402SwapHttpHandler({
+      coordinator: x402Coordinator,
+    });
+  }
   const service = createFxBrokerHttpService({
     broker,
+    x402SwapHandler,
     host: process.env.FX_PHASE7_BROKER_HOST || "127.0.0.1",
     port: integer("FX_PHASE7_BROKER_PORT", 8787),
   });
@@ -102,6 +158,11 @@ async function main() {
     url,
     broker: signer.address.toLowerCase(),
     feeAtomic: process.env.FX_PHASE7_BROKER_FEE_ATOMIC || "0",
+    x402SwapEndpoint: x402SwapHandler
+      ? `${url}/v1/fx/swaps`
+      : null,
+    x402Scheme: x402SwapHandler ? "versus-atomic-fx-v3" : null,
+    testnetOnly: x402SwapHandler ? true : null,
     custody: false,
     settlementKeys: false,
   })}\n`);
@@ -111,6 +172,7 @@ async function main() {
     if (stopping) return;
     stopping = true;
     await service.close().catch(() => {});
+    x402Coordinator?.close();
     await broker.close().catch(() => {});
     journal.close();
   };
