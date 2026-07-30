@@ -114,6 +114,65 @@ test("desktop self-routing waits for one internal broker startup", async (t) => 
   assert.equal(left.status().active, true);
 });
 
+test("an RFQ received by one desktop role reaches a co-located dealer", async (t) => {
+  const deliveries = [];
+  const { runtime } = fixture({}, {
+    sessionFactory({ role, signer }) {
+      const session = new EventEmitter();
+      session.role = role;
+      session.signer = signer;
+      session.address = signer.address;
+      session.started = false;
+      session.start = async () => {
+        session.started = true;
+      };
+      session.close = async () => {
+        session.started = false;
+      };
+      session.status = () => ({
+        active: session.started,
+        transport: { state: "ready" },
+      });
+      session.ingest = (envelope, metadata) => {
+        deliveries.push({ role, envelope, metadata });
+        session.emit("accepted", envelope, metadata);
+        return { status: "accepted" };
+      };
+      session.transport = {
+        status: () => ({ state: "ready" }),
+      };
+      return {
+        session,
+        journal: { close() {} },
+      };
+    },
+  });
+  t.after(() => runtime.close());
+
+  const broker = runtime.createSession("broker", "broker.sqlite").session;
+  const dealer = runtime.createSession("dealer", "dealer.sqlite").session;
+  await Promise.all([broker.start(), dealer.start()]);
+  const rfq = {
+    type: "fx_rfq",
+    tradeId: `0x${"ab".repeat(32)}`,
+  };
+
+  broker.emit("accepted", rfq, {
+    topic: "/versus-fx/1/rfq-test/json",
+    history: false,
+  });
+
+  assert.deepEqual(deliveries, [{
+    role: "dealer",
+    envelope: rfq,
+    metadata: {
+      localFanout: true,
+      sourceRole: "broker",
+      history: false,
+    },
+  }]);
+});
+
 test("a new deployment preserves mismatched journals before starting fresh", (t) => {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), "versus-fx-deployment-migration-")

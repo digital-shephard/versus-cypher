@@ -160,6 +160,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.lastDealerReconcileAt = 0;
     this.recoveryTimer = null;
     this.recoveryInFlight = null;
+    this.localSessions = new Set();
+    this.localSessionListeners = new Map();
     this.dealerSecretDirectory = path.join(
       this.dataDirectory,
       "dealer-secrets-v2"
@@ -222,9 +224,55 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return result;
   }
 
+  #registerLocalSession(session) {
+    if (
+      !session ||
+      typeof session.on !== "function" ||
+      this.localSessions.has(session)
+    ) {
+      return session;
+    }
+    const accepted = (envelope, metadata = {}) => {
+      if (metadata.localFanout === true) return;
+      for (const target of this.localSessions) {
+        if (
+          target === session ||
+          target.started !== true ||
+          typeof target.ingest !== "function"
+        ) {
+          continue;
+        }
+        target.ingest(envelope, {
+          localFanout: true,
+          sourceRole: session.role,
+          history: metadata.history === true,
+        });
+      }
+    };
+    session.on("accepted", accepted);
+    this.localSessions.add(session);
+    this.localSessionListeners.set(session, accepted);
+    return session;
+  }
+
+  #unregisterLocalSession(session) {
+    const listener = this.localSessionListeners.get(session);
+    if (listener && typeof session?.off === "function") {
+      session.off("accepted", listener);
+    }
+    this.localSessionListeners.delete(session);
+    this.localSessions.delete(session);
+  }
+
   createSession(role, fileName) {
     if (typeof this.sessionFactory === "function") {
-      return this.sessionFactory({ role, fileName, signer: this.signer(role) });
+      const created = this.sessionFactory({
+        role,
+        fileName,
+        signer: this.signer(role),
+      });
+      this.#registerLocalSession(created.session);
+      return created;
     }
     const filePath = path.join(this.dataDirectory, fileName);
     const journal = openDeploymentJournal({
@@ -259,6 +307,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       maxActiveRfqs: 32,
       now: this.now,
     });
+    this.#registerLocalSession(session);
     return { session, journal };
   }
 
@@ -270,6 +319,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       const staleJournal = this.brokerJournal;
       this.broker = null;
       this.brokerJournal = null;
+      this.#unregisterLocalSession(staleBroker?.session);
       await staleBroker?.close?.().catch(() => {});
       staleJournal?.close?.();
 
@@ -438,6 +488,16 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   async reconcileAutomaticRecoveries() {
     if (this.recoveryInFlight) return this.recoveryInFlight;
     this.recoveryInFlight = (async () => {
+      if (this.dealer) {
+        try {
+          await this.dealer.resume();
+        } catch (error) {
+          this.emit("error", new FxDesktopNetworkError(
+            `dealer coordination transport is unavailable: ${error.message}`,
+            "DEALER_TRANSPORT_UNAVAILABLE"
+          ));
+        }
+      }
       await this.#reconcileRequesterRefunds();
       if (this.exposureJournal && this.dealerSession) {
         await this.reconcileDealerExposure({ force: true });
@@ -2100,6 +2160,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   async disarmDealer() {
     const dealer = this.dealer;
     this.dealer = null;
+    this.#unregisterLocalSession(this.dealerSession);
     if (dealer) await dealer.close();
     this.dealerJournal?.close?.();
     this.exposureJournal?.close?.();
@@ -3790,6 +3851,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   status() {
+    const dealerTransport =
+      this.dealerSession?.status?.().transport || null;
     return {
       deploymentId: this.deploymentId,
       broker: this.broker?.status?.() || {
@@ -3802,6 +3865,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         configured: true,
         active: Boolean(this.dealer),
         ...(this.dealer?.status?.() || {}),
+        transport: dealerTransport,
         exposure: this.exposureJournal?.exposureSummary?.() || {
           count: 0,
           exposureValueMicros: "0",
@@ -3822,6 +3886,9 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       this.relayerSession?.close?.(),
       this.dealer?.close?.(),
     ]);
+    for (const session of [...this.localSessions]) {
+      this.#unregisterLocalSession(session);
+    }
     this.brokerJournal?.close?.();
     this.requesterJournal?.close?.();
     this.relayerJournal?.close?.();
