@@ -233,7 +233,10 @@ class FxDesktopService extends EventEmitter {
     if (typeof recoveryPasswordProvider !== "function") {
       throw new TypeError("FX desktop service requires a recovery password provider");
     }
-    this.store = new FxDesktopStore({ filePath: statePath });
+    this.store = new FxDesktopStore({
+      filePath: statePath,
+      deploymentId,
+    });
     this.recoveryDirectory = path.resolve(recoveryDirectory);
     this.walletProvider = walletProvider;
     this.recoveryPasswordProvider = recoveryPasswordProvider;

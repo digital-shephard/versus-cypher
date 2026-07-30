@@ -2,7 +2,8 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const FX_DESKTOP_STATE_VERSION = 2;
+const FX_DESKTOP_STATE_VERSION = 3;
+const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
 const FX_TRADE_STATES = Object.freeze([
   "draft",
   "requesting",
@@ -120,9 +121,10 @@ function clone(value) {
   return structuredClone(value);
 }
 
-function initialState() {
+function initialState(deploymentId = null) {
   return {
     version: FX_DESKTOP_STATE_VERSION,
+    deploymentId,
     enabled: false,
     policy: clone(FX_DEFAULT_POLICY),
     chains: FX_DEFAULT_CHAINS.map((chain) => ({
@@ -201,14 +203,14 @@ function atomicWrite(filePath, value) {
   fs.renameSync(temporary, filePath);
 }
 
-function normalizeLoadedState(value) {
+function normalizeLoadedState(value, deploymentId = null) {
   if (
     !value ||
-    ![1, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
+    ![1, 2, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
   ) {
-    return initialState();
+    return initialState(deploymentId);
   }
-  const defaults = initialState();
+  const defaults = initialState(deploymentId);
   const trades = Array.isArray(value.trades)
     ? value.trades.map((trade) => {
         if (
@@ -237,6 +239,7 @@ function normalizeLoadedState(value) {
   const state = {
     ...defaults,
     version: FX_DESKTOP_STATE_VERSION,
+    deploymentId,
     enabled: value.enabled === true,
     policy: { ...defaults.policy },
     chains: defaults.chains.map((fallback) => {
@@ -300,7 +303,7 @@ function normalizeLoadedState(value) {
         enabled:
           fallback.assetKind === "native"
             ? loadedChain?.enabled === true
-            : Number(value.version) === FX_DESKTOP_STATE_VERSION &&
+            : Number(value.version) >= 2 &&
               loaded?.enabled === true,
         availableAtomic: /^\d+$/.test(String(loaded?.availableAtomic || ""))
           ? String(loaded.availableAtomic)
@@ -333,21 +336,56 @@ function normalizeLoadedState(value) {
 }
 
 class FxDesktopStore {
-  constructor({ filePath, now = timestamp } = {}) {
+  constructor({ filePath, deploymentId = null, now = timestamp } = {}) {
     if (!filePath) throw new TypeError("FX desktop store requires filePath");
     this.filePath = path.resolve(filePath);
+    this.deploymentId = deploymentId == null
+      ? null
+      : String(deploymentId).toLowerCase();
+    if (this.deploymentId && !HASH_PATTERN.test(this.deploymentId)) {
+      throw new TypeError("FX desktop store deploymentId must be bytes32");
+    }
     this.now = now;
     this.state = this.#read();
   }
 
+  #archiveDeploymentState(previousDeploymentId) {
+    const archiveDirectory = path.join(
+      path.dirname(this.filePath),
+      "deployment-archive",
+      `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`
+    );
+    fs.mkdirSync(archiveDirectory, { recursive: true, mode: 0o700 });
+    fs.renameSync(this.filePath, path.join(archiveDirectory, "state.json"));
+    atomicWrite(path.join(archiveDirectory, "archive.json"), {
+      version: 1,
+      reason: "deployment_mismatch",
+      previousDeploymentId,
+      currentDeploymentId: this.deploymentId,
+      archivedAt: this.now(),
+      files: ["state.json"],
+    });
+  }
+
   #read() {
     try {
-      return normalizeLoadedState(
-        JSON.parse(fs.readFileSync(this.filePath, "utf8"))
-      );
+      const loaded = JSON.parse(fs.readFileSync(this.filePath, "utf8"));
+      const previousDeploymentId = HASH_PATTERN.test(
+        String(loaded?.deploymentId || "").toLowerCase()
+      )
+        ? String(loaded.deploymentId).toLowerCase()
+        : null;
+      if (
+        this.deploymentId &&
+        previousDeploymentId !== this.deploymentId
+      ) {
+        this.#archiveDeploymentState(previousDeploymentId);
+        return initialState(this.deploymentId);
+      }
+      return normalizeLoadedState(loaded, this.deploymentId);
     } catch (error) {
       if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
-      return initialState();
+      return initialState(this.deploymentId);
     }
   }
 

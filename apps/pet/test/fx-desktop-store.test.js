@@ -194,3 +194,54 @@ test("FX desktop trade history persists and scrubbed evidence excludes private s
     temporary.cleanup();
   }
 });
+
+test("a new deployment privately archives incompatible desktop trades", () => {
+  const temporary = temporaryStore();
+  const deploymentA = `0x${"a1".repeat(32)}`;
+  const deploymentB = `0x${"b2".repeat(32)}`;
+  const tradeId = `0x${"c3".repeat(32)}`;
+  try {
+    const original = new FxDesktopStore({
+      filePath: temporary.filePath,
+      deploymentId: deploymentA,
+    });
+    original.setEnabled(true);
+    original.setPolicy({ armed: true });
+    original.putTrade({
+      tradeId,
+      role: "requester",
+      state: "refund_wait",
+    });
+
+    const migrated = new FxDesktopStore({
+      filePath: temporary.filePath,
+      deploymentId: deploymentB,
+    });
+    const snapshot = migrated.snapshot();
+    assert.equal(snapshot.deploymentId, deploymentB);
+    assert.equal(snapshot.enabled, false);
+    assert.equal(snapshot.policy.armed, false);
+    assert.deepEqual(snapshot.trades, []);
+
+    const archiveRoot = path.join(
+      path.dirname(temporary.filePath),
+      "deployment-archive"
+    );
+    const archiveDirectory = fs.readdirSync(archiveRoot)
+      .map((name) => path.join(archiveRoot, name))
+      .find((candidate) => fs.statSync(candidate).isDirectory());
+    assert.ok(archiveDirectory);
+    const archivedState = JSON.parse(
+      fs.readFileSync(path.join(archiveDirectory, "state.json"), "utf8")
+    );
+    const archiveRecord = JSON.parse(
+      fs.readFileSync(path.join(archiveDirectory, "archive.json"), "utf8")
+    );
+    assert.equal(archivedState.deploymentId, deploymentA);
+    assert.equal(archivedState.trades[0].tradeId, tradeId);
+    assert.equal(archiveRecord.previousDeploymentId, deploymentA);
+    assert.equal(archiveRecord.currentDeploymentId, deploymentB);
+  } finally {
+    temporary.cleanup();
+  }
+});
