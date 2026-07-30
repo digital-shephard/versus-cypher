@@ -193,6 +193,7 @@ async function main() {
       "FX_X402_HTTP_MAX_CONCURRENT_REQUESTS",
       32
     ),
+    trustProxy: process.env.FX_PHASE7_HTTP_TRUST_PROXY === "1",
   });
   const url = await service.listen();
   process.stdout.write(`${JSON.stringify({

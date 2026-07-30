@@ -548,6 +548,39 @@ test("public x402 ingress enforces its independent per-IP request ceiling", asyn
   assert.equal((await second.json()).error, "rate_limited");
 });
 
+test("public x402 ingress trusts forwarded client IPs only when explicitly enabled", async (t) => {
+  const context = await fixture();
+  const service = await runningBroker(context, "0", {
+    x402SwapHandler: async (_request, response) => {
+      response.writeHead(202, { "content-type": "application/json" });
+      response.end("{}");
+      return true;
+    },
+    maxX402RequestsPerMinutePerIp: 1,
+    trustProxy: true,
+  });
+  t.after(async () => {
+    await service.httpService.close();
+    await service.broker.close();
+  });
+
+  const first = await fetch(`${service.url}/v1/fx/swaps`, {
+    method: "POST",
+    headers: { "x-forwarded-for": "198.51.100.10" },
+  });
+  assert.equal(first.status, 202);
+  const limited = await fetch(`${service.url}/v1/fx/swaps`, {
+    method: "POST",
+    headers: { "x-forwarded-for": "198.51.100.10" },
+  });
+  assert.equal(limited.status, 429);
+  const independent = await fetch(`${service.url}/v1/fx/swaps`, {
+    method: "POST",
+    headers: { "x-forwarded-for": "198.51.100.11" },
+  });
+  assert.equal(independent.status, 202);
+});
+
 test("broker ignores quotes that do not answer the active signed RFQ", async (t) => {
   const context = await fixture();
   const poison = structuredClone(context.quote);

@@ -574,6 +574,7 @@ function createFxBrokerHttpService({
   maxConcurrentRouteRequests = 32,
   maxX402RequestsPerMinutePerIp = 120,
   maxConcurrentX402Requests = 32,
+  trustProxy = false,
 }) {
   if (!broker || typeof broker.requestRoute !== "function") {
     throw new TypeError("HTTP broker service requires a broker");
@@ -594,9 +595,22 @@ function createFxBrokerHttpService({
   const x402RequestWindows = new Map();
   let activeRouteRequests = 0;
   let activeX402Requests = 0;
+  function requestSource(request) {
+    const socketAddress = String(request.socket.remoteAddress || "unknown");
+    if (!trustProxy) return socketAddress;
+    const forwarded = request.headers["x-forwarded-for"];
+    const first = String(Array.isArray(forwarded) ? forwarded[0] : forwarded || "")
+      .split(",")[0]
+      .trim();
+    return first.length > 0 &&
+      first.length <= 64 &&
+      /^[0-9a-fA-F:.]+$/.test(first)
+      ? first
+      : socketAddress;
+  }
   function admitRequest(request, windows, maximum) {
     const now = Date.now();
-    const key = String(request.socket.remoteAddress || "unknown");
+    const key = requestSource(request);
     let window = windows.get(key);
     if (!window || now - window.startedAt >= 60_000) {
       window = { startedAt: now, count: 0 };
