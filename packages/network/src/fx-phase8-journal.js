@@ -411,14 +411,15 @@ class FxPhase8ExposureJournal {
     exposureValueMicros,
     economics = {},
   }) {
+    const version = Number(rfq?.version);
     if (
-      rfq?.version !== 2 ||
-      quote?.version !== 2 ||
-      accept?.version !== 2 ||
-      reserve?.version !== 2
+      ![2, 3].includes(version) ||
+      quote?.version !== version ||
+      accept?.version !== version ||
+      reserve?.version !== version
     ) {
       throw new FxPhase8JournalError(
-        "V2 exposure requires a complete version-two package",
+        "source-first exposure requires one complete protocol package",
         "BAD_PACKAGE"
       );
     }
@@ -532,7 +533,7 @@ class FxPhase8ExposureJournal {
     }
     const destinationTimeout = Number(destinationRefundTimestamp);
     if (
-      sourceLock?.version !== 2 ||
+      ![2, 3].includes(Number(sourceLock?.version)) ||
       sourceLock?.type !== "fx_lock_source" ||
       !Number.isSafeInteger(destinationTimeout) ||
       destinationTimeout <= 0 ||
@@ -540,7 +541,7 @@ class FxPhase8ExposureJournal {
         destinationTimeout + this.policy.minimumTimeoutDeltaSeconds
     ) {
       throw new FxPhase8JournalError(
-        "source lock violates the V2 source-first timeout order",
+        "source lock violates the source-first timeout order",
         "LOCK_MISMATCH"
       );
     }
@@ -589,13 +590,13 @@ class FxPhase8ExposureJournal {
       throw new FxPhase8JournalError("trade is not admitted", "UNKNOWN_TRADE");
     }
     if (
-      destinationLock?.version !== 2 ||
+      ![2, 3].includes(Number(destinationLock?.version)) ||
       destinationLock?.type !== "fx_lock_destination" ||
       destinationLock.payload.transactionHash === ZERO_HASH ||
       destinationLock.payload.timeout !== trade.destinationRefundTimestamp
     ) {
       throw new FxPhase8JournalError(
-        "destination lock does not match the V2 reservation",
+        "destination lock does not match the source-first reservation",
         "LOCK_MISMATCH"
       );
     }

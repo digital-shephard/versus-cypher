@@ -15,6 +15,7 @@ const {
 } = require("../src");
 
 const DEPLOYMENT_ID = "0x" + "91".repeat(32);
+const COORDINATION_DOMAIN = "0x" + "92".repeat(32);
 const BASE_TOKEN = "0x" + "10".repeat(20);
 const ARB_TOKEN = "0x" + "20".repeat(20);
 const BOOTSTRAPS = ["relay-a", "relay-b"];
@@ -158,6 +159,22 @@ test("Phase 6 topics isolate discovery and deterministically shard trade coordin
   assert.equal(topics.coordination.length, 4);
   assert.equal(new Set(topics.coordination).size, 4);
   assert.ok(topics.coordination.every((topic) => !topic.includes("postcards")));
+});
+
+test("a frozen coordination domain scopes Waku topics without replacing deployment identity", () => {
+  const deploymentTopics = createFxContentTopics({
+    deploymentId: DEPLOYMENT_ID,
+    shardCount: 4,
+  });
+  const domainTopics = createFxContentTopics({
+    deploymentId: DEPLOYMENT_ID,
+    coordinationDomain: COORDINATION_DOMAIN,
+    shardCount: 4,
+  });
+
+  assert.notEqual(domainTopics.discovery, deploymentTopics.discovery);
+  assert.ok(domainTopics.discovery.includes(COORDINATION_DOMAIN.slice(2)));
+  assert.equal(domainTopics.coordination.length, 4);
 });
 
 test("real signed requester and deterministic dealer coordinate over isolated Waku", async (t) => {

@@ -189,7 +189,7 @@ const fxNativeUsdPriceProvider = async () => {
 };
 const fxEvmCohort = new FxEvmCohort({
   walletProvider: fxWalletProvider,
-  settlementVersion: 2,
+  settlementVersion: 3,
 });
 const fxNetworkRuntime = new FxDesktopNetworkRuntime({
   dataDirectory: FX_NETWORK_DIR,
@@ -200,7 +200,7 @@ const fxNetworkRuntime = new FxDesktopNetworkRuntime({
   brokerQuoteSettleWindowMs: 1_250,
   dealerObservationWindowMs: 250,
   now: () => Math.floor(networkNowMs() / 1000),
-  protocolVersion: 2,
+  protocolVersion: 3,
 });
 const fxDesktopService = new FxDesktopService({
   statePath: FX_STATE_PATH,
@@ -232,7 +232,7 @@ const fxDesktopService = new FxDesktopService({
   dealerController: fxNetworkRuntime,
   nativeUsdPriceProvider: fxNativeUsdPriceProvider,
   now: () => Math.floor(networkNowMs() / 1000),
-  protocolVersion: 2,
+  protocolVersion: 3,
 });
 
 fxDesktopService.on("changed", (snapshot) => {

@@ -17,7 +17,9 @@ const {
 } = require("@versus/network");
 
 const FX_PUBLIC_TESTNET_DEPLOYMENT_ID =
-  "0x517ee196f582bd7ee83db57bb722a0d90ef2d0abe941c4e4307dadad62ebb19e";
+  "0x1edf9c4dca5cbcb8b1875f4ce950844237258367d51e5d02dc3de577b3088494";
+const FX_PUBLIC_TESTNET_COORDINATION_DOMAIN =
+  "0x6d2d3f9784460521d35605b450e5a46fc1c068df7724265c8f12fec7f1693b2c";
 
 const FX_PUBLIC_WAKU_PEERS = Object.freeze([
   "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
@@ -104,6 +106,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     walletProvider,
     evm,
     deploymentId = FX_PUBLIC_TESTNET_DEPLOYMENT_ID,
+    coordinationDomain = FX_PUBLIC_TESTNET_COORDINATION_DOMAIN,
     bootstrapPeers = FX_PUBLIC_WAKU_PEERS,
     now = () => Math.floor(Date.now() / 1000),
     brokerObservationWindowMs = 15_000,
@@ -121,6 +124,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.walletProvider = walletProvider;
     this.evm = evm;
     this.deploymentId = deploymentId;
+    this.coordinationDomain = coordinationDomain;
     this.bootstrapPeers = [...bootstrapPeers];
     this.now = now;
     this.brokerObservationWindowMs = Number(brokerObservationWindowMs);
@@ -129,7 +133,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.sessionFactory = sessionFactory;
     this.nativeUsdPriceProvider = nativeUsdPriceProvider;
     this.protocolVersion = Number(protocolVersion);
-    if (![1, 2].includes(this.protocolVersion)) {
+    if (![1, 2, 3].includes(this.protocolVersion)) {
       throw new TypeError("FX desktop protocol version is unsupported");
     }
     this.nativePrice = null;
@@ -231,11 +235,12 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         filePath,
         deploymentId: this.deploymentId,
         now: this.now,
-        minimumTimeoutDeltaSeconds: this.protocolVersion === 2 ? 3_600 : 60,
+        minimumTimeoutDeltaSeconds: this.protocolVersion >= 2 ? 3_600 : 60,
       }),
     });
     const transport = new FxWakuTransport({
       deploymentId: this.deploymentId,
+      coordinationDomain: this.coordinationDomain,
       bootstrapPeers: this.bootstrapPeers,
       storeHistoryMs: 15 * 60 * 1000,
       storeMessageLimit: 512,
@@ -376,7 +381,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
 
       const created = this.createSession(
         "relayer",
-        "desktop-relayer-v2.sqlite"
+        "desktop-relayer.sqlite"
       );
       this.relayerSession = created.session;
       this.relayerJournal = created.journal;
@@ -389,11 +394,18 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           this.#scheduleRelayDestinationClaimV2(envelope).catch((error) => {
             this.emit("error", error);
           });
+        } else if (
+          this.protocolVersion === 3 &&
+          envelope.type === "fx_reveal"
+        ) {
+          this.#scheduleRelayDestinationClaimV3(envelope).catch((error) => {
+            this.emit("error", error);
+          });
         }
       });
       try {
         await created.session.start();
-        await this.#resumeRelayerV2();
+        await this.#resumeRelayer();
         this.emit("status", this.status());
         return this.relayerSession;
       } catch (error) {
@@ -448,7 +460,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       const lock = await this.evm.readLock(
         sourceLock.payload.chainId,
         phase5LockId(tradeId, "source"),
-        sourceLock.payload.token
+        sourceLock.payload.token,
+        sourceLock.payload.transactionHash
       );
       if (lock.state === 2) continue;
       if (lock.state === 3) {
@@ -490,6 +503,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       side: "source",
       role: "requester",
       token: sourceLock.payload.token,
+      fundingTransactionHash: sourceLock.payload.transactionHash,
     });
     const transactionHash =
       refunded.receipt?.transactionHash ||
@@ -499,6 +513,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         side: "source",
         eventName: "LockRefunded",
         token: sourceLock.payload.token,
+        fundingTransactionHash: sourceLock.payload.transactionHash,
       })).transactionHash;
     const blockNumber =
       refunded.receipt?.blockNumber ||
@@ -693,6 +708,18 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     secret,
     secretHash,
   }) {
+    if (acceptance?.version === 3) {
+      return this.#executeRequesterV3({
+        proposal,
+        acceptance,
+        reserve,
+        requester,
+        destinationAddress,
+        sourceRefundAddress,
+        secret,
+        secretHash,
+      });
+    }
     if (acceptance?.version === 2) {
       return this.#executeRequesterV2({
         proposal,
@@ -826,6 +853,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       secret,
       role: "requester",
       token: route.outputToken,
+      fundingTransactionHash: destinationMessage.payload.transactionHash,
     });
     const claimTransactionHash =
       claim.receipt?.transactionHash ||
@@ -1118,7 +1146,277 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     };
   }
 
-  async reconcileRequester({ prepared }) {
+  async #executeRequesterV3({
+    proposal,
+    acceptance,
+    reserve,
+    requester,
+    destinationAddress,
+    sourceRefundAddress,
+    secret,
+    secretHash,
+  }) {
+    const session = await this.ensureRequesterSession();
+    await this.ensureRelayerSession();
+    if (
+      !reserve ||
+      reserve.type !== "fx_reserve" ||
+      reserve.version !== 3 ||
+      reserve.tradeId !== acceptance.tradeId ||
+      reserve.payload?.acceptId !== acceptance.id
+    ) {
+      throw new FxDesktopNetworkError(
+        "dealer reservation does not match the accepted V3 quote",
+        "RESERVATION_MISMATCH"
+      );
+    }
+    const route = proposal.route;
+    const quote = proposal.quotes.find(
+      (candidate) => candidate.id === route.quoteId
+    );
+    if (
+      !quote ||
+      quote.version !== 3 ||
+      acceptance.payload.secretHash !== secretHash
+    ) {
+      throw new FxDesktopNetworkError(
+        "requester secret commitment does not match the accepted V3 quote",
+        "SECRET_COMMITMENT_MISMATCH"
+      );
+    }
+    const revealSecret = Buffer.isBuffer(secret)
+      ? `0x${secret.toString("hex")}`
+      : String(secret || "").toLowerCase();
+    if (!/^0x[0-9a-f]{64}$/.test(revealSecret)) {
+      throw new FxDesktopNetworkError(
+        "durable requester settlement secret is unavailable",
+        "SETTLEMENT_SECRET_UNAVAILABLE"
+      );
+    }
+    await this.#assertDestinationExecutorSufficientV2(quote);
+    const blocks = await Promise.all([
+      this.evm.provider(route.inputChainId).getBlock("latest"),
+      this.evm.provider(route.outputChainId).getBlock("latest"),
+    ]);
+    const calibratedNow = Math.max(
+      ...blocks.map((block) => Number(block.timestamp))
+    );
+    const existingSourceMessage = this.requesterJournal.findType(
+      acceptance.tradeId,
+      "fx_lock_source"
+    );
+    const sourceRefundTimestamp =
+      existingSourceMessage?.payload?.timeout ||
+      calibratedNow + FX_V2_SOURCE_REFUND_SECONDS;
+    this.emit("trade", {
+      tradeId: acceptance.tradeId,
+      role: "requester",
+      state: "source_lock_pending",
+      refundEligibleAt: sourceRefundTimestamp,
+    });
+    const source = await this.evm.fundLock({
+      chainId: route.inputChainId,
+      tradeId: acceptance.tradeId,
+      side: "source",
+      amountAtomic: route.totalInputAtomic,
+      beneficiaryAmountAtomic: route.totalInputAtomic,
+      executorAmountAtomic: "0",
+      beneficiary: reserve.payload.dealerSourceClaimAddress,
+      refundAddress: sourceRefundAddress,
+      secretHash,
+      refundTimestamp: sourceRefundTimestamp,
+      role: "requester",
+      token: route.inputToken,
+    });
+    const sourceTransactionHash =
+      source.receipt?.transactionHash ||
+      await this.#findFundTransaction(
+        route.inputChainId,
+        acceptance.tradeId,
+        "source",
+        route.inputToken,
+        source.lock?.lockDigest
+      );
+    const sourceBlockNumber =
+      source.receipt?.blockNumber ||
+      await this.#transactionBlock(route.inputChainId, sourceTransactionHash);
+    let sourceMessage = existingSourceMessage;
+    if (!sourceMessage) {
+      sourceMessage = await session.publish({
+        protocol: "versus-fx",
+        version: 3,
+        type: "fx_lock_source",
+        tradeId: acceptance.tradeId,
+        createdAt: this.now(),
+        expiresAt: sourceRefundTimestamp,
+        payload: {
+          acceptId: acceptance.id,
+          chainId: route.inputChainId,
+          token: route.inputToken,
+          amountAtomic: route.totalInputAtomic,
+          beneficiaryAmountAtomic: route.totalInputAtomic,
+          executorAmountAtomic: "0",
+          lockAddress: this.evm.adapterAddress(
+            route.inputChainId,
+            route.inputToken
+          ),
+          beneficiary: reserve.payload.dealerSourceClaimAddress,
+          refundAddress: sourceRefundAddress,
+          secretHash,
+          timeout: sourceRefundTimestamp,
+          transactionHash: sourceTransactionHash,
+          blockNumber: String(sourceBlockNumber),
+        },
+      });
+    }
+    this.emit("trade", {
+      tradeId: acceptance.tradeId,
+      role: "requester",
+      state: "source_lock_confirmed",
+      transactionHash: sourceTransactionHash,
+      refundEligibleAt: sourceRefundTimestamp,
+    });
+    const destinationMessage = await this.waitFor(
+      session,
+      acceptance.tradeId,
+      "fx_lock_destination",
+      {
+        timeoutMs: 240_000,
+        predicate: (message) => message.payload.acceptId === acceptance.id,
+      }
+    );
+    const destinationObservation = await this.evm.verifyLockEnvelope({
+      chainId: route.outputChainId,
+      lockId: phase5LockId(acceptance.tradeId, "destination"),
+      transactionHash: destinationMessage.payload.transactionHash,
+      token: route.outputToken,
+    });
+    const expectedDestinationTotal = (
+      BigInt(route.outputAmountAtomic) +
+      BigInt(quote.payload.destinationExecutorAmountAtomic)
+    ).toString();
+    if (
+      destinationObservation.confirmed !== true ||
+      destinationObservation.amountAtomic !== expectedDestinationTotal ||
+      destinationObservation.beneficiaryAmountAtomic !== route.outputAmountAtomic ||
+      destinationObservation.executorAmountAtomic !==
+        quote.payload.destinationExecutorAmountAtomic ||
+      destinationObservation.beneficiary !== destinationAddress.toLowerCase() ||
+      destinationObservation.refundAddress !==
+        reserve.payload.dealerDestinationRefundAddress.toLowerCase() ||
+      Number(destinationObservation.timeout) !==
+        Number(destinationMessage.payload.timeout) ||
+      destinationObservation.secretHash !== secretHash.toLowerCase() ||
+      sourceRefundTimestamp <
+        Number(destinationMessage.payload.timeout) +
+          FX_V2_MINIMUM_TIMEOUT_DELTA_SECONDS
+    ) {
+      throw new FxDesktopNetworkError(
+        "destination lock does not match the accepted V3 route",
+        "DESTINATION_MISMATCH"
+      );
+    }
+    this.emit("trade", {
+      tradeId: acceptance.tradeId,
+      role: "requester",
+      state: "destination_lock_confirmed",
+      transactionHash: destinationMessage.payload.transactionHash,
+      refundEligibleAt: destinationMessage.payload.timeout,
+    });
+    let reveal = this.requesterJournal.findType(
+      acceptance.tradeId,
+      "fx_reveal"
+    );
+    if (!reveal) {
+      reveal = await session.publish({
+        protocol: "versus-fx",
+        version: 3,
+        type: "fx_reveal",
+        tradeId: acceptance.tradeId,
+        createdAt: this.now(),
+        expiresAt: sourceRefundTimestamp,
+        payload: {
+          acceptId: acceptance.id,
+          destinationLockMessageId: destinationMessage.id,
+          secret: revealSecret,
+          secretHash,
+        },
+      });
+    } else {
+      await this.publishExisting(session, reveal);
+    }
+    this.emit("trade", {
+      tradeId: acceptance.tradeId,
+      role: "requester",
+      state: "secret_revealed",
+      transactionHash: destinationMessage.payload.transactionHash,
+    });
+    await this.#ingestRelayerTrade(this.requesterJournal, acceptance.tradeId);
+    const destinationClaim = await this.waitFor(
+      session,
+      acceptance.tradeId,
+      "fx_claim",
+      {
+        timeoutMs: 240_000,
+        predicate: (message) =>
+          message.payload.lockMessageId === destinationMessage.id,
+      }
+    );
+    const finalDestination = await this.evm.readLock(
+      route.outputChainId,
+      phase5LockId(acceptance.tradeId, "destination"),
+      route.outputToken,
+      destinationMessage.payload.transactionHash
+    );
+    if (
+      finalDestination.state !== 2 ||
+      finalDestination.beneficiaryAmountAtomic !== route.outputAmountAtomic ||
+      finalDestination.beneficiary !== destinationAddress.toLowerCase()
+    ) {
+      throw new FxDesktopNetworkError(
+        "destination claim is not reflected as the exact V3 output",
+        "DESTINATION_UNCONFIRMED"
+      );
+    }
+    const destinationReceipt = await this.#findClaimReceipt(
+      route.outputChainId,
+      acceptance.tradeId,
+      "destination",
+      route.outputToken,
+      destinationMessage.payload.transactionHash
+    );
+    this.emit("trade", {
+      tradeId: acceptance.tradeId,
+      role: "requester",
+      state: "funds_ready",
+      transactionHash: destinationReceipt.transactionHash,
+    });
+    return {
+      tradeId: acceptance.tradeId,
+      sourceLock: sourceMessage,
+      destinationLock: destinationMessage,
+      reveal,
+      destinationClaim,
+      destinationObservation: {
+        confirmed: true,
+        chainId: route.outputChainId,
+        token: route.outputToken,
+        amountAtomic: route.outputAmountAtomic,
+        beneficiary: destinationAddress,
+        transactionHash: destinationReceipt.transactionHash,
+        blockNumber: String(destinationReceipt.blockNumber),
+        confirmations: destinationReceipt.confirmations,
+      },
+      requester,
+      endpointPaymentAuthorized: false,
+      endpointPaymentSubmitted: false,
+    };
+  }
+
+  async reconcileRequester({ prepared, recoveryPassword }) {
+    if (prepared?.acceptance?.version === 3) {
+      return this.#reconcileRequesterV3(prepared, recoveryPassword);
+    }
     if (prepared?.acceptance?.version === 2) {
       return this.#reconcileRequesterV2(prepared);
     }
@@ -1216,6 +1514,253 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           eligibleAt: source.timeout,
           chainId: route.inputChainId,
           lockId: sourceId,
+        },
+      };
+    }
+    return { state: "source_lock_pending" };
+  }
+
+  async #reconcileRequesterV3(prepared, recoveryPassword) {
+    const session = await this.ensureRequesterSession();
+    await this.ensureRelayerSession();
+    const route = prepared.proposal.route;
+    const quote = prepared.proposal.quotes.find(
+      (candidate) => candidate.id === route.quoteId
+    );
+    const sourceId = phase5LockId(prepared.tradeId, "source");
+    const destinationId = phase5LockId(prepared.tradeId, "destination");
+    const sourceMessage = this.requesterJournal.findType(
+      prepared.tradeId,
+      "fx_lock_source"
+    );
+    const destinationMessage = this.requesterJournal.findType(
+      prepared.tradeId,
+      "fx_lock_destination"
+    );
+    const [source, destination] = await Promise.all([
+      this.evm.readLock(
+        route.inputChainId,
+        sourceId,
+        route.inputToken,
+        sourceMessage?.payload?.transactionHash
+      ),
+      this.evm.readLock(
+        route.outputChainId,
+        destinationId,
+        route.outputToken,
+        destinationMessage?.payload?.transactionHash
+      ),
+    ]);
+    if (destination.state === 2) {
+      if (!destinationMessage || !quote) {
+        throw new FxDesktopNetworkError(
+          "confirmed V3 destination provenance is unavailable",
+          "INCOMPLETE_RECOVERY"
+        );
+      }
+      const expectedDestinationTotal = (
+        BigInt(route.outputAmountAtomic) +
+        BigInt(quote.payload.destinationExecutorAmountAtomic)
+      ).toString();
+      if (
+        destination.amountAtomic !== expectedDestinationTotal ||
+        destination.beneficiaryAmountAtomic !== route.outputAmountAtomic ||
+        destination.executorAmountAtomic !==
+          quote.payload.destinationExecutorAmountAtomic ||
+        destination.beneficiary !==
+          prepared.destinationAddress.toLowerCase() ||
+        destination.refundAddress !==
+          prepared.reservation.payload.dealerDestinationRefundAddress.toLowerCase() ||
+        destination.secretHash !== prepared.secretHash.toLowerCase() ||
+        Number(destination.timeout) !==
+          Number(destinationMessage.payload.timeout)
+      ) {
+        throw new FxDesktopNetworkError(
+          "settled destination does not match the accepted V3 route",
+          "DESTINATION_MISMATCH"
+        );
+      }
+      const claim = await this.#findClaimReceipt(
+        route.outputChainId,
+        prepared.tradeId,
+        "destination",
+        route.outputToken,
+        destinationMessage.payload.transactionHash
+      );
+      return {
+        state: "funds_ready",
+        receipt: {
+          schema: "versus-fx-funds-ready",
+          schemaVersion: 1,
+          status: "funds_ready",
+          tradeId: prepared.tradeId,
+          proposalId: prepared.proposal.proposalId,
+          requester: prepared.requester,
+          destinationAddress: prepared.destinationAddress,
+          outputChainId: prepared.outputChainId,
+          outputToken: prepared.outputToken,
+          requiredAmountAtomic: prepared.outputAmountAtomic,
+          observedAmountAtomic: destination.beneficiaryAmountAtomic,
+          destinationTransactionHash: claim.transactionHash,
+          destinationBlockNumber: String(claim.blockNumber),
+          confirmations: claim.confirmations,
+          confirmedAt: this.now(),
+          endpointPaymentAuthorized: false,
+          endpointPaymentSubmitted: false,
+        },
+      };
+    }
+    if (source.state === 3) {
+      return {
+        state: "refunded",
+        refund: {
+          eligible: true,
+          eligibleAt: source.timeout,
+          chainId: route.inputChainId,
+          lockId: sourceId,
+        },
+      };
+    }
+    if (destination.state === 3) {
+      const latestSource = await this.evm
+        .provider(route.inputChainId)
+        .getBlock("latest");
+      return {
+        state: "refund_wait",
+        refund: {
+          eligible:
+            source.state === 1 &&
+            Number(latestSource.timestamp) >= Number(source.timeout),
+          eligibleAt: source.timeout,
+          chainId: route.inputChainId,
+          lockId: sourceId,
+        },
+        lastFailure: {
+          code: "DEALER_DESTINATION_REFUNDED",
+          message:
+            "The destination lock expired; the requester source lock remains safely refundable",
+          at: new Date(this.now() * 1000).toISOString(),
+        },
+      };
+    }
+    if (destination.state === 1) {
+      const destinationLock = destinationMessage;
+      if (!destinationLock || !quote) {
+        return { state: "destination_lock_confirmed" };
+      }
+      const expectedDestinationTotal = (
+        BigInt(route.outputAmountAtomic) +
+        BigInt(quote.payload.destinationExecutorAmountAtomic)
+      ).toString();
+      if (
+        destination.amountAtomic !== expectedDestinationTotal ||
+        destination.beneficiaryAmountAtomic !== route.outputAmountAtomic ||
+        destination.executorAmountAtomic !==
+          quote.payload.destinationExecutorAmountAtomic ||
+        destination.beneficiary !==
+          prepared.destinationAddress.toLowerCase() ||
+        destination.refundAddress !==
+          prepared.reservation.payload.dealerDestinationRefundAddress.toLowerCase() ||
+        destination.secretHash !== prepared.secretHash.toLowerCase() ||
+        Number(destination.timeout) !==
+          Number(destinationLock.payload.timeout) ||
+        Number(source.timeout) <
+          Number(destination.timeout) +
+            FX_V2_MINIMUM_TIMEOUT_DELTA_SECONDS
+      ) {
+        throw new FxDesktopNetworkError(
+          "recovered destination lock does not match the accepted V3 route",
+          "DESTINATION_MISMATCH"
+        );
+      }
+      const destinationBlock = await this.evm
+        .provider(route.outputChainId)
+        .getBlock("latest");
+      if (Number(destinationBlock.timestamp) >= Number(destination.timeout)) {
+        return {
+          state: "refund_wait",
+          refund: {
+            eligible: false,
+            eligibleAt: source.timeout,
+            chainId: route.inputChainId,
+            lockId: sourceId,
+          },
+        };
+      }
+      const recovery = restoreFxRecoveryPacket({
+        filePath: prepared.recoveryFile,
+        password: recoveryPassword,
+        deploymentId: this.deploymentId,
+        tradeId: prepared.tradeId,
+      });
+      const revealSecret = `0x${Buffer.from(recovery.secret).toString("hex")}`;
+      if (recovery.secretHash !== prepared.secretHash) {
+        throw new FxDesktopNetworkError(
+          "recovered requester secret does not match the accepted V3 trade",
+          "SECRET_COMMITMENT_MISMATCH"
+        );
+      }
+      let reveal = this.requesterJournal.findType(
+        prepared.tradeId,
+        "fx_reveal"
+      );
+      if (!reveal) {
+        reveal = await session.publish({
+          protocol: "versus-fx",
+          version: 3,
+          type: "fx_reveal",
+          tradeId: prepared.tradeId,
+          createdAt: this.now(),
+          expiresAt: source.timeout,
+          payload: {
+            acceptId: prepared.acceptance.id,
+            destinationLockMessageId: destinationLock.id,
+            secret: revealSecret,
+            secretHash: prepared.secretHash,
+          },
+        });
+      } else {
+        await this.publishExisting(session, reveal);
+      }
+      await this.#ingestRelayerTrade(this.requesterJournal, prepared.tradeId);
+      return {
+        state: "secret_revealed",
+        refund: {
+          eligible: false,
+          eligibleAt: source.timeout,
+          chainId: route.inputChainId,
+          lockId: sourceId,
+        },
+      };
+    }
+    if (source.state === 1) {
+      const latestSource = await this.evm
+        .provider(route.inputChainId)
+        .getBlock("latest");
+      return {
+        state: Number(latestSource.timestamp) >= source.timeout
+          ? "refund_wait"
+          : "source_lock_confirmed",
+        refund: {
+          eligible: Number(latestSource.timestamp) >= source.timeout,
+          eligibleAt: source.timeout,
+          chainId: route.inputChainId,
+          lockId: sourceId,
+        },
+      };
+    }
+    if (
+      source.state === 0 &&
+      Number(prepared.reservation?.payload?.reservationDeadline || 0) <=
+        this.now()
+    ) {
+      return {
+        state: "failed",
+        lastFailure: {
+          code: "FUNDING_WINDOW_EXPIRED",
+          message:
+            "The dealer reservation expired before a source lock was broadcast. Received source funds remain in the local FX wallet",
+          at: new Date(this.now() * 1000).toISOString(),
         },
       };
     }
@@ -1341,12 +1886,17 @@ class FxDesktopNetworkRuntime extends EventEmitter {
 
   async refundRequester({ prepared }) {
     const route = prepared.proposal.route;
+    const sourceLock =
+      prepared.acceptance?.version === 3
+        ? this.requesterJournal.findType(prepared.tradeId, "fx_lock_source")
+        : null;
     const refunded = await this.evm.refundLock({
       chainId: route.inputChainId,
       tradeId: prepared.tradeId,
       side: "source",
       role: "requester",
       token: route.inputToken,
+      fundingTransactionHash: sourceLock?.payload?.transactionHash || null,
     });
     return {
       state: "refunded",
@@ -1415,7 +1965,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         const lock = await this.evm.readLock(
           destinationObservation.chainId,
           lockId,
-          destinationObservation.token
+          destinationObservation.token,
+          destinationObservation.transactionHash
         );
         return { exists: lock.state !== 0, ...lock };
       },
@@ -1449,7 +2000,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         state: "accepted",
         reserve,
       });
-      if (this.protocolVersion === 2 && !this.processing.has(reserve.tradeId)) {
+      if (this.protocolVersion >= 2 && !this.processing.has(reserve.tradeId)) {
         const operation = this.#processReservationV2(reserve).finally(() => {
           this.processing.delete(reserve.tradeId);
         });
@@ -1580,6 +2131,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           "destination_pending",
           "source_firm",
           "destination_locked",
+          "destination_claimed",
         ].includes(trade.state)
       ) {
         continue;
@@ -1629,8 +2181,31 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       const lock = await this.evm.readLock(
         trade.package.quote.payload.outputChainId,
         trade.destinationLockId,
-        trade.package.quote.payload.outputToken
+        trade.package.quote.payload.outputToken,
+        destinationMessage?.payload?.transactionHash
       );
+      if (
+        lock.state === 2 &&
+        ["destination_locked", "destination_claimed"].includes(trade.state)
+      ) {
+        const destinationLock =
+          destinationMessage || trade.package.destinationLock;
+        const destinationClaim = destinationLock
+          ? this.#messageForLock(
+              this.dealerJournal,
+              trade.tradeId,
+              destinationLock.id,
+              "fx_claim"
+            )
+          : null;
+        if (destinationLock && destinationClaim) {
+          await this.#processDestinationClaim(
+            destinationClaim,
+            destinationLock
+          );
+        }
+        continue;
+      }
       if (lock.state === 3) {
         this.exposureJournal.markTerminal(trade.tradeId, "destination_refunded");
         this.emit("trade", {
@@ -1677,7 +2252,16 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           sourceLock.id,
           "fx_claim"
         );
+      if (this.protocolVersion === 3 && trade.state === "destination_locked") {
+        const reveal = this.dealerJournal.findType(trade.tradeId, "fx_reveal");
+        if (reveal) {
+          await this.#ingestRelayerTrade(this.dealerJournal, trade.tradeId);
+          await this.#scheduleRelayDestinationClaimV3(reveal);
+          continue;
+        }
+      }
       if (
+        this.protocolVersion === 2 &&
         trade.state === "destination_locked" &&
         sourceLock &&
         !sourceClaim &&
@@ -1765,7 +2349,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const lock = await this.evm.readLock(
       destinationLock.payload.chainId,
       trade.destinationLockId,
-      destinationLock.payload.token
+      destinationLock.payload.token,
+      destinationLock.payload.transactionHash
     );
     const latest = await this.evm.provider(lock.chainId).getBlock("latest");
     if (lock.state !== 1 || Number(latest.timestamp) < Number(lock.timeout)) {
@@ -1780,6 +2365,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       side: "destination",
       role: "dealer",
       token: destinationLock.payload.token,
+      fundingTransactionHash: destinationLock.payload.transactionHash,
     });
     this.inventoryCache = null;
     const txHash =
@@ -1790,6 +2376,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         side: "destination",
         eventName: "LockRefunded",
         token: destinationLock.payload.token,
+        fundingTransactionHash: destinationLock.payload.transactionHash,
       })).transactionHash;
     const blockNumber =
       refunded.receipt?.blockNumber ||
@@ -2028,8 +2615,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         rejection: { code: "requester_max_input_exceeded" },
       };
     }
-    const recovery = this.#dealerSecret(rfq.tradeId);
-    return {
+    const adapterVersion = this.protocolVersion;
+    const quote = {
       inputChainId: input.chainId,
       inputToken: input.token,
       inputAmountAtomic: inputAmountAtomic.toString(),
@@ -2041,18 +2628,18 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       spreadBps,
       dealerSettlementCostAtomic: dealerOperatingCostAtomic.toString(),
       estimatedCompletionSeconds: 60,
-      adapterId: "evm-htlc-v2",
-      adapterVersion: 2,
+      adapterId: `evm-htlc-v${adapterVersion}`,
+      adapterVersion,
       sourceAdapterId:
         input.token === FX_NATIVE_ETH_ADDRESS
-          ? "evm-native-htlc-v2"
-          : "evm-htlc-v2",
-      sourceAdapterVersion: 2,
+          ? `evm-native-htlc-v${adapterVersion}`
+          : `evm-htlc-v${adapterVersion}`,
+      sourceAdapterVersion: adapterVersion,
       destinationAdapterId:
         destination.assetAddress === FX_NATIVE_ETH_ADDRESS
-          ? "evm-native-htlc-v2"
-          : "evm-htlc-v2",
-      destinationAdapterVersion: 2,
+          ? `evm-native-htlc-v${adapterVersion}`
+          : `evm-htlc-v${adapterVersion}`,
+      destinationAdapterVersion: adapterVersion,
       dealerPrincipalAtomic: dealerPrincipalAtomic.toString(),
       dealerSpreadAtomic: dealerSpreadAtomic.toString(),
       dealerOperatingCostAtomic: dealerOperatingCostAtomic.toString(),
@@ -2061,8 +2648,11 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       destinationMaxFeePerGas: destinationMaxFeePerGas.toString(),
       gasPriceSource: `rpc:eip155:${destination.chainId}`,
       gasPriceTimestamp: referenceTimestamp,
-      secretHash: recovery.secretHash,
     };
+    if (this.protocolVersion === 2) {
+      quote.secretHash = this.#dealerSecret(rfq.tradeId).secretHash;
+    }
+    return quote;
   }
 
   #dealerSecret(tradeId) {
@@ -2190,7 +2780,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   async #onDealerEnvelope(envelope) {
     if (!this.guard || !this.dealerSession) return;
     if (
-      this.protocolVersion === 2 &&
+      this.protocolVersion >= 2 &&
       envelope.type === "fx_reserve" &&
       envelope.sender === this.dealerSession.address
     ) {
@@ -2206,7 +2796,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       const preceding = this.processing.get(envelope.tradeId);
       if (preceding) await preceding;
       const operation = (
-        this.protocolVersion === 2
+          this.protocolVersion >= 2
           ? this.#processSourceLockV2(envelope)
           : this.#processSourceLock(envelope)
       ).finally(() => {
@@ -2216,7 +2806,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       await operation;
       return;
     }
-    if (this.protocolVersion === 1 && envelope.type === "fx_claim") {
+    if (
+      [1, 3].includes(this.protocolVersion) &&
+      envelope.type === "fx_claim"
+    ) {
       const destinationLock = this.dealerJournal.findType(
         envelope.tradeId,
         "fx_lock_destination"
@@ -2234,21 +2827,28 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const tradeId = reserve.tradeId;
     const quote = this.dealerJournal.findType(tradeId, "fx_quote");
     const accept = this.dealerJournal.findType(tradeId, "fx_accept");
-    if (!quote || !accept || quote.version !== 2 || accept.version !== 2) {
+    if (
+      !quote ||
+      !accept ||
+      quote.version !== this.protocolVersion ||
+      accept.version !== this.protocolVersion
+    ) {
       throw new FxDesktopNetworkError(
-        "V2 dealer reservation package is incomplete",
+        "dealer reservation package is incomplete",
         "INCOMPLETE_RESERVATION_PACKAGE"
       );
     }
-    const recovery = this.#dealerSecret(tradeId);
-    if (
-      quote.payload.secretHash !== recovery.secretHash ||
-      accept.payload.secretHash !== recovery.secretHash
-    ) {
-      throw new FxDesktopNetworkError(
-        "durable dealer secret does not match the accepted quote",
-        "SECRET_COMMITMENT_MISMATCH"
-      );
+    if (this.protocolVersion === 2) {
+      const recovery = this.#dealerSecret(tradeId);
+      if (
+        quote.payload.secretHash !== recovery.secretHash ||
+        accept.payload.secretHash !== recovery.secretHash
+      ) {
+        throw new FxDesktopNetworkError(
+          "durable dealer secret does not match the accepted quote",
+          "SECRET_COMMITMENT_MISMATCH"
+        );
+      }
     }
     const beneficiaryAmount = BigInt(quote.payload.outputAmountAtomic);
     const executorAmount = BigInt(
@@ -2369,7 +2969,12 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         "SOURCE_LOCK_UNAVAILABLE"
       );
     }
-    const recovery = this.#dealerSecret(tradeId);
+    const recovery =
+      this.protocolVersion === 2 ? this.#dealerSecret(tradeId) : null;
+    const settlementSecretHash =
+      this.protocolVersion === 2
+        ? recovery.secretHash
+        : accept.payload.secretHash;
     const beneficiaryAmount = BigInt(quote.payload.outputAmountAtomic);
     const executorAmount = BigInt(
       quote.payload.destinationExecutorAmountAtomic
@@ -2391,7 +2996,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       executorAmountAtomic: executorAmount.toString(),
       beneficiary: accept.payload.destinationClaimAddress,
       refundAddress: reserve.payload.dealerDestinationRefundAddress,
-      secretHash: recovery.secretHash,
+      secretHash: settlementSecretHash,
       refundTimestamp: destinationRefundTimestamp,
       role: "dealer",
       token: quote.payload.outputToken,
@@ -2403,7 +3008,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         quote.payload.outputChainId,
         tradeId,
         "destination",
-        quote.payload.outputToken
+        quote.payload.outputToken,
+        funded.lock?.lockDigest
       );
     const destinationBlockNumber =
       funded.receipt?.blockNumber ||
@@ -2418,7 +3024,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     if (!destinationLock) {
       destinationLock = await this.dealerSession.publish({
         protocol: "versus-fx",
-        version: 2,
+        version: this.protocolVersion,
         type: "fx_lock_destination",
         tradeId,
         createdAt: this.now(),
@@ -2436,7 +3042,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           ),
           beneficiary: accept.payload.destinationClaimAddress,
           refundAddress: reserve.payload.dealerDestinationRefundAddress,
-          secretHash: recovery.secretHash,
+          secretHash: settlementSecretHash,
           timeout: destinationRefundTimestamp,
           transactionHash: destinationTransactionHash,
           blockNumber: String(destinationBlockNumber),
@@ -2460,7 +3066,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       destinationObservation.refundAddress !==
         reserve.payload.dealerDestinationRefundAddress.toLowerCase() ||
       Number(destinationObservation.timeout) !== destinationRefundTimestamp ||
-      destinationObservation.secretHash !== recovery.secretHash
+      destinationObservation.secretHash !== settlementSecretHash
     ) {
       throw new FxDesktopNetworkError(
         "V2 destination lock failed independent verification",
@@ -2475,6 +3081,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       transactionHash: destinationTransactionHash,
       refundEligibleAt: destinationRefundTimestamp,
     });
+    await this.#ingestRelayerTrade(this.dealerJournal, tradeId);
+    if (this.protocolVersion === 3) {
+      return destinationLock;
+    }
     const claimed = await this.evm.claimLock({
       chainId: quote.payload.inputChainId,
       tradeId,
@@ -2525,7 +3135,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       state: "source_claimed",
       transactionHash,
     });
-    await this.#ingestRelayerTradeV2(tradeId);
+    await this.#ingestRelayerTrade(this.dealerJournal, tradeId);
     await this.#scheduleRelayDestinationClaimV2(claimMessage);
     return claimMessage;
   }
@@ -2551,11 +3161,11 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return null;
   }
 
-  async #ingestRelayerTradeV2(tradeId) {
+  async #ingestRelayerTrade(sourceJournal, tradeId) {
     if (!this.relayerSession || !this.relayerJournal) return;
-    const snapshot = this.dealerJournal?.snapshot?.(tradeId);
+    const snapshot = sourceJournal?.snapshot?.(tradeId);
     for (const entry of snapshot?.messages || []) {
-      const envelope = this.dealerJournal.message(entry.id);
+      const envelope = sourceJournal.message(entry.id);
       if (!envelope) continue;
       const result = this.relayerSession.ingest(envelope, {
         desktopRecovery: true,
@@ -2571,24 +3181,39 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.relayerSession.retryPending?.();
   }
 
-  async #resumeRelayerV2() {
-    if (this.protocolVersion !== 2 || !this.relayerJournal?.tradeIds) return;
+  async #resumeRelayer() {
+    if (!this.relayerJournal?.tradeIds) return;
     for (const tradeId of this.relayerJournal.tradeIds()) {
       const snapshot = this.relayerJournal.snapshot(tradeId);
-      if (!["source_claimed", "source_locked"].includes(snapshot?.settlementState)) {
-        continue;
-      }
-      const sourceLock = this.relayerJournal.findType(tradeId, "fx_lock_source");
-      const sourceClaim = sourceLock
-        ? this.#messageForLock(
-            this.relayerJournal,
-            tradeId,
-            sourceLock.id,
-            "fx_claim"
-          )
-        : null;
-      if (sourceClaim) {
-        await this.#scheduleRelayDestinationClaimV2(sourceClaim);
+      if (
+        this.protocolVersion === 2 &&
+        ["source_claimed", "source_locked"].includes(snapshot?.settlementState)
+      ) {
+        const sourceLock = this.relayerJournal.findType(
+          tradeId,
+          "fx_lock_source"
+        );
+        const sourceClaim = sourceLock
+          ? this.#messageForLock(
+              this.relayerJournal,
+              tradeId,
+              sourceLock.id,
+              "fx_claim"
+            )
+          : null;
+        if (sourceClaim) {
+          await this.#scheduleRelayDestinationClaimV2(sourceClaim);
+        }
+      } else if (
+        this.protocolVersion === 3 &&
+        ["secret_revealed", "destination_claimed"].includes(
+          snapshot?.settlementState
+        )
+      ) {
+        const reveal = this.relayerJournal.findType(tradeId, "fx_reveal");
+        if (reveal) {
+          await this.#scheduleRelayDestinationClaimV3(reveal);
+        }
       }
     }
   }
@@ -2706,6 +3331,174 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return destinationClaim;
   }
 
+  async #scheduleRelayDestinationClaimV3(reveal) {
+    const tradeId = reveal.tradeId;
+    if (this.relayerProcessing.has(tradeId)) {
+      return this.relayerProcessing.get(tradeId);
+    }
+    const operation = this.#relayDestinationClaimV3(reveal).finally(() => {
+      this.relayerProcessing.delete(tradeId);
+    });
+    this.relayerProcessing.set(tradeId, operation);
+    return operation;
+  }
+
+  async #relayDestinationClaimV3(reveal) {
+    const journal = this.relayerJournal;
+    const destinationLock = journal.message(
+      reveal.payload.destinationLockMessageId
+    );
+    const sourceLock = journal.findType(reveal.tradeId, "fx_lock_source");
+    const quote = journal.findType(reveal.tradeId, "fx_quote");
+    const accept = journal.findType(reveal.tradeId, "fx_accept");
+    const reserve = journal.findType(reveal.tradeId, "fx_reserve");
+    if (
+      destinationLock?.type !== "fx_lock_destination" ||
+      !sourceLock ||
+      !quote ||
+      !accept ||
+      !reserve ||
+      reveal.payload.secretHash !== destinationLock.payload.secretHash
+    ) {
+      return null;
+    }
+    const existingClaim = this.#messageForLock(
+      journal,
+      reveal.tradeId,
+      destinationLock.id,
+      "fx_claim"
+    );
+    if (existingClaim) return existingClaim;
+    const destinationObservation = await this.evm.verifyLockEnvelope({
+      chainId: destinationLock.payload.chainId,
+      lockId: phase5LockId(reveal.tradeId, "destination"),
+      transactionHash: destinationLock.payload.transactionHash,
+      token: destinationLock.payload.token,
+    });
+    const expectedDestinationTotal = (
+      BigInt(accept.payload.outputAmountAtomic) +
+      BigInt(quote.payload.destinationExecutorAmountAtomic)
+    ).toString();
+    if (
+      (
+        destinationObservation.confirmed !== true &&
+        destinationObservation.state !== 2
+      ) ||
+      destinationObservation.amountAtomic !== expectedDestinationTotal ||
+      destinationObservation.beneficiaryAmountAtomic !==
+        accept.payload.outputAmountAtomic ||
+      destinationObservation.executorAmountAtomic !==
+        quote.payload.destinationExecutorAmountAtomic ||
+      destinationObservation.beneficiary !==
+        accept.payload.destinationClaimAddress.toLowerCase() ||
+      destinationObservation.refundAddress !==
+        reserve.payload.dealerDestinationRefundAddress.toLowerCase() ||
+      Number(destinationObservation.timeout) !==
+        Number(destinationLock.payload.timeout) ||
+      destinationObservation.secretHash !== reveal.payload.secretHash ||
+      Number(sourceLock.payload.timeout) <
+        Number(destinationLock.payload.timeout) +
+          FX_V2_MINIMUM_TIMEOUT_DELTA_SECONDS
+    ) {
+      throw new FxDesktopNetworkError(
+        "V3 executor rejected a mismatched destination lock",
+        "DESTINATION_LOCK_MISMATCH"
+      );
+    }
+    const latest = await this.evm
+      .provider(destinationLock.payload.chainId)
+      .getBlock("latest");
+    if (
+      destinationObservation.state === 1 &&
+      Number(latest.timestamp) >= Number(destinationLock.payload.timeout)
+    ) {
+      throw new FxDesktopNetworkError(
+        "V3 destination lock expired before execution",
+        "DESTINATION_LOCK_EXPIRED"
+      );
+    }
+    let transactionHash;
+    let blockNumber;
+    if (destinationObservation.state === 2) {
+      const receipt = await this.#findClaimReceipt(
+        destinationLock.payload.chainId,
+        reveal.tradeId,
+        "destination",
+        destinationLock.payload.token,
+        destinationLock.payload.transactionHash
+      );
+      transactionHash = receipt.transactionHash;
+      blockNumber = receipt.blockNumber;
+    } else {
+      try {
+        const claimed = await this.evm.claimLock({
+          chainId: destinationLock.payload.chainId,
+          tradeId: reveal.tradeId,
+          side: "destination",
+          secret: reveal.payload.secret,
+          role: "dealer",
+          token: destinationLock.payload.token,
+          fundingTransactionHash: destinationLock.payload.transactionHash,
+        });
+        transactionHash =
+          claimed.receipt?.transactionHash ||
+          await this.#findClaimTransaction(
+            destinationLock.payload.chainId,
+            reveal.tradeId,
+            "destination",
+            destinationLock.payload.token,
+            destinationLock.payload.transactionHash
+          );
+        blockNumber =
+          claimed.receipt?.blockNumber ||
+          await this.#transactionBlock(
+            destinationLock.payload.chainId,
+            transactionHash
+          );
+      } catch (error) {
+        const observed = await this.evm.readLock(
+          destinationLock.payload.chainId,
+          phase5LockId(reveal.tradeId, "destination"),
+          destinationLock.payload.token,
+          destinationLock.payload.transactionHash
+        );
+        if (observed.state !== 2) throw error;
+        const receipt = await this.#findClaimReceipt(
+          destinationLock.payload.chainId,
+          reveal.tradeId,
+          "destination",
+          destinationLock.payload.token,
+          destinationLock.payload.transactionHash
+        );
+        transactionHash = receipt.transactionHash;
+        blockNumber = receipt.blockNumber;
+      }
+    }
+    const destinationClaim = await this.relayerSession.publish({
+      protocol: "versus-fx",
+      version: 3,
+      type: "fx_claim",
+      tradeId: reveal.tradeId,
+      createdAt: this.now(),
+      expiresAt: this.now() + 30 * 24 * 60 * 60,
+      payload: {
+        lockMessageId: destinationLock.id,
+        chainId: destinationLock.payload.chainId,
+        transactionHash,
+        blockNumber: String(blockNumber),
+        secretHash: destinationLock.payload.secretHash,
+        beneficiary: destinationLock.payload.beneficiary,
+      },
+    });
+    this.emit("trade", {
+      tradeId: reveal.tradeId,
+      role: "relayer",
+      state: "destination_claimed",
+      transactionHash,
+    });
+    return destinationClaim;
+  }
+
   async #processSourceLock(sourceLock) {
     const tradeId = sourceLock.tradeId;
     const rfq = this.dealerJournal.findType(tradeId, "fx_rfq");
@@ -2801,7 +3594,12 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   async #processDestinationClaim(claimMessage, destinationLock) {
     const tradeId = claimMessage.tradeId;
     const trade = this.exposureJournal.trade(tradeId);
-    if (!trade || trade.state !== "destination_locked") return;
+    if (
+      !trade ||
+      !["destination_locked", "destination_claimed"].includes(trade.state)
+    ) {
+      return;
+    }
     const secret = await this.evm.extractClaimSecret({
       chainId: destinationLock.payload.chainId,
       tradeId,
@@ -2809,53 +3607,106 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       transactionHash: claimMessage.payload.transactionHash,
       token: destinationLock.payload.token,
     });
-    this.guard.markDestinationClaimed(tradeId);
+    if (trade.state === "destination_locked") {
+      this.guard.markDestinationClaimed(tradeId);
+    }
     const sourceLock = this.dealerJournal.findType(tradeId, "fx_lock_source");
-    const claimed = await this.evm.claimLock({
-      chainId: sourceLock.payload.chainId,
-      tradeId,
-      side: "source",
-      secret,
-      role: "dealer",
-      token: sourceLock.payload.token,
-    });
-    this.inventoryCache = null;
-    const txHash =
-      claimed.receipt?.transactionHash ||
-      await this.#findClaimTransaction(
+    const sourceObservation = await this.evm.readLock(
+      sourceLock.payload.chainId,
+      phase5LockId(tradeId, "source"),
+      sourceLock.payload.token,
+      sourceLock.payload.transactionHash
+    );
+    let txHash;
+    let blockNumber;
+    if (sourceObservation.state === 2) {
+      const receipt = await this.#findClaimReceipt(
         sourceLock.payload.chainId,
         tradeId,
         "source",
-        sourceLock.payload.token
+        sourceLock.payload.token,
+        sourceLock.payload.transactionHash
       );
-    const blockNumber =
-      claimed.receipt?.blockNumber ||
-      await this.#transactionBlock(sourceLock.payload.chainId, txHash);
-    const sourceClaim = await this.dealerSession.publish({
-      protocol: "versus-fx",
-      version: 1,
-      type: "fx_claim",
+      txHash = receipt.transactionHash;
+      blockNumber = receipt.blockNumber;
+    } else {
+      try {
+        const claimed = await this.evm.claimLock({
+          chainId: sourceLock.payload.chainId,
+          tradeId,
+          side: "source",
+          secret,
+          role: "dealer",
+          token: sourceLock.payload.token,
+          fundingTransactionHash: sourceLock.payload.transactionHash,
+        });
+        this.inventoryCache = null;
+        txHash =
+          claimed.receipt?.transactionHash ||
+          await this.#findClaimTransaction(
+            sourceLock.payload.chainId,
+            tradeId,
+            "source",
+            sourceLock.payload.token,
+            sourceLock.payload.transactionHash
+          );
+        blockNumber =
+          claimed.receipt?.blockNumber ||
+          await this.#transactionBlock(sourceLock.payload.chainId, txHash);
+      } catch (error) {
+        const observed = await this.evm.readLock(
+          sourceLock.payload.chainId,
+          phase5LockId(tradeId, "source"),
+          sourceLock.payload.token,
+          sourceLock.payload.transactionHash
+        );
+        if (observed.state !== 2) throw error;
+        const receipt = await this.#findClaimReceipt(
+          sourceLock.payload.chainId,
+          tradeId,
+          "source",
+          sourceLock.payload.token,
+          sourceLock.payload.transactionHash
+        );
+        txHash = receipt.transactionHash;
+        blockNumber = receipt.blockNumber;
+      }
+    }
+    let sourceClaim = this.#messageForLock(
+      this.dealerJournal,
       tradeId,
-      createdAt: this.now(),
-      expiresAt: this.now() + 30 * 24 * 60 * 60,
-      payload: {
-        lockMessageId: sourceLock.id,
-        chainId: sourceLock.payload.chainId,
-        transactionHash: txHash,
-        blockNumber: String(blockNumber),
-        secretHash: sourceLock.payload.secretHash,
-        beneficiary: sourceLock.payload.beneficiary,
-      },
-    });
+      sourceLock.id,
+      "fx_claim"
+    );
+    if (!sourceClaim) {
+      sourceClaim = await this.dealerSession.publish({
+        protocol: "versus-fx",
+        version: this.protocolVersion,
+        type: "fx_claim",
+        tradeId,
+        createdAt: this.now(),
+        expiresAt: this.now() + 30 * 24 * 60 * 60,
+        payload: {
+          lockMessageId: sourceLock.id,
+          chainId: sourceLock.payload.chainId,
+          transactionHash: txHash,
+          blockNumber: String(blockNumber),
+          secretHash: sourceLock.payload.secretHash,
+          beneficiary: sourceLock.payload.beneficiary,
+        },
+      });
+    }
     this.guard.markCompleted(tradeId, sourceClaim);
-    const destinationClaim = this.dealerJournal.findType(
+    const destinationClaim = this.#messageForLock(
+      this.dealerJournal,
       tradeId,
+      destinationLock.id,
       "fx_claim"
     );
     if (destinationClaim) {
       await this.dealerSession.publish({
         protocol: "versus-fx",
-        version: 1,
+        version: this.protocolVersion,
         type: "fx_complete",
         tradeId,
         createdAt: this.now(),
@@ -2886,34 +3737,55 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return Number(receipt.blockNumber);
   }
 
-  async #findFundTransaction(chainId, tradeId, side, token = null) {
+  async #findFundTransaction(
+    chainId,
+    tradeId,
+    side,
+    token = null,
+    expectedLockDigest = null
+  ) {
     const receipt = await this.evm.findLockEvent({
       chainId,
       tradeId,
       side,
       eventName: "LockFunded",
       token,
+      expectedLockDigest,
     });
     return receipt.transactionHash;
   }
 
-  async #findClaimTransaction(chainId, tradeId, side, token = null) {
+  async #findClaimTransaction(
+    chainId,
+    tradeId,
+    side,
+    token = null,
+    fundingTransactionHash = null
+  ) {
     const receipt = await this.#findClaimReceipt(
       chainId,
       tradeId,
       side,
-      token
+      token,
+      fundingTransactionHash
     );
     return receipt.transactionHash;
   }
 
-  async #findClaimReceipt(chainId, tradeId, side, token = null) {
+  async #findClaimReceipt(
+    chainId,
+    tradeId,
+    side,
+    token = null,
+    fundingTransactionHash = null
+  ) {
     return this.evm.findLockEvent({
       chainId,
       tradeId,
       side,
       eventName: "LockClaimed",
       token,
+      fundingTransactionHash,
     });
   }
 
@@ -2959,6 +3831,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
 }
 
 module.exports = {
+  FX_PUBLIC_TESTNET_COORDINATION_DOMAIN,
   FX_PUBLIC_TESTNET_DEPLOYMENT_ID,
   FX_PUBLIC_WAKU_PEERS,
   FxDesktopNetworkError,

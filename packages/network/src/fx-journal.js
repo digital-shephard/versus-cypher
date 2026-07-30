@@ -43,6 +43,8 @@ function actionSlot(message) {
       return "lock:source";
     case "fx_lock_destination":
       return "lock:destination";
+    case "fx_reveal":
+      return "trade:reveal";
     case "fx_claim":
     case "fx_refund":
       return `settle-lock:${message.payload.lockMessageId}`;
@@ -411,7 +413,7 @@ class FxTradeJournal {
           message.payload.chainId !== quote.payload.inputChainId ||
           message.payload.token !== quote.payload.inputToken ||
           message.payload.amountAtomic !== accept.payload.totalInputAtomic ||
-          (message.version === 2 &&
+          (message.version >= 2 &&
             (message.payload.beneficiaryAmountAtomic !==
               accept.payload.totalInputAtomic ||
               message.payload.executorAmountAtomic !== "0")) ||
@@ -445,7 +447,7 @@ class FxTradeJournal {
         const reserve = this.findType(message.tradeId, "fx_reserve");
         const sourceLock = this.findType(message.tradeId, "fx_lock_source");
         const destinationAmount =
-          message.version === 2
+          message.version >= 2
             ? (
                 BigInt(accept.payload.outputAmountAtomic) +
                 BigInt(quote.payload.destinationExecutorAmountAtomic)
@@ -458,7 +460,7 @@ class FxTradeJournal {
           message.payload.chainId !== quote.payload.outputChainId ||
           message.payload.token !== quote.payload.outputToken ||
           message.payload.amountAtomic !== destinationAmount ||
-          (message.version === 2 &&
+          (message.version >= 2 &&
             (message.payload.beneficiaryAmountAtomic !==
               accept.payload.outputAmountAtomic ||
               message.payload.executorAmountAtomic !==
@@ -477,6 +479,41 @@ class FxTradeJournal {
         settlementState = advanceFxState(
           settlementState,
           "confirm_destination_lock",
+          message.version
+        );
+        break;
+      }
+      case "fx_reveal": {
+        const accept = this.requireMessage(
+          message.payload.acceptId,
+          "fx_accept",
+          message.tradeId
+        );
+        const destinationLock = this.requireMessage(
+          message.payload.destinationLockMessageId,
+          "fx_lock_destination",
+          message.tradeId
+        );
+        const rfq = this.requireMessage(
+          accept.payload.rfqId,
+          "fx_rfq",
+          message.tradeId
+        );
+        if (
+          message.version !== 3 ||
+          message.sender !== rfq.sender ||
+          destinationLock.payload.acceptId !== accept.id ||
+          destinationLock.payload.secretHash !== message.payload.secretHash ||
+          accept.payload.secretHash !== message.payload.secretHash
+        ) {
+          throw new FxJournalError(
+            "secret reveal does not match the requester and destination lock",
+            "BAD_EVIDENCE"
+          );
+        }
+        settlementState = advanceFxState(
+          settlementState,
+          "reveal_secret",
           message.version
         );
         break;

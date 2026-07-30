@@ -1,10 +1,14 @@
 # EVM Adapter V3 Security Assumptions
 
 V3 changes the settlement secret owner and the onchain storage model without
-introducing an administrator. It is a locally tested candidate, not a deployed
-or production-approved capability. V2 remains the active public-testnet
-desktop protocol until V3 is independently reviewed, deployed, frozen into a
-new coordination domain, and physically exercised by two machines.
+introducing an administrator. It is deployed, source-verified, frozen into its
+own public-testnet coordination domain, and wired into the desktop. It is not
+production-approved. Physical two-machine settlement, restart recovery, and
+timeout/refund acceptance remain required before any production decision.
+
+The Waku discovery, trade, and evidence topics are scoped by the frozen V3
+coordination domain. Signed messages remain independently bound to the frozen
+V3 deployment ID, so topic isolation does not replace message verification.
 
 The candidate families are:
 
@@ -162,8 +166,8 @@ Do not reveal the requester secret when:
 - adapter or token runtime code differs from the frozen manifest
 - encrypted requester recovery state is missing or corrupt
 
-Do not deploy or enable V3 for production solely because the included tests
-pass. It still requires independent contract review, public-testnet
-deployment evidence, a two-machine successful settlement, restart recovery,
-timeout/refund acceptance, and a separately approved production decision.
+Do not enable V3 for production solely because the included tests pass or its
+public-testnet contracts are verified. It still requires a two-machine
+successful settlement, restart recovery, timeout/refund acceptance, and a
+separately approved production decision.
 

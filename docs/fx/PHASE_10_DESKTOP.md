@@ -21,8 +21,9 @@ disabled by default.
 8. Let the app confirm the post-baseline transfer and fund the source lock
    first. The dealer independently verifies that lock before funding the
    destination.
-9. The dealer claims the source, the revealed secret executes the destination
-   claim, and the app independently verifies the final recipient payout.
+9. After independently verifying the destination lock, the requester reveals
+   its persisted secret. A permissionless executor completes the destination
+   payout, then the dealer uses the same onchain secret to claim the source.
 
 The destination may be any valid address selected by the requester. It is
 signed into the acceptance and bound into the destination HTLC. The external
@@ -33,12 +34,13 @@ to the dealer. If gas changes before broadcast, the funding screen requests
 only the missing top-up instead of leaving the trade stuck in a pending state.
 
 The destination recipient never submits a transaction and does not need the
-destination chain's native gas token. The dealer owns the settlement secret.
-Claiming the requester source lock publishes that secret onchain; any executor
-can then claim the destination lock. The contract pays the fixed recipient
-amount first and pays the successful transaction sender a separately quoted
-executor bounty. Neither payout can be redirected by Waku, a broker, or the
-executor.
+destination chain's native gas token. The requester owns the settlement
+secret and persists it encrypted before source funding. The requester reveals
+it only after independently confirming the exact destination lock. Any
+executor can then claim that lock; the contract atomically pays the fixed
+recipient amount and the separately quoted bounty to the successful
+transaction sender. The dealer reads the disclosed secret and claims source.
+Neither payout can be redirected by Waku, a broker, or the executor.
 
 The requester route picker is built from the frozen adapter catalog, not from
 the local dealer's enabled inventory bays. A device can therefore request any
@@ -61,7 +63,8 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 ## Dealer Flow
 
 - Dealer mode is disabled by default.
-- The owner explicitly enables the FX lab and then separately arms dealing.
+- The owner explicitly arms FX DEALING. Requesting a quote never enables local
+  dealing.
 - Supported inventory positions are selected on the Stock page.
 - Enabling, disabling, funding, or draining a supported chain while dealing is
   armed rebuilds the live dealer route set when its usable-position topology
@@ -86,7 +89,7 @@ Versus stops at `fundsReady`. It never spends those funds on an x402 endpoint.
 - The Risk page bounds trade size, aggregate exposure, requester exposure,
   per-asset exposure, gas, overhead, spread, quote lifetime, and reservation
   lifetime.
-- The Phase 8 exposure journal records V2 destination liability before the
+- The Phase 8 exposure journal records destination liability before the
   dealer broadcasts the funding transaction. `destination_pending` therefore
   consumes global, requester, and asset capacity and survives restart.
 - The Tape page shows local receipts and terminal outcomes.
@@ -121,44 +124,50 @@ the applicable frozen testnet asset and adapter contracts before recognizing:
 Event recovery starts at the frozen adapter deployment blocks, not chain
 genesis. Inventory reads are cached and invalidated when dealer funds move.
 Each quote binds the adapter ID and version independently for its source and
-destination legs. V1 and V2 messages cannot share a trade journal. The zero
-address is the canonical wire identifier for native ETH and is never treated
-as an ERC-20 address.
+destination legs. V1, V2, and V3 messages cannot share a trade journal. The
+zero address is the canonical wire identifier for native ETH and is never
+treated as an ERC-20 address.
 
-V2 settlement is source-first:
+V3 settlement is requester-secret and source-first:
 
-1. The dealer encrypts its settlement secret and signs only its hash.
+1. The requester encrypts a random settlement secret before source funding and
+   signs only its hash.
 2. The dealer durably reserves output plus executor bounty.
-3. The requester checks current executor-gas coverage, then funds the source
-   V2 adapter against the signed hash.
-4. The dealer independently verifies every source-lock field and confirmation
-   before funding the destination V2 adapter for the exact recipient, refund
-   address, hash, shorter timeout, output, and executor liabilities.
-5. The dealer claims source, publishing the secret onchain.
-6. The dealer normally executes the permissionless destination claim and
-   receives its fixed executor bounty. Any other executor may provide the same
-   liveness fallback without redirecting either payout.
-7. Restart-safe keepers automatically submit eligible source or destination
-   refunds exactly once; the fixed contracts always return funds to their
-   signed refund addresses.
+3. The requester funds the longer source V3 lock for the exact signed input.
+4. The dealer independently verifies the exact source funding transaction,
+   lock digest, terms, runtime, and confirmations before funding destination.
+5. The requester independently verifies the exact destination funding
+   transaction, recipient, output, bounty, hash, and shorter timeout.
+6. The requester reveals the secret. A permissionless executor atomically
+   pays the fixed recipient and receives the fixed bounty.
+7. The dealer extracts the same secret from the destination claim and claims
+   source. Restart recovery and refunds remain bound to the exact original
+   funding transaction and lock digest.
 
-The current public-testnet V2 deployment is frozen by deployment ID
-`0x517ee196f582bd7ee83db57bb722a0d90ef2d0abe941c4e4307dadad62ebb19e`.
-It reuses the already verified ownerless V2 contracts while assigning a new
-coordination deployment ID so destination-first clients cannot share topics
-or journals with source-first clients.
+In the current desktop cohort, the dealer app also runs the permissionless
+destination execution service. Its dealer wallet submits that claim and earns
+the fixed executor bounty. The recipient does not run the app, sign a
+transaction, or hold destination-chain gas.
+
+The current public-testnet V3 deployment is frozen by deployment ID
+`0x1edf9c4dca5cbcb8b1875f4ce950844237258367d51e5d02dc3de577b3088494`
+and coordination domain
+`0x6d2d3f9784460521d35605b450e5a46fc1c068df7724265c8f12fec7f1693b2c`.
 On Base Sepolia and Arbitrum Sepolia, the native adapter is
-`0x1e933ccffaa2cd384d3df751ff7a25183682dc61` and the manifested ERC-20
-adapter is `0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14`.
+`0x9ff9e978801b7819fa4169638814543028d0c0f2` and the manifested ERC-20
+adapter is `0xb9c06839b81421e0899510706300d1f1b2623a18`.
+
+V2 contracts and deployment records remain frozen for historical recovery.
+They are not admitted to the V3 coordination domain.
 
 Verified explorer links:
 
 | Chain | Adapter | Explorer |
 |---|---|---|
-| Base Sepolia | Native V2 `0x1e933c…dc61` | [code](https://sepolia.basescan.org/address/0x1e933ccffaa2cd384d3df751ff7a25183682dc61#code) |
-| Base Sepolia | ERC-20 V2 `0x0fa115…3c14` | [code](https://sepolia.basescan.org/address/0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14#code) |
-| Arbitrum Sepolia | Native V2 `0x1e933c…dc61` | [code](https://sepolia.arbiscan.io/address/0x1e933ccffaa2cd384d3df751ff7a25183682dc61#code) |
-| Arbitrum Sepolia | ERC-20 V2 `0x0fa115…3c14` | [code](https://sepolia.arbiscan.io/address/0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14#code) |
+| Base Sepolia | Native V3 `0x9ff9e9...c0f2` | [code](https://sepolia.basescan.org/address/0x9ff9e978801b7819fa4169638814543028d0c0f2#code) |
+| Base Sepolia | ERC-20 V3 `0xb9c068...3a18` | [code](https://sepolia.basescan.org/address/0xb9c06839b81421e0899510706300d1f1b2623a18#code) |
+| Arbitrum Sepolia | Native V3 `0x9ff9e9...c0f2` | [code](https://sepolia.arbiscan.io/address/0x9ff9e978801b7819fa4169638814543028d0c0f2#code) |
+| Arbitrum Sepolia | ERC-20 V3 `0xb9c068...3a18` | [code](https://sepolia.arbiscan.io/address/0xb9c06839b81421e0899510706300d1f1b2623a18#code) |
 
 Native atomic amounts use a signed relay ETH/USD reference for quote and risk
 calculation. The desktop caches a valid reference for no more than three
@@ -168,9 +177,9 @@ Stablecoin-only ERC-20 routes remain independent of ETH pricing.
 
 ## Recovery
 
-- The dealer settlement secret is encrypted to disk before its quote is
-  published. The requester recovery file contains a separate local
-  authentication nonce, never the settlement secret.
+- The requester settlement secret is encrypted to disk before source funding.
+  Recovery refuses to reveal, claim, or refund when that encrypted state is
+  missing, corrupt, or bound to another deployment or trade.
 - An explicit pre-funding cancellation is signed by the requester, releases
   the requester flow over Waku, and prevents source funding. A V2 destination
   lock that already exists remains dealer exposure until its deterministic
@@ -205,11 +214,10 @@ recovery, refund, policy, and RPC boundaries.
 The preview harness proves layout and deterministic screen transitions only; it
 is not settlement evidence.
 
-The desktop now has a real V2 requester path from quote discovery through
+The desktop now has a real V3 requester path from quote discovery through
 source funding, dealer-side source verification, independent destination
-verification, fresh executor gas coverage, dealer-executed permissionless
-completion, cancellation, status reconciliation, and automatic refund. Dealer
-arming, bounded
+verification, requester-secret disclosure, permissionless paid execution,
+cancellation, status reconciliation, and refund. Dealer arming, bounded
 inventory refresh, native-gas readiness, real withdrawal, owner-visible
 policy, restart resume, persisted trade journals, and scrubbed settlement
 evidence are connected to the FX runtime.

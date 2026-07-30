@@ -13,6 +13,7 @@ module.exports = {
   ...require("./fx-ephemeral-identity"),
   ...require("./fx-evm-native-adapter"),
   ...require("./fx-evm-v2-adapter"),
+  ...require("./fx-evm-v3-adapter"),
   ...require("./fx-journal"),
   ...require("./fx-network-clock"),
   ...require("./fx-waku-transport"),

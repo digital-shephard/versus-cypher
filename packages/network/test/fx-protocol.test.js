@@ -122,7 +122,7 @@ test("matches the frozen cross-repository canonical hash vector", () => {
 test("fails closed on unsupported versions and domain-separates message ids", () => {
   const message = fixture.messages[fixture.interop.messageIndex];
   assert.throws(() => normalizeFxMessage({ ...message, protocol: "versus-fx-preview" }));
-  assert.throws(() => normalizeFxMessage({ ...message, version: 3 }));
+  assert.throws(() => normalizeFxMessage({ ...message, version: 4 }));
 
   const baseId = computeFxMessageId(message);
   assert.notEqual(

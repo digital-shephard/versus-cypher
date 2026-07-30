@@ -257,7 +257,7 @@ class FxDesktopService extends EventEmitter {
     );
     this.now = now;
     this.protocolVersion = Number(protocolVersion);
-    if (![1, 2].includes(this.protocolVersion)) {
+    if (![1, 2, 3].includes(this.protocolVersion)) {
       throw new TypeError("FX desktop protocol version is unsupported");
     }
     this.requesterOperations = new Set();
@@ -845,7 +845,7 @@ class FxDesktopService extends EventEmitter {
         inputChainId: source.chainId,
         inputToken: source.assetAddress,
         quoteLifetimeSeconds:
-          this.protocolVersion === 2
+          this.protocolVersion >= 2
             ? Math.max(120, snapshot.policy.quoteLifetimeSeconds)
             : Math.min(60, snapshot.policy.quoteLifetimeSeconds),
         settlementLifetimeSeconds: 7_200,

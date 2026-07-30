@@ -9,6 +9,7 @@ const {
 const FX_PROTOCOL = "versus-fx";
 const FX_VERSION = 1;
 const FX_V2_VERSION = 2;
+const FX_V3_VERSION = 3;
 const FX_QUOTE_TYPE = "fixed_exact_output";
 const FX_MAX_CLOCK_SKEW_SECONDS = 300;
 const FX_MAX_REFERENCE_AGE_SECONDS = 60;
@@ -26,6 +27,7 @@ const FX_MESSAGE_TYPES = Object.freeze([
   "fx_cancel",
   "fx_lock_source",
   "fx_lock_destination",
+  "fx_reveal",
   "fx_claim",
   "fx_refund",
   "fx_complete",
@@ -44,6 +46,7 @@ const ROLE_BY_TYPE = Object.freeze({
   fx_cancel: Object.freeze(["requester"]),
   fx_lock_source: Object.freeze(["requester"]),
   fx_lock_destination: Object.freeze(["dealer"]),
+  fx_reveal: Object.freeze(["requester"]),
   fx_claim: Object.freeze(["requester", "dealer", "relayer"]),
   fx_refund: Object.freeze(["requester", "dealer", "relayer"]),
   fx_complete: Object.freeze(["requester", "dealer", "broker", "relayer"]),
@@ -59,6 +62,7 @@ const MAX_LIFETIME_BY_TYPE = Object.freeze({
   fx_cancel: 60,
   fx_lock_source: 30 * 24 * 60 * 60,
   fx_lock_destination: 30 * 24 * 60 * 60,
+  fx_reveal: 30 * 24 * 60 * 60,
   fx_claim: 30 * 24 * 60 * 60,
   fx_refund: 30 * 24 * 60 * 60,
   fx_complete: 30 * 24 * 60 * 60,
@@ -121,6 +125,40 @@ const FX_SETTLEMENT_TRANSITIONS_V2 = Object.freeze({
     confirm_destination_refund: "refunded",
   }),
   destination_refunded: Object.freeze({}),
+  complete: Object.freeze({}),
+  refunded: Object.freeze({}),
+  expired: Object.freeze({}),
+  cancelled: Object.freeze({}),
+});
+
+const FX_SETTLEMENT_TRANSITIONS_V3 = Object.freeze({
+  idle: Object.freeze({ publish_rfq: "rfq_open" }),
+  rfq_open: Object.freeze({
+    accept_quote: "quote_accepted",
+    expire_rfq: "expired",
+  }),
+  quote_accepted: Object.freeze({
+    confirm_source_lock: "source_locked",
+    cancel_before_source_lock: "cancelled",
+  }),
+  source_locked: Object.freeze({
+    confirm_destination_lock: "destination_locked",
+    confirm_source_refund: "refunded",
+  }),
+  destination_locked: Object.freeze({
+    reveal_secret: "secret_revealed",
+    confirm_destination_refund: "destination_refunded",
+  }),
+  secret_revealed: Object.freeze({
+    confirm_destination_claim: "destination_claimed",
+    confirm_destination_refund: "destination_refunded",
+  }),
+  destination_claimed: Object.freeze({
+    confirm_source_claim: "complete",
+  }),
+  destination_refunded: Object.freeze({
+    confirm_source_refund: "refunded",
+  }),
   complete: Object.freeze({}),
   refunded: Object.freeze({}),
   expired: Object.freeze({}),
@@ -459,7 +497,10 @@ function normalizeQuotePayload(value) {
   };
 }
 
-function normalizeQuotePayloadV2(value) {
+function normalizeQuotePayloadV2(value, expectedVersion = FX_V2_VERSION) {
+  if (!Number.isSafeInteger(expectedVersion)) {
+    expectedVersion = FX_V2_VERSION;
+  }
   assertAllowedKeys(value, [
     "rfqId",
     "inputChainId",
@@ -514,12 +555,12 @@ function normalizeQuotePayloadV2(value) {
     destinationAdapterVersion: value.destinationAdapterVersion,
   });
   if (
-    base.adapterVersion !== FX_V2_VERSION ||
-    base.sourceAdapterVersion !== FX_V2_VERSION ||
-    base.destinationAdapterVersion !== FX_V2_VERSION
+    base.adapterVersion !== expectedVersion ||
+    base.sourceAdapterVersion !== expectedVersion ||
+    base.destinationAdapterVersion !== expectedVersion
   ) {
     throw new FxValidationError(
-      "version-two quotes require version-two adapters",
+      `version-${expectedVersion} quotes require version-${expectedVersion} adapters`,
       "ADAPTER_VERSION_MISMATCH"
     );
   }
@@ -591,6 +632,45 @@ function normalizeQuotePayloadV2(value) {
     gasPriceTimestamp,
     secretHash: normalizeHash(value.secretHash, "payload.secretHash"),
   };
+}
+
+function normalizeQuotePayloadV3(value) {
+  assertAllowedKeys(value, [
+    "rfqId",
+    "inputChainId",
+    "inputToken",
+    "inputAmountAtomic",
+    "outputChainId",
+    "outputToken",
+    "outputAmountAtomic",
+    "quoteType",
+    "referenceSource",
+    "referencePriceMicros",
+    "referenceTimestamp",
+    "spreadBps",
+    "dealerSettlementCostAtomic",
+    "estimatedCompletionSeconds",
+    "adapterId",
+    "adapterVersion",
+    "sourceAdapterId",
+    "sourceAdapterVersion",
+    "destinationAdapterId",
+    "destinationAdapterVersion",
+    "dealerPrincipalAtomic",
+    "dealerSpreadAtomic",
+    "dealerOperatingCostAtomic",
+    "destinationExecutorAmountAtomic",
+    "destinationClaimGasEstimate",
+    "destinationMaxFeePerGas",
+    "gasPriceSource",
+    "gasPriceTimestamp",
+  ], "payload");
+  const normalized = normalizeQuotePayloadV2({
+    ...value,
+    secretHash: `0x${"01".padEnd(64, "0")}`,
+  }, FX_V3_VERSION);
+  const { secretHash: _ignored, ...quote } = normalized;
+  return quote;
 }
 
 function normalizeAcceptPayload(value) {
@@ -829,6 +909,32 @@ function normalizeClaimPayload(value) {
   };
 }
 
+function normalizeRevealPayload(value) {
+  assertAllowedKeys(value, [
+    "acceptId",
+    "destinationLockMessageId",
+    "secret",
+    "secretHash",
+  ], "payload");
+  const secret = normalizeHash(value.secret, "payload.secret");
+  const secretHash = normalizeHash(value.secretHash, "payload.secretHash");
+  if (keccak256(secret) !== secretHash) {
+    throw new FxValidationError(
+      "revealed secret does not match its commitment",
+      "WRONG_SECRET"
+    );
+  }
+  return {
+    acceptId: normalizeHash(value.acceptId, "payload.acceptId"),
+    destinationLockMessageId: normalizeHash(
+      value.destinationLockMessageId,
+      "payload.destinationLockMessageId"
+    ),
+    secret,
+    secretHash,
+  };
+}
+
 function normalizeRefundPayload(value) {
   assertAllowedKeys(value, [
     "lockMessageId",
@@ -914,6 +1020,7 @@ const PAYLOAD_NORMALIZERS = Object.freeze({
   fx_cancel: normalizeCancelPayload,
   fx_lock_source: normalizeLockPayload,
   fx_lock_destination: normalizeLockPayload,
+  fx_reveal: normalizeRevealPayload,
   fx_claim: normalizeClaimPayload,
   fx_refund: normalizeRefundPayload,
   fx_complete: normalizeCompletePayload,
@@ -924,6 +1031,13 @@ const PAYLOAD_NORMALIZERS = Object.freeze({
 const PAYLOAD_NORMALIZERS_V2 = Object.freeze({
   ...PAYLOAD_NORMALIZERS,
   fx_quote: normalizeQuotePayloadV2,
+  fx_lock_source: normalizeLockPayloadV2,
+  fx_lock_destination: normalizeLockPayloadV2,
+});
+
+const PAYLOAD_NORMALIZERS_V3 = Object.freeze({
+  ...PAYLOAD_NORMALIZERS,
+  fx_quote: normalizeQuotePayloadV3,
   fx_lock_source: normalizeLockPayloadV2,
   fx_lock_destination: normalizeLockPayloadV2,
 });
@@ -948,7 +1062,7 @@ function normalizeFxMessage(input) {
   if (input.protocol !== FX_PROTOCOL) {
     throw new FxValidationError("protocol is unsupported");
   }
-  if (![FX_VERSION, FX_V2_VERSION].includes(input.version)) {
+  if (![FX_VERSION, FX_V2_VERSION, FX_V3_VERSION].includes(input.version)) {
     throw new FxValidationError("version is unsupported");
   }
 
@@ -962,7 +1076,8 @@ function normalizeFxMessage(input) {
   if (
     expiresAt <= createdAt ||
     expiresAt - createdAt >
-      (input.version === FX_V2_VERSION && ["fx_rfq", "fx_quote"].includes(type)
+      ([FX_V2_VERSION, FX_V3_VERSION].includes(input.version) &&
+        ["fx_rfq", "fx_quote"].includes(type)
         ? 300
         : MAX_LIFETIME_BY_TYPE[type])
   ) {
@@ -983,9 +1098,13 @@ function normalizeFxMessage(input) {
   };
   return {
     ...envelope,
-    payload: (input.version === FX_V2_VERSION
-      ? PAYLOAD_NORMALIZERS_V2
-      : PAYLOAD_NORMALIZERS)[type](input.payload, envelope),
+    payload: (
+      input.version === FX_V3_VERSION
+        ? PAYLOAD_NORMALIZERS_V3
+        : input.version === FX_V2_VERSION
+          ? PAYLOAD_NORMALIZERS_V2
+          : PAYLOAD_NORMALIZERS
+    )[type](input.payload, envelope),
   };
 }
 
@@ -1067,9 +1186,11 @@ function verifyFxEnvelope(envelope, options = {}) {
 
 function advanceFxState(currentState, event, version = FX_VERSION) {
   const transitionMap =
-    version === FX_V2_VERSION
-      ? FX_SETTLEMENT_TRANSITIONS_V2
-      : FX_SETTLEMENT_TRANSITIONS;
+    version === FX_V3_VERSION
+      ? FX_SETTLEMENT_TRANSITIONS_V3
+      : version === FX_V2_VERSION
+        ? FX_SETTLEMENT_TRANSITIONS_V2
+        : FX_SETTLEMENT_TRANSITIONS;
   const transitions = transitionMap[currentState];
   if (!transitions) throw new FxValidationError(`unknown settlement state ${currentState}`);
   const next = transitions[event];
@@ -1205,8 +1326,10 @@ module.exports = {
   FX_ROUTE_POLICIES,
   FX_SETTLEMENT_TRANSITIONS,
   FX_SETTLEMENT_TRANSITIONS_V2,
+  FX_SETTLEMENT_TRANSITIONS_V3,
   FX_VERSION,
   FX_V2_VERSION,
+  FX_V3_VERSION,
   FxValidationError,
   advanceFxCaseState,
   advanceFxState,

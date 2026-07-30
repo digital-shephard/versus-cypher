@@ -9,6 +9,7 @@ const {
 const {
   canonicalJson,
   FX_V2_VERSION,
+  FX_V3_VERSION,
   verifyFxEnvelope,
 } = require("./fx-protocol");
 const { signFxMessage } = require("./fx-coordination");
@@ -378,7 +379,7 @@ class FxRequesterFundingSdk {
     this.now = now;
     this.randomSecret = randomSecret;
     this.protocolVersion = Number(protocolVersion);
-    if (![1, FX_V2_VERSION].includes(this.protocolVersion)) {
+    if (![1, FX_V2_VERSION, FX_V3_VERSION].includes(this.protocolVersion)) {
       throw new TypeError("requester SDK protocol version is unsupported");
     }
   }
@@ -389,7 +390,8 @@ class FxRequesterFundingSdk {
     sourceRefundAddress,
     inputOptions,
     tradeId = `0x${crypto.randomBytes(32).toString("hex")}`,
-    quoteLifetimeSeconds = this.protocolVersion === FX_V2_VERSION ? 120 : 60,
+    quoteLifetimeSeconds =
+      [FX_V2_VERSION, FX_V3_VERSION].includes(this.protocolVersion) ? 120 : 60,
     settlementLifetimeSeconds = 7_200,
     quotePolicy = "lowest_all_in",
     timeoutMs = 20_000,
@@ -517,9 +519,8 @@ class FxRequesterFundingSdk {
       this.recoveryDirectory,
       `${verifiedRfq.tradeId.slice(2)}.recovery.json`
     );
-    // V1 uses this secret for settlement. V2 deliberately stores only a
-    // requester-local recovery nonce: the selected dealer owns the settlement
-    // secret and commits its hash in the signed quote.
+    // V1 and V3 use this durable requester-owned settlement secret. V2 stores
+    // only a requester-local recovery nonce because its dealer owns the secret.
     const recovery = createFxRecoveryPacket({
       filePath: recoveryFile,
       password: recoveryPassword,
@@ -528,7 +529,12 @@ class FxRequesterFundingSdk {
       createdAt: timestamp(this.now(), "network time"),
       secret: this.randomSecret(),
       metadata: {
-        phase: this.protocolVersion === FX_V2_VERSION ? "fx-v2" : 9,
+        phase:
+          this.protocolVersion === FX_V3_VERSION
+            ? "fx-v3"
+            : this.protocolVersion === FX_V2_VERSION
+              ? "fx-v2"
+              : 9,
         proposalId: proposal.proposalId,
         purpose:
           this.protocolVersion === FX_V2_VERSION

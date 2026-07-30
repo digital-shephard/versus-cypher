@@ -2,6 +2,7 @@ const { EventEmitter } = require("node:events");
 const { randomBytes, hexlify } = require("ethers");
 const {
   FX_V2_VERSION,
+  FX_V3_VERSION,
   selectSingleDealerRoute,
 } = require("./fx-protocol");
 
@@ -37,7 +38,7 @@ class FxDeterministicDealer extends EventEmitter {
     this.setTimer = setTimer;
     this.clearTimer = clearTimer;
     this.protocolVersion = Number(protocolVersion);
-    if (![1, FX_V2_VERSION].includes(this.protocolVersion)) {
+    if (![1, FX_V2_VERSION, FX_V3_VERSION].includes(this.protocolVersion)) {
       throw new TypeError("deterministic dealer protocol version is unsupported");
     }
     this.pendingRfqs = new Map();
@@ -187,7 +188,10 @@ class FxDeterministicDealer extends EventEmitter {
     const createdAt = this.now();
     const expiresAt = Math.min(
       rfq.payload.quoteDeadline,
-      createdAt + (this.protocolVersion === FX_V2_VERSION ? 120 : 60)
+      createdAt +
+        ([FX_V2_VERSION, FX_V3_VERSION].includes(this.protocolVersion)
+          ? 120
+          : 60)
     );
     if (expiresAt <= createdAt) return null;
     const quote = await this.session.publish({

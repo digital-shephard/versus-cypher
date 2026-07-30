@@ -3,6 +3,7 @@ const test = require("node:test");
 const {
   Interface,
   Wallet,
+  keccak256,
 } = require("ethers");
 const {
   FX_TESTNET_CHAINS,
@@ -381,5 +382,226 @@ test("HTLC event recovery starts at the frozen adapter deployment block", async 
   assert.equal(
     sample.logsFilter().fromBlock,
     FX_TESTNET_CHAINS["84532"].adapterDeploymentBlock
+  );
+});
+
+test("V3 preflight binds runtime code, adapter version, durations, token, and decimals", async () => {
+  const erc20Code = "0x6001";
+  const nativeCode = "0x6002";
+  const tokenCode = "0x6003";
+  const tokenAddress = Wallet.createRandom().address.toLowerCase();
+  const erc20AdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const nativeAdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const configuration = {
+    ...FX_TESTNET_CHAINS["84532"],
+    tokenAddress,
+    adapterV3Address: erc20AdapterAddress,
+    adapterV3RuntimeCodeHash: keccak256(erc20Code),
+    nativeAdapterV3Address: nativeAdapterAddress,
+    nativeAdapterV3RuntimeCodeHash: keccak256(nativeCode),
+  };
+  const provider = {
+    async getNetwork() {
+      return { chainId: 84532n };
+    },
+    async getCode(address) {
+      const normalized = address.toLowerCase();
+      if (normalized === erc20AdapterAddress) return erc20Code;
+      if (normalized === nativeAdapterAddress) return nativeCode;
+      if (normalized === tokenAddress) return tokenCode;
+      return "0x";
+    },
+  };
+  const commonAdapter = {
+    async ADAPTER_VERSION() {
+      return 3n;
+    },
+    async minimumLockDuration() {
+      return 60n;
+    },
+    async maximumLockDuration() {
+      return 604800n;
+    },
+  };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": configuration },
+    settlementVersion: 3,
+    providerFactory: () => provider,
+    contractFactory: (address) => {
+      const normalized = address.toLowerCase();
+      if (normalized === erc20AdapterAddress) {
+        return {
+          ...commonAdapter,
+          async asset() {
+            return tokenAddress;
+          },
+          async assetDecimals() {
+            return 6n;
+          },
+        };
+      }
+      if (normalized === nativeAdapterAddress) return commonAdapter;
+      if (normalized === tokenAddress) {
+        return {
+          async decimals() {
+            return 6n;
+          },
+        };
+      }
+      throw new Error("unexpected contract");
+    },
+  });
+
+  assert.equal((await cohort.preflight("84532")).chainId, "84532");
+});
+
+test("V3 preflight fails closed when deployed immutables drift", async () => {
+  const adapterCode = "0x6001";
+  const tokenCode = "0x6002";
+  const tokenAddress = Wallet.createRandom().address.toLowerCase();
+  const erc20AdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const nativeAdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const configuration = {
+    ...FX_TESTNET_CHAINS["84532"],
+    tokenAddress,
+    adapterV3Address: erc20AdapterAddress,
+    adapterV3RuntimeCodeHash: keccak256(adapterCode),
+    nativeAdapterV3Address: nativeAdapterAddress,
+    nativeAdapterV3RuntimeCodeHash: keccak256(adapterCode),
+  };
+  const provider = {
+    async getNetwork() {
+      return { chainId: 84532n };
+    },
+    async getCode(address) {
+      return address.toLowerCase() === tokenAddress ? tokenCode : adapterCode;
+    },
+  };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": configuration },
+    settlementVersion: 3,
+    providerFactory: () => provider,
+    contractFactory: (address) => {
+      if (address.toLowerCase() === tokenAddress) {
+        return { decimals: async () => 6n };
+      }
+      return {
+        ADAPTER_VERSION: async () => 3n,
+        minimumLockDuration: async () => 61n,
+        maximumLockDuration: async () => 604800n,
+        asset: async () => tokenAddress,
+        assetDecimals: async () => 6n,
+      };
+    },
+  });
+
+  await assert.rejects(
+    cohort.preflight("84532"),
+    (error) => error.code === "IMMUTABLE_MISMATCH"
+  );
+});
+
+test("V3 recovery filters events by the exact funded digest", async () => {
+  const adapterCode = "0x6001";
+  const tokenCode = "0x6002";
+  const tokenAddress = Wallet.createRandom().address.toLowerCase();
+  const erc20AdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const nativeAdapterAddress = Wallet.createRandom().address.toLowerCase();
+  const expectedLockDigest = `0x${"77".repeat(32)}`;
+  let logsFilter = null;
+  const configuration = {
+    ...FX_TESTNET_CHAINS["84532"],
+    tokenAddress,
+    adapterV3Address: erc20AdapterAddress,
+    adapterV3RuntimeCodeHash: keccak256(adapterCode),
+    nativeAdapterV3Address: nativeAdapterAddress,
+    nativeAdapterV3RuntimeCodeHash: keccak256(adapterCode),
+  };
+  const provider = {
+    async getNetwork() {
+      return { chainId: 84532n };
+    },
+    async getCode(address) {
+      return address.toLowerCase() === tokenAddress ? tokenCode : adapterCode;
+    },
+    async getLogs(filter) {
+      logsFilter = filter;
+      return [];
+    },
+  };
+  const commonAdapter = {
+    async ADAPTER_VERSION() {
+      return 3n;
+    },
+    async minimumLockDuration() {
+      return 60n;
+    },
+    async maximumLockDuration() {
+      return 604800n;
+    },
+  };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": configuration },
+    settlementVersion: 3,
+    providerFactory: () => provider,
+    contractFactory: (address) => {
+      const normalized = address.toLowerCase();
+      if (normalized === erc20AdapterAddress) {
+        return {
+          ...commonAdapter,
+          async asset() {
+            return tokenAddress;
+          },
+          async assetDecimals() {
+            return 6n;
+          },
+        };
+      }
+      if (normalized === nativeAdapterAddress) return commonAdapter;
+      if (normalized === tokenAddress) {
+        return {
+          async decimals() {
+            return 6n;
+          },
+        };
+      }
+      throw new Error("unexpected contract");
+    },
+  });
+
+  await assert.rejects(
+    cohort.findLockEvent({
+      chainId: "84532",
+      tradeId: `0x${"78".repeat(32)}`,
+      side: "destination",
+      eventName: "LockClaimed",
+      token: FX_NATIVE_ETH_ADDRESS,
+      expectedLockDigest,
+    }),
+    (error) => error.code === "MISSING_CHAIN_EVENT"
+  );
+  assert.equal(logsFilter.topics[1], expectedLockDigest);
+
+  await assert.rejects(
+    cohort.claimLock({
+      chainId: "84532",
+      tradeId: `0x${"79".repeat(32)}`,
+      side: "destination",
+      secret: `0x${"80".repeat(32)}`,
+      token: FX_NATIVE_ETH_ADDRESS,
+    }),
+    (error) => error.code === "MISSING_LOCK_PROVENANCE"
   );
 });

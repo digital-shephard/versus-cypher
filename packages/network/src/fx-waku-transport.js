@@ -35,11 +35,13 @@ function fxTradeShard(tradeId, shardCount = DEFAULT_FX_WAKU_SHARD_COUNT) {
 
 function createFxContentTopics({
   deploymentId,
+  coordinationDomain = deploymentId,
   shardCount = DEFAULT_FX_WAKU_SHARD_COUNT,
 } = {}) {
   deploymentId = normalizeDeploymentId(deploymentId);
+  coordinationDomain = normalizeDeploymentId(coordinationDomain);
   shardCount = normalizeFxShardCount(shardCount);
-  const scope = deploymentId.slice(2);
+  const scope = coordinationDomain.slice(2);
   return Object.freeze({
     discovery: `/versus-fx/${FX_WAKU_TOPIC_VERSION}/rfq-${scope}/json`,
     coordination: Object.freeze(Array.from(
@@ -56,6 +58,7 @@ function createFxContentTopics({
 class FxWakuTransport extends EventEmitter {
   constructor({
     deploymentId,
+    coordinationDomain = deploymentId,
     bootstrapPeers = [],
     defaultBootstrap = bootstrapPeers.length === 0,
     shardCount = DEFAULT_FX_WAKU_SHARD_COUNT,
@@ -74,9 +77,11 @@ class FxWakuTransport extends EventEmitter {
   } = {}) {
     super();
     this.deploymentId = normalizeDeploymentId(deploymentId);
+    this.coordinationDomain = normalizeDeploymentId(coordinationDomain);
     this.shardCount = normalizeFxShardCount(shardCount);
     this.topics = createFxContentTopics({
       deploymentId: this.deploymentId,
+      coordinationDomain: this.coordinationDomain,
       shardCount: this.shardCount,
     });
     this.bootstrapPeers = [...bootstrapPeers];
@@ -112,6 +117,7 @@ class FxWakuTransport extends EventEmitter {
       state: this.state,
       error: this.error,
       deploymentId: this.deploymentId,
+      coordinationDomain: this.coordinationDomain,
       topics: this.topics,
       peerCount: this.connectedPeers.length,
       protocolCounts: { ...this.protocolCounts },
