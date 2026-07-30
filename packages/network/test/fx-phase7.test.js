@@ -15,6 +15,7 @@ const {
   createBrokerRouteProposal,
   createFxBrokerHttpService,
   queryBrokerRoutes,
+  resolveFxBrokerCoordinationDomain,
   signFxMessage,
   verifyBrokerMetricsSnapshot,
   verifyBrokerRouteProposal,
@@ -28,6 +29,7 @@ const DESTINATION_TOKEN = `0x${"22".repeat(20)}`;
 const SOURCE_CHAIN = "84532";
 const DESTINATION_CHAIN = "421614";
 const NOW = 1_800_000_000;
+const COORDINATION_DOMAIN = `0x${"73".repeat(32)}`;
 
 async function fixture({
   dealerInput = "101000",
@@ -103,6 +105,41 @@ async function fixture({
   });
   return { broker, dealer, requester, rfq, quote, proposal };
 }
+
+test("x402 brokers inherit the frozen manifest coordination domain", () => {
+  assert.equal(
+    resolveFxBrokerCoordinationDomain({
+      deploymentId: DEPLOYMENT_ID,
+      x402Manifest: {
+        deploymentId: DEPLOYMENT_ID,
+        coordinationDomain: COORDINATION_DOMAIN,
+      },
+    }),
+    COORDINATION_DOMAIN
+  );
+});
+
+test("x402 brokers reject a conflicting coordination-domain override", () => {
+  assert.throws(
+    () =>
+      resolveFxBrokerCoordinationDomain({
+        deploymentId: DEPLOYMENT_ID,
+        configuredDomain: `0x${"74".repeat(32)}`,
+        x402Manifest: {
+          deploymentId: DEPLOYMENT_ID,
+          coordinationDomain: COORDINATION_DOMAIN,
+        },
+      }),
+    /conflicts with the frozen x402 manifest/
+  );
+});
+
+test("non-x402 brokers retain the deployment-scoped default", () => {
+  assert.equal(
+    resolveFxBrokerCoordinationDomain({ deploymentId: DEPLOYMENT_ID }),
+    DEPLOYMENT_ID
+  );
+});
 
 async function completionEvidence(context) {
   const secretHash = keccak256(toUtf8Bytes("phase-7-completion-secret"));

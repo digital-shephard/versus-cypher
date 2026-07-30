@@ -11,6 +11,7 @@ module.exports = {
   ...require("./fx-broker-service"),
   ...require("./fx-coordination"),
   ...require("./fx-ephemeral-identity"),
+  ...require("./fx-phase7-runtime"),
   ...require("./fx-evm-native-adapter"),
   ...require("./fx-evm-v2-adapter"),
   ...require("./fx-evm-v3-adapter"),

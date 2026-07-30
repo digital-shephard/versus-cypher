@@ -85,6 +85,9 @@ The final method result is returned only after the atomic swap completes.
 - A repeated funding request broadcasts the same transaction at most once.
 - Acceptance, reservation, transaction hash, block, and public coordination
   message IDs survive restart.
+- Completion requires both source and destination claim messages. Their
+  arrival order does not matter, and a redundant completion postcard is not
+  required for the requester to recognize final settlement.
 - Broker fees must be zero in this version because V3 has no safe broker split
   in its source lock. Dealer spread and executor bounty remain in the quote.
 - Native ETH works directly. ERC-20 input requires an existing sufficient
@@ -106,6 +109,11 @@ FX_X402_ARBITRUM_SEPOLIA_RPC_URL=<read-write Arbitrum Sepolia RPC>
 The normal Phase 7 broker identity, Waku, deployment, data-directory, host,
 and port settings are still required. The deployment ID must match
 `versus/deployments/fx/phase12-v3-public-testnet.json`.
+When x402 swaps are enabled, the broker derives its Waku coordination domain
+from that same frozen manifest. Startup fails if
+`FX_PHASE7_COORDINATION_DOMAIN` conflicts with the manifest, preventing a
+healthy-looking endpoint from publishing RFQs onto a topic the live desktop
+dealers do not subscribe to.
 
 Launch:
 
@@ -138,6 +146,33 @@ Native ETH is the default input and output asset. Run:
 ```powershell
 npm run fx:x402:request --prefix packages/network
 ```
+
+## Public Testnet Acceptance
+
+On 2026-07-30, a non-Cypher requester used the local HTTP endpoint to route a
+Base Sepolia ETH to Arbitrum Sepolia ETH swap through public Waku and an
+independent Mac dealer. Trade
+`0x749ff8f9985118afeff864b26a1ddb5baf2838738477d6569ae14fe88a639ddf`
+completed in approximately 64 seconds with exact destination output of
+`100000000000000` wei.
+
+Public settlement evidence:
+
+- [Base source lock](https://sepolia.basescan.org/tx/0x480a0d37994cd1e464ce0a4fe1d8afe497474c754e9eee70469ed8a797308106):
+  `0x480a0d37994cd1e464ce0a4fe1d8afe497474c754e9eee70469ed8a797308106`
+  at block `44840300`
+- [Arbitrum destination lock](https://sepolia.arbiscan.io/tx/0x834f2f5ada37074e7f9ff9387cd0d3304f8285105288346b9965d2e7c2a322fd):
+  `0x834f2f5ada37074e7f9ff9387cd0d3304f8285105288346b9965d2e7c2a322fd`
+  at block `293058975`
+- [Arbitrum destination claim](https://sepolia.arbiscan.io/tx/0xa8415dca15d801e38168a3ceefd6efdceecacdcdcc0d7d6de5d74496a1c049cd):
+  `0xa8415dca15d801e38168a3ceefd6efdceecacdcdcc0d7d6de5d74496a1c049cd`
+  at block `293059019`
+- [Base source claim](https://sepolia.basescan.org/tx/0x0f4e6c5a7277811bf009717dbb8a69efe0b223e35fa0319d4ec41d113fffc803):
+  `0x0f4e6c5a7277811bf009717dbb8a69efe0b223e35fa0319d4ec41d113fffc803`
+  at block `44840320`
+
+The endpoint reported `complete` only after observing both claim messages.
+The acceptance run used public testnets only.
 
 ## Operational Notes
 

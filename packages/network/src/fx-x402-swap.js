@@ -96,6 +96,25 @@ function uint(value, label, { allowZero = false } = {}) {
   return normalized;
 }
 
+function sourceFundingError(error) {
+  const details = [
+    error?.shortMessage,
+    error?.message,
+    error?.reason,
+    error?.info?.error?.message,
+    error?.error?.message,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (/out\s*of\s*funds|insufficient funds/i.test(details)) {
+    return new FxX402SwapError(
+      "requester source wallet needs enough native asset for the lock and gas",
+      "SOURCE_FUNDS_REQUIRED"
+    );
+  }
+  return error;
+}
+
 function integer(value, label, minimum = 0) {
   const normalized = Number(value);
   if (!Number.isSafeInteger(normalized) || normalized < minimum) {
@@ -618,6 +637,20 @@ class FxX402SwapCoordinator {
     };
     if (envelope.type === "fx_lock_destination") {
       patch.destinationLockMessageId = envelope.id;
+    } else if (envelope.type === "fx_claim") {
+      const lockMessageId = envelope.payload?.lockMessageId;
+      if (lockMessageId === state.sourceLockEnvelope?.id) {
+        patch.sourceClaimMessageId = envelope.id;
+      } else if (lockMessageId === state.destinationLockMessageId) {
+        patch.destinationClaimMessageId = envelope.id;
+      }
+      if (
+        (patch.sourceClaimMessageId || state.sourceClaimMessageId) &&
+        (patch.destinationClaimMessageId || state.destinationClaimMessageId)
+      ) {
+        patch.status = "complete";
+      }
+      patch.lastMessageId = envelope.id;
     } else if (envelope.type !== "fx_reveal") {
       patch.lastMessageId = envelope.id;
     }
@@ -1497,10 +1530,22 @@ class FxX402RequesterClient {
       value: BigInt(funding.transaction.value),
       nonce: await provider.getTransactionCount(requester, "pending"),
     };
-    const estimatedGas = BigInt(await provider.estimateGas({
-      ...transaction,
-      from: requester,
-    }));
+    const sourceBalance = BigInt(await provider.getBalance(requester));
+    if (sourceBalance <= transaction.value) {
+      throw new FxX402SwapError(
+        "requester source wallet needs enough native asset for the lock and gas",
+        "SOURCE_FUNDS_REQUIRED"
+      );
+    }
+    let estimatedGas;
+    try {
+      estimatedGas = BigInt(await provider.estimateGas({
+        ...transaction,
+        from: requester,
+      }));
+    } catch (error) {
+      throw sourceFundingError(error);
+    }
     transaction.gasLimit = (estimatedGas * 120n + 99n) / 100n;
     const feeData = await provider.getFeeData();
     if (feeData.maxFeePerGas != null) {
@@ -1511,6 +1556,18 @@ class FxX402RequesterClient {
       );
     } else {
       transaction.gasPrice = BigInt(feeData.gasPrice);
+    }
+    const maximumGasPrice = BigInt(
+      transaction.maxFeePerGas ?? transaction.gasPrice ?? 0
+    );
+    if (
+      sourceBalance <
+      transaction.value + transaction.gasLimit * maximumGasPrice
+    ) {
+      throw new FxX402SwapError(
+        "requester source wallet needs enough native asset for the lock and gas",
+        "SOURCE_FUNDS_REQUIRED"
+      );
     }
     const rawTransaction = await this.signer.signTransaction(transaction);
     verifySignedSourceFundingTransaction(rawTransaction, funding);

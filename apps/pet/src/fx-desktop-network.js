@@ -385,6 +385,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       storeMessageLimit: 512,
       now: () => this.now() * 1000,
     });
+    transport.on("state", () => this.emit("status", this.status()));
     const session = new FxCoordinationSession({
       deploymentId: this.deploymentId,
       signer: this.signer(role),
@@ -3816,10 +3817,14 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   async #processDestinationClaim(claimMessage, destinationLock) {
     const tradeId = claimMessage.tradeId;
     const trade = this.exposureJournal.trade(tradeId);
-    if (
-      !trade ||
-      !["destination_locked", "destination_claimed"].includes(trade.state)
-    ) {
+    if (!trade) {
+      return;
+    }
+    if (trade.state === "completed") {
+      await this.#publishCompletionIfReady(tradeId, trade);
+      return;
+    }
+    if (!["destination_locked", "destination_claimed"].includes(trade.state)) {
       return;
     }
     const secret = await this.evm.extractClaimSecret({
@@ -3919,32 +3924,52 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       });
     }
     this.guard.markCompleted(tradeId, sourceClaim);
+    await this.#publishCompletionIfReady(tradeId, trade);
+    this.emit("trade", {
+      tradeId,
+      role: "dealer",
+      state: "complete",
+      transactionHash: txHash,
+    });
+  }
+
+  async #publishCompletionIfReady(tradeId, trade) {
+    const existing = this.dealerJournal.findType(tradeId, "fx_complete");
+    if (existing) return existing;
+    const sourceLock = this.dealerJournal.findType(
+      tradeId,
+      "fx_lock_source"
+    );
+    const destinationLock = this.dealerJournal.findType(
+      tradeId,
+      "fx_lock_destination"
+    );
+    if (!sourceLock || !destinationLock) return null;
+    const sourceClaim = this.#messageForLock(
+      this.dealerJournal,
+      tradeId,
+      sourceLock.id,
+      "fx_claim"
+    );
     const destinationClaim = this.#messageForLock(
       this.dealerJournal,
       tradeId,
       destinationLock.id,
       "fx_claim"
     );
-    if (destinationClaim) {
-      await this.dealerSession.publish({
-        protocol: "versus-fx",
-        version: this.protocolVersion,
-        type: "fx_complete",
-        tradeId,
-        createdAt: this.now(),
-        expiresAt: this.now() + 30 * 24 * 60 * 60,
-        payload: {
-          acceptId: trade.package.accept.id,
-          sourceClaimMessageId: sourceClaim.id,
-          destinationClaimMessageId: destinationClaim.id,
-        },
-      });
-    }
-    this.emit("trade", {
+    if (!sourceClaim || !destinationClaim) return null;
+    return this.dealerSession.publish({
+      protocol: "versus-fx",
+      version: this.protocolVersion,
+      type: "fx_complete",
       tradeId,
-      role: "dealer",
-      state: "complete",
-      transactionHash: txHash,
+      createdAt: this.now(),
+      expiresAt: this.now() + 30 * 24 * 60 * 60,
+      payload: {
+        acceptId: trade.package.accept.id,
+        sourceClaimMessageId: sourceClaim.id,
+        destinationClaimMessageId: destinationClaim.id,
+      },
     });
   }
 

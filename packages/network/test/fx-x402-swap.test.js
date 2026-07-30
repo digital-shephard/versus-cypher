@@ -228,9 +228,10 @@ class FakeSession extends EventEmitter {
 }
 
 class FakeProvider {
-  constructor() {
+  constructor({ balance = 10n ** 18n } = {}) {
     this.broadcasts = [];
     this.receipts = new Map();
+    this.balance = balance;
   }
 
   async getBlock() {
@@ -239,6 +240,10 @@ class FakeProvider {
 
   async getTransactionCount() {
     return 0;
+  }
+
+  async getBalance() {
+    return this.balance;
   }
 
   async estimateGas() {
@@ -271,6 +276,76 @@ class FakeProvider {
     return this.receipts.get(String(transactionHash).toLowerCase()) || null;
   }
 }
+
+test("requester fails clearly when the source wallet cannot fund principal and gas", async () => {
+  const run = temporaryDirectory();
+  const requester = Wallet.createRandom();
+  const dealer = Wallet.createRandom();
+  const brokerSigner = Wallet.createRandom();
+  let proposal;
+  let session;
+  const broker = {
+    async requestRoute(rfq) {
+      proposal = await signedProposal(rfq, dealer, brokerSigner);
+      session.proposal = proposal;
+      return proposal;
+    },
+    status: () => ({ active: true }),
+    metricsSnapshot: async () => ({}),
+  };
+  session = new FakeSession({ dealer, proposal: null });
+  const provider = new FakeProvider({ balance: 0n });
+  const store = new FxX402SwapStore({
+    directory: path.join(run.directory, "broker"),
+  });
+  const coordinator = new FxX402SwapCoordinator({
+    deploymentId: DEPLOYMENT_ID,
+    manifest: MANIFEST,
+    session,
+    broker,
+    providers: { [SOURCE_CHAIN]: provider },
+    store,
+    now: () => NOW,
+  });
+  const handler = createFxX402SwapHttpHandler({ coordinator });
+  const service = createFxBrokerHttpService({
+    broker,
+    x402SwapHandler: handler,
+  });
+  try {
+    const baseUrl = await service.listen();
+    const client = new FxX402RequesterClient({
+      endpoint: `${baseUrl}/v1/fx/swaps`,
+      deploymentId: DEPLOYMENT_ID,
+      manifest: MANIFEST,
+      signer: requester,
+      providers: { [SOURCE_CHAIN]: provider },
+      recoveryDirectory: path.join(run.directory, "requester"),
+      now: () => NOW,
+      randomSecret: () => SECRET,
+      sleep: () => new Promise((resolve) => setImmediate(resolve)),
+    });
+    await assert.rejects(
+      client.execute({
+        inputChainId: SOURCE_CHAIN,
+        inputToken: FX_NATIVE_ETH_ADDRESS,
+        maxInputAtomic: "2000",
+        outputChainId: DESTINATION_CHAIN,
+        outputToken: FX_NATIVE_ETH_ADDRESS,
+        outputAmountAtomic: "1000",
+        destinationAddress: requester.address,
+        recoveryPassword: "test-only recovery password",
+        statusPollMs: 1,
+        completionTimeoutMs: 5_000,
+      }),
+      (error) => error?.code === "SOURCE_FUNDS_REQUIRED"
+    );
+  } finally {
+    await service.close();
+    coordinator.close();
+    run.cleanup();
+  }
+});
 
 async function fixture() {
   const requester = Wallet.createRandom();
@@ -469,6 +544,70 @@ test("coordinator rejects destination data outside the signed x402 commitment", 
       { code: "COMMITMENT_MISMATCH" }
     );
     assert.equal(routeRequests, 0);
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("coordinator completes when source and destination claims arrive in either order", async () => {
+  const value = await fixture();
+  const provider = new FakeProvider();
+  const broker = {
+    requestRoute: async () => value.proposal,
+    status: () => ({ active: true }),
+    metricsSnapshot: async () => ({}),
+  };
+  const session = new FakeSession({
+    dealer: value.dealer,
+    proposal: value.proposal,
+  });
+  const coordinator = new FxX402SwapCoordinator({
+    broker,
+    session,
+    manifest: MANIFEST,
+    providers: { [SOURCE_CHAIN]: provider },
+    now: () => NOW + 5,
+  });
+  try {
+    await coordinator.open({
+      rfq: value.rfq,
+      destinationAddress: value.requester.address,
+      sourceRefundAddress: value.requester.address,
+      secretHash: SECRET_HASH,
+    });
+    await coordinator.accept({
+      tradeId: value.rfq.tradeId,
+      acceptance: value.acceptance,
+    });
+    const state = coordinator.store.get(value.rfq.tradeId);
+    coordinator.store.update(value.rfq.tradeId, {
+      sourceLockEnvelope: {
+        id: `0x${"c1".repeat(32)}`,
+      },
+      destinationLockMessageId: `0x${"d1".repeat(32)}`,
+    });
+    coordinator.observe({
+      type: "fx_claim",
+      tradeId: value.rfq.tradeId,
+      id: `0x${"e1".repeat(32)}`,
+      payload: {
+        lockMessageId: `0x${"c1".repeat(32)}`,
+      },
+    });
+    assert.equal(coordinator.status(value.rfq.tradeId).status, "claim_observed");
+    coordinator.observe({
+      type: "fx_claim",
+      tradeId: value.rfq.tradeId,
+      id: `0x${"e2".repeat(32)}`,
+      payload: {
+        lockMessageId: `0x${"d1".repeat(32)}`,
+      },
+    });
+    const completed = coordinator.status(value.rfq.tradeId);
+    assert.equal(completed.status, "complete");
+    assert.equal(completed.sourceClaimMessageId, `0x${"e1".repeat(32)}`);
+    assert.equal(completed.destinationClaimMessageId, `0x${"e2".repeat(32)}`);
+    assert.ok(state);
   } finally {
     coordinator.close();
   }

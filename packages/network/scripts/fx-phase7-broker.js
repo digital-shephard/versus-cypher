@@ -10,6 +10,7 @@ const {
   FxX402SwapStore,
   createFxBrokerHttpService,
   createFxX402SwapHttpHandler,
+  resolveFxBrokerCoordinationDomain,
 } = require("../src");
 
 const DEFAULT_BOOTSTRAPS = [
@@ -50,9 +51,28 @@ async function main() {
   const deploymentId = required("FX_PHASE7_DEPLOYMENT_ID").toLowerCase();
   const dataDirectory = path.resolve(required("FX_PHASE7_DATA_DIR"));
   fs.mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
+  const x402Enabled = process.env.FX_X402_SWAP_ENABLED === "1";
+  const x402ManifestPath = x402Enabled
+    ? path.resolve(
+        process.env.FX_X402_V3_MANIFEST ||
+          path.join(
+            __dirname,
+            "../../../versus/deployments/fx/phase12-v3-public-testnet.json"
+          )
+      )
+    : null;
+  const x402Manifest = x402ManifestPath
+    ? JSON.parse(fs.readFileSync(x402ManifestPath, "utf8"))
+    : null;
+  const coordinationDomain = resolveFxBrokerCoordinationDomain({
+    deploymentId,
+    configuredDomain: process.env.FX_PHASE7_COORDINATION_DOMAIN || null,
+    x402Manifest,
+  });
   const signer = await loadSigner();
   const transport = new FxWakuTransport({
     deploymentId,
+    coordinationDomain,
     bootstrapPeers: String(
       process.env.FX_PHASE7_WAKU_PEERS || DEFAULT_BOOTSTRAPS.join(",")
     ).split(",").map((value) => value.trim()).filter(Boolean),
@@ -96,15 +116,8 @@ async function main() {
   await broker.start();
   let x402Coordinator = null;
   let x402SwapHandler = null;
-  if (process.env.FX_X402_SWAP_ENABLED === "1") {
-    const manifestPath = path.resolve(
-      process.env.FX_X402_V3_MANIFEST ||
-        path.join(
-          __dirname,
-          "../../../versus/deployments/fx/phase12-v3-public-testnet.json"
-        )
-    );
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (x402Enabled) {
+    const manifest = x402Manifest;
     if (manifest.deploymentId !== deploymentId) {
       throw new Error("FX x402 manifest and coordination deployment differ");
     }
@@ -157,6 +170,7 @@ async function main() {
     event: "fx_broker_ready",
     url,
     broker: signer.address.toLowerCase(),
+    coordinationDomain,
     feeAtomic: process.env.FX_PHASE7_BROKER_FEE_ATOMIC || "0",
     x402SwapEndpoint: x402SwapHandler
       ? `${url}/v1/fx/swaps`
