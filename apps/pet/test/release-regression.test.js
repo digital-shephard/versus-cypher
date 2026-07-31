@@ -310,6 +310,12 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   const css = fs.readFileSync(path.join(root, "renderer", "pet.css"), "utf8");
   const renderer = fs.readFileSync(path.join(root, "renderer", "pet.js"), "utf8");
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");
+  const fxIconDirectory = path.join(
+    root,
+    "assets",
+    "tamagotchi",
+    "fx-icons"
+  );
 
   assert.match(html, /id="fx-add-position"[\s\S]*data-fx-stock-filter="all"[\s\S]*data-fx-stock-filter="funded"[\s\S]*data-fx-stock-filter="active"/);
   assert.match(html, /<small>STOCK VALUE<\/small>/);
@@ -328,6 +334,14 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.match(renderer, /function fxPositionOptionNode\(position\)[\s\S]*toggle\.setAttribute\("role", "switch"\)/);
   assert.match(renderer, /function fxChainOptionNode\(chain\)[\s\S]*fx-chain-group-head[\s\S]*fx-native-option/);
   assert.match(renderer, /function fxPositionOptionNode\(position\)[\s\S]*fx-token-option/);
+  assert.match(renderer, /const FX_ASSET_ICON_SOURCES = Object\.freeze\(\{[\s\S]*ETH:[\s\S]*USDC:/);
+  assert.match(renderer, /function fxAssetMark\(asset, chain,[\s\S]*fx-chain-badge/);
+  assert.match(renderer, /function fxGasBayNode\(bay\)[\s\S]*fxAssetMark\(bay\.asset/);
+  assert.match(renderer, /function openFxAssetPicker\(target\)[\s\S]*fx-asset-option-mark/);
+  assert.match(renderer, /function fxSetRequesterAsset\(button, position\)[\s\S]*fx-trigger-mark/);
+  for (const file of ["eth.svg", "usdc.svg", "arbitrum.png"]) {
+    assert.ok(fs.statSync(path.join(fxIconDirectory, file)).size > 0);
+  }
   assert.match(renderer, /const nodes = fxChains\.map\(fxChainOptionNode\)/);
   assert.match(renderer, /let fxExpandedChains = new Set\(\)/);
   assert.doesNotMatch(renderer, /fxChainExpansionInitialized|initiallyExpanded|fundedChain/);
@@ -390,7 +404,11 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.match(renderer, /WALLET FUNDED[\s\S]*LOCK SOURCE FUNDS/);
   assert.match(
     renderer,
-    /function openFxRequester[\s\S]*trade\.state !== "quoted"[\s\S]*fxRequesterTrade\?\.state === "quoted"[\s\S]*fxRequesterTrade = null/,
+    /function fxResumableRequesterTrade[\s\S]*trade\?\.role === "requester"/,
+  );
+  assert.match(
+    renderer,
+    /function openFxRequester[\s\S]*fxResumableRequesterTrade\(fxDesktopSnapshot\?\.trades\)[\s\S]*fxRequesterTrade\?\.state === "quoted"[\s\S]*fxRequesterTrade = null/,
   );
   assert.match(
     renderer,
@@ -416,6 +434,58 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
     "0.000899 ETH",
     "1.24 USDC",
   ]);
+  const historyHelpersStart = renderer.indexOf("function fxTimelineLabel");
+  const historyHelpersEnd = renderer.indexOf(
+    "function renderFxHistory",
+    historyHelpersStart
+  );
+  const historyHelpers = {
+    networkNowMs: () => 1_000_000,
+  };
+  vm.runInNewContext(
+    `${renderer.slice(historyHelpersStart, historyHelpersEnd)}
+      result = {
+        refundTime: fxRemainingTime(1_000 + (2 * 60 * 60) - 1),
+        quoteVisible: fxTradeReachedHistory({
+          role: "requester",
+          state: "quoted",
+          timeline: [{ state: "quoted" }],
+        }),
+        dealerVisible: fxTradeReachedHistory({
+          role: "dealer",
+          state: "complete",
+        }),
+        acceptedVisible: fxTradeReachedHistory({
+          role: "requester",
+          state: "accepted",
+        }),
+        cancelledAfterAcceptVisible: fxTradeReachedHistory({
+          role: "requester",
+          state: "cancelled",
+          timeline: [{ state: "accepted" }, { state: "cancelled" }],
+        }),
+        resumableRequester: fxResumableRequesterTrade([
+          { tradeId: "relayed", role: "relayer", state: "destination_claimed" },
+          { tradeId: "active", role: "requester", state: "source_lock_confirmed" },
+        ])?.tradeId,
+        relayerOnlyResumable: fxResumableRequesterTrade([
+          { tradeId: "relayed", role: "relayer", state: "destination_claimed" },
+        ]),
+      };`,
+    historyHelpers
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(historyHelpers.result)),
+    {
+      refundTime: "2h",
+      quoteVisible: false,
+      dealerVisible: false,
+      acceptedVisible: true,
+      cancelledAfterAcceptVisible: true,
+      resumableRequester: "active",
+      relayerOnlyResumable: null,
+    }
+  );
   assert.match(html, /fx-funding-address-row[\s\S]*fx-copy-icon/);
   assert.match(html, /id="fx-settlement-done">DONE/);
   assert.match(html, /id="fx-settlement-source-asset">--/);
@@ -486,6 +556,8 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.match(service, /async withdrawPosition[\s\S]*DEALER_ACTIVE[\s\S]*withdrawInventory/);
   assert.match(service, /async resumeDealer[\s\S]*armDealer/);
   assert.match(renderer, /function renderFxHistory[\s\S]*fxReconcile/);
+  assert.match(renderer, /filter\(fxTradeReachedHistory\)/);
+  assert.match(main, /combinedWakuState/);
   assert.match(capture, /ipcMain\.handle\("fx:cancel"/);
   assert.match(roles, /requester[\s\S]*dealer[\s\S]*broker/);
   assert.match(cohort, /adapterDeploymentBlock: 44662322/);

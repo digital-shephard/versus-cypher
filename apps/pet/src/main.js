@@ -40,6 +40,7 @@ const { FxDesktopService } = require("./fx-desktop-service");
 const { FxDesktopNetworkRuntime } = require("./fx-desktop-network");
 const { FxEvmCohort } = require("./fx-evm-cohort");
 const { fxRoleWalletProvider } = require("./fx-role-wallet");
+const { combinedWakuState } = require("./service-status");
 const {
   launchAtLoginAccepted,
   readWindowsRunValue,
@@ -252,6 +253,21 @@ fxNetworkRuntime.on("trade", (update) => {
   }
 });
 fxNetworkRuntime.on("status", () => {
+  const fxWakuState = combinedWakuState("not_configured", fxNetworkRuntime.status());
+  recordActivityState("fx-waku-state", {
+    channel: "waku",
+    direction: "local",
+    operation: "fx_mesh_state",
+    destination: "versus_fx",
+    status: ["ready", "live", "caught_up"].includes(fxWakuState)
+      ? "ready"
+      : fxWakuState === "offline"
+        ? "off"
+        : "wait",
+  });
+  if (["ready", "live", "caught_up"].includes(fxWakuState)) {
+    healthMonitor.resolve("waku_unavailable");
+  }
   sendRenderer("fx:changed", fxDesktopService.snapshot());
 });
 fxNetworkRuntime.on("error", (error) => {
@@ -461,11 +477,16 @@ function serviceActivitySnapshot() {
   const settings = loadSettings();
   let transport = null;
   try { transport = networkService?.status?.().transportStatus || null; } catch (_) {}
+  let fxStatus = null;
+  try { fxStatus = fxNetworkRuntime.status(); } catch (_) {}
   return {
     version: 1,
     telemetry: "none",
     chain: chainConfigError ? "error" : chainRainService ? "base" : "local_sim",
-    waku: transport?.state || (networkUnavailableReason ? "off" : "not_configured"),
+    waku: combinedWakuState(
+      transport?.state || (networkUnavailableReason ? "off" : "not_configured"),
+      fxStatus
+    ),
     brain: settings.brain.kind === "off" ? "off" : settings.brain.kind,
     health: healthMonitor.snapshot(),
     events: activityBus.snapshot(),
@@ -505,10 +526,16 @@ function refreshHealthSnapshot() {
   try {
     const status = networkService?.status?.();
     const transportState = String(status?.transportStatus?.state || "").toLowerCase();
-    if (["offline", "error"].includes(transportState)) {
+    const combinedTransportState = combinedWakuState(
+      transportState || (networkUnavailableReason ? "off" : "not_configured"),
+      fxNetworkRuntime.status()
+    );
+    if (["offline", "error"].includes(combinedTransportState)) {
       healthMonitor.report(Object.assign(new Error("Waku relay is unavailable"), { code: "WAKU_UNAVAILABLE" }), {
         channel: "waku", operation: "mesh_state",
       });
+    } else if (["ready", "live", "caught_up"].includes(combinedTransportState)) {
+      healthMonitor.resolve("waku_unavailable");
     }
     if (transportState === "degraded_store") {
       healthMonitor.report(Object.assign(new Error("Waku Store history is unavailable"), { code: "WAKU_STORE_UNAVAILABLE" }), {

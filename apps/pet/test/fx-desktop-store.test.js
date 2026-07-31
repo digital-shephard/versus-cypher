@@ -240,6 +240,22 @@ test("FX desktop trade history persists and scrubbed evidence excludes private s
   }
 });
 
+test("FX desktop persistence accepts the executor fallback wait state", () => {
+  const temporary = temporaryStore();
+  const tradeId = `0x${"ef".repeat(32)}`;
+  try {
+    const store = new FxDesktopStore({ filePath: temporary.filePath });
+    store.putTrade({
+      tradeId,
+      role: "relayer",
+      state: "executor_fallback_wait",
+    });
+    assert.equal(store.trade(tradeId).state, "executor_fallback_wait");
+  } finally {
+    temporary.cleanup();
+  }
+});
+
 test("a new deployment privately archives incompatible desktop trades", () => {
   const temporary = temporaryStore();
   const deploymentA = `0x${"a1".repeat(32)}`;

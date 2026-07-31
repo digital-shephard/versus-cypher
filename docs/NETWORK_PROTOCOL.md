@@ -147,6 +147,8 @@ Waku infrastructure peers are not Cypher identities and receive no trust. Waku p
 
 On startup and after a launch rollover, the adapter makes a best-effort Waku Store query. The default query is bounded to the prior 24 hours, 256 decoded messages, and pages of 64. Historical messages bypass only the realtime minute counter; signatures, expiry, Base ownership, topic, nullifier, launch/signal limits, and local blocks still apply. Store availability is not permanent archival availability, so accepted history remains append-only on each Cypher.
 
+While running, both the Cypher postcard/rain lane and the FX coordination lane inspect their local Waku peer protocol health every 15 seconds. This is not a blockchain or public-RPC poll. If the required LightPush or Filter peer disappears, the client rebuilds its light node against the configured bootstrap relays, recreates every subscription, and performs bounded Store catch-up for messages missed while disconnected. Reconnect work is single-flight and failed attempts use exponential backoff capped at two minutes. An explicit application shutdown cancels the watchdog.
+
 The Electron service reads `currentClassId()` from the configured `SyndicateEngine` every 60 seconds. When it changes, the Waku adapter subscribes to the new launch topic, retires the old subscription, updates its encoder, and queries bounded history without restarting the app. Explicit `VERSUS_WAKU_LAUNCH_ID` configuration pins a topic for diagnostics and disables automatic rollover.
 
 The current adapter does not attach a zero-knowledge RLN proof. Waku transport and Base ownership provide public delivery and registered-Cypher admission, but they do not make one human equal one identity or conceal the sender.

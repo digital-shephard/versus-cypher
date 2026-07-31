@@ -6,6 +6,8 @@ const FX_WAKU_TOPIC_VERSION = 1;
 const DEFAULT_FX_WAKU_SHARD_COUNT = 4;
 const DEFAULT_FX_STORE_HISTORY_MS = 15 * 60 * 1000;
 const DEFAULT_FX_STORE_MESSAGE_LIMIT = 512;
+const DEFAULT_FX_RECONNECT_POLL_MS = 15_000;
+const DEFAULT_FX_RECONNECT_BACKOFF_MAX_MS = 120_000;
 const DEFAULT_WAKU_CLUSTER_ID = 66;
 const DEFAULT_WAKU_SHARD_COUNT = 8;
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
@@ -71,6 +73,8 @@ class FxWakuTransport extends EventEmitter {
     storeHistoryMs = DEFAULT_FX_STORE_HISTORY_MS,
     storeMessageLimit = DEFAULT_FX_STORE_MESSAGE_LIMIT,
     storePageSize = 64,
+    reconnectPollMs = DEFAULT_FX_RECONNECT_POLL_MS,
+    reconnectBackoffMaxMs = DEFAULT_FX_RECONNECT_BACKOFF_MAX_MS,
     sdkLoader = () => import("@waku/sdk"),
     nodeFactory = null,
     now = () => Date.now(),
@@ -95,6 +99,17 @@ class FxWakuTransport extends EventEmitter {
     this.storeHistoryMs = Number(storeHistoryMs);
     this.storeMessageLimit = Number(storeMessageLimit);
     this.storePageSize = Number(storePageSize);
+    this.reconnectPollMs = Number(reconnectPollMs);
+    this.reconnectBackoffMaxMs = Number(reconnectBackoffMaxMs);
+    if (!Number.isInteger(this.reconnectPollMs) || this.reconnectPollMs < 10) {
+      throw new RangeError("reconnectPollMs must be at least 10 milliseconds");
+    }
+    if (
+      !Number.isInteger(this.reconnectBackoffMaxMs) ||
+      this.reconnectBackoffMaxMs < this.reconnectPollMs
+    ) {
+      throw new RangeError("reconnectBackoffMaxMs must be at least reconnectPollMs");
+    }
     this.sdkLoader = sdkLoader;
     this.nodeFactory = nodeFactory;
     this.now = now;
@@ -108,6 +123,11 @@ class FxWakuTransport extends EventEmitter {
     this.connectedPeers = [];
     this.historySync = null;
     this.reconnectInFlight = null;
+    this.reconnectWatchdogTimer = null;
+    this.reconnectWatchdogInFlight = null;
+    this.reconnectDesired = false;
+    this.reconnectFailures = 0;
+    this.nextReconnectAt = 0;
   }
 
   status() {
@@ -122,7 +142,75 @@ class FxWakuTransport extends EventEmitter {
       peerCount: this.connectedPeers.length,
       protocolCounts: { ...this.protocolCounts },
       historySync: this.historySync,
+      reconnect: {
+        active: Boolean(this.reconnectWatchdogTimer),
+        failures: this.reconnectFailures,
+        nextAttemptAt: this.nextReconnectAt || null,
+      },
     };
+  }
+
+  resetReconnectBackoff() {
+    this.reconnectFailures = 0;
+    this.nextReconnectAt = 0;
+  }
+
+  recordReconnectFailure() {
+    this.reconnectFailures += 1;
+    const delay = Math.min(
+      this.reconnectPollMs * (2 ** Math.min(this.reconnectFailures - 1, 8)),
+      this.reconnectBackoffMaxMs
+    );
+    this.nextReconnectAt = Date.now() + delay;
+  }
+
+  startReconnectWatchdog() {
+    if (this.reconnectWatchdogTimer || !this.reconnectDesired) return;
+    this.reconnectWatchdogTimer = setInterval(() => {
+      this.runReconnectWatchdog().catch((error) => {
+        this.error = error.message;
+      });
+    }, this.reconnectPollMs);
+    this.reconnectWatchdogTimer.unref?.();
+  }
+
+  stopReconnectWatchdog() {
+    if (this.reconnectWatchdogTimer) clearInterval(this.reconnectWatchdogTimer);
+    this.reconnectWatchdogTimer = null;
+    this.reconnectWatchdogInFlight = null;
+    this.resetReconnectBackoff();
+  }
+
+  async runReconnectWatchdog() {
+    if (!this.reconnectDesired || this.reconnectWatchdogInFlight) {
+      return this.reconnectWatchdogInFlight;
+    }
+    if (Date.now() < this.nextReconnectAt) return null;
+    this.reconnectWatchdogInFlight = (async () => {
+      try {
+        if (this.started && this.node) {
+          await this.refreshPeerDiagnostics();
+          if (
+            this.protocolCounts.lightPush >= this.minimumPeerCount &&
+            this.protocolCounts.filter >= this.minimumPeerCount
+          ) {
+            this.resetReconnectBackoff();
+            return { restarted: false, status: this.status() };
+          }
+        }
+        this.setState("reconnecting");
+        const result = await this.ensureConnected({ force: true, watchdog: true });
+        this.resetReconnectBackoff();
+        return result;
+      } catch (error) {
+        this.recordReconnectFailure();
+        this.setState("offline", error.message);
+        return { restarted: false, error: error.message, status: this.status() };
+      }
+    })().finally(() => {
+      this.reconnectWatchdogInFlight = null;
+    });
+    return this.reconnectWatchdogInFlight;
   }
 
   setState(state, error = null) {
@@ -162,7 +250,9 @@ class FxWakuTransport extends EventEmitter {
     return this.status();
   }
 
-  async start() {
+  async start({ reconnect = false } = {}) {
+    if (!reconnect) this.reconnectDesired = true;
+    if (reconnect && !this.reconnectDesired) return this.status();
     if (this.started) return this.status();
     this.setState("reconnecting");
     try {
@@ -201,6 +291,8 @@ class FxWakuTransport extends EventEmitter {
         this.decoders.set(topic, decoder);
       }
       this.started = true;
+      this.resetReconnectBackoff();
+      this.startReconnectWatchdog();
       this.setState("ready");
       this.historyCatchUp = this.catchUp();
       return this.status();
@@ -364,7 +456,8 @@ class FxWakuTransport extends EventEmitter {
     }
   }
 
-  async ensureConnected({ force = false } = {}) {
+  async ensureConnected({ force = false, watchdog = false } = {}) {
+    if (!watchdog) this.reconnectDesired = true;
     if (this.reconnectInFlight) return this.reconnectInFlight;
     this.reconnectInFlight = (async () => {
       if (!force && this.started && this.node) {
@@ -379,8 +472,9 @@ class FxWakuTransport extends EventEmitter {
           }
         } catch (_) {}
       }
-      await this.close();
-      await this.start();
+      await this.close({ preserveReconnect: true });
+      if (!this.reconnectDesired) return { restarted: false, status: this.status() };
+      await this.start({ reconnect: true });
       return { restarted: true, status: this.status() };
     })().finally(() => {
       this.reconnectInFlight = null;
@@ -388,7 +482,11 @@ class FxWakuTransport extends EventEmitter {
     return this.reconnectInFlight;
   }
 
-  async close() {
+  async close({ preserveReconnect = false } = {}) {
+    if (!preserveReconnect) {
+      this.reconnectDesired = false;
+      this.stopReconnectWatchdog();
+    }
     if (!this.node) {
       this.started = false;
       this.setState("offline");
@@ -409,6 +507,8 @@ class FxWakuTransport extends EventEmitter {
 }
 
 module.exports = {
+  DEFAULT_FX_RECONNECT_BACKOFF_MAX_MS,
+  DEFAULT_FX_RECONNECT_POLL_MS,
   DEFAULT_FX_STORE_HISTORY_MS,
   DEFAULT_FX_STORE_MESSAGE_LIMIT,
   DEFAULT_FX_WAKU_SHARD_COUNT,

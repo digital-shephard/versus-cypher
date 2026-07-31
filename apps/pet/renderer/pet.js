@@ -69,6 +69,16 @@ async function wireServiceMonitor() {
   window.versus?.onServiceActivity?.((activity) => {
     serviceActivity.push(activity);
     if (serviceActivity.length > 128) serviceActivity.splice(0, serviceActivity.length - 128);
+    if (
+      activity?.channel === "waku" &&
+      ["mesh_state", "fx_mesh_state"].includes(activity.operation)
+    ) {
+      window.versus?.getServiceActivity?.().then((snapshot) => {
+        if (!snapshot) return;
+        serviceActivityStatus = snapshot;
+        renderServiceMonitor();
+      }).catch(() => {});
+    }
     renderServiceMonitor();
   });
 }
@@ -1499,6 +1509,59 @@ function fxNode(tag, className, text) {
   return element;
 }
 
+const FX_ASSET_ICON_SOURCES = Object.freeze({
+  ETH: "../assets/tamagotchi/fx-icons/eth.svg",
+  USDC: "../assets/tamagotchi/fx-icons/usdc.svg",
+});
+
+function fxChainBrandKey(chain) {
+  const normalized = String(chain || "").toLowerCase();
+  if (normalized.includes("arbitrum") || normalized === "arb") return "arbitrum";
+  if (normalized.includes("base")) return "base";
+  return "";
+}
+
+function fxCompactChainLabel(chain) {
+  const normalized = String(chain || "").trim().toUpperCase();
+  if (normalized === "ARBITRUM SEPOLIA") return "ARB SEP";
+  if (normalized === "BASE SEPOLIA") return "BASE SEP";
+  return normalized;
+}
+
+function fxAssetMark(asset, chain, className = "") {
+  const symbol = String(asset || "").toUpperCase();
+  const chainBrand = fxChainBrandKey(chain);
+  const mark = fxNode(
+    "span",
+    ["fx-asset-mark", className].filter(Boolean).join(" "),
+  );
+  mark.dataset.asset = symbol.toLowerCase();
+  mark.setAttribute("aria-hidden", "true");
+
+  const source = FX_ASSET_ICON_SOURCES[symbol];
+  if (source) {
+    const logo = fxNode("img", "fx-asset-logo");
+    logo.src = source;
+    logo.alt = "";
+    mark.append(logo);
+  } else {
+    mark.append(fxNode("b", "fx-asset-fallback", symbol.slice(0, 1) || "?"));
+  }
+
+  if (chainBrand) {
+    const badge = fxNode("span", `fx-chain-badge is-${chainBrand}`);
+    if (chainBrand === "arbitrum") {
+      const logo = fxNode("img");
+      logo.src = "../assets/tamagotchi/fx-icons/arbitrum.png";
+      logo.alt = "";
+      badge.append(logo);
+    }
+    mark.append(badge);
+  }
+
+  return mark;
+}
+
 function fxShortAddress(address) {
   if (typeof address !== "string" || address.length < 14) return address || "";
   return `${address.slice(0, 6)}${ELLIPSIS}${address.slice(-4)}`;
@@ -1585,12 +1648,12 @@ function fxGasBayNode(bay) {
   const head = fxNode("button", "fx-bay-head");
   head.type = "button";
   head.setAttribute("aria-expanded", open ? "true" : "false");
-  head.append(fxNode("span", "fx-bay-mark"));
+  head.append(fxAssetMark(bay.asset, bay.chainKey || bay.chain, "fx-bay-mark"));
 
   const identity = fxNode("span", "fx-bay-id");
   identity.append(
     fxNode("b", null, bay.asset),
-    fxNode("small", null, bay.chain),
+    fxNode("small", null, fxCompactChainLabel(bay.chain)),
   );
   const figure = fxNode("span", "fx-bay-figure");
   figure.append(
@@ -1647,10 +1710,13 @@ function fxBayNode(bay) {
   const head = fxNode("button", "fx-bay-head");
   head.type = "button";
   head.setAttribute("aria-expanded", open ? "true" : "false");
-  head.append(fxNode("span", "fx-bay-mark"));
+  head.append(fxAssetMark(bay.asset, bay.chainKey || bay.chain, "fx-bay-mark"));
 
   const identity = fxNode("span", "fx-bay-id");
-  identity.append(fxNode("b", null, bay.chain), fxNode("small", null, bay.asset));
+  identity.append(
+    fxNode("b", null, bay.asset),
+    fxNode("small", null, fxCompactChainLabel(bay.chain)),
+  );
 
   const figure = fxNode("span", "fx-bay-figure");
   figure.append(
@@ -1927,7 +1993,7 @@ function fxPositionOptionNode(position) {
   ));
 
   const row = fxNode("div", "fx-position-option fx-token-option");
-  const identity = fxNode("span");
+  const identity = fxNode("span", "fx-position-identity");
   identity.append(
     fxNode("b", null, position.asset),
     fxNode(
@@ -1964,7 +2030,11 @@ function fxPositionOptionNode(position) {
     }
   });
 
-  row.append(identity, toggle);
+  row.append(
+    fxAssetMark(position.asset, position.chainKey || position.chain, "fx-position-mark"),
+    identity,
+    toggle,
+  );
   return row;
 }
 
@@ -2014,7 +2084,7 @@ function fxChainOptionNode(chain) {
   });
 
   const head = fxNode("div", "fx-position-option fx-native-option");
-  const identity = fxNode("span");
+  const identity = fxNode("span", "fx-position-identity");
   const readiness = chain.enabled
     ? `${fxAssetAmount(depositedAtomic, chain.nativeDecimals, chain.nativeAsset)} DEPOSITED`
     : "CHAIN OFF";
@@ -2044,7 +2114,11 @@ function fxChainOptionNode(chain) {
     }
   });
   controls.append(toggle);
-  head.append(identity, controls);
+  head.append(
+    fxAssetMark(chain.nativeAsset, chain.chainKey || chain.chain, "fx-position-mark"),
+    identity,
+    controls,
+  );
 
   const rpc = fxNode("label", "fx-rpc-field");
   rpc.append(fxNode("small", null, "CUSTOM RPC (OPTIONAL)"));
@@ -2262,9 +2336,14 @@ function fxSetRequesterAsset(button, position) {
     "ARBITRUM SEPOLIA": "ARB",
   }[position.chain] || position.chain;
   button.dataset.positionId = position.id;
-  button.replaceChildren(
+  const identity = fxNode("span", "fx-trigger-identity");
+  identity.append(
     fxNode("b", null, position.asset),
-    fxNode("span", null, chain),
+    fxNode("small", "fx-trigger-chain", chain),
+  );
+  button.replaceChildren(
+    fxAssetMark(position.asset, position.chainKey || position.chain, "fx-trigger-mark"),
+    identity,
     fxNode("i", null, "\u203a"),
   );
 }
@@ -2341,7 +2420,11 @@ function openFxAssetPicker(target) {
     button.type = "button";
     button.setAttribute("aria-pressed", selected ? "true" : "false");
     button.append(
-      fxNode("span", "fx-asset-option-mark", position.asset.slice(0, 1)),
+      fxAssetMark(
+        position.asset,
+        position.chainKey || position.chain,
+        "fx-asset-option-mark",
+      ),
       fxNode("span", "fx-asset-option-name", null),
       fxNode("span", "fx-asset-option-state", selected ? "SELECTED" : "\u203a"),
     );
@@ -2397,6 +2480,7 @@ function fxTimelineLabel(state) {
     source_lock_confirmed: "Source funds locked",
     destination_lock_pending: "Dealer is locking destination",
     destination_lock_confirmed: "Destination funds locked",
+    executor_fallback_wait: "Waiting for backup executor",
     secret_revealed: "Releasing destination funds",
     destination_claimed: "Destination funds sent",
     source_claimed: "Paying dealer",
@@ -2415,15 +2499,49 @@ function fxRemainingTime(eligibleAt) {
     Number(eligibleAt || 0) - Math.floor(networkNowMs() / 1000),
   );
   if (remaining === 0) return "now";
-  const hours = Math.floor(remaining / 3600);
-  const minutes = Math.ceil((remaining % 3600) / 60);
-  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  const totalMinutes = Math.ceil(remaining / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+}
+
+function fxTradeReachedHistory(trade) {
+  if (trade?.role !== "requester") return false;
+  const progressedStates = new Set([
+    "accepted",
+    "reserved",
+    "awaiting_source_funds",
+    "source_funds_detected",
+    "source_lock_pending",
+    "source_lock_confirmed",
+    "destination_lock_pending",
+    "destination_lock_confirmed",
+    "secret_revealed",
+    "destination_claimed",
+    "source_claimed",
+    "funds_ready",
+    "complete",
+    "refund_wait",
+    "refunded",
+  ]);
+  if (progressedStates.has(trade.state)) return true;
+  return ["cancelled", "failed"].includes(trade.state) &&
+    (trade.timeline || []).some((entry) => progressedStates.has(entry.state));
+}
+
+function fxResumableRequesterTrade(trades = []) {
+  return trades.find((trade) =>
+    trade?.role === "requester" &&
+    trade.state !== "quoted" &&
+    !["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(trade.state)
+  ) || null;
 }
 
 function renderFxHistory() {
   const list = $("fx-history-list");
   if (!list) return;
-  const trades = fxDesktopSnapshot?.trades || [];
+  const trades = (fxDesktopSnapshot?.trades || []).filter(fxTradeReachedHistory);
   if (!trades.length) {
     list.replaceChildren(fxNode("div", "fx-history-empty", "NO SWAPS YET"));
     return;
@@ -2751,10 +2869,7 @@ function openFxRequester(view = "swap") {
   closeFxSheets();
   fxRequesterView = view;
   if (view === "swap") {
-    const resumable = (fxDesktopSnapshot?.trades || []).find((trade) =>
-      trade.state !== "quoted" &&
-      !["funds_ready", "complete", "refunded", "cancelled", "failed"].includes(trade.state)
-    );
+    const resumable = fxResumableRequesterTrade(fxDesktopSnapshot?.trades);
     if (fxRequesterTrade?.state === "quoted") {
       fxRequesterTrade = null;
     }

@@ -1125,6 +1125,32 @@ test("reconciliation preserves a terminal recovery explanation", async () => {
   assert.deepEqual(reconciled.lastFailure, failure);
 });
 
+test("executor fallback telemetry does not replace the requester trade state", () => {
+  const { service } = fixture();
+  const tradeId = `0x${"e7".repeat(32)}`;
+  service.store.putTrade({
+    tradeId,
+    role: "requester",
+    state: "destination_lock_confirmed",
+    timeline: [{
+      state: "destination_lock_confirmed",
+      at: new Date().toISOString(),
+    }],
+  });
+
+  assert.doesNotThrow(() => service.recordRuntimeTrade({
+    tradeId,
+    role: "relayer",
+    state: "executor_fallback_wait",
+    delayMs: 7_500,
+  }));
+
+  const persisted = service.store.trade(tradeId);
+  assert.equal(persisted.role, "requester");
+  assert.equal(persisted.state, "destination_lock_confirmed");
+  assert.equal(persisted.timeline.at(-1).state, "executor_fallback_wait");
+});
+
 test("dealer destination refunds are explicit owner actions", async () => {
   const tradeId = `0x${"55".repeat(32)}`;
   let calls = 0;

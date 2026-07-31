@@ -2753,19 +2753,27 @@ body {
 .fx-asset-trigger {
   width: 100%;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   text-align: left;
   cursor: pointer;
 }
 
-.fx-asset-trigger b {
+.fx-trigger-identity {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.fx-trigger-identity b {
+  flex: none;
   color: var(--fx-ink);
   font-size: 12px;
 }
 
-.fx-asset-trigger span {
+.fx-trigger-chain {
   overflow: hidden;
   color: var(--fx-ink-3);
   font-size: 8px;
@@ -2774,9 +2782,84 @@ body {
   white-space: nowrap;
 }
 
-.fx-asset-trigger i {
+.fx-asset-trigger > i {
   color: var(--fx-aqua);
   font: normal 700 17px/1 "Courier New", monospace;
+}
+
+.fx-asset-mark {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  overflow: visible;
+  border: 1px solid rgba(111, 224, 205, 0.48);
+  border-radius: 50%;
+  background: #f4f6ef;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.76),
+    0 0 7px rgba(111, 224, 205, 0.2);
+}
+
+.fx-asset-logo {
+  width: 62%;
+  height: 62%;
+  display: block;
+  object-fit: contain;
+}
+
+.fx-asset-mark[data-asset="usdc"] .fx-asset-logo {
+  width: 100%;
+  height: 100%;
+}
+
+.fx-asset-fallback {
+  color: #174f45;
+  font-size: 12px;
+}
+
+.fx-chain-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 10px;
+  height: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #f4f6ef;
+  background: #f4f6ef;
+  box-shadow: 0 1px 2px rgba(1, 15, 12, 0.5);
+}
+
+.fx-chain-badge.is-base {
+  border-radius: 3px;
+  background: #0052ff;
+}
+
+.fx-chain-badge.is-arbitrum {
+  border-radius: 50%;
+}
+
+.fx-chain-badge img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.fx-trigger-mark {
+  width: 20px;
+  height: 20px;
+}
+
+.fx-trigger-mark .fx-chain-badge {
+  right: -3px;
+  bottom: -3px;
+  width: 8px;
+  height: 8px;
 }
 
 .fx-swap-output-row {
@@ -2907,14 +2990,6 @@ body {
 .fx-asset-option-mark {
   width: 31px;
   height: 31px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(111, 224, 205, 0.52);
-  border-radius: 50%;
-  background: rgba(111, 224, 205, 0.12);
-  color: var(--fx-aqua);
-  font-size: 15px;
-  font-weight: 700;
 }
 
 .fx-asset-option-name {
@@ -3795,7 +3870,7 @@ body {
   width: 100%;
   height: 40px;
   display: grid;
-  grid-template-columns: 15px 1fr auto 9px;
+  grid-template-columns: 28px 1fr auto 9px;
   align-items: center;
   gap: 7px;
   padding: 0 8px;
@@ -3808,14 +3883,8 @@ body {
 }
 
 .fx-bay-mark {
-  width: 15px;
-  height: 15px;
-  border-radius: 4px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--bay) 92%, #fff), var(--bay));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 3px rgba(3, 18, 16, 0.4),
-    0 0 7px color-mix(in srgb, var(--bay) 38%, transparent);
+  width: 28px;
+  height: 28px;
 }
 
 .fx-bay-id,
@@ -3824,6 +3893,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.fx-bay-id {
+  overflow: hidden;
 }
 
 .fx-bay-figure { align-items: flex-end; }
@@ -3841,6 +3914,11 @@ body {
   font-size: 8px;
   letter-spacing: 0.4px;
   white-space: nowrap;
+}
+
+.fx-bay-id small {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fx-bay-figure b {
@@ -4499,11 +4577,19 @@ body {
   background: rgba(28, 68, 56, 0.055);
 }
 
-.fx-position-option > span {
+.fx-position-identity {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.fx-position-mark {
+  width: 28px;
+  height: 28px;
+  border-color: rgba(28, 68, 56, 0.34);
+  box-shadow: none;
 }
 
 .fx-position-option b {

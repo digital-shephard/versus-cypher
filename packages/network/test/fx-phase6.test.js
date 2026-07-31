@@ -161,6 +161,42 @@ test("Phase 6 topics isolate discovery and deterministically shard trade coordin
   assert.ok(topics.coordination.every((topic) => !topic.includes("postcards")));
 });
 
+test("FX Waku watchdog reconnects every topic after a quiet peer loss", async () => {
+  const now = { value: 1_800_000_000 };
+  const bus = new FakeWakuBus();
+  let starts = 0;
+  let firstNode = null;
+  const transport = new FxWakuTransport({
+    deploymentId: DEPLOYMENT_ID,
+    bootstrapPeers: BOOTSTRAPS,
+    reconnectPollMs: 10,
+    reconnectBackoffMaxMs: 40,
+    now: () => now.value * 1000,
+    sdkLoader: async () => ({ Protocols: { LightPush: "lightpush", Filter: "filter" } }),
+    nodeFactory: async () => {
+      starts += 1;
+      const node = bus.node();
+      if (starts === 1) firstNode = node;
+      return node;
+    },
+  });
+  await transport.start();
+  await transport.historyCatchUp;
+  firstNode.peers = [];
+
+  const deadline = Date.now() + 1_000;
+  while (Date.now() < deadline && starts < 2) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  await transport.historyCatchUp;
+  assert.equal(starts, 2);
+  assert.equal(transport.decoders.size, 1 + (transport.shardCount * 2));
+  assert.equal(transport.status().state, "caught_up");
+  assert.equal(transport.status().reconnect.active, true);
+  await transport.close();
+  assert.equal(transport.status().reconnect.active, false);
+});
+
 test("a frozen coordination domain scopes Waku topics without replacing deployment identity", () => {
   const deploymentTopics = createFxContentTopics({
     deploymentId: DEPLOYMENT_ID,

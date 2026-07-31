@@ -1347,6 +1347,22 @@ class FxDesktopService extends EventEmitter {
       });
       return this.#emit();
     }
+    if (state === "executor_fallback_wait") {
+      this.store.observe({
+        tradeId,
+        category: "executor_fallback_wait",
+        value: String(update.delayMs || 0).slice(0, 16),
+      });
+      if (!previous) return this.#emit();
+      const timeline = previous.timeline || [];
+      this.store.putTrade({
+        ...previous,
+        timeline: timeline.at(-1)?.state === state
+          ? timeline
+          : [...timeline, { state, at: new Date().toISOString() }],
+      });
+      return this.#emit();
+    }
     const timeline = previous?.timeline || [];
     const lastState = timeline.at(-1)?.state;
     const quotePayload = update.quote?.payload || previous?.quote?.payload || null;
