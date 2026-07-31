@@ -1181,7 +1181,7 @@ const FX_SUPPORTED_POSITIONS = [
     chain: "BASE SEPOLIA",
     asset: "USDC",
     decimals: 6,
-    assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+    assetAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   },
   {
     id: "arbitrum-sepolia-usdc",
@@ -1190,7 +1190,7 @@ const FX_SUPPORTED_POSITIONS = [
     chain: "ARBITRUM SEPOLIA",
     asset: "USDC",
     decimals: 6,
-    assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+    assetAddress: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
   },
 ];
 

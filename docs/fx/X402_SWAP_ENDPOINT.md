@@ -3,16 +3,101 @@
 Status: public-testnet implementation
 
 The endpoint lets an external agent request and complete a Versus V3 atomic
-swap without owning a Cypher or joining Waku directly. It uses standard x402
-HTTP response mechanics with a Versus-specific payment scheme:
+swap without owning a Cypher or joining Waku directly. Two ingress modes are
+supported.
+
+The original native-asset and advanced requester flow uses the Versus-specific
+payment scheme:
 
 `versus-atomic-fx-v3`
 
-This is not Coinbase's generic EVM `exact` scheme. A generic x402 client will
-see the challenge but needs the Versus requester SDK to understand the
-reservation and HTLC stages.
+Generic EVM agents can instead call `/v1/fx/exact` with an ERC-20 that supports
+EIP-3009. That endpoint emits the standard x402 v2 `exact` challenge and works
+with ordinary x402 clients. It does not require the Versus SDK, a Cypher, or a
+Waku connection.
+
+## Generic `exact` Flow
+
+The caller generates a 32-byte secret locally and submits only its hash with:
+
+- a unique request ID
+- payer address
+- input EVM network and EIP-3009 token
+- maximum source input
+- output network, asset, and exact amount
+- arbitrary destination address
+
+The public relay signs and broadcasts the RFQ over Waku, selects a signed
+dealer quote, and obtains a matching inventory reservation. It then returns a
+normal x402 `402 Payment Required` response. The requirement identifies a
+deterministic CREATE2 `payTo` escrow and the exact all-in source amount. The
+response separately discloses dealer principal and the relay's facilitator
+fee. Both must fit under the caller's signed maximum input.
+
+An ordinary `@x402/fetch` client signs `TransferWithAuthorization` and retries
+the same request. The relay submits the authorization to an ownerless factory.
+In one atomic transaction the factory:
+
+1. creates the precommitted one-trade escrow;
+2. transfers the exact payment from the payer to that escrow; and
+3. pays the disclosed facilitator fee; and
+4. activates the frozen V3 source HTLC with dealer principal only.
+
+Any failure rolls back all three operations, including use of the EIP-3009
+authorization. The escrow address changes if the payer, canonical source lock
+ID, dealer beneficiary, facilitator recipient or fee, secret hash, timeout, or
+amount changes. The facilitator payment and HTLC activation share one atomic
+transaction, so a failed source lock also rolls the fee back.
+
+The caller polls `GET /v1/fx/exact/:tradeId`. Once the destination lock is
+confirmed, it submits its secret to `POST /v1/fx/exact/:tradeId/reveal`. The
+relay publishes the normal V3 reveal and the existing dealer/executor path
+finishes both claims. If settlement times out, anyone can execute the escrow
+refund and dealer principal returns to the original generic payer. A
+facilitator fee already earned for successful source activation is not
+refunded because the relay has already submitted and paid for that work.
+
+Example request body:
+
+```json
+{
+  "requestId": "0x<32-byte-unique-id>",
+  "payer": "0x<payer>",
+  "input": {
+    "network": "eip155:84532",
+    "asset": "0x<eip-3009-token>"
+  },
+  "maximumInputAtomic": "1005000",
+  "output": {
+    "network": "eip155:421614",
+    "asset": "0x<destination-asset>",
+    "amountAtomic": "1000000"
+  },
+  "destinationAddress": "0x<recipient>",
+  "secretHash": "0x<keccak256-secret>"
+}
+```
+
+First-version boundaries are deliberate:
+
+- source assets must be ERC-20 tokens implementing EIP-3009;
+- the standard payment signer must be an EOA with a 65-byte signature;
+- native source assets continue to use `versus-atomic-fx-v3`;
+- Permit2 and smart-contract-wallet signature adapters are not yet accepted;
+- every chain, V3 adapter, token, and exact factory must appear in frozen
+  operator configuration.
+
+The relay is a facilitator and coordination adapter, not a custodian. Its
+public settlement identity may earn a disclosed fixed fee for submitting the
+atomic source transaction. It never receives authority to redirect dealer
+principal, and its settlement signer can only submit the payer's authorization
+to the deterministic ownerless factory. Competing relays may advertise
+different fees; the caller's maximum remains authoritative.
 
 ## What The Caller Does
+
+The following section describes the original `versus-atomic-fx-v3` requester
+SDK path, which remains available for native assets and advanced clients.
 
 The caller invokes one SDK method with:
 
@@ -88,8 +173,9 @@ The final method result is returned only after the atomic swap completes.
 - Completion requires both source and destination claim messages. Their
   arrival order does not matter, and a redundant completion postcard is not
   required for the requester to recognize final settlement.
-- Broker fees must be zero in this version because V3 has no safe broker split
-  in its source lock. Dealer spread and executor bounty remain in the quote.
+- The custom V3 endpoint still requires a zero broker fee because it has no
+  generic payment escrow. The generic exact endpoint instead pays its separate
+  disclosed facilitator fee atomically before locking dealer principal.
 - Native ETH works directly. ERC-20 input requires an existing sufficient
   allowance to the frozen source adapter.
 
@@ -106,11 +192,28 @@ FX_X402_BASE_SEPOLIA_RPC_URL=<read-write Base Sepolia RPC>
 FX_X402_ARBITRUM_SEPOLIA_RPC_URL=<read-write Arbitrum Sepolia RPC>
 ```
 
+To enable the generic exact endpoint alongside it:
+
+```text
+FX_X402_EXACT_ENABLED=1
+FX_X402_EXACT_FACTORIES=<phase13 exact factory manifest>
+FX_X402_EXACT_SETTLER_KEY_FILE=<dedicated low-balance relay key>
+FX_X402_EXACT_FACILITATOR_FEE_ATOMIC=<fixed source-token fee>
+```
+
+The exact endpoint is `POST /v1/fx/exact`. Its first frozen public-testnet
+cohort uses official Circle USDC on Base Sepolia and Arbitrum Sepolia. Native
+assets and tokens without EIP-3009 continue through the custom endpoint.
+
 The normal Phase 7 broker identity, Waku, deployment, data-directory, host,
-and port settings are still required. The deployment ID must match
-`versus/deployments/fx/phase12-v3-public-testnet.json`.
+and port settings are still required. A broker process has one deployment ID
+and one Waku coordination domain. Enabling generic exact therefore moves that
+whole process, including its custom native endpoint, to
+`versus/deployments/fx/phase13-v3-exact-public-testnet.json` and
+`phase13-x402-exact-factories.json`. A separate legacy process may retain the
+Phase 12 domain during migration, but one process never mixes the two.
 When x402 swaps are enabled, the broker derives its Waku coordination domain
-from that same frozen manifest. Startup fails if
+from its frozen manifest. Startup fails if
 `FX_PHASE7_COORDINATION_DOMAIN` conflicts with the manifest, preventing a
 healthy-looking endpoint from publishing RFQs onto a topic the live desktop
 dealers do not subscribe to.

@@ -159,12 +159,13 @@ Other online desktops remain delayed fallbacks. The recipient does not run the
 app, sign a transaction, or hold destination-chain gas.
 
 The current public-testnet V3 deployment is frozen by deployment ID
-`0x1edf9c4dca5cbcb8b1875f4ce950844237258367d51e5d02dc3de577b3088494`
+`0x5f6e0d22253c91a77b25e50add622e1e172c8a7f30a4b1cbfb652e8d680dbf45`
 and coordination domain
-`0x6d2d3f9784460521d35605b450e5a46fc1c068df7724265c8f12fec7f1693b2c`.
-On Base Sepolia and Arbitrum Sepolia, the native adapter is
-`0x9ff9e978801b7819fa4169638814543028d0c0f2` and the manifested ERC-20
-adapter is `0xb9c06839b81421e0899510706300d1f1b2623a18`.
+`0x6e5a6b5ed65eac32898129a87fbcb68b870469b348c52645fe2170f03e04df9a`.
+On both chains, the native adapter is
+`0x9ff9e978801b7819fa4169638814543028d0c0f2`. The official Circle testnet
+USDC adapters are `0x4b7603b6731b2fc10064e2bda099ce291398c826` on Base Sepolia and
+`0x77484fc7203f25b92e95327116b4d5ca92c8b019` on Arbitrum Sepolia.
 
 V2 contracts and deployment records remain frozen for historical recovery.
 They are not admitted to the V3 coordination domain.
@@ -174,9 +175,9 @@ Verified explorer links:
 | Chain | Adapter | Explorer |
 |---|---|---|
 | Base Sepolia | Native V3 `0x9ff9e9...c0f2` | [code](https://sepolia.basescan.org/address/0x9ff9e978801b7819fa4169638814543028d0c0f2#code) |
-| Base Sepolia | ERC-20 V3 `0xb9c068...3a18` | [code](https://sepolia.basescan.org/address/0xb9c06839b81421e0899510706300d1f1b2623a18#code) |
+| Base Sepolia | ERC-20 V3 `0x4b7603...c826` | [code](https://sepolia.basescan.org/address/0x4b7603b6731b2fc10064e2bda099ce291398c826#code) |
 | Arbitrum Sepolia | Native V3 `0x9ff9e9...c0f2` | [code](https://sepolia.arbiscan.io/address/0x9ff9e978801b7819fa4169638814543028d0c0f2#code) |
-| Arbitrum Sepolia | ERC-20 V3 `0xb9c068...3a18` | [code](https://sepolia.arbiscan.io/address/0xb9c06839b81421e0899510706300d1f1b2623a18#code) |
+| Arbitrum Sepolia | ERC-20 V3 `0x77484f...b019` | [code](https://sepolia.arbiscan.io/address/0x77484fc7203f25b92e95327116b4d5ca92c8b019#code) |
 
 Native atomic amounts use a signed relay ETH/USD reference for quote and risk
 calculation. The desktop caches a valid reference for no more than three

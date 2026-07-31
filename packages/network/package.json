@@ -20,6 +20,16 @@
       "types": "./types/fx-x402-swap.d.ts",
       "require": "./src/fx-x402-swap.js",
       "default": "./src/fx-x402-swap.js"
+    },
+    "./fx-x402-exact": {
+      "types": "./types/fx-x402-exact.d.ts",
+      "require": "./src/fx-x402-exact.js",
+      "default": "./src/fx-x402-exact.js"
+    },
+    "./fx-x402-exact-bridge": {
+      "types": "./types/fx-x402-exact-bridge.d.ts",
+      "require": "./src/fx-x402-exact-bridge.js",
+      "default": "./src/fx-x402-exact-bridge.js"
     }
   },
   "license": "MIT",
@@ -48,6 +58,9 @@
   },
   "dependencies": {
     "@waku/sdk": "0.0.36",
+    "@x402/core": "^2.20.0",
+    "@x402/evm": "^2.20.0",
+    "@x402/fetch": "^2.20.0",
     "ethers": "^6.17.0"
   },
   "overrides": {

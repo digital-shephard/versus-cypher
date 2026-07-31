@@ -203,6 +203,9 @@ class FxDeterministicDealer extends EventEmitter {
       expiresAt,
       payload: {
         ...payload,
+        ...(this.protocolVersion === FX_V3_VERSION
+          ? { dealerSourceClaimAddress: this.sourceClaimAddress }
+          : {}),
         rfqId: rfq.id,
         outputChainId: rfq.payload.outputChainId,
         outputToken: rfq.payload.outputToken,

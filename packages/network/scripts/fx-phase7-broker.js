@@ -6,9 +6,12 @@ const {
   FxPublicBroker,
   FxTradeJournal,
   FxWakuTransport,
+  FxX402ExactBrokerBridge,
+  FxX402ExactStore,
   FxX402SwapCoordinator,
   FxX402SwapStore,
   createFxBrokerHttpService,
+  createFxX402ExactHttpHandler,
   createFxX402SwapHttpHandler,
   resolveFxBrokerCoordinationDomain,
 } = require("../src");
@@ -60,17 +63,55 @@ async function loadSigner() {
   );
 }
 
+function loadExactSettlementSigner() {
+  const filePath = path.resolve(required("FX_X402_EXACT_SETTLER_KEY_FILE"));
+  const privateKey = fs.readFileSync(filePath, "utf8").trim();
+  return new Wallet(privateKey);
+}
+
+function loadExactFactories(
+  filePath,
+  deploymentId,
+  facilitatorRecipient,
+  facilitatorFeeAtomic
+) {
+  const input = JSON.parse(fs.readFileSync(path.resolve(filePath), "utf8"));
+  if (
+    input.schema !== "versus-fx-x402-exact-factories" ||
+    input.schemaVersion !== 1 ||
+    String(input.deploymentId || "").toLowerCase() !== deploymentId ||
+    !Array.isArray(input.factories) ||
+    input.factories.length < 1
+  ) {
+    throw new Error("FX x402 exact factory manifest is invalid");
+  }
+  return Object.fromEntries(input.factories.map((item) => {
+    const key = `${String(BigInt(item.chainId))}:${String(item.asset).toLowerCase()}`;
+    return [key, {
+      factoryAddress: item.factoryAddress,
+      tokenName: item.tokenName,
+      tokenVersion: item.tokenVersion,
+      facilitatorRecipient,
+      facilitatorFeeAtomic,
+    }];
+  }));
+}
+
 async function main() {
   const deploymentId = required("FX_PHASE7_DEPLOYMENT_ID").toLowerCase();
   const dataDirectory = path.resolve(required("FX_PHASE7_DATA_DIR"));
   fs.mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
   const x402Enabled = process.env.FX_X402_SWAP_ENABLED === "1";
-  const x402ManifestPath = x402Enabled
+  const x402ExactEnabled = process.env.FX_X402_EXACT_ENABLED === "1";
+  const anyX402Enabled = x402Enabled || x402ExactEnabled;
+  const x402ManifestPath = anyX402Enabled
     ? path.resolve(
         process.env.FX_X402_V3_MANIFEST ||
           path.join(
             __dirname,
-            "../../../versus/deployments/fx/phase12-v3-public-testnet.json"
+            x402ExactEnabled
+              ? "../../../versus/deployments/fx/phase13-v3-exact-public-testnet.json"
+              : "../../../versus/deployments/fx/phase12-v3-public-testnet.json"
           )
       )
     : null;
@@ -128,8 +169,9 @@ async function main() {
   });
   await broker.start();
   let x402Coordinator = null;
+  let x402ExactBridge = null;
   let x402SwapHandler = null;
-  if (x402Enabled) {
+  if (anyX402Enabled) {
     const manifest = x402Manifest;
     if (manifest.deploymentId !== deploymentId) {
       throw new Error("FX x402 manifest and coordination deployment differ");
@@ -140,38 +182,91 @@ async function main() {
     if (chainIds.join(",") !== "421614,84532") {
       throw new Error("FX x402 runtime is restricted to the public testnets");
     }
-    x402Coordinator = new FxX402SwapCoordinator({
-      broker,
-      session,
-      manifest,
-      providers: {
-        "84532": new JsonRpcProvider(
-          required("FX_X402_BASE_SEPOLIA_RPC_URL"),
-          84532,
-          { staticNetwork: true }
-        ),
-        "421614": new JsonRpcProvider(
-          required("FX_X402_ARBITRUM_SEPOLIA_RPC_URL"),
-          421614,
-          { staticNetwork: true }
-        ),
-      },
-      store: new FxX402SwapStore({
-        directory: path.join(dataDirectory, "x402-swaps"),
-      }),
-      sourceRefundSeconds: integer(
-        "FX_X402_SOURCE_REFUND_SECONDS",
-        7_200
+    const providers = {
+      "84532": new JsonRpcProvider(
+        required("FX_X402_BASE_SEPOLIA_RPC_URL"),
+        84532,
+        { staticNetwork: true }
       ),
-      reservationTimeoutMs: integer(
-        "FX_X402_RESERVATION_TIMEOUT_MS",
-        30_000
+      "421614": new JsonRpcProvider(
+        required("FX_X402_ARBITRUM_SEPOLIA_RPC_URL"),
+        421614,
+        { staticNetwork: true }
       ),
-    });
-    x402Coordinator.recoverFromJournal();
-    x402SwapHandler = createFxX402SwapHttpHandler({
-      coordinator: x402Coordinator,
-    });
+    };
+    const handlers = [];
+    if (x402Enabled) {
+      x402Coordinator = new FxX402SwapCoordinator({
+        broker,
+        session,
+        manifest,
+        providers,
+        store: new FxX402SwapStore({
+          directory: path.join(dataDirectory, "x402-swaps"),
+        }),
+        sourceRefundSeconds: integer(
+          "FX_X402_SOURCE_REFUND_SECONDS",
+          7_200
+        ),
+        reservationTimeoutMs: integer(
+          "FX_X402_RESERVATION_TIMEOUT_MS",
+          30_000
+        ),
+      });
+      x402Coordinator.recoverFromJournal();
+      handlers.push(createFxX402SwapHttpHandler({
+        coordinator: x402Coordinator,
+      }));
+    }
+    if (x402ExactEnabled) {
+      const settlementSigner = loadExactSettlementSigner();
+      const facilitatorFeeAtomic = String(
+        process.env.FX_X402_EXACT_FACILITATOR_FEE_ATOMIC || "0"
+      );
+      if (!/^\d+$/.test(facilitatorFeeAtomic)) {
+        throw new Error("FX_X402_EXACT_FACILITATOR_FEE_ATOMIC must be unsigned");
+      }
+      const factories = loadExactFactories(
+        required("FX_X402_EXACT_FACTORIES"),
+        deploymentId,
+        facilitatorFeeAtomic === "0" ? null : settlementSigner.address,
+        facilitatorFeeAtomic
+      );
+      x402ExactBridge = new FxX402ExactBrokerBridge({
+        broker,
+        session,
+        manifest,
+        providers,
+        factories,
+        signerForNetwork: (network) => {
+          const chainId = String(network).replace(/^eip155:/, "");
+          const provider = providers[chainId];
+          if (!provider) throw new Error(`no exact settler for ${network}`);
+          return settlementSigner.connect(provider);
+        },
+        store: new FxX402ExactStore({
+          directory: path.join(dataDirectory, "x402-exact-swaps"),
+        }),
+        settlementLifetimeSeconds: integer(
+          "FX_X402_SOURCE_REFUND_SECONDS",
+          7_200
+        ),
+        reservationTimeoutMs: integer(
+          "FX_X402_RESERVATION_TIMEOUT_MS",
+          30_000
+        ),
+      });
+      handlers.push(createFxX402ExactHttpHandler({
+        coordinator: x402ExactBridge.coordinator,
+        publicUrl: process.env.FX_X402_EXACT_PUBLIC_URL || undefined,
+      }));
+    }
+    x402SwapHandler = async (request, response) => {
+      for (const handler of handlers) {
+        if (await handler(request, response)) return true;
+      }
+      return false;
+    };
   }
   const service = createFxBrokerHttpService({
     broker,
@@ -203,13 +298,20 @@ async function main() {
     broker: signer.address.toLowerCase(),
     coordinationDomain,
     feeAtomic: process.env.FX_PHASE7_BROKER_FEE_ATOMIC || "0",
-    x402SwapEndpoint: x402SwapHandler
+    x402SwapEndpoint: x402Enabled
       ? `${url}/v1/fx/swaps`
       : null,
-    x402Scheme: x402SwapHandler ? "versus-atomic-fx-v3" : null,
+    x402Scheme: x402Enabled ? "versus-atomic-fx-v3" : null,
+    x402ExactEndpoint: x402ExactEnabled
+      ? `${url}/v1/fx/exact`
+      : null,
+    x402ExactScheme: x402ExactEnabled ? "exact" : null,
+    x402ExactFacilitatorFeeAtomic: x402ExactEnabled
+      ? process.env.FX_X402_EXACT_FACILITATOR_FEE_ATOMIC || "0"
+      : null,
     testnetOnly: x402SwapHandler ? true : null,
     custody: false,
-    settlementKeys: false,
+    settlementKeys: x402ExactEnabled,
   })}\n`);
 
   let stopping = false;

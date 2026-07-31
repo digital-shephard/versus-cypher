@@ -652,6 +652,10 @@ function createFxBrokerHttpService({
           url.pathname === "/v1/fx/swaps" ||
           /^\/v1\/fx\/swaps\/0x[0-9a-fA-F]{64}(?:\/(?:source-lock|reveal))?$/.test(
             url.pathname
+          ) ||
+          url.pathname === "/v1/fx/exact" ||
+          /^\/v1\/fx\/exact\/0x[0-9a-fA-F]{64}(?:\/reveal)?$/.test(
+            url.pathname
           )
         )
       ) {

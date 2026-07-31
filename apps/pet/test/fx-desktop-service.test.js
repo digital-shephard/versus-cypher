@@ -17,7 +17,8 @@ const {
   shortAddress,
 } = require("../src/fx-desktop-service");
 
-const TOKEN = "0xcba3d9354dd4c30bb6961abb4473a6340486e01b";
+const BASE_TOKEN = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
+const ARBITRUM_TOKEN = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d";
 const NOW = 1_785_200_000;
 
 function fixture(overrides = {}) {
@@ -59,10 +60,10 @@ function fixture(overrides = {}) {
         payload: {
           rfqId: rfq.id,
           inputChainId: "84532",
-          inputToken: TOKEN,
+          inputToken: BASE_TOKEN,
           inputAmountAtomic,
           outputChainId: "421614",
-          outputToken: TOKEN,
+          outputToken: ARBITRUM_TOKEN,
           outputAmountAtomic: outputAmountAtomic.toString(),
           quoteType: "fixed_exact_output",
           referenceSource: "desktop:test",
@@ -520,7 +521,7 @@ test("native requester quotes bind the native adapter and atomic ETH input", asy
           inputToken: FX_NATIVE_ETH_ADDRESS,
           inputAmountAtomic: "501250000000000",
           outputChainId: "421614",
-          outputToken: TOKEN,
+          outputToken: ARBITRUM_TOKEN,
           outputAmountAtomic: "1000000",
           quoteType: "fixed_exact_output",
           referenceSource: "desktop:test:eth-usd",

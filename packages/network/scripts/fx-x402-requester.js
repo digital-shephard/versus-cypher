@@ -32,7 +32,7 @@ async function main() {
     process.env.FX_X402_V3_MANIFEST ||
       path.join(
         __dirname,
-        "../../../versus/deployments/fx/phase12-v3-public-testnet.json"
+        "../../../versus/deployments/fx/phase13-v3-exact-public-testnet.json"
       )
   );
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));

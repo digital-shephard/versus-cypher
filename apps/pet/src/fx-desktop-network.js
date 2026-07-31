@@ -17,9 +17,9 @@ const {
 } = require("@versus/network");
 
 const FX_PUBLIC_TESTNET_DEPLOYMENT_ID =
-  "0x1edf9c4dca5cbcb8b1875f4ce950844237258367d51e5d02dc3de577b3088494";
+  "0x5f6e0d22253c91a77b25e50add622e1e172c8a7f30a4b1cbfb652e8d680dbf45";
 const FX_PUBLIC_TESTNET_COORDINATION_DOMAIN =
-  "0x6d2d3f9784460521d35605b450e5a46fc1c068df7724265c8f12fec7f1693b2c";
+  "0x6e5a6b5ed65eac32898129a87fbcb68b870469b348c52645fe2170f03e04df9a";
 
 const FX_PUBLIC_WAKU_PEERS = Object.freeze([
   "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",

@@ -195,6 +195,18 @@ the same moment it is intentionally published to the network. This endpoint
 is disabled by default, restricted to the frozen Base Sepolia and Arbitrum
 Sepolia V3 manifest, and does not authorize mainnet.
 
+Generic x402 `exact` support adds a separate Phase 13 public-testnet domain
+for official Circle USDC. A stock x402 EVM client signs one EIP-3009
+authorization for an all-in maximum. The selected relay submits that
+authorization to a frozen CREATE2 factory whose deterministic escrow commits
+the payer, exact source principal, source beneficiary, refund path, secret
+hash, timeout, facilitator recipient, and facilitator fee. One atomic
+transaction pays the disclosed relay fee and activates the V3 source HTLC;
+if either leg fails, the authorization remains unconsumed. The relay earns
+for successful facilitation rather than packet forwarding, and competing
+relays may publish different fixed fees within the caller's bound. Native ETH
+and tokens without EIP-3009 remain on the custom atomic endpoint.
+
 Phase 10 places that requester and dealer machinery behind the desktop's
 physical FX surface. The requester chooses an exact-output pair and amount,
 enters any valid destination address, compares locally verified quote data,

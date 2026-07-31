@@ -571,6 +571,40 @@ test("public x402 ingress enforces its independent per-IP request ceiling", asyn
   assert.equal((await second.json()).error, "rate_limited");
 });
 
+test("generic exact ingress shares the hardened x402 request boundary", async (t) => {
+  const context = await fixture();
+  const paths = [];
+  const service = await runningBroker(context, "0", {
+    x402SwapHandler: async (request, response) => {
+      paths.push(request.url);
+      response.writeHead(202, { "content-type": "application/json" });
+      response.end("{}");
+      return true;
+    },
+  });
+  t.after(async () => {
+    await service.httpService.close();
+    await service.broker.close();
+  });
+
+  const tradeId = `0x${"e1".repeat(32)}`;
+  for (const [method, suffix] of [
+    ["POST", ""],
+    ["GET", `/${tradeId}`],
+    ["POST", `/${tradeId}/reveal`],
+  ]) {
+    const response = await fetch(`${service.url}/v1/fx/exact${suffix}`, {
+      method,
+    });
+    assert.equal(response.status, 202);
+  }
+  assert.deepEqual(paths, [
+    "/v1/fx/exact",
+    `/v1/fx/exact/${tradeId}`,
+    `/v1/fx/exact/${tradeId}/reveal`,
+  ]);
+});
+
 test("public x402 ingress trusts forwarded client IPs only when explicitly enabled", async (t) => {
   const context = await fixture();
   const service = await runningBroker(context, "0", {

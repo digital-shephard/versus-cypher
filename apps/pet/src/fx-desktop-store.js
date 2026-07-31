@@ -76,7 +76,7 @@ const FX_DEFAULT_POSITIONS = Object.freeze([
     asset: "USDC",
     decimals: 6,
     assetKind: "erc20",
-    assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+    assetAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
   }),
   Object.freeze({
     id: "arbitrum-sepolia-eth",
@@ -96,7 +96,7 @@ const FX_DEFAULT_POSITIONS = Object.freeze([
     asset: "USDC",
     decimals: 6,
     assetKind: "erc20",
-    assetAddress: "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+    assetAddress: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
   }),
 ]);
 

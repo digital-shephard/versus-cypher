@@ -664,13 +664,28 @@ function normalizeQuotePayloadV3(value) {
     "destinationMaxFeePerGas",
     "gasPriceSource",
     "gasPriceTimestamp",
+    "dealerSourceClaimAddress",
   ], "payload");
+  const {
+    dealerSourceClaimAddress,
+    ...v2Value
+  } = value;
   const normalized = normalizeQuotePayloadV2({
-    ...value,
+    ...v2Value,
     secretHash: `0x${"01".padEnd(64, "0")}`,
   }, FX_V3_VERSION);
   const { secretHash: _ignored, ...quote } = normalized;
-  return quote;
+  return {
+    ...quote,
+    ...(dealerSourceClaimAddress
+      ? {
+          dealerSourceClaimAddress: normalizeAddress(
+            dealerSourceClaimAddress,
+            "payload.dealerSourceClaimAddress"
+          ),
+        }
+      : {}),
+  };
 }
 
 function normalizeAcceptPayload(value) {
