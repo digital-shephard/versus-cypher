@@ -49,6 +49,10 @@ const NATIVE_INTERFACE = new Interface([
 const ERC20_INTERFACE = new Interface([
   "function fund(bytes32 tradeId,address beneficiary,bytes32 secretHash,uint256 settlement)",
 ]);
+const V3_LOCK_INTERFACE = new Interface([
+  "function stateOf(bytes32 lockDigest) view returns (uint8)",
+  "event LockFunded(bytes32 indexed lockDigest,bytes32 indexed tradeId,address indexed funder,address beneficiary,bytes32 secretHash,uint64 refundTimestamp,uint128 beneficiaryAmount,uint128 executorAmount)",
+]);
 const TOKEN_INTERFACE = new Interface([
   "function allowance(address owner,address spender) view returns (uint256)",
 ]);
@@ -477,6 +481,158 @@ function laterStatus(current, candidate) {
     : current;
 }
 
+function expectedV3Lock(state, envelope, side, manifest) {
+  const proposal = object(state.proposal, "broker proposal");
+  const route = object(proposal.route, "broker route");
+  const acceptance = object(state.acceptance, "requester acceptance");
+  const reservation = object(state.reservation, "dealer reservation");
+  const quote = proposal.quotes?.find(
+    (candidate) => candidate.id === route.quoteId
+  );
+  if (!quote) {
+    throw new FxX402SwapError(
+      "selected quote is absent from persisted swap state",
+      "QUOTE_MISMATCH"
+    );
+  }
+  const source = side === "source";
+  const chainId = source ? route.inputChainId : route.outputChainId;
+  const token = source ? route.inputToken : route.outputToken;
+  const capability = selectEvmV3Capability(manifest, { chainId, token });
+  const beneficiaryAmountAtomic = source
+    ? route.totalInputAtomic
+    : route.outputAmountAtomic;
+  const executorAmountAtomic = source
+    ? "0"
+    : quote.payload.destinationExecutorAmountAtomic;
+  const expected = {
+    type: source ? "fx_lock_source" : "fx_lock_destination",
+    sender: source ? state.rfq.sender : quote.sender,
+    chainId: String(chainId),
+    token: canonicalAsset(token),
+    adapterAddress: capability.adapterAddress,
+    lockId: phase5LockId(state.tradeId, side),
+    funder: source
+      ? acceptance.payload.sourceRefundAddress
+      : reservation.payload.dealerDestinationRefundAddress,
+    beneficiary: source
+      ? reservation.payload.dealerSourceClaimAddress
+      : acceptance.payload.destinationClaimAddress,
+    secretHash: acceptance.payload.secretHash,
+    beneficiaryAmountAtomic: String(beneficiaryAmountAtomic),
+    executorAmountAtomic: String(executorAmountAtomic),
+  };
+  const payload = object(envelope?.payload, `${side} lock announcement`);
+  const total = (
+    BigInt(expected.beneficiaryAmountAtomic) +
+    BigInt(expected.executorAmountAtomic)
+  ).toString();
+  if (
+    envelope.type !== expected.type ||
+    envelope.tradeId !== state.tradeId ||
+    envelope.sender !== expected.sender ||
+    payload.acceptId !== acceptance.id ||
+    String(payload.chainId) !== expected.chainId ||
+    canonicalAsset(payload.token) !== expected.token ||
+    address(payload.lockAddress, "lock adapter") !== expected.adapterAddress ||
+    address(payload.beneficiary, "lock beneficiary") !== expected.beneficiary ||
+    address(payload.refundAddress, "lock funder") !== expected.funder ||
+    hash(payload.secretHash, "lock secretHash") !== expected.secretHash ||
+    String(payload.amountAtomic) !== total ||
+    String(payload.beneficiaryAmountAtomic) !==
+      expected.beneficiaryAmountAtomic ||
+    String(payload.executorAmountAtomic) !== expected.executorAmountAtomic ||
+    !Number.isSafeInteger(Number(payload.timeout)) ||
+    Number(payload.timeout) < 1 ||
+    !/^0x[0-9a-f]{64}$/.test(String(payload.transactionHash || "")) ||
+    !/^\d+$/.test(String(payload.blockNumber || ""))
+  ) {
+    throw new FxX402SwapError(
+      `${side} lock announcement does not match persisted V3 route`,
+      "LOCK_RECONCILIATION_MISMATCH"
+    );
+  }
+  if (
+    source &&
+    Number(payload.timeout) !== Number(state.funding?.refundTimestamp)
+  ) {
+    throw new FxX402SwapError(
+      "source lock timeout does not match persisted funding",
+      "LOCK_RECONCILIATION_MISMATCH"
+    );
+  }
+  return {
+    ...expected,
+    refundTimestamp: Number(payload.timeout),
+    transactionHash: String(payload.transactionHash).toLowerCase(),
+    blockNumber: Number(payload.blockNumber),
+  };
+}
+
+async function readAnnouncedV3LockState(provider, expected) {
+  const receipt = await provider.getTransactionReceipt(
+    expected.transactionHash
+  );
+  if (
+    !receipt ||
+    Number(receipt.status) !== 1 ||
+    Number(receipt.blockNumber) !== expected.blockNumber
+  ) {
+    throw new FxX402SwapError(
+      "announced V3 lock transaction is not confirmed",
+      "LOCK_RECONCILIATION_UNAVAILABLE"
+    );
+  }
+  const funded = (receipt.logs || [])
+    .filter(
+      (log) =>
+        String(log.address || "").toLowerCase() === expected.adapterAddress
+    )
+    .map((log) => {
+      try {
+        return V3_LOCK_INTERFACE.parseLog(log);
+      } catch {
+        return null;
+      }
+    })
+    .filter(
+      (event) =>
+        event?.name === "LockFunded" &&
+        String(event.args.tradeId).toLowerCase() === expected.lockId
+    );
+  if (funded.length !== 1) {
+    throw new FxX402SwapError(
+      "announced transaction does not contain one exact V3 lock",
+      "LOCK_RECONCILIATION_MISMATCH"
+    );
+  }
+  const event = funded[0];
+  if (
+    address(event.args.funder, "event funder") !== expected.funder ||
+    address(event.args.beneficiary, "event beneficiary") !==
+      expected.beneficiary ||
+    String(event.args.secretHash).toLowerCase() !== expected.secretHash ||
+    Number(event.args.refundTimestamp) !== expected.refundTimestamp ||
+    BigInt(event.args.beneficiaryAmount).toString() !==
+      expected.beneficiaryAmountAtomic ||
+    BigInt(event.args.executorAmount).toString() !==
+      expected.executorAmountAtomic
+  ) {
+    throw new FxX402SwapError(
+      "confirmed V3 lock terms differ from the signed route",
+      "LOCK_RECONCILIATION_MISMATCH"
+    );
+  }
+  const lockDigest = String(event.args.lockDigest).toLowerCase();
+  const result = await provider.call({
+    to: expected.adapterAddress,
+    data: V3_LOCK_INTERFACE.encodeFunctionData("stateOf", [lockDigest]),
+  });
+  return Number(
+    V3_LOCK_INTERFACE.decodeFunctionResult("stateOf", result)[0]
+  );
+}
+
 class FxX402SwapStore {
   constructor({ directory = null } = {}) {
     this.directory = directory ? path.resolve(directory) : null;
@@ -637,6 +793,7 @@ class FxX402SwapCoordinator {
     };
     if (envelope.type === "fx_lock_destination") {
       patch.destinationLockMessageId = envelope.id;
+      patch.destinationLockEnvelope = envelope;
     } else if (envelope.type === "fx_claim") {
       const lockMessageId = envelope.payload?.lockMessageId;
       if (lockMessageId === state.sourceLockEnvelope?.id) {
@@ -684,6 +841,66 @@ class FxX402SwapCoordinator {
       }
     }
     return recovered;
+  }
+
+  journalMessage(id) {
+    if (!id || typeof this.session.journal?.message !== "function") return null;
+    return this.session.journal.message(id) || null;
+  }
+
+  async reconcileStatus(tradeId) {
+    const state = this.store.get(tradeId);
+    if (!state) {
+      throw new FxX402SwapError("x402 swap is unknown", "TRADE_NOT_FOUND");
+    }
+    if (
+      ["complete", "refunded", "defaulted"].includes(state.status) ||
+      !state.sourceLockEnvelope ||
+      !state.destinationLockMessageId ||
+      !state.acceptance ||
+      !state.reservation
+    ) {
+      return publicSwapState(state);
+    }
+    const destinationEnvelope =
+      state.destinationLockEnvelope ||
+      this.journalMessage(state.destinationLockMessageId);
+    if (!destinationEnvelope) return publicSwapState(state);
+    try {
+      const sourceExpected = expectedV3Lock(
+        state,
+        state.sourceLockEnvelope,
+        "source",
+        this.manifest
+      );
+      const destinationExpected = expectedV3Lock(
+        state,
+        destinationEnvelope,
+        "destination",
+        this.manifest
+      );
+      const [sourceState, destinationState] = await Promise.all([
+        readAnnouncedV3LockState(
+          this.provider(sourceExpected.chainId),
+          sourceExpected
+        ),
+        readAnnouncedV3LockState(
+          this.provider(destinationExpected.chainId),
+          destinationExpected
+        ),
+      ]);
+      if (sourceState !== 2 || destinationState !== 2) {
+        return publicSwapState(state);
+      }
+      return publicSwapState(this.store.update(state.tradeId, {
+        status: "complete",
+        updatedAt: new Date(this.now() * 1000).toISOString(),
+        onchainReconciled: true,
+        onchainReconciledAt: new Date(this.now() * 1000).toISOString(),
+      }));
+    } catch {
+      return publicSwapState(state);
+    }
   }
 
   async open({ rfq, destinationAddress, sourceRefundAddress, secretHash }) {
@@ -1113,7 +1330,9 @@ function createFxX402SwapHttpHandler({
         url.pathname
       );
       if (request.method === "GET" && statusMatch) {
-        json(response, 200, { swap: coordinator.status(statusMatch[1]) });
+        json(response, 200, {
+          swap: await coordinator.reconcileStatus(statusMatch[1]),
+        });
         return true;
       }
       const announceMatch =

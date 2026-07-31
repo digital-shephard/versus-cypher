@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const {
+  Interface,
   Transaction,
   Wallet,
   keccak256,
@@ -18,6 +19,7 @@ const {
   createFxBrokerHttpService,
   createFxX402SwapHttpHandler,
   packSettlementV3,
+  phase5LockId,
   signFxMessage,
   sourceFundingSpecification,
   verifySignedSourceFundingTransaction,
@@ -275,6 +277,93 @@ class FakeProvider {
   async getTransactionReceipt(transactionHash) {
     return this.receipts.get(String(transactionHash).toLowerCase()) || null;
   }
+}
+
+const V3_LOCK_INTERFACE = new Interface([
+  "function stateOf(bytes32 lockDigest) view returns (uint8)",
+  "event LockFunded(bytes32 indexed lockDigest,bytes32 indexed tradeId,address indexed funder,address beneficiary,bytes32 secretHash,uint64 refundTimestamp,uint128 beneficiaryAmount,uint128 executorAmount)",
+]);
+
+class FakeLockProvider extends FakeProvider {
+  constructor({ receipt, state = 2 } = {}) {
+    super();
+    this.lockReceipt = receipt;
+    this.lockState = state;
+  }
+
+  async getTransactionReceipt() {
+    return this.lockReceipt;
+  }
+
+  async call() {
+    return V3_LOCK_INTERFACE.encodeFunctionResult("stateOf", [this.lockState]);
+  }
+}
+
+function v3LockEvidence({
+  tradeId,
+  side,
+  adapterAddress,
+  funder,
+  beneficiary,
+  amountAtomic,
+  beneficiaryAmountAtomic,
+  executorAmountAtomic,
+  timeout,
+  transactionHash,
+  blockNumber,
+  sender,
+  chainId,
+  token = FX_NATIVE_ETH_ADDRESS,
+  acceptId,
+  lockDigest = `0x${(side === "source" ? "91" : "92").repeat(32)}`,
+}) {
+  const lockId = phase5LockId(tradeId, side);
+  const encoded = V3_LOCK_INTERFACE.encodeEventLog(
+    V3_LOCK_INTERFACE.getEvent("LockFunded"),
+    [
+      lockDigest,
+      lockId,
+      funder,
+      beneficiary,
+      SECRET_HASH,
+      timeout,
+      beneficiaryAmountAtomic,
+      executorAmountAtomic,
+    ]
+  );
+  return {
+    envelope: {
+      type: side === "source" ? "fx_lock_source" : "fx_lock_destination",
+      tradeId,
+      sender: sender.toLowerCase(),
+      id: `0x${(side === "source" ? "c1" : "d1").repeat(32)}`,
+      payload: {
+        acceptId,
+        chainId,
+        token,
+        amountAtomic,
+        beneficiaryAmountAtomic,
+        executorAmountAtomic,
+        lockAddress: adapterAddress,
+        beneficiary: beneficiary.toLowerCase(),
+        refundAddress: funder.toLowerCase(),
+        secretHash: SECRET_HASH,
+        timeout,
+        transactionHash,
+        blockNumber: String(blockNumber),
+      },
+    },
+    receipt: {
+      status: 1,
+      blockNumber,
+      logs: [{
+        address: adapterAddress,
+        topics: encoded.topics,
+        data: encoded.data,
+      }],
+    },
+  };
 }
 
 test("requester fails clearly when the source wallet cannot fund principal and gas", async () => {
@@ -686,6 +775,207 @@ test("coordinator rebuilds persisted HTTP status from an already-synced journal"
   } finally {
     coordinator.close();
     run.cleanup();
+  }
+});
+
+test("coordinator reconciles missed terminal Waku claims from exact V3 locks", async () => {
+  const value = await fixture();
+  const sourceCapability = MANIFEST.capabilities.find(
+    (item) => String(item.chainId) === SOURCE_CHAIN
+  ).native;
+  const destinationCapability = MANIFEST.capabilities.find(
+    (item) => String(item.chainId) === DESTINATION_CHAIN
+  ).native;
+  const funding = sourceFundingSpecification({
+    manifest: MANIFEST,
+    proposal: value.proposal,
+    acceptance: value.acceptance,
+    reservation: value.reservation,
+    sourceChainTimestamp: NOW,
+    sourceRefundTimestamp: NOW + 7_200,
+  });
+  const source = v3LockEvidence({
+    tradeId: value.rfq.tradeId,
+    side: "source",
+    adapterAddress: sourceCapability.adapterAddress,
+    funder: value.requester.address,
+    beneficiary: value.dealer.address,
+    amountAtomic: "1010",
+    beneficiaryAmountAtomic: "1010",
+    executorAmountAtomic: "0",
+    timeout: NOW + 7_200,
+    transactionHash: `0x${"11".repeat(32)}`,
+    blockNumber: 101,
+    sender: value.requester.address,
+    chainId: SOURCE_CHAIN,
+    acceptId: value.acceptance.id,
+  });
+  const destination = v3LockEvidence({
+    tradeId: value.rfq.tradeId,
+    side: "destination",
+    adapterAddress: destinationCapability.adapterAddress,
+    funder: value.dealer.address,
+    beneficiary: value.requester.address,
+    amountAtomic: "1001",
+    beneficiaryAmountAtomic: "1000",
+    executorAmountAtomic: "1",
+    timeout: NOW + 3_600,
+    transactionHash: `0x${"22".repeat(32)}`,
+    blockNumber: 102,
+    sender: value.dealer.address,
+    chainId: DESTINATION_CHAIN,
+    acceptId: value.acceptance.id,
+  });
+  const session = new FakeSession({
+    dealer: value.dealer,
+    proposal: value.proposal,
+  });
+  session.journal = {
+    message: (id) =>
+      id === destination.envelope.id ? destination.envelope : null,
+  };
+  const coordinator = new FxX402SwapCoordinator({
+    broker: { requestRoute: async () => value.proposal },
+    session,
+    manifest: MANIFEST,
+    providers: {
+      [SOURCE_CHAIN]: new FakeLockProvider({ receipt: source.receipt }),
+      [DESTINATION_CHAIN]: new FakeLockProvider({
+        receipt: destination.receipt,
+      }),
+    },
+    now: () => NOW + 30,
+  });
+  try {
+    coordinator.store.put({
+      schema: "versus-x402-atomic-swap",
+      schemaVersion: 1,
+      tradeId: value.rfq.tradeId,
+      status: "secret_revealed",
+      rfq: value.rfq,
+      proposal: value.proposal,
+      acceptance: value.acceptance,
+      reservation: value.reservation,
+      funding,
+      sourceLockEnvelope: source.envelope,
+      destinationLockMessageId: destination.envelope.id,
+    });
+    const reconciled = await coordinator.reconcileStatus(value.rfq.tradeId);
+    assert.equal(reconciled.status, "complete");
+    assert.equal(reconciled.onchainReconciled, true);
+    assert.equal(
+      reconciled.onchainReconciledAt,
+      new Date((NOW + 30) * 1000).toISOString()
+    );
+  } finally {
+    coordinator.close();
+  }
+});
+
+test("onchain reconciliation fails closed for incomplete or mismatched locks", async () => {
+  const value = await fixture();
+  const sourceCapability = MANIFEST.capabilities.find(
+    (item) => String(item.chainId) === SOURCE_CHAIN
+  ).native;
+  const destinationCapability = MANIFEST.capabilities.find(
+    (item) => String(item.chainId) === DESTINATION_CHAIN
+  ).native;
+  const funding = sourceFundingSpecification({
+    manifest: MANIFEST,
+    proposal: value.proposal,
+    acceptance: value.acceptance,
+    reservation: value.reservation,
+    sourceChainTimestamp: NOW,
+    sourceRefundTimestamp: NOW + 7_200,
+  });
+  const source = v3LockEvidence({
+    tradeId: value.rfq.tradeId,
+    side: "source",
+    adapterAddress: sourceCapability.adapterAddress,
+    funder: value.requester.address,
+    beneficiary: value.dealer.address,
+    amountAtomic: "1010",
+    beneficiaryAmountAtomic: "1010",
+    executorAmountAtomic: "0",
+    timeout: NOW + 7_200,
+    transactionHash: `0x${"31".repeat(32)}`,
+    blockNumber: 201,
+    sender: value.requester.address,
+    chainId: SOURCE_CHAIN,
+    acceptId: value.acceptance.id,
+  });
+  const destination = v3LockEvidence({
+    tradeId: value.rfq.tradeId,
+    side: "destination",
+    adapterAddress: destinationCapability.adapterAddress,
+    funder: value.dealer.address,
+    beneficiary: value.requester.address,
+    amountAtomic: "1001",
+    beneficiaryAmountAtomic: "1000",
+    executorAmountAtomic: "1",
+    timeout: NOW + 3_600,
+    transactionHash: `0x${"32".repeat(32)}`,
+    blockNumber: 202,
+    sender: value.dealer.address,
+    chainId: DESTINATION_CHAIN,
+    acceptId: value.acceptance.id,
+  });
+  const mismatchedDestination = v3LockEvidence({
+    tradeId: value.rfq.tradeId,
+    side: "destination",
+    adapterAddress: destinationCapability.adapterAddress,
+    funder: value.dealer.address,
+    beneficiary: Wallet.createRandom().address,
+    amountAtomic: "1001",
+    beneficiaryAmountAtomic: "1000",
+    executorAmountAtomic: "1",
+    timeout: NOW + 3_600,
+    transactionHash: `0x${"32".repeat(32)}`,
+    blockNumber: 202,
+    sender: value.dealer.address,
+    chainId: DESTINATION_CHAIN,
+    acceptId: value.acceptance.id,
+  });
+  for (const destinationProvider of [
+    new FakeLockProvider({ receipt: destination.receipt, state: 1 }),
+    new FakeLockProvider({ receipt: mismatchedDestination.receipt, state: 2 }),
+  ]) {
+    const session = new FakeSession({
+      dealer: value.dealer,
+      proposal: value.proposal,
+    });
+    session.journal = {
+      message: (id) =>
+        id === destination.envelope.id ? destination.envelope : null,
+    };
+    const coordinator = new FxX402SwapCoordinator({
+      broker: { requestRoute: async () => value.proposal },
+      session,
+      manifest: MANIFEST,
+      providers: {
+        [SOURCE_CHAIN]: new FakeLockProvider({ receipt: source.receipt }),
+        [DESTINATION_CHAIN]: destinationProvider,
+      },
+      now: () => NOW + 30,
+    });
+    try {
+      coordinator.store.put({
+        tradeId: value.rfq.tradeId,
+        status: "secret_revealed",
+        rfq: value.rfq,
+        proposal: value.proposal,
+        acceptance: value.acceptance,
+        reservation: value.reservation,
+        funding,
+        sourceLockEnvelope: source.envelope,
+        destinationLockMessageId: destination.envelope.id,
+      });
+      const result = await coordinator.reconcileStatus(value.rfq.tradeId);
+      assert.equal(result.status, "secret_revealed");
+      assert.equal(result.onchainReconciled, undefined);
+    } finally {
+      coordinator.close();
+    }
   }
 });
 
