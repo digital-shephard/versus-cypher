@@ -168,6 +168,7 @@ async function main() {
         30_000
       ),
     });
+    x402Coordinator.recoverFromJournal();
     x402SwapHandler = createFxX402SwapHttpHandler({
       coordinator: x402Coordinator,
     });

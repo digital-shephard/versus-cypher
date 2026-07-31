@@ -613,6 +613,82 @@ test("coordinator completes when source and destination claims arrive in either 
   }
 });
 
+test("coordinator rebuilds persisted HTTP status from an already-synced journal", async () => {
+  const value = await fixture();
+  const run = temporaryDirectory();
+  const sourceLockId = `0x${"c1".repeat(32)}`;
+  const destinationLockId = `0x${"d1".repeat(32)}`;
+  const destinationClaimId = `0x${"e2".repeat(32)}`;
+  const sourceClaimId = `0x${"e1".repeat(32)}`;
+  const messages = new Map([
+    [destinationLockId, {
+      type: "fx_lock_destination",
+      tradeId: value.rfq.tradeId,
+      id: destinationLockId,
+      sequence: "3",
+      createdAt: NOW + 7,
+      payload: {},
+    }],
+    [sourceClaimId, {
+      type: "fx_claim",
+      tradeId: value.rfq.tradeId,
+      id: sourceClaimId,
+      sequence: "4",
+      createdAt: NOW + 10,
+      payload: { lockMessageId: sourceLockId },
+    }],
+    [destinationClaimId, {
+      type: "fx_claim",
+      tradeId: value.rfq.tradeId,
+      id: destinationClaimId,
+      sequence: "5",
+      createdAt: NOW + 9,
+      payload: { lockMessageId: destinationLockId },
+    }],
+  ]);
+  const session = new FakeSession({
+    dealer: value.dealer,
+    proposal: value.proposal,
+  });
+  session.journal = {
+    tradeIds: () => [value.rfq.tradeId],
+    snapshot: () => ({
+      // Deliberately return hash order rather than settlement order.
+      messages: [...messages.keys()].sort().map((id) => ({ id })),
+    }),
+    message: (id) => messages.get(id),
+  };
+  const store = new FxX402SwapStore({
+    directory: path.join(run.directory, "broker"),
+  });
+  store.put({
+    tradeId: value.rfq.tradeId,
+    status: "secret_revealed",
+    sourceLockEnvelope: { id: sourceLockId },
+  });
+  const coordinator = new FxX402SwapCoordinator({
+    broker: {
+      requestRoute: async () => value.proposal,
+    },
+    session,
+    manifest: MANIFEST,
+    providers: { [SOURCE_CHAIN]: new FakeProvider() },
+    store,
+    now: () => NOW + 20,
+  });
+  try {
+    assert.equal(coordinator.recoverFromJournal(), 3);
+    const recovered = coordinator.status(value.rfq.tradeId);
+    assert.equal(recovered.status, "complete");
+    assert.equal(recovered.destinationLockMessageId, destinationLockId);
+    assert.equal(recovered.destinationClaimMessageId, destinationClaimId);
+    assert.equal(recovered.sourceClaimMessageId, sourceClaimId);
+  } finally {
+    coordinator.close();
+    run.cleanup();
+  }
+});
+
 test("requester SDK completes staged x402 negotiation without exposing its secret", async () => {
   const run = temporaryDirectory();
   const requester = Wallet.createRandom();

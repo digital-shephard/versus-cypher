@@ -657,6 +657,35 @@ class FxX402SwapCoordinator {
     this.store.update(envelope.tradeId, patch);
   }
 
+  recoverFromJournal() {
+    const journal = this.session.journal;
+    if (
+      !journal ||
+      typeof journal.tradeIds !== "function" ||
+      typeof journal.snapshot !== "function" ||
+      typeof journal.message !== "function"
+    ) {
+      return 0;
+    }
+    let recovered = 0;
+    for (const tradeId of journal.tradeIds()) {
+      if (!this.store.get(tradeId)) continue;
+      const messages = (journal.snapshot(tradeId)?.messages || [])
+        .map((entry) => journal.message(entry.id))
+        .filter(Boolean)
+        .sort((left, right) =>
+          Number(left.createdAt) - Number(right.createdAt) ||
+          Number(left.sequence) - Number(right.sequence) ||
+          left.id.localeCompare(right.id)
+        );
+      for (const message of messages) {
+        this.observe(message);
+        recovered += 1;
+      }
+    }
+    return recovered;
+  }
+
   async open({ rfq, destinationAddress, sourceRefundAddress, secretHash }) {
     const verifiedRfq = verifyFxEnvelope(rfq, {
       now: this.now(),
