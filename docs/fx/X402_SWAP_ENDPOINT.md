@@ -307,6 +307,47 @@ Public settlement evidence:
 The endpoint reported `complete` only after observing both claim messages.
 The acceptance run used public testnets only.
 
+### Generic exact acceptance
+
+On 2026-07-31, an independent EOA using the stock `@x402/fetch` client called
+the public Relay A `exact` endpoint. It had no Cypher identity and no Waku
+connection. The public endpoint discovered and reserved a Windows desktop
+dealer over Waku, returned a standard x402 v2 EIP-3009 challenge, atomically
+split the disclosed facilitator fee, and activated the V3 source HTLC.
+
+Trade
+`0x9c70def6a1b8a92c2b8e29ababef734d1e86c8ef2373df3e0aeca15ae8cb9ed1`
+completed in approximately 54 seconds:
+
+- payer: `0xa4ac9532bf09d1992663b031e2ee15847f4f0a50`
+- Base Sepolia input: `11,010` atomic USDC (`$0.01101`)
+- relay facilitator fee: `1,000` atomic USDC (`$0.001`)
+- dealer source amount: `10,010` atomic USDC (`$0.01001`)
+- Arbitrum Sepolia output: exactly `10,000` atomic USDC (`$0.01`)
+- destination recipient: the payer address above, which began with no
+  Arbitrum gas and made no destination transaction
+
+Public settlement evidence:
+
+- [Base exact factory settlement](https://sepolia.basescan.org/tx/0xda1f0774cde518af311eb873329071897b314f7202c95412ff563e1a42033cef):
+  `0xda1f0774cde518af311eb873329071897b314f7202c95412ff563e1a42033cef`
+  at block `44880910`
+- [Arbitrum destination lock](https://sepolia.arbiscan.io/tx/0x65a921c209cfba680dae6b1f5979a6171802868a2c0b4baebdbb33a0ecbe9553):
+  `0x65a921c209cfba680dae6b1f5979a6171802868a2c0b4baebdbb33a0ecbe9553`
+  at block `293383372`
+- [Arbitrum destination claim](https://sepolia.arbiscan.io/tx/0x2edae797aeb6d3271826aec272470b7bb44db1476b4d68426f713680e23ea59a):
+  `0x2edae797aeb6d3271826aec272470b7bb44db1476b4d68426f713680e23ea59a`
+  at block `293383419`
+- [Base source claim](https://sepolia.basescan.org/tx/0xa13529f455411367b58185fae2aafcaa3e04e963514af33a4b735e66639b3a45):
+  `0xa13529f455411367b58185fae2aafcaa3e04e963514af33a4b735e66639b3a45`
+  at block `44880928`
+
+Post-settlement token balances independently reproduced the factory split:
+the payer decreased by `11,010`, Relay A increased by `1,000`, the dealer
+increased by `10,010` on Base and decreased by `10,000` on Arbitrum, and the
+recipient increased by exactly `10,000` on Arbitrum. The endpoint reported
+`complete` only after both claims.
+
 ## Operational Notes
 
 - Put the public endpoint behind HTTPS and request-body logging controls.
