@@ -57,6 +57,12 @@ refund and dealer principal returns to the original generic payer. A
 facilitator fee already earned for successful source activation is not
 refunded because the relay has already submitted and paid for that work.
 
+The relay fee is separate from the dealer spread. The spread pays the dealer
+for inventory and price risk. The disclosed facilitator fee pays the selected
+relay for source-chain gas and may include a competitive profit margin. The
+standard x402 amount is the all-in maximum the caller signs; the factory splits
+the facilitator fee before activating the source HTLC with dealer principal.
+
 Example request body:
 
 ```json
@@ -249,6 +255,30 @@ Native ETH is the default input and output asset. Run:
 ```powershell
 npm run fx:x402:request --prefix packages/network
 ```
+
+The generic acceptance requester uses an encrypted payer keystore and a
+separate encrypted crash-recovery record for its secret:
+
+```text
+FX_X402_TESTNET_ONLY=1
+FX_X402_EXACT_ENDPOINT=https://relay-a.versuscypher.com/v1/fx/exact
+FX_X402_EXACT_PAYER_KEYSTORE=<encrypted EOA keystore>
+FX_X402_EXACT_PAYER_KEYSTORE_PASSWORD=<local password>
+FX_X402_EXACT_RECOVERY_DIR=<private directory>
+FX_X402_EXACT_RECOVERY_PASSWORD=<local password>
+FX_X402_EXACT_INPUT_NETWORK=eip155:84532
+FX_X402_EXACT_INPUT_ASSET=0x036cbd53842c5426634e7929541ec2318f3dcf7e
+FX_X402_EXACT_MAXIMUM_INPUT_ATOMIC=12000
+FX_X402_EXACT_OUTPUT_NETWORK=eip155:421614
+FX_X402_EXACT_OUTPUT_ASSET=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d
+FX_X402_EXACT_OUTPUT_AMOUNT_ATOMIC=10000
+FX_X402_EXACT_DESTINATION_ADDRESS=<arbitrary recipient>
+```
+
+Run `npm run fx:x402:exact:request --prefix packages/network`. It uses the
+stock `@x402/fetch` client, waits for the independently observed destination
+lock, reveals only then, and prints public evidence without credentials or the
+secret.
 
 ## Public Testnet Acceptance
 

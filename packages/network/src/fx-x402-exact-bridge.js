@@ -112,7 +112,7 @@ function packSettlement(refundTimestamp, beneficiaryAmountAtomic) {
   if (amount <= 0n || amount >= (1n << 96n)) {
     throw new FxX402ExactError("source amount exceeds compact V3 encoding", "INVALID_ROUTE");
   }
-  return (BigInt(refundTimestamp) << 192n) | (amount << 96n);
+  return ((BigInt(refundTimestamp) << 192n) | (amount << 96n)).toString();
 }
 
 function providerMap(value) {

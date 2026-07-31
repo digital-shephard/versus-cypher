@@ -221,6 +221,8 @@ test("generic exact bridge binds a stock payment to the signed V3 route", async 
   assert.equal(prepared.privateState.lockTerms.tradeId, phase5LockId(REQUEST_ID, "source"));
   assert.equal(prepared.privateState.lockTerms.payer, fixture.payer.address.toLowerCase());
   assert.equal(prepared.privateState.lockTerms.beneficiary, fixture.dealer.address.toLowerCase());
+  assert.equal(typeof prepared.privateState.lockTerms.settlement, "string");
+  assert.doesNotThrow(() => JSON.stringify(prepared));
   assert.equal(
     prepared.privateState.lockTerms.facilitator,
     fixture.observedFactoryRead.config.facilitatorRecipient
