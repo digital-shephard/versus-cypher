@@ -1,0 +1,1340 @@
+{
+  "schema": "versus-fx-market-deployment",
+  "schemaVersion": 1,
+  "marketId": "0x9f26bd27ca066cae9755b260bf4752cb7f297fadafd378cf8c920253142101d2",
+  "releaseStage": "public-testnet-v1-candidate",
+  "deploymentId": "0x8cd9ede68d18e52213372ed6041bdb83867c5846119461c860d95f74e689ed54",
+  "coordinationDomain": "0x50aea8e208dd1de883d5f8b50eefe71f328b6b9aea996388d402f87ef4415ed9",
+  "market": {
+    "schema": "versus-fx-market-candidate",
+    "schemaVersion": 1,
+    "releaseStage": "public-testnet-v1-candidate",
+    "sameChainRoutes": true,
+    "chains": [
+      {
+        "chainId": "43113",
+        "name": "Avalanche Fuji",
+        "nativeSymbol": "AVAX",
+        "rpcEnvironmentVariable": "AVALANCHE_FUJI_RPC_URL",
+        "nativeGasReserveAtomic": "50000000000000000",
+        "minimumGasUsd": 1,
+        "requiredConfirmations": 1,
+        "reorgSafetyBlocks": 1,
+        "assets": [
+          {
+            "positionId": "43113:0x0000000000000000000000000000000000000000",
+            "symbol": "AVAX",
+            "kind": "native",
+            "token": "0x0000000000000000000000000000000000000000",
+            "decimals": 18,
+            "stable": false,
+            "x402ExactInput": false
+          },
+          {
+            "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+            "symbol": "USDC",
+            "kind": "erc20",
+            "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "USD Coin",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+            "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+          },
+          {
+            "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+            "symbol": "EURC",
+            "kind": "erc20",
+            "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "EUR Coin",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+            "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+          }
+        ]
+      },
+      {
+        "chainId": "84532",
+        "name": "Base Sepolia",
+        "nativeSymbol": "ETH",
+        "rpcEnvironmentVariable": "BASE_SEPOLIA_RPC_URL",
+        "nativeGasReserveAtomic": "250000000000000",
+        "minimumGasUsd": 1,
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 12,
+        "assets": [
+          {
+            "positionId": "84532:0x0000000000000000000000000000000000000000",
+            "symbol": "ETH",
+            "kind": "native",
+            "token": "0x0000000000000000000000000000000000000000",
+            "decimals": 18,
+            "stable": false,
+            "x402ExactInput": false
+          },
+          {
+            "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            "symbol": "USDC",
+            "kind": "erc20",
+            "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "USDC",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+            "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+          },
+          {
+            "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+            "symbol": "EURC",
+            "kind": "erc20",
+            "token": "0x808456652fdb597867f38412077a9182bf77359f",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "EURC",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+            "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+          }
+        ]
+      }
+    ],
+    "timeoutPolicy": {
+      "minimumSeconds": 60,
+      "maximumSeconds": 604800,
+      "minimumCrossChainDeltaSeconds": 3600,
+      "destinationRelayWindowSeconds": 3600,
+      "genericQuoteLifetimeSeconds": 120,
+      "settlementLifetimeSeconds": 7200
+    },
+    "economics": {
+      "defaultDealerSpreadBps": 5,
+      "facilitatorFeeAtomic": "1000",
+      "onchainMaximumTrade": null,
+      "operatorLimitsAreOffchain": true
+    },
+    "marketId": "0x9f26bd27ca066cae9755b260bf4752cb7f297fadafd378cf8c920253142101d2",
+    "routes": [
+      {
+        "routeId": "43113:0x0000000000000000000000000000000000000000->43113:0x5425890298aed601595a70ab815c96711a31bc65",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43113:0x0000000000000000000000000000000000000000->43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43113:0x0000000000000000000000000000000000000000->84532:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43113:0x0000000000000000000000000000000000000000->84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43113:0x0000000000000000000000000000000000000000->84532:0x808456652fdb597867f38412077a9182bf77359f",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43113:0x5425890298aed601595a70ab815c96711a31bc65->43113:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5425890298aed601595a70ab815c96711a31bc65->43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5425890298aed601595a70ab815c96711a31bc65->84532:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5425890298aed601595a70ab815c96711a31bc65->84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5425890298aed601595a70ab815c96711a31bc65->84532:0x808456652fdb597867f38412077a9182bf77359f",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b->43113:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b->43113:0x5425890298aed601595a70ab815c96711a31bc65",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b->84532:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b->84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b->84532:0x808456652fdb597867f38412077a9182bf77359f",
+        "input": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x0000000000000000000000000000000000000000->43113:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "84532:0x0000000000000000000000000000000000000000->43113:0x5425890298aed601595a70ab815c96711a31bc65",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "84532:0x0000000000000000000000000000000000000000->43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "84532:0x0000000000000000000000000000000000000000->84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "84532:0x0000000000000000000000000000000000000000->84532:0x808456652fdb597867f38412077a9182bf77359f",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e->43113:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e->43113:0x5425890298aed601595a70ab815c96711a31bc65",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e->43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e->84532:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e->84532:0x808456652fdb597867f38412077a9182bf77359f",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x808456652fdb597867f38412077a9182bf77359f->43113:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x808456652fdb597867f38412077a9182bf77359f->43113:0x5425890298aed601595a70ab815c96711a31bc65",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5425890298aed601595a70ab815c96711a31bc65",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x808456652fdb597867f38412077a9182bf77359f->43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "output": {
+          "chainId": "43113",
+          "chainName": "Avalanche Fuji",
+          "positionId": "43113:0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x808456652fdb597867f38412077a9182bf77359f->84532:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "84532:0x808456652fdb597867f38412077a9182bf77359f->84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "input": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x808456652fdb597867f38412077a9182bf77359f",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077a9182bf77359f",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e"
+        },
+        "output": {
+          "chainId": "84532",
+          "chainName": "Base Sepolia",
+          "positionId": "84532:0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      }
+    ]
+  },
+  "v3": {
+    "schema": "versus-fx-evm-v3-capabilities",
+    "schemaVersion": 3,
+    "settlementMode": "requester-secret-source-first-compact",
+    "deploymentId": "0x8cd9ede68d18e52213372ed6041bdb83867c5846119461c860d95f74e689ed54",
+    "coordinationDomain": "0x50aea8e208dd1de883d5f8b50eefe71f328b6b9aea996388d402f87ef4415ed9",
+    "builds": {
+      "native": {
+        "adapterId": "evm-native-htlc-v3",
+        "adapterVersion": 3,
+        "contract": "EvmNativeHtlcV3",
+        "sourcePath": "versus/contracts/fx/EvmNativeHtlcV3.sol",
+        "sourceTag": "agentic-fx-requester-secret-v3",
+        "compiler": "0.8.26",
+        "evmVersion": "cancun",
+        "optimizerRuns": 1,
+        "viaIR": true,
+        "sourceSha256": "0xa23e6d5118ca862eb55fb7d70e2b1cb5b7ec94c403cf101e29797d2e31b6d1b6",
+        "creationCodeHash": "0xc661336012b2e2629502dd380520ca449b875d447db917826ba741df3c4e0d54"
+      },
+      "erc20": {
+        "adapterId": "evm-htlc-v3",
+        "adapterVersion": 3,
+        "contract": "EvmHtlcV3",
+        "sourcePath": "versus/contracts/fx/EvmHtlcV3.sol",
+        "sourceTag": "agentic-fx-requester-secret-v3",
+        "compiler": "0.8.26",
+        "evmVersion": "cancun",
+        "optimizerRuns": 1,
+        "viaIR": true,
+        "sourceSha256": "0xfcdef75ab5add995a809a2631cab73f6e6b72e40ee6bee7e91b8a6b1c7e01921",
+        "creationCodeHash": "0x9fabd7ae8433f0e1696e94b1faf83a0138d297d3b293909ef80b1de32c181e3f"
+      }
+    },
+    "capabilities": [
+      {
+        "chainId": "43113",
+        "native": {
+          "adapterAddress": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "runtimeCodeHash": "0x0f51eacdef60b9977243513f18394a4e30227ac290d7e1845168d102e8706d69",
+          "deploymentBlock": 57618653,
+          "assetId": "native:avax"
+        },
+        "erc20": {
+          "adapterAddress": "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
+          "runtimeCodeHash": "0x0b00da6ab2639371f2d983b10c472820cc740b2ad0a6d045b558db6b57357b30",
+          "deploymentBlock": 57618656,
+          "asset": {
+            "address": "0x5425890298aed601595a70ab815c96711a31bc65",
+            "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+            "symbol": "USDC",
+            "decimals": 6,
+            "standard": "ERC20"
+          }
+        },
+        "erc20s": [
+          {
+            "adapterAddress": "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
+            "runtimeCodeHash": "0x0b00da6ab2639371f2d983b10c472820cc740b2ad0a6d045b558db6b57357b30",
+            "deploymentBlock": 57618656,
+            "asset": {
+              "address": "0x5425890298aed601595a70ab815c96711a31bc65",
+              "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+              "symbol": "USDC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          },
+          {
+            "adapterAddress": "0x9ddb82ee6eb48833906dec8e3196465dd5f5dff6",
+            "runtimeCodeHash": "0x44ac50b30f2c4e3630f99b6b7f8e07fced0fb18e6d941c406984470d6edd2bcc",
+            "deploymentBlock": 57618661,
+            "asset": {
+              "address": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+              "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+              "symbol": "EURC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          }
+        ],
+        "confirmationPolicy": {
+          "requiredConfirmations": 1,
+          "reorgSafetyBlocks": 1
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 3600,
+          "minimumDestinationRelayWindowSeconds": 3600
+        }
+      },
+      {
+        "chainId": "84532",
+        "native": {
+          "adapterAddress": "0xbd26951157abb0b0de5c570e80dd923d5a2352d4",
+          "runtimeCodeHash": "0xe28592cd329c5cc9c13b1104b324c7d5ffe591cadf125298ef933accd5914a76",
+          "deploymentBlock": 45168601,
+          "assetId": "native:eth"
+        },
+        "erc20": {
+          "adapterAddress": "0xee74f9b37688e501cf2fddf37c17c7ef9a6f1670",
+          "runtimeCodeHash": "0x3fcd7681e9514721b2de6355a1bc7985ca73da9a460cf9ad6e7a6ea9a6b07a48",
+          "deploymentBlock": 45168603,
+          "asset": {
+            "address": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+            "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+            "symbol": "USDC",
+            "decimals": 6,
+            "standard": "ERC20"
+          }
+        },
+        "erc20s": [
+          {
+            "adapterAddress": "0xee74f9b37688e501cf2fddf37c17c7ef9a6f1670",
+            "runtimeCodeHash": "0x3fcd7681e9514721b2de6355a1bc7985ca73da9a460cf9ad6e7a6ea9a6b07a48",
+            "deploymentBlock": 45168603,
+            "asset": {
+              "address": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+              "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+              "symbol": "USDC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          },
+          {
+            "adapterAddress": "0x5c1e3ca73084370f6ef394051a504cf466e52c86",
+            "runtimeCodeHash": "0x638d22fb6b40013a19c481ce859fdf96af7d5fa7d094c781837bebc9ffc25189",
+            "deploymentBlock": 45168666,
+            "asset": {
+              "address": "0x808456652fdb597867f38412077a9182bf77359f",
+              "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+              "symbol": "EURC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          }
+        ],
+        "confirmationPolicy": {
+          "requiredConfirmations": 2,
+          "reorgSafetyBlocks": 12
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 3600,
+          "minimumDestinationRelayWindowSeconds": 3600
+        }
+      }
+    ]
+  },
+  "exact": {
+    "build": {
+      "schema": "versus-fx-evm-exact-build-freeze",
+      "schemaVersion": 1,
+      "settlementMode": "x402-exact-eip3009-to-v3",
+      "sourceTag": "generic-x402-exact-v1",
+      "builds": {
+        "EvmExactHtlcEscrow": {
+          "contract": "EvmExactHtlcEscrow",
+          "sourcePath": "versus/contracts/fx/EvmExactHtlcFactory.sol",
+          "compiler": "0.8.26",
+          "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+          "evmVersion": "cancun",
+          "optimizerRuns": 1,
+          "viaIR": true,
+          "sourceSha256": "0x97b4caab838829722cf4ff0661ae5f6b5cfef2cd6a5c50088c45d879efd8854b",
+          "creationCodeHash": "0x1c8fcf54ce1bd3650fd52099d5cb844441e30b84b0953439a6848363fbc20d73",
+          "runtimeTemplateHash": "0xca416ce6298dd4d5ccfdaedbefa7e2ac33c5f7145d5cc6690a48cef99f3b3ab1",
+          "creationCodeBytes": 5642,
+          "runtimeTemplateBytes": 4888
+        },
+        "EvmExactHtlcFactory": {
+          "contract": "EvmExactHtlcFactory",
+          "sourcePath": "versus/contracts/fx/EvmExactHtlcFactory.sol",
+          "compiler": "0.8.26",
+          "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+          "evmVersion": "cancun",
+          "optimizerRuns": 1,
+          "viaIR": true,
+          "sourceSha256": "0x97b4caab838829722cf4ff0661ae5f6b5cfef2cd6a5c50088c45d879efd8854b",
+          "creationCodeHash": "0xff1515855930ce92d65f68a90565b708460f99c9dc5919103a23cbd06076d3ed",
+          "runtimeTemplateHash": "0x84b2a849a93a969099ecaf58cc6fc041a2d437a35ded02d1ccbc43a125f8a218",
+          "creationCodeBytes": 8803,
+          "runtimeTemplateBytes": 8380
+        }
+      }
+    },
+    "factories": [
+      {
+        "chainId": "43113",
+        "symbol": "EURC",
+        "token": "0x5e44db7996c682e92a960b65ac713a54ad815c6b",
+        "tokenName": "EUR Coin",
+        "tokenVersion": "2",
+        "htlc": "0x9ddb82ee6eb48833906dec8e3196465dd5f5dff6",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x45dabb99e841198befe3e8211b4eae08ad0163b7",
+        "runtimeCodeHash": "0x46145354dc1980b73c4ed0e51fdffe227813ebc3cac032e6f996ab34c8b8b0c9",
+        "deploymentBlock": 57618662
+      },
+      {
+        "chainId": "43113",
+        "symbol": "USDC",
+        "token": "0x5425890298aed601595a70ab815c96711a31bc65",
+        "tokenName": "USD Coin",
+        "tokenVersion": "2",
+        "htlc": "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x1a412352645e54e1527c68c926bd3a1e117fd9f6",
+        "runtimeCodeHash": "0x05e7f8c47f8830b7ffeff27b4840cd5022da448e21ce871fb1a7990fd316b0e3",
+        "deploymentBlock": 57618658
+      },
+      {
+        "chainId": "84532",
+        "symbol": "EURC",
+        "token": "0x808456652fdb597867f38412077a9182bf77359f",
+        "tokenName": "EURC",
+        "tokenVersion": "2",
+        "htlc": "0x5c1e3ca73084370f6ef394051a504cf466e52c86",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0xb088673c5ac252d6dff5d10c89d8b1c341f4b480",
+        "runtimeCodeHash": "0xa7002cbca96b0dc1ae05f3bf57f75163919b7ae43e1e8198fe5055a9eb1b7ce6",
+        "deploymentBlock": 45168669
+      },
+      {
+        "chainId": "84532",
+        "symbol": "USDC",
+        "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "tokenName": "USDC",
+        "tokenVersion": "2",
+        "htlc": "0xee74f9b37688e501cf2fddf37c17c7ef9a6f1670",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x0189b743515caf47e4e0ca5d93e59b7f278f0875",
+        "runtimeCodeHash": "0x054d034f00411b0e6d181e2d0de59d49a77e3c72d28d70681089e6e90ef361a4",
+        "deploymentBlock": 45168664
+      }
+    ]
+  }
+}

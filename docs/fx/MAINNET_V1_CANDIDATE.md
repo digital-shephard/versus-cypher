@@ -86,6 +86,34 @@ The acceptance cohort uses Base Sepolia (84532) and Avalanche Fuji (43113), with
 
 Deployment is guarded by `FX_MARKET_PUBLIC_TESTNET_DEPLOY=I_UNDERSTAND_PUBLIC_TESTNET_ONLY`. The scripts reject the mainnet candidate and refuse to overwrite an existing public record. Assembly fails until both chain records are explorer verified and pass independent runtime/immutable preflight.
 
+The fresh mirror is deployed under deployment ID
+`0x8cd9ede68d18e52213372ed6041bdb83867c5846119461c860d95f74e689ed54`
+and isolated Waku coordination domain
+`0x50aea8e208dd1de883d5f8b50eefe71f328b6b9aea996388d402f87ef4415ed9`.
+
+| Chain | Native V3 | USDC V3 | USDC exact | EURC V3 | EURC exact |
+| --- | --- | --- | --- | --- | --- |
+| Base Sepolia | [`0xbd2695...52d4`](https://sepolia.basescan.org/address/0xbd26951157abb0b0de5c570e80dd923d5a2352d4#code) | [`0xee74f9...1670`](https://sepolia.basescan.org/address/0xee74f9b37688e501cf2fddf37c17c7ef9a6f1670#code) | [`0x0189b7...875`](https://sepolia.basescan.org/address/0x0189b743515caf47e4e0ca5d93e59b7f278f0875#code) | [`0x5c1e3c...2c86`](https://sepolia.basescan.org/address/0x5c1e3ca73084370f6ef394051a504cf466e52c86#code) | [`0xb08867...b480`](https://sepolia.basescan.org/address/0xb088673c5ac252d6dff5d10c89d8b1c341f4b480#code) |
+| Avalanche Fuji | [`0xcba3d9...e01b`](https://testnet.snowtrace.io/address/0xcba3d9354dd4c30bb6961abb4473a6340486e01b#code) | [`0xe7a02d...334d`](https://testnet.snowtrace.io/address/0xe7a02dd38f9191d8ee20daa24b4feee911da334d#code) | [`0x1a4123...d9f6`](https://testnet.snowtrace.io/address/0x1a412352645e54e1527c68c926bd3a1e117fd9f6#code) | [`0x9ddb82...dff6`](https://testnet.snowtrace.io/address/0x9ddb82ee6eb48833906dec8e3196465dd5f5dff6#code) | [`0x45dabb...63b7`](https://testnet.snowtrace.io/address/0x45dabb99e841198befe3e8211b4eae08ad0163b7#code) |
+
+The assembled artifact is
+`versus/deployments/fx/public-testnet-v1-market-deployment.json`. The desktop
+loads it only through an explicit absolute `VERSUS_FX_MARKET_DEPLOYMENT` path.
+`npm run preflight:fx-market --prefix apps/pet` independently rechecks both
+chain IDs, current RPC heads, all ten successful deployment receipts and their
+deployer/block/address/gas commitments, all V3 runtime and immutable
+commitments, every exact-factory runtime plus its token/HTLC wiring, the
+six-position/30-route shape, domain isolation, and the two-signer
+ETH/AVAX/EURC price quorum. The desktop test suite also reconstructs the
+assembled artifact from the candidate, both chain records, and both build
+freezes and requires an exact object match.
+
+Automated acceptance currently passes the complete desktop and network suites,
+all V3 and exact Hardhat tests, and the deep V3 and exact Foundry fuzz/invariant
+profiles.
+Physical two-machine swaps and Circle-faucet stablecoin/x402 runs remain a
+separate cohort gate and are not implied by those automated results.
+
 ## Acceptance gates
 
 1. Regenerate the V3 and exact build freezes with no diff.
