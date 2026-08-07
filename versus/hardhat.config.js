@@ -39,11 +39,25 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 421614,
     },
+    avalancheFuji: {
+      url:
+        process.env.AVALANCHE_FUJI_RPC_URL ||
+        "https://api.avax-test.network/ext/bc/C/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 43113,
+    },
     base: {
       url: process.env.BASE_RPC_URL || "https://mainnet.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 8453,
       gasPrice: 10_000_000,
+    },
+    avalanche: {
+      url:
+        process.env.AVALANCHE_RPC_URL ||
+        "https://api.avax.network/ext/bc/C/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 43114,
     },
   },
   gasReporter: {

@@ -105,12 +105,53 @@ function normalizeBuild(value, kind) {
   };
 }
 
+function normalizeErc20Capability(value, label) {
+  object(value, label);
+  object(value.asset, `${label}.asset`);
+  return {
+    adapterAddress: address(value.adapterAddress, `${label}.adapterAddress`),
+    runtimeCodeHash: hash(value.runtimeCodeHash, `${label}.runtimeCodeHash`),
+    deploymentBlock: uint(value.deploymentBlock, `${label}.deploymentBlock`, 1),
+    asset: {
+      address: address(value.asset.address, `${label}.asset.address`),
+      runtimeCodeHash: hash(
+        value.asset.runtimeCodeHash,
+        `${label}.asset.runtimeCodeHash`
+      ),
+      symbol: text(value.asset.symbol, `${label}.asset.symbol`),
+      decimals: uint(value.asset.decimals, `${label}.asset.decimals`, 0, 255),
+      standard: value.asset.standard === "ERC20"
+        ? "ERC20"
+        : (() => {
+            throw new FxEvmV3AdapterError(
+              `${label}.asset.standard must be ERC20`
+            );
+          })(),
+    },
+  };
+}
+
 function normalizeCapability(value, index) {
   const label = `capabilities[${index}]`;
   object(value, label);
   object(value.native, `${label}.native`);
-  object(value.erc20, `${label}.erc20`);
-  object(value.erc20.asset, `${label}.erc20.asset`);
+  const erc20Inputs = Array.isArray(value.erc20s)
+    ? value.erc20s
+    : value.erc20 == null
+      ? []
+      : [value.erc20];
+  if (erc20Inputs.length < 1 || erc20Inputs.length > 16) {
+    throw new FxEvmV3AdapterError(
+      `${label} must contain 1 to 16 ERC-20 capabilities`
+    );
+  }
+  const erc20s = erc20Inputs.map((item, erc20Index) =>
+    normalizeErc20Capability(item, `${label}.erc20s[${erc20Index}]`)
+  );
+  erc20s.sort((left, right) => left.asset.address.localeCompare(right.asset.address));
+  if (new Set(erc20s.map((item) => item.asset.address)).size !== erc20s.length) {
+    throw new FxEvmV3AdapterError(`${label} repeats an ERC-20 asset`);
+  }
   object(value.confirmationPolicy, `${label}.confirmationPolicy`);
   object(value.timeoutPolicy, `${label}.timeoutPolicy`);
   const minimumSeconds = uint(
@@ -139,50 +180,17 @@ function normalizeCapability(value, index) {
         `${label}.native.deploymentBlock`,
         1
       ),
-      assetId: value.native.assetId === "native:eth"
-        ? "native:eth"
+      assetId: /^native:[a-z0-9]{2,12}$/.test(value.native.assetId)
+        ? value.native.assetId
         : (() => {
             throw new FxEvmV3AdapterError(
               `${label}.native.assetId is unsupported`
             );
           })(),
     },
-    erc20: {
-      adapterAddress: address(
-        value.erc20.adapterAddress,
-        `${label}.erc20.adapterAddress`
-      ),
-      runtimeCodeHash: hash(
-        value.erc20.runtimeCodeHash,
-        `${label}.erc20.runtimeCodeHash`
-      ),
-      deploymentBlock: uint(
-        value.erc20.deploymentBlock,
-        `${label}.erc20.deploymentBlock`,
-        1
-      ),
-      asset: {
-        address: address(value.erc20.asset.address, `${label}.erc20.asset.address`),
-        runtimeCodeHash: hash(
-          value.erc20.asset.runtimeCodeHash,
-          `${label}.erc20.asset.runtimeCodeHash`
-        ),
-        symbol: text(value.erc20.asset.symbol, `${label}.erc20.asset.symbol`),
-        decimals: uint(
-          value.erc20.asset.decimals,
-          `${label}.erc20.asset.decimals`,
-          0,
-          255
-        ),
-        standard: value.erc20.asset.standard === "ERC20"
-          ? "ERC20"
-          : (() => {
-              throw new FxEvmV3AdapterError(
-                `${label}.erc20.asset.standard must be ERC20`
-              );
-            })(),
-      },
-    },
+    // The singular field remains an alias for older exact-settlement callers.
+    erc20: erc20s[0],
+    erc20s,
     confirmationPolicy: {
       requiredConfirmations: uint(
         value.confirmationPolicy.requiredConfirmations,
@@ -262,7 +270,7 @@ function selectEvmV3Capability(manifestInput, { chainId, token }) {
   }
   const normalizedToken = String(token || "").toLowerCase();
   if (
-    normalizedToken === "native:eth" ||
+    normalizedToken === capability.native.assetId ||
     normalizedToken === "0x0000000000000000000000000000000000000000"
   ) {
     return {
@@ -272,11 +280,15 @@ function selectEvmV3Capability(manifestInput, { chainId, token }) {
       policy: capability,
     };
   }
-  if (address(token, "token") !== capability.erc20.asset.address) {
+  const normalizedAddress = address(token, "token");
+  const erc20 = capability.erc20s.find(
+    (item) => item.asset.address === normalizedAddress
+  );
+  if (!erc20) {
     throw new FxEvmV3AdapterError("asset is not allowlisted", "UNSUPPORTED_ASSET");
   }
   return {
-    ...capability.erc20,
+    ...erc20,
     chainId: capability.chainId,
     kind: "erc20",
     policy: capability,

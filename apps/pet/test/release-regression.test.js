@@ -355,7 +355,7 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.doesNotMatch(renderer, /function fxAdvancedLimitNode|fx-position-section-label", "LIMITS"/);
   assert.match(renderer, /const policyKey = control\.policyKey \|\|/);
   assert.doesNotMatch(main, /DEMO_DEPOSIT_USD_MICROS|3333333333/);
-  assert.match(main, /fresh signed relay ETH\/USD quote is unavailable/);
+  assert.match(main, /fresh signed relay \$\{symbol \|\| "asset"\}\/USD quote is unavailable/);
   assert.match(renderer, /minTradeUsd:\s*0\.01/);
   assert.match(renderer, /policyKey:\s*"minimumTradeUsd"/);
   assert.match(html, /id="fx-risk-min-trade">\$0\.01/);
@@ -365,8 +365,9 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   );
   assert.match(
     main,
-    /fxNativeUsdPriceProvider = async \(\) => \{[\s\S]*getFxReferenceHatchQuote\(\)/
+    /fxNativeUsdPriceProvider = async \(\{ configuration \} = \{\}\) => \{[\s\S]*getFxUsdReference\(symbol\)/
   );
+  assert.match(main, /const fxUsdReferenceCache = new Map\(\)[\s\S]*const fxUsdReferenceInFlight = new Map\(\)/);
   assert.match(renderer, /setFxDemo\(on = true\)[\s\S]*fxStockFilter = "all";\s*fxOpenBay = null;/);
   assert.match(renderer, /window\.versus\.fxSetPositionEnabled\(position\.id, !selected\)/);
   assert.match(css, /\.fx-stock-filters \{[\s\S]*grid-template-columns: repeat\(3, 1fr\)/);
@@ -502,7 +503,7 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.doesNotMatch(html, /Enable FX laboratory|setting-fx-development/);
   assert.doesNotMatch(preload, /fxSetEnabled|fx:setEnabled/);
   assert.doesNotMatch(main, /fx:setEnabled/);
-  assert.match(service, /function supportedPositionOf[\s\S]*FX_DEFAULT_POSITIONS\.find/);
+  assert.match(service, /function supportedPositionOf\(positions[\s\S]*positions\.find/);
   assert.doesNotMatch(service, /function positionOf/);
   assert.match(service, /FX_QUOTE_DISCOVERY_MAX_INPUT_ATOMIC[\s\S]*maxInputAtomic: FX_QUOTE_DISCOVERY_MAX_INPUT_ATOMIC/);
   assert.doesNotMatch(service, /snapshot\.policy\.maximumOverheadBps/);

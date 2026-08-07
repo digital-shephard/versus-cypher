@@ -189,6 +189,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     dealerObservationWindowMs = 15_000,
     sessionFactory,
     nativeUsdPriceProvider,
+    assetUsdPriceProvider,
     protocolVersion = 1,
     executorFallbackBaseMs = FX_V3_EXECUTOR_FALLBACK_BASE_MS,
     executorFallbackJitterMs = FX_V3_EXECUTOR_FALLBACK_JITTER_MS,
@@ -211,6 +212,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.dealerObservationWindowMs = Number(dealerObservationWindowMs);
     this.sessionFactory = sessionFactory;
     this.nativeUsdPriceProvider = nativeUsdPriceProvider;
+    this.assetUsdPriceProvider = assetUsdPriceProvider;
     this.protocolVersion = Number(protocolVersion);
     this.executorFallbackBaseMs = Math.max(
       0,
@@ -227,7 +229,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     if (typeof this.wait !== "function") {
       throw new TypeError("FX desktop executor wait must be a function");
     }
-    this.nativePrice = null;
+    this.nativePrices = new Map();
+    this.assetPrices = new Map();
     this.broker = null;
     this.brokerStart = null;
     this.brokerJournal = null;
@@ -2610,23 +2613,43 @@ class FxDesktopNetworkRuntime extends EventEmitter {
           position.assetAddress === candidate.token
       )
     );
-    if (!input || input.chainId === destination.chainId) {
+    const inputPosition = input && this.dealerPositions.find(
+      (position) =>
+        position.chainId === input.chainId &&
+        position.assetAddress === input.token
+    );
+    if (
+      !input ||
+      !inputPosition ||
+      (
+        input.chainId === destination.chainId &&
+        input.token === destination.assetAddress
+      )
+    ) {
       return {
         quote: null,
         rejection: { code: "unsupported_source_route" },
       };
     }
     const output = BigInt(rfq.payload.outputAmountAtomic);
-    const usesNative =
-      destination.assetAddress === FX_NATIVE_ETH_ADDRESS ||
-      input.token === FX_NATIVE_ETH_ADDRESS;
-    const nativePriceMicros = usesNative
-      ? await this.#nativePriceMicros()
-      : 1_000_000n;
+    const [
+      sourceNativePriceMicros,
+      destinationNativePriceMicros,
+      inputAssetPriceMicros,
+      outputAssetPriceMicros,
+    ] =
+      await Promise.all([
+        this.#nativePriceMicros(input.chainId),
+        input.chainId === destination.chainId
+          ? this.#nativePriceMicros(input.chainId)
+          : this.#nativePriceMicros(destination.chainId),
+        this.#assetPriceMicros(inputPosition),
+        this.#assetPriceMicros(destination),
+      ]);
     const outputValueMicros = this.#assetValueMicros(
       output,
       destination,
-      nativePriceMicros
+      outputAssetPriceMicros
     );
     const minimum = BigInt(dollarsToMicros(this.dealerPolicy.minimumTradeUsd));
     const maximum = BigInt(dollarsToMicros(this.dealerPolicy.maximumTradeUsd));
@@ -2652,18 +2675,18 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         10_000n;
       const inputAmountAtomic = this.#assetAmountForMicros(
         inputValueMicros,
-        input,
-        nativePriceMicros
+        inputPosition,
+        inputAssetPriceMicros
       );
       if (inputAmountAtomic > BigInt(input.maxInputAtomic)) return null;
       return {
         inputChainId: input.chainId,
         inputToken: input.token,
         inputAmountAtomic: inputAmountAtomic.toString(),
-        referenceSource: usesNative
-          ? "relay:hatch-exact-output"
-          : "desktop:cohort:usdc-par",
-        referencePriceMicros: nativePriceMicros.toString(),
+        referenceSource: "relay:multi-chain-reference",
+        referencePriceMicros: (
+          outputAssetPriceMicros
+        ).toString(),
         referenceTimestamp: this.now(),
         spreadBps,
         dealerSettlementCostAtomic: "0",
@@ -2709,18 +2732,22 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     const destinationExecutorValueMicros =
       this.protocolVersion === 3
         ? ceilDiv(
-            destinationClaimGasWei * nativePriceMicros,
+            destinationClaimGasWei * destinationNativePriceMicros,
             10n ** 18n
           )
-        : (destinationClaimGasWei * nativePriceMicros) / 10n ** 18n +
+        : (destinationClaimGasWei * destinationNativePriceMicros) / 10n ** 18n +
           10_000n;
     const destinationExecutorAmount =
       destination.assetAddress === FX_NATIVE_ETH_ADDRESS
         ? this.protocolVersion === 3
           ? destinationClaimGasWei
           : destinationClaimGasWei +
-            ceilDiv(10_000n * 10n ** 18n, nativePriceMicros)
-        : destinationExecutorValueMicros;
+            ceilDiv(10_000n * 10n ** 18n, destinationNativePriceMicros)
+        : this.#assetAmountForMicros(
+            destinationExecutorValueMicros,
+            destination,
+            outputAssetPriceMicros
+          );
     const destinationLiability = output + destinationExecutorAmount;
     const balance = BigInt(
       await this.evm.tokenBalance(destination.chainId, destination.assetAddress)
@@ -2759,8 +2786,8 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       Number(this.dealerPolicy.inventoryPremiumBps || 0);
     const dealerPrincipalAtomic = this.#assetAmountForMicros(
       outputValueMicros,
-      input,
-      nativePriceMicros
+      inputPosition,
+      inputAssetPriceMicros
     );
     const dealerSpreadAtomic =
       (dealerPrincipalAtomic * BigInt(spreadBps) + 9_999n) / 10_000n;
@@ -2777,22 +2804,25 @@ class FxDesktopNetworkRuntime extends EventEmitter {
         "DEALER_GAS_UNAVAILABLE"
       );
     }
-    const dealerGasWei =
-      this.protocolVersion === 3
-        ? v3GasUnits(input.chainId, "sourceClaim") * sourceMaxFeePerGas +
-          v3GasUnits(destination.chainId, "destinationFund") *
-            destinationMaxFeePerGas
-        : 360_000n * sourceMaxFeePerGas +
-          240_000n * destinationMaxFeePerGas;
+    const sourceClaimGasWei =
+      (this.protocolVersion === 3
+        ? v3GasUnits(input.chainId, "sourceClaim")
+        : 360_000n) * sourceMaxFeePerGas;
+    const destinationFundGasWei =
+      (this.protocolVersion === 3
+        ? v3GasUnits(destination.chainId, "destinationFund")
+        : 240_000n) * destinationMaxFeePerGas;
     const dealerOperatingValueMicros =
       (this.protocolVersion === 3
-        ? ceilDiv(dealerGasWei * nativePriceMicros, 10n ** 18n)
-        : (dealerGasWei * nativePriceMicros) / 10n ** 18n) +
+        ? ceilDiv(sourceClaimGasWei * sourceNativePriceMicros, 10n ** 18n) +
+          ceilDiv(destinationFundGasWei * destinationNativePriceMicros, 10n ** 18n)
+        : (sourceClaimGasWei * sourceNativePriceMicros) / 10n ** 18n +
+          (destinationFundGasWei * destinationNativePriceMicros) / 10n ** 18n) +
       destinationExecutorValueMicros;
     const dealerOperatingCostAtomic = this.#assetAmountForMicros(
       dealerOperatingValueMicros,
-      input,
-      nativePriceMicros
+      inputPosition,
+      inputAssetPriceMicros
     );
     const inputAmountAtomic =
       dealerPrincipalAtomic + dealerSpreadAtomic + dealerOperatingCostAtomic;
@@ -2807,10 +2837,10 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       inputChainId: input.chainId,
       inputToken: input.token,
       inputAmountAtomic: inputAmountAtomic.toString(),
-      referenceSource: usesNative
-        ? "relay:hatch-exact-output"
-        : "desktop:cohort:usdc-par",
-      referencePriceMicros: nativePriceMicros.toString(),
+      referenceSource: "relay:multi-chain-reference",
+      referencePriceMicros: (
+        outputAssetPriceMicros
+      ).toString(),
       referenceTimestamp,
       spreadBps,
       dealerSettlementCostAtomic: dealerOperatingCostAtomic.toString(),
@@ -2873,27 +2903,81 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     });
   }
 
-  async #nativePriceMicros() {
-    if (
-      this.nativePrice &&
-      Date.now() - this.nativePrice.at <= 180_000
-    ) {
-      return this.nativePrice.value;
+  async #nativePriceMicros(chainId) {
+    const key = String(chainId);
+    const cached = this.nativePrices.get(key);
+    if (cached && Date.now() - cached.at <= 180_000) {
+      return cached.value;
     }
     if (typeof this.nativeUsdPriceProvider !== "function") {
       throw new FxDesktopNetworkError(
-        "fresh ETH/USD reference is unavailable",
+        "fresh native/USD reference is unavailable",
         "STALE_PRICE"
       );
     }
-    const value = BigInt(await this.nativeUsdPriceProvider());
+    const value = BigInt(await this.nativeUsdPriceProvider({
+      chainId: key,
+      configuration: this.evm.configuration(key),
+    }));
     if (value <= 0n) {
       throw new FxDesktopNetworkError(
-        "fresh ETH/USD reference is unavailable",
+        "fresh native/USD reference is unavailable",
         "STALE_PRICE"
       );
     }
-    this.nativePrice = { value, at: Date.now() };
+    this.nativePrices.set(key, { value, at: Date.now() });
+    return value;
+  }
+
+  #assetMetadata(position) {
+    const configuration = this.evm.configuration(position.chainId);
+    if (position.assetAddress === FX_NATIVE_ETH_ADDRESS) {
+      return {
+        symbol: position.asset || configuration.nativeSymbol || "ETH",
+        decimals: Number(position.decimals ?? 18),
+      };
+    }
+    const capability = (configuration.tokenCapabilities || []).find(
+      (candidate) =>
+        String(candidate.tokenAddress || "").toLowerCase() ===
+        String(position.assetAddress || "").toLowerCase()
+    );
+    return {
+      symbol: position.asset || capability?.symbol || "USDC",
+      decimals: Number(
+        position.decimals ?? capability?.tokenDecimals ?? configuration.tokenDecimals ?? 6
+      ),
+    };
+  }
+
+  async #assetPriceMicros(position) {
+    if (position.assetAddress === FX_NATIVE_ETH_ADDRESS) {
+      return this.#nativePriceMicros(position.chainId);
+    }
+    const metadata = this.#assetMetadata(position);
+    if (metadata.symbol === "USDC") return 1_000_000n;
+    const key = `${position.chainId}:${position.assetAddress}`;
+    const cached = this.assetPrices.get(key);
+    if (cached && Date.now() - cached.at <= 180_000) return cached.value;
+    if (typeof this.assetUsdPriceProvider !== "function") {
+      throw new FxDesktopNetworkError(
+        `fresh ${metadata.symbol}/USD reference is unavailable`,
+        "STALE_PRICE"
+      );
+    }
+    const value = BigInt(await this.assetUsdPriceProvider({
+      chainId: String(position.chainId),
+      token: String(position.assetAddress).toLowerCase(),
+      symbol: metadata.symbol,
+      configuration: this.evm.configuration(position.chainId),
+    }));
+    if (value <= 0n) {
+      throw new FxDesktopNetworkError(
+        `fresh ${metadata.symbol}/USD reference is unavailable`,
+        "STALE_PRICE"
+      );
+    }
+    this.assetPrices.set(key, { value, at: Date.now() });
     return value;
   }
 
@@ -2915,31 +2999,32 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     ) * currentMaxFeePerGas;
     let requiredExecutor = requiredNative;
     if (quote.payload.outputToken !== FX_NATIVE_ETH_ADDRESS) {
-      const configuration = this.evm.configuration(
-        quote.payload.outputChainId
-      );
-      const decimals = Number(configuration.tokenDecimals);
+      const destination = {
+        chainId: quote.payload.outputChainId,
+        assetAddress: quote.payload.outputToken,
+      };
+      const decimals = this.#assetMetadata(destination).decimals;
       if (!Number.isSafeInteger(decimals) || decimals < 0 || decimals > 36) {
         throw new FxDesktopNetworkError(
           "destination token decimals are unavailable",
           "EXECUTOR_GAS_UNAVAILABLE"
         );
       }
-      const nativePriceMicros = await this.#nativePriceMicros();
+      const nativePriceMicros = await this.#nativePriceMicros(
+        quote.payload.outputChainId
+      );
       const requiredMicros =
         (
           requiredNative * nativePriceMicros +
           10n ** 18n -
           1n
         ) / 10n ** 18n;
-      requiredExecutor =
-        decimals >= 6
-          ? requiredMicros * 10n ** BigInt(decimals - 6)
-          : (
-              requiredMicros +
-              10n ** BigInt(6 - decimals) -
-              1n
-            ) / 10n ** BigInt(6 - decimals);
+      const outputPriceMicros = await this.#assetPriceMicros(destination);
+      requiredExecutor = this.#assetAmountForMicros(
+        requiredMicros,
+        { ...destination, decimals },
+        outputPriceMicros
+      );
     }
     if (
       BigInt(quote.payload.destinationExecutorAmountAtomic) <
@@ -2952,17 +3037,16 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     }
   }
 
-  #assetValueMicros(amount, position, nativePriceMicros) {
-    return position.assetAddress === FX_NATIVE_ETH_ADDRESS
-      ? (amount * nativePriceMicros) / 10n ** 18n
-      : amount;
+  #assetValueMicros(amount, position, priceMicros) {
+    const decimals = this.#assetMetadata(position).decimals;
+    return (amount * priceMicros) / 10n ** BigInt(decimals);
   }
 
-  #assetAmountForMicros(valueMicros, option, nativePriceMicros) {
-    return option.token === FX_NATIVE_ETH_ADDRESS
-      ? ((valueMicros * 10n ** 18n) + nativePriceMicros - 1n) /
-          nativePriceMicros
-      : valueMicros;
+  #assetAmountForMicros(valueMicros, position, priceMicros) {
+    const decimals = this.#assetMetadata(position).decimals;
+    return (
+      valueMicros * 10n ** BigInt(decimals) + priceMicros - 1n
+    ) / priceMicros;
   }
 
   async #onDealerEnvelope(envelope) {
@@ -3053,6 +3137,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       exposureValueMicros: this.#assetValueMicros(
         beneficiaryAmount,
         {
+          chainId: quote.payload.outputChainId,
           assetAddress: quote.payload.outputToken,
         },
         BigInt(quote.payload.referencePriceMicros)
@@ -3744,6 +3829,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       exposureValueMicros: this.#assetValueMicros(
         BigInt(quote.payload.outputAmountAtomic),
         {
+          chainId: quote.payload.outputChainId,
           assetAddress: quote.payload.outputToken,
         },
         BigInt(quote.payload.referencePriceMicros)

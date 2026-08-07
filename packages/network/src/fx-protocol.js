@@ -16,8 +16,10 @@ const FX_MAX_REFERENCE_AGE_SECONDS = 60;
 const FX_MAX_INPUT_OPTIONS = 4;
 const FX_MAX_EVIDENCE_IDS = 16;
 // The token field remains an EVM address for wire compatibility. The zero
-// address is reserved exclusively for the chain's native ETH capability.
-const FX_NATIVE_ETH_ADDRESS = "0x0000000000000000000000000000000000000000";
+// address is reserved exclusively for the selected EVM chain's native asset.
+const FX_NATIVE_EVM_ADDRESS = "0x0000000000000000000000000000000000000000";
+// Kept as an API alias for existing Base/Arbitrum callers.
+const FX_NATIVE_ETH_ADDRESS = FX_NATIVE_EVM_ADDRESS;
 
 const FX_MESSAGE_TYPES = Object.freeze([
   "fx_rfq",
@@ -1334,6 +1336,7 @@ module.exports = {
   FX_MAX_REFERENCE_AGE_SECONDS,
   FX_MESSAGE_TYPES,
   FX_NATIVE_ETH_ADDRESS,
+  FX_NATIVE_EVM_ADDRESS,
   FX_PRIVACY_CLASSES,
   FX_PROTOCOL,
   FX_QUOTE_TYPE,

@@ -39,6 +39,7 @@ const { applyPackagedProductionDeployment } = require("./runtime-deployment");
 const { FxDesktopService } = require("./fx-desktop-service");
 const { FxDesktopNetworkRuntime } = require("./fx-desktop-network");
 const { FxEvmCohort } = require("./fx-evm-cohort");
+const { loadFxMarketRuntime } = require("./fx-market-runtime");
 const { fxRoleWalletProvider } = require("./fx-role-wallet");
 const { combinedWakuState } = require("./service-status");
 const {
@@ -160,6 +161,8 @@ let hatchQuoteCache = null;
 let hatchQuoteInFlight = null;
 let fxReferenceQuoteService = null;
 let fxReferenceQuoteCache = null;
+const fxUsdReferenceCache = new Map();
+const fxUsdReferenceInFlight = new Map();
 let foregroundRefreshInFlight = null;
 let publicClassRefreshInFlight = null;
 let networkClockOffsetMs = 0;
@@ -171,34 +174,28 @@ const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE)
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
 const fxWalletProvider = fxRoleWalletProvider(ensureWallet);
-const fxNativeUsdPriceProvider = async () => {
-  const quote = await getFxReferenceHatchQuote();
-  const quoteValidUntil = Number(quote?.validUntil || 0);
-  const nowSeconds = Math.floor(networkNowMs() / 1000);
-  if (
-    quote?.nodeQuote !== true ||
-    quote?.freshness !== "fresh" ||
-    !Number.isSafeInteger(quoteValidUntil) ||
-    quoteValidUntil < nowSeconds
-  ) {
-    throw new Error("fresh signed relay ETH/USD quote is unavailable");
-  }
-  const swapWei = BigInt(quote?.swapWei || 0);
-  const quotedUsdMicros = BigInt(quote?.quotedRunwayMicros || 0);
-  if (swapWei <= 0n || quotedUsdMicros <= 0n) {
-    throw new Error("fresh relay ETH/USD quote is unavailable");
-  }
-  return (quotedUsdMicros * 10n ** 18n) / swapWei;
+const fxMarketRuntime = loadFxMarketRuntime();
+const fxNativeUsdPriceProvider = async ({ configuration } = {}) => {
+  const symbol = configuration?.nativeSymbol || "ETH";
+  return getFxUsdReference(symbol);
+};
+const fxAssetUsdPriceProvider = async ({ symbol } = {}) => {
+  if (symbol === "USDC") return 1_000_000n;
+  return getFxUsdReference(symbol);
 };
 const fxEvmCohort = new FxEvmCohort({
   walletProvider: fxWalletProvider,
+  configurations: fxMarketRuntime?.configurations,
   settlementVersion: 3,
 });
 const fxNetworkRuntime = new FxDesktopNetworkRuntime({
   dataDirectory: FX_NETWORK_DIR,
   walletProvider: fxWalletProvider,
   evm: fxEvmCohort,
+  deploymentId: fxMarketRuntime?.deploymentId,
+  coordinationDomain: fxMarketRuntime?.coordinationDomain,
   nativeUsdPriceProvider: fxNativeUsdPriceProvider,
+  assetUsdPriceProvider: fxAssetUsdPriceProvider,
   brokerObservationWindowMs: 5_000,
   brokerQuoteSettleWindowMs: 1_250,
   dealerObservationWindowMs: 250,
@@ -211,6 +208,10 @@ const fxDesktopService = new FxDesktopService({
   walletProvider: () => fxWalletProvider("requester"),
   recoveryPasswordProvider: ensureFxRecoveryPassword,
   deploymentId: fxNetworkRuntime.deploymentId,
+  supportedChains: fxMarketRuntime?.chains,
+  supportedPositions: fxMarketRuntime?.positions,
+  environment: fxMarketRuntime?.releaseStage || "public-testnet",
+  productionFunds: fxMarketRuntime?.releaseStage?.startsWith("mainnet") === true,
   queryRoutes: (input) => fxNetworkRuntime.queryRoutes(input),
   reservationExecutor: (input) => fxNetworkRuntime.reserveRequester(input),
   cancellationExecutor: (input) => fxNetworkRuntime.cancelRequester(input),
@@ -234,6 +235,7 @@ const fxDesktopService = new FxDesktopService({
   refundExecutor: (input) => fxNetworkRuntime.refundRequester(input),
   dealerController: fxNetworkRuntime,
   nativeUsdPriceProvider: fxNativeUsdPriceProvider,
+  assetUsdPriceProvider: fxAssetUsdPriceProvider,
   now: () => Math.floor(networkNowMs() / 1000),
   protocolVersion: 3,
 });
@@ -365,6 +367,48 @@ async function getFxReferenceHatchQuote() {
   updateNetworkClockOffset(quote.clockOffsetMs);
   fxReferenceQuoteCache = { quote, at: Date.now() };
   return quote;
+}
+
+async function getFxPricingService() {
+  if (chainRainService?.fxUsdPrice) return chainRainService;
+  if (app.isPackaged || process.env.VERSUS_FX_DEVELOPMENT !== "1") return null;
+  if (!fxReferenceQuoteService) {
+    const deploymentPath = path.resolve(
+      __dirname,
+      "../../../versus/deployments/base.json"
+    );
+    if (!fs.existsSync(deploymentPath)) return null;
+    fxReferenceQuoteService = createChainRainService(
+      loadChainConfig({
+        ...process.env,
+        VERSUS_DEPLOYMENT: deploymentPath,
+      })
+    );
+  }
+  return fxReferenceQuoteService;
+}
+
+async function getFxUsdReference(symbol) {
+  symbol = String(symbol || "").toUpperCase();
+  const now = Date.now();
+  const cached = fxUsdReferenceCache.get(symbol);
+  if (cached && now - cached.at < 60_000) return cached.value;
+  if (!fxUsdReferenceInFlight.has(symbol)) {
+    const request = (async () => {
+      const service = await getFxPricingService();
+      if (!service?.fxUsdPrice) {
+        throw new Error(`fresh signed relay ${symbol || "asset"}/USD quote is unavailable`);
+      }
+      const value = BigInt(await service.fxUsdPrice({ symbol }));
+      if (value <= 0n) throw new Error(`fresh signed relay ${symbol}/USD quote is unavailable`);
+      fxUsdReferenceCache.set(symbol, { value, at: Date.now() });
+      return value;
+    })().finally(() => {
+      fxUsdReferenceInFlight.delete(symbol);
+    });
+    fxUsdReferenceInFlight.set(symbol, request);
+  }
+  return fxUsdReferenceInFlight.get(symbol);
 }
 
 function publishHealth(snapshot = healthMonitor.snapshot()) {

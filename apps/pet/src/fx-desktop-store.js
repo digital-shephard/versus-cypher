@@ -123,13 +123,25 @@ function clone(value) {
   return structuredClone(value);
 }
 
-function initialState(deploymentId = null) {
+function marketCatalog(catalog = {}) {
+  return {
+    chains: Array.isArray(catalog.chains)
+      ? catalog.chains
+      : FX_DEFAULT_CHAINS,
+    positions: Array.isArray(catalog.positions)
+      ? catalog.positions
+      : FX_DEFAULT_POSITIONS,
+  };
+}
+
+function initialState(deploymentId = null, catalog = {}) {
+  const supported = marketCatalog(catalog);
   return {
     version: FX_DESKTOP_STATE_VERSION,
     deploymentId,
     enabled: false,
     policy: clone(FX_DEFAULT_POLICY),
-    chains: FX_DEFAULT_CHAINS.map((chain) => ({
+    chains: supported.chains.map((chain) => ({
       ...chain,
       enabled: false,
       rpcUrl: "",
@@ -148,7 +160,7 @@ function initialState(deploymentId = null) {
       lastCheckedAt: null,
       lastFailure: null,
     })),
-    positions: FX_DEFAULT_POSITIONS.map((position) => ({
+    positions: supported.positions.map((position) => ({
       ...position,
       enabled: false,
       address: null,
@@ -221,14 +233,14 @@ function atomicWrite(filePath, value) {
   fs.renameSync(temporary, filePath);
 }
 
-function normalizeLoadedState(value, deploymentId = null) {
+function normalizeLoadedState(value, deploymentId = null, catalog = {}) {
   if (
     !value ||
     ![1, 2, 3, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
   ) {
-    return initialState(deploymentId);
+    return initialState(deploymentId, catalog);
   }
-  const defaults = initialState(deploymentId);
+  const defaults = initialState(deploymentId, catalog);
   const trades = Array.isArray(value.trades)
     ? value.trades.map((trade) => {
         if (
@@ -359,7 +371,13 @@ function normalizeLoadedState(value, deploymentId = null) {
 }
 
 class FxDesktopStore {
-  constructor({ filePath, deploymentId = null, now = timestamp } = {}) {
+  constructor({
+    filePath,
+    deploymentId = null,
+    chains,
+    positions,
+    now = timestamp,
+  } = {}) {
     if (!filePath) throw new TypeError("FX desktop store requires filePath");
     this.filePath = path.resolve(filePath);
     this.deploymentId = deploymentId == null
@@ -369,6 +387,7 @@ class FxDesktopStore {
       throw new TypeError("FX desktop store deploymentId must be bytes32");
     }
     this.now = now;
+    this.catalog = marketCatalog({ chains, positions });
     this.state = this.#read();
   }
 
@@ -403,12 +422,12 @@ class FxDesktopStore {
         previousDeploymentId !== this.deploymentId
       ) {
         this.#archiveDeploymentState(previousDeploymentId);
-        return initialState(this.deploymentId);
+        return initialState(this.deploymentId, this.catalog);
       }
-      return normalizeLoadedState(loaded, this.deploymentId);
+      return normalizeLoadedState(loaded, this.deploymentId, this.catalog);
     } catch (error) {
       if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
-      return initialState(this.deploymentId);
+      return initialState(this.deploymentId, this.catalog);
     }
   }
 

@@ -16,6 +16,8 @@ module.exports = {
   ...require("./fx-evm-v2-adapter"),
   ...require("./fx-evm-v3-adapter"),
   ...require("./fx-journal"),
+  ...require("./fx-market-config"),
+  ...require("./fx-market-deployment"),
   ...require("./fx-network-clock"),
   ...require("./fx-waku-transport"),
   ...require("./fx-x402-swap"),

@@ -28,6 +28,8 @@ const V3_DEPLOYMENT_ID =
   "0x5f6e0d22253c91a77b25e50add622e1e172c8a7f30a4b1cbfb652e8d680dbf45";
 const BASE = "84532";
 const ARBITRUM = "421614";
+const BASE_USDC = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
+const BASE_EURC = "0x808456652fdb597867f38412077a9182bf77359f";
 const NATIVE_ADAPTER = "0x1e933ccffaa2cd384d3df751ff7a25183682dc61";
 const NOW = 1_800_000_000;
 
@@ -640,6 +642,8 @@ async function prepareHarnessSwap(harness, runtime) {
 function v2Harness(t, {
   tradeId = `0x${"42".repeat(32)}`,
   protocolVersion = 2,
+  nativeUsdPriceProvider = async () => 3_000_000_000n,
+  assetUsdPriceProvider,
   deploymentId =
     protocolVersion === 3 ? V3_DEPLOYMENT_ID : DEPLOYMENT_ID,
 } = {}) {
@@ -691,7 +695,8 @@ function v2Harness(t, {
     now: () => evm.now,
     brokerObservationWindowMs: 25,
     dealerObservationWindowMs: 0,
-    nativeUsdPriceProvider: async () => 3_000_000_000n,
+    nativeUsdPriceProvider,
+    assetUsdPriceProvider,
     protocolVersion,
     sessionFactory: sessionFactory({
       root,
@@ -1253,6 +1258,152 @@ test("V3 quotes compact measured gas without a fixed executor premium", async (t
     selected.payload.inputAmountAtomic,
     "1002723333333334"
   );
+});
+
+test("V3 prices native-to-native routes with independent source and destination references", async (t) => {
+  const requested = [];
+  const harness = v2Harness(t, {
+    tradeId: `0x${"56".repeat(32)}`,
+    protocolVersion: 3,
+    nativeUsdPriceProvider: async ({ chainId }) => {
+      requested.push(chainId);
+      return chainId === BASE ? 2_000_000_000n : 20_000_000n;
+    },
+  });
+  const runtime = harness.createRuntime();
+  const rejected = [];
+  runtime.on("trade", (event) => {
+    if (event.state === "quote_rejected") rejected.push(event.rejection);
+  });
+  t.after(async () => runtime.close().catch(() => {}));
+  harness.policy.minimumTradeUsd = 0.01;
+  await runtime.armDealer({ policy: harness.policy, positions: harness.positions });
+
+  let swap;
+  try {
+    swap = await prepareHarnessSwap(harness, runtime);
+  } catch (error) {
+    error.message += ` (${JSON.stringify(rejected)})`;
+    throw error;
+  }
+  const { quote } = swap;
+  const selected = quote.proposal.quotes.find(
+    (candidate) => candidate.id === quote.proposal.route.quoteId
+  );
+  assert.deepEqual(new Set(requested), new Set([BASE, ARBITRUM]));
+  assert.equal(
+    selected.payload.dealerPrincipalAtomic,
+    "10000000000000",
+    "0.001 AVAX at $20 requires 0.00001 ETH at $2,000"
+  );
+  assert.equal(selected.payload.referencePriceMicros, "20000000");
+});
+
+test("V3 dealer quotes same-chain swaps when source and destination assets differ", async (t) => {
+  const harness = v2Harness(t, {
+    tradeId: `0x${"57".repeat(32)}`,
+    protocolVersion: 3,
+  });
+  const runtime = harness.createRuntime();
+  t.after(async () => runtime.close().catch(() => {}));
+  harness.policy.minimumTradeUsd = 0.01;
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: [
+      harness.positions[0],
+      {
+        id: "base-sepolia-usdc",
+        enabled: true,
+        chainId: BASE,
+        assetAddress: BASE_USDC,
+      },
+    ],
+  });
+  const sdk = harness.createSdk(runtime);
+  const quote = await sdk.quoteFunding({
+    requirement: {
+      source: "manual",
+      outputChainId: BASE,
+      outputToken: FX_NATIVE_ETH_ADDRESS,
+      outputAmountAtomic: "1000000000000000",
+    },
+    destinationAddress: harness.recipient.address,
+    sourceRefundAddress: harness.roles.requester.address,
+    inputOptions: [{
+      chainId: BASE,
+      token: BASE_USDC,
+      maxInputAtomic: "5000000",
+    }],
+    inputChainId: BASE,
+    inputToken: BASE_USDC,
+    tradeId: harness.tradeId,
+  });
+  const selected = quote.proposal.quotes.find(
+    (candidate) => candidate.id === quote.proposal.route.quoteId
+  );
+  assert.equal(selected.payload.inputChainId, BASE);
+  assert.equal(selected.payload.outputChainId, BASE);
+  assert.equal(selected.payload.inputToken, BASE_USDC);
+  assert.equal(selected.payload.outputToken, FX_NATIVE_ETH_ADDRESS);
+});
+
+test("V3 requires an independent EURC reference instead of assuming dollar par", async (t) => {
+  const harness = v2Harness(t, {
+    tradeId: `0x${"58".repeat(32)}`,
+    protocolVersion: 3,
+    assetUsdPriceProvider: async ({ symbol }) => {
+      assert.equal(symbol, "EURC");
+      return 1_200_000n;
+    },
+  });
+  const runtime = harness.createRuntime();
+  t.after(async () => runtime.close().catch(() => {}));
+  harness.policy.minimumTradeUsd = 0.01;
+  await runtime.armDealer({
+    policy: harness.policy,
+    positions: [
+      {
+        id: "base-sepolia-usdc",
+        enabled: true,
+        chainId: BASE,
+        asset: "USDC",
+        decimals: 6,
+        assetAddress: BASE_USDC,
+      },
+      {
+        id: "base-sepolia-eurc",
+        enabled: true,
+        chainId: BASE,
+        asset: "EURC",
+        decimals: 6,
+        assetAddress: BASE_EURC,
+      },
+    ],
+  });
+  const sdk = harness.createSdk(runtime);
+  const quote = await sdk.quoteFunding({
+    requirement: {
+      source: "manual",
+      outputChainId: BASE,
+      outputToken: BASE_EURC,
+      outputAmountAtomic: "1000000",
+    },
+    destinationAddress: harness.recipient.address,
+    sourceRefundAddress: harness.roles.requester.address,
+    inputOptions: [{
+      chainId: BASE,
+      token: BASE_USDC,
+      maxInputAtomic: "2000000",
+    }],
+    inputChainId: BASE,
+    inputToken: BASE_USDC,
+    tradeId: harness.tradeId,
+  });
+  const selected = quote.proposal.quotes.find(
+    (candidate) => candidate.id === quote.proposal.route.quoteId
+  );
+  assert.equal(selected.payload.dealerPrincipalAtomic, "1200000");
+  assert.equal(selected.payload.referencePriceMicros, "1200000");
 });
 
 test("V3 dealer resumes a source claim after crashing behind destination execution", async (t) => {

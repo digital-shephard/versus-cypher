@@ -46,8 +46,8 @@ function decimalAtomic(value, decimals, label) {
   }
 }
 
-function supportedPositionOf(id, label) {
-  const position = FX_DEFAULT_POSITIONS.find(
+function supportedPositionOf(positions, id, label) {
+  const position = positions.find(
     (candidate) => candidate.id === id
   );
   if (!position) {
@@ -210,6 +210,10 @@ class FxDesktopService extends EventEmitter {
     recoveryPasswordProvider,
     brokerEndpoints = brokerEndpointsFromEnvironment(),
     deploymentId = FX_DESKTOP_DEPLOYMENT_ID,
+    supportedChains = FX_DEFAULT_CHAINS,
+    supportedPositions = FX_DEFAULT_POSITIONS,
+    environment = "public-testnet",
+    productionFunds = false,
     queryRoutes,
     reservationExecutor,
     cancellationExecutor,
@@ -221,6 +225,7 @@ class FxDesktopService extends EventEmitter {
     sourceFundingVerifier,
     dealerController,
     nativeUsdPriceProvider,
+    assetUsdPriceProvider,
     chainReadinessRequired = true,
     refreshMinimumAgeMs = 15_000,
     protocolVersion = 1,
@@ -236,12 +241,18 @@ class FxDesktopService extends EventEmitter {
     this.store = new FxDesktopStore({
       filePath: statePath,
       deploymentId,
+      chains: supportedChains,
+      positions: supportedPositions,
     });
     this.recoveryDirectory = path.resolve(recoveryDirectory);
     this.walletProvider = walletProvider;
     this.recoveryPasswordProvider = recoveryPasswordProvider;
     this.brokerEndpoints = [...brokerEndpoints];
     this.deploymentId = deploymentId;
+    this.supportedChains = structuredClone(supportedChains);
+    this.supportedPositions = structuredClone(supportedPositions);
+    this.environment = String(environment);
+    this.productionFunds = productionFunds === true;
     this.queryRoutes = queryRoutes;
     this.reservationExecutor = reservationExecutor;
     this.cancellationExecutor = cancellationExecutor;
@@ -253,6 +264,8 @@ class FxDesktopService extends EventEmitter {
     this.sourceFundingVerifier = sourceFundingVerifier;
     this.dealerController = dealerController;
     this.nativeUsdPriceProvider = nativeUsdPriceProvider;
+    this.assetUsdPriceProvider = assetUsdPriceProvider;
+    this.positionPricesMicros = new Map();
     this.chainReadinessRequired = chainReadinessRequired !== false;
     this.refreshMinimumAgeMs = Math.max(
       5_000,
@@ -370,12 +383,9 @@ class FxDesktopService extends EventEmitter {
       );
       const availableAtomic = BigInt(position.availableAtomic || "0");
       const reservedAtomic = BigInt(position.reservedAtomic || "0");
-      const dealerAtomic = BigInt(chain?.dealerBalanceAtomic || "0");
-      const dealerUsdMicros = BigInt(chain?.dealerBalanceUsdMicros || "0");
-      const nativePriceMicros =
-        dealerAtomic > 0n
-          ? (dealerUsdMicros * 10n ** 18n) / dealerAtomic
-          : 0n;
+      const priceMicros = BigInt(
+        this.positionPricesMicros.get(position.id) || 0
+      );
       return {
         ...position,
         usable:
@@ -386,14 +396,14 @@ class FxDesktopService extends EventEmitter {
           ),
         gasReady: chain?.gasReady === true,
         dealerGasReady: chain?.dealerGasReady === true,
-        availableUsdMicros:
-          position.assetKind === "native"
-            ? ((availableAtomic * nativePriceMicros) / 10n ** 18n).toString()
-            : availableAtomic.toString(),
-        reservedUsdMicros:
-          position.assetKind === "native"
-            ? ((reservedAtomic * nativePriceMicros) / 10n ** 18n).toString()
-            : reservedAtomic.toString(),
+        availableUsdMicros: (
+          (availableAtomic * priceMicros) /
+          10n ** BigInt(position.decimals)
+        ).toString(),
+        reservedUsdMicros: (
+          (reservedAtomic * priceMicros) /
+          10n ** BigInt(position.decimals)
+        ).toString(),
       };
     });
     return {
@@ -403,8 +413,8 @@ class FxDesktopService extends EventEmitter {
         ...state.policy,
         armed: dealerStatus.active === true,
       },
-      environment: "public-testnet",
-      productionFunds: false,
+      environment: this.environment,
+      productionFunds: this.productionFunds,
       requesterAddress,
       brokerConfigured:
         this.brokerEndpoints.length > 0 || typeof this.queryRoutes === "function",
@@ -414,8 +424,8 @@ class FxDesktopService extends EventEmitter {
         typeof this.destinationVerifier === "function",
       dealerConfigured: dealerStatus.configured === true,
       dealerStatus,
-      supportedPositions: FX_DEFAULT_POSITIONS,
-      supportedChains: FX_DEFAULT_CHAINS,
+      supportedPositions: this.supportedPositions,
+      supportedChains: this.supportedChains,
       positions,
       trades: state.trades.map(publicTrade),
     };
@@ -439,16 +449,29 @@ class FxDesktopService extends EventEmitter {
   async #refreshNow() {
     const state = this.store.snapshot();
     if (state.enabled && this.dealerController?.chainGasSnapshot) {
-      let nativeUsdPriceMicros = 0n;
-      try {
-        const price = await this.nativeUsdPriceProvider?.();
-        nativeUsdPriceMicros = BigInt(price || 0);
-      } catch {
-        nativeUsdPriceMicros = 0n;
-      }
       const enabledChains = state.chains.filter((chain) => chain.enabled);
       for (const chain of enabledChains) {
         try {
+          const nativeUsdPriceMicros = BigInt(
+            await this.nativeUsdPriceProvider?.({
+              chainId: chain.chainId,
+              configuration: {
+                chainId: chain.chainId,
+                nativeSymbol: chain.nativeAsset,
+              },
+            }) || 0
+          );
+          const nativePosition = state.positions.find(
+            (position) =>
+              position.chainId === chain.chainId &&
+              position.assetKind === "native"
+          );
+          if (nativePosition) {
+            this.positionPricesMicros.set(
+              nativePosition.id,
+              nativeUsdPriceMicros.toString()
+            );
+          }
           const [gas] = await this.dealerController.chainGasSnapshot([chain]);
           const dealerBalanceAtomic = BigInt(
             gas.dealer?.balanceAtomic || 0
@@ -521,6 +544,26 @@ class FxDesktopService extends EventEmitter {
         );
         for (const position of positions) {
           this.store.recordPosition(position.id, position);
+        }
+        for (const position of usablePositions) {
+          if (position.assetKind === "native") continue;
+          let priceMicros = 0n;
+          if (position.asset === "USDC") {
+            priceMicros = 1_000_000n;
+          } else {
+            try {
+              priceMicros = BigInt(
+                await this.assetUsdPriceProvider?.({
+                  chainId: position.chainId,
+                  token: position.assetAddress,
+                  symbol: position.asset,
+                }) || 0
+              );
+            } catch {
+              priceMicros = 0n;
+            }
+          }
+          this.positionPricesMicros.set(position.id, priceMicros.toString());
         }
       } catch (error) {
         this.store.observe({
@@ -804,8 +847,13 @@ class FxDesktopService extends EventEmitter {
     sourceRefundAddress,
   } = {}) {
     const snapshot = this.store.snapshot();
-    const source = supportedPositionOf(sourcePositionId, "source asset");
+    const source = supportedPositionOf(
+      this.supportedPositions,
+      sourcePositionId,
+      "source asset"
+    );
     const destination = supportedPositionOf(
+      this.supportedPositions,
       destinationPositionId,
       "destination asset"
     );

@@ -187,6 +187,23 @@ function isNativeAsset(value) {
   return String(value || "").toLowerCase() === FX_NATIVE_ETH_ADDRESS;
 }
 
+function erc20Capabilities(configuration) {
+  if (Array.isArray(configuration.tokenCapabilities)) {
+    return configuration.tokenCapabilities;
+  }
+  return [{
+    tokenAddress: configuration.tokenAddress,
+    tokenDecimals: configuration.tokenDecimals,
+    adapterAddress: configuration.adapterAddress,
+    adapterDeploymentBlock: configuration.adapterDeploymentBlock,
+    adapterV2Address: configuration.adapterV2Address,
+    adapterV2DeploymentBlock: configuration.adapterV2DeploymentBlock,
+    adapterV3Address: configuration.adapterV3Address,
+    adapterV3DeploymentBlock: configuration.adapterV3DeploymentBlock,
+    adapterV3RuntimeCodeHash: configuration.adapterV3RuntimeCodeHash,
+  }];
+}
+
 function assetConfiguration(configuration, token, settlementVersion = 1) {
   const version = Number(settlementVersion);
   if (![1, 2, 3].includes(version)) {
@@ -204,7 +221,7 @@ function assetConfiguration(configuration, token, settlementVersion = 1) {
           : configuration.nativeAdapterAddress;
     if (!adapterAddress) {
       throw new FxEvmCohortError(
-        "native ETH adapter is not frozen for this chain",
+        "native asset adapter is not frozen for this chain",
         "UNSUPPORTED_ASSET"
       );
     }
@@ -238,7 +255,13 @@ function assetConfiguration(configuration, token, settlementVersion = 1) {
     };
   }
   const normalized = normalizedAddress(token, "asset token");
-  if (normalized !== configuration.tokenAddress) {
+  const capability = erc20Capabilities(configuration).find(
+    (candidate) => normalized === normalizedAddress(
+      candidate.tokenAddress,
+      "configured asset token"
+    )
+  );
+  if (!capability) {
     throw new FxEvmCohortError(
       "asset does not match a frozen cohort capability",
       "UNSUPPORTED_ASSET"
@@ -248,18 +271,19 @@ function assetConfiguration(configuration, token, settlementVersion = 1) {
     token: normalized,
     adapterAddress:
       version === 3
-        ? configuration.adapterV3Address
+        ? capability.adapterV3Address
         : version === 2
-          ? configuration.adapterV2Address
-          : configuration.adapterAddress,
+          ? capability.adapterV2Address
+          : capability.adapterAddress,
     adapterDeploymentBlock:
       version === 3
-        ? configuration.adapterV3DeploymentBlock
+        ? capability.adapterV3DeploymentBlock
         : version === 2
-          ? configuration.adapterV2DeploymentBlock
-          : configuration.adapterDeploymentBlock,
+          ? capability.adapterV2DeploymentBlock
+          : capability.adapterDeploymentBlock,
     runtimeCodeHash:
-      version === 3 ? configuration.adapterV3RuntimeCodeHash : null,
+      version === 3 ? capability.adapterV3RuntimeCodeHash : null,
+    tokenDecimals: capability.tokenDecimals,
     abi:
       version === 3
         ? FX_HTLC_V3_ABI
@@ -448,26 +472,32 @@ class FxEvmCohort {
             "WRONG_CHAIN"
           );
         }
-        const erc20Asset = assetConfiguration(
-          configuration,
-          configuration.tokenAddress,
-          this.settlementVersion
+        const erc20Assets = erc20Capabilities(configuration).map((capability) =>
+          assetConfiguration(
+            configuration,
+            capability.tokenAddress,
+            this.settlementVersion
+          )
         );
         const nativeAsset = assetConfiguration(
           configuration,
           FX_NATIVE_ETH_ADDRESS,
           this.settlementVersion
         );
-        const adapterAddress = erc20Asset.adapterAddress;
         const nativeAdapterAddress = nativeAsset.adapterAddress;
-        const [tokenCode, adapterCode, nativeAdapterCode] = await Promise.all([
-          provider.getCode(configuration.tokenAddress),
-          provider.getCode(adapterAddress),
+        const [erc20Codes, nativeAdapterCode] = await Promise.all([
+          Promise.all(erc20Assets.map(async (asset) => ({
+            asset,
+            tokenCode: await provider.getCode(asset.token),
+            adapterCode: await provider.getCode(asset.adapterAddress),
+          }))),
           nativeAdapterAddress
             ? provider.getCode(nativeAdapterAddress)
             : Promise.resolve("0x"),
         ]);
-        if (tokenCode === "0x" || adapterCode === "0x") {
+        if (erc20Codes.some(({ tokenCode, adapterCode }) =>
+          tokenCode === "0x" || adapterCode === "0x"
+        )) {
           throw new FxEvmCohortError(
             `${configuration.name} cohort contracts are unavailable`,
             "COHORT_CONTRACT_UNAVAILABLE"
@@ -485,8 +515,9 @@ class FxEvmCohort {
         if (
           this.settlementVersion === 3 &&
           (
-            keccak256(adapterCode).toLowerCase() !==
-              erc20Asset.runtimeCodeHash ||
+            erc20Codes.some(({ asset, adapterCode }) =>
+              keccak256(adapterCode).toLowerCase() !== asset.runtimeCodeHash
+            ) ||
             keccak256(nativeAdapterCode).toLowerCase() !==
               nativeAsset.runtimeCodeHash
           )
@@ -497,53 +528,51 @@ class FxEvmCohort {
           );
         }
         if (this.settlementVersion === 3) {
-          const erc20Adapter = this.contractFactory(
-            adapterAddress,
-            erc20Asset.abi,
-            provider
-          );
           const nativeAdapter = this.contractFactory(
             nativeAdapterAddress,
             nativeAsset.abi,
             provider
           );
-          const token = this.contractFactory(
-            configuration.tokenAddress,
-            FX_TOKEN_ABI,
-            provider
-          );
           const [
-            erc20Version,
-            erc20Minimum,
-            erc20Maximum,
-            erc20Token,
-            erc20Decimals,
             nativeVersion,
             nativeMinimum,
             nativeMaximum,
-            tokenDecimals,
+            erc20Preflights,
           ] = await Promise.all([
-            erc20Adapter.ADAPTER_VERSION(),
-            erc20Adapter.minimumLockDuration(),
-            erc20Adapter.maximumLockDuration(),
-            erc20Adapter.asset(),
-            erc20Adapter.assetDecimals(),
             nativeAdapter.ADAPTER_VERSION(),
             nativeAdapter.minimumLockDuration(),
             nativeAdapter.maximumLockDuration(),
-            token.decimals(),
+            Promise.all(erc20Assets.map(async (asset) => {
+              const adapter = this.contractFactory(
+                asset.adapterAddress,
+                asset.abi,
+                provider
+              );
+              const token = this.contractFactory(asset.token, FX_TOKEN_ABI, provider);
+              const [version, minimum, maximum, tokenAddress, decimals, tokenDecimals] =
+                await Promise.all([
+                  adapter.ADAPTER_VERSION(),
+                  adapter.minimumLockDuration(),
+                  adapter.maximumLockDuration(),
+                  adapter.asset(),
+                  adapter.assetDecimals(),
+                  token.decimals(),
+                ]);
+              return { asset, version, minimum, maximum, tokenAddress, decimals, tokenDecimals };
+            })),
           ]);
           if (
-            Number(erc20Version) !== 3 ||
             Number(nativeVersion) !== 3 ||
-            Number(erc20Minimum) !== 60 ||
             Number(nativeMinimum) !== 60 ||
-            Number(erc20Maximum) !== 604800 ||
             Number(nativeMaximum) !== 604800 ||
-            normalizedAddress(erc20Token, "V3 adapter asset") !==
-              configuration.tokenAddress.toLowerCase() ||
-            Number(erc20Decimals) !== configuration.tokenDecimals ||
-            Number(tokenDecimals) !== configuration.tokenDecimals
+            erc20Preflights.some(({ asset, version, minimum, maximum, tokenAddress, decimals, tokenDecimals }) =>
+              Number(version) !== 3 ||
+              Number(minimum) !== 60 ||
+              Number(maximum) !== 604800 ||
+              normalizedAddress(tokenAddress, "V3 adapter asset") !== asset.token ||
+              Number(decimals) !== asset.tokenDecimals ||
+              Number(tokenDecimals) !== asset.tokenDecimals
+            )
           ) {
             throw new FxEvmCohortError(
               `${configuration.name} V3 immutables are not frozen`,
@@ -1572,6 +1601,8 @@ module.exports = {
   FxEvmCohort,
   FxEvmCohortError,
   chainConfiguration,
+  assetConfiguration,
+  erc20Capabilities,
   lockStateName,
   isNativeAsset,
   packSettlementV3,

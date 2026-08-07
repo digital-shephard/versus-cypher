@@ -5,6 +5,7 @@ const test = require("node:test");
 const { Interface, keccak256 } = require("ethers");
 const {
   preflightEvmV3Capability,
+  selectEvmV3Capability,
   validateEvmV3Manifest,
   validateSourceFirstTimeoutsV3,
 } = require("../src/fx-evm-v3-adapter");
@@ -164,5 +165,48 @@ test("V3 timeout policy preserves a full executor window", () => {
       destinationCapability: capability,
     }),
     { code: "UNSAFE_TIMEOUT_ORDER" }
+  );
+});
+
+test("V3 manifests bind multiple token adapters without breaking the legacy alias", () => {
+  const input = manifest();
+  const original = input.capabilities[0].erc20;
+  const eurc = {
+    ...original,
+    adapterAddress: "0x4444444444444444444444444444444444444444",
+    deploymentBlock: 102,
+    asset: {
+      ...original.asset,
+      address: "0x5555555555555555555555555555555555555555",
+      symbol: "EURC",
+    },
+  };
+  delete input.capabilities[0].erc20;
+  input.capabilities[0].erc20s = [eurc, original];
+
+  const validated = validateEvmV3Manifest(input);
+  assert.equal(validated.capabilities[0].erc20s.length, 2);
+  assert.equal(
+    validated.capabilities[0].erc20.asset.address,
+    "0x3333333333333333333333333333333333333333"
+  );
+  assert.equal(
+    validated.capabilities[0].erc20s[1].asset.symbol,
+    "EURC"
+  );
+});
+
+test("V3 native capabilities may identify AVAX without changing the wire sentinel", () => {
+  const input = manifest();
+  input.capabilities[0].chainId = "43113";
+  input.capabilities[0].native.assetId = "native:avax";
+  const validated = validateEvmV3Manifest(input);
+  assert.equal(validated.capabilities[0].native.assetId, "native:avax");
+  assert.equal(
+    selectEvmV3Capability(validated, {
+      chainId: "43113",
+      token: "native:avax",
+    }).kind,
+    "native"
   );
 });

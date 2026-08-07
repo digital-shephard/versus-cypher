@@ -1,0 +1,111 @@
+{
+  "schema": "versus-fx-market-candidate",
+  "schemaVersion": 1,
+  "marketId": "0x9f26bd27ca066cae9755b260bf4752cb7f297fadafd378cf8c920253142101d2",
+  "releaseStage": "public-testnet-v1-candidate",
+  "sameChainRoutes": true,
+  "chains": [
+    {
+      "chainId": "84532",
+      "name": "Base Sepolia",
+      "nativeSymbol": "ETH",
+      "rpcEnvironmentVariable": "BASE_SEPOLIA_RPC_URL",
+      "nativeGasReserveAtomic": "250000000000000",
+      "minimumGasUsd": 1,
+      "requiredConfirmations": 2,
+      "reorgSafetyBlocks": 12,
+      "assets": [
+        {
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        {
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "decimals": 6,
+          "name": "USDC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xedc5281a85c0efecd49999a1ef668390c59b88702f2d4a07029d7f5d63059d6c",
+          "domainSeparator": "0x71f17a3b2ff373b803d70a5a07c046c1a2bc8e89c09ef722fcb047abe94c9818",
+          "stable": true,
+          "x402ExactInput": true
+        },
+        {
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x808456652fdb597867f38412077A9182bf77359F",
+          "decimals": 6,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0x0f014fc929bd4eb3577a01319a281f49da27c70057520f1e1debc8272d1ac57e",
+          "stable": true,
+          "x402ExactInput": true
+        }
+      ]
+    },
+    {
+      "chainId": "43113",
+      "name": "Avalanche Fuji",
+      "nativeSymbol": "AVAX",
+      "rpcEnvironmentVariable": "AVALANCHE_FUJI_RPC_URL",
+      "nativeGasReserveAtomic": "50000000000000000",
+      "minimumGasUsd": 1,
+      "requiredConfirmations": 1,
+      "reorgSafetyBlocks": 1,
+      "assets": [
+        {
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        {
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x5425890298aed601595a70AB815c96711a31Bc65",
+          "decimals": 6,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xfe9fa105a0e9629446730e544caa6b8d05d8d4fc93451750dc50e2ddd6d374b3",
+          "stable": true,
+          "x402ExactInput": true
+        },
+        {
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x5E44db7996c682E92a960b65AC713a54AD815c6B",
+          "decimals": 6,
+          "name": "EUR Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0xb3ef8bca38c6b9787ed4fe10dbf62424e1635faa65e2575d7938387bd1dbc26e",
+          "stable": true,
+          "x402ExactInput": true
+        }
+      ]
+    }
+  ],
+  "timeoutPolicy": {
+    "minimumSeconds": 60,
+    "maximumSeconds": 604800,
+    "minimumCrossChainDeltaSeconds": 3600,
+    "destinationRelayWindowSeconds": 3600,
+    "genericQuoteLifetimeSeconds": 120,
+    "settlementLifetimeSeconds": 7200
+  },
+  "economics": {
+    "defaultDealerSpreadBps": 5,
+    "facilitatorFeeAtomic": "1000",
+    "onchainMaximumTrade": null,
+    "operatorLimitsAreOffchain": true
+  }
+}
