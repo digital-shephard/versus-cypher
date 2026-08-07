@@ -22,6 +22,8 @@ const {
 } = require("./market-candidate-config");
 
 const CONFIRMATION = "I_UNDERSTAND_PUBLIC_TESTNET_ONLY";
+const RUNTIME_VISIBILITY_ATTEMPTS = 20;
+const RUNTIME_VISIBILITY_DELAY_MS = 1_000;
 
 function writeJson(filePath, value, { exclusive = false, privateFile = false } = {}) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
@@ -30,6 +32,24 @@ function writeJson(filePath, value, { exclusive = false, privateFile = false } =
     flag: exclusive ? "wx" : "w",
     mode: privateFile ? 0o600 : 0o644,
   });
+}
+
+async function waitForRuntimeCode(
+  provider,
+  address,
+  {
+    attempts = RUNTIME_VISIBILITY_ATTEMPTS,
+    delayMs = RUNTIME_VISIBILITY_DELAY_MS,
+  } = {}
+) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const code = await provider.getCode(address);
+    if (code !== "0x") return code;
+    if (attempt < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return "0x";
 }
 
 async function deployOrResume({
@@ -62,7 +82,7 @@ async function deployOrResume({
   const receipt = await contract.deploymentTransaction().wait();
   assert(receipt && Number(receipt.status) === 1, `${key} deployment failed`);
   const address = (await contract.getAddress()).toLowerCase();
-  const code = await provider.getCode(address);
+  const code = await waitForRuntimeCode(provider, address);
   assert(code !== "0x", `${key} has no runtime code`);
   const deployed = {
     address,
@@ -214,7 +234,11 @@ async function main() {
   }, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error.message || error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error.message || error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { waitForRuntimeCode };
