@@ -249,6 +249,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.dealerPositions = [];
     this.processing = new Map();
     this.relayerProcessing = new Map();
+    this.requesterSourceReplayCounts = new Map();
     this.eventProcessing = new Set();
     this.inventoryCache = null;
     this.dealerRecoveries = [];
@@ -1893,6 +1894,11 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       };
     }
     if (source.state === 1) {
+      const replayCount = this.requesterSourceReplayCounts.get(prepared.tradeId) || 0;
+      if (sourceMessage && replayCount < 2) {
+        await this.publishExisting(session, sourceMessage);
+        this.requesterSourceReplayCounts.set(prepared.tradeId, replayCount + 1);
+      }
       const latestSource = await this.evm
         .provider(route.inputChainId)
         .getBlock("latest");
@@ -2140,6 +2146,16 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       protocolVersion: this.protocolVersion,
     });
     this.dealerSession.on("accepted", (envelope, metadata) => {
+      const operation = this.#onDealerEnvelope(envelope, metadata).finally(() => {
+        this.eventProcessing.delete(operation);
+      });
+      this.eventProcessing.add(operation);
+      operation.catch((error) => {
+        if (!this.closing) this.emit("error", error);
+      });
+    });
+    this.dealerSession.on("duplicate", (envelope, metadata) => {
+      if (envelope.type !== "fx_lock_source" || metadata.history === true) return;
       const operation = this.#onDealerEnvelope(envelope, metadata).finally(() => {
         this.eventProcessing.delete(operation);
       });
