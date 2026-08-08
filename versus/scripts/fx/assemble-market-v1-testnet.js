@@ -15,12 +15,13 @@ function writeFrozenArtifact(outputPath, serialized) {
   } catch (error) {
     if (error?.code !== "EEXIST") throw error;
     const frozen = fs.readFileSync(outputPath, "utf8");
-    if (frozen !== serialized) {
+    const normalizedFrozen = frozen.replace(/\r\n/g, "\n");
+    if (normalizedFrozen !== serialized) {
       throw new Error(
         `assembled testnet deployment differs from frozen artifact: ${outputPath}`
       );
     }
-    return "unchanged";
+    return frozen === serialized ? "unchanged" : "unchanged-platform-eol";
   }
 }
 
