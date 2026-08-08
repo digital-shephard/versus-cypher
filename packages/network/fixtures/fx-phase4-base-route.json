@@ -1,0 +1,42 @@
+{
+  "schema": "versus-fx-phase4-route",
+  "schemaVersion": 1,
+  "status": "development-only",
+  "network": {
+    "caip2": "eip155:8453",
+    "chainId": "8453",
+    "name": "Base"
+  },
+  "pair": {
+    "input": {
+      "symbol": "EURC",
+      "address": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+      "decimals": 6
+    },
+    "output": {
+      "symbol": "USDC",
+      "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "decimals": 6
+    }
+  },
+  "settlement": {
+    "contract": "SameChainSettlementV1",
+    "deploymentAddress": null,
+    "creationCodeHash": "0xca6673e77d32b193161c3e916ad7c37031fe0fd96cbad9e13fc0c237b2b671f3",
+    "runtimeTemplateHash": "0x4cf0ab959c8010225c3bd4ff3a2ca42f5ce04a8f8666424b68c9dbd7fdedd574",
+    "minimumOutputAtomic": "100000",
+    "maximumOutputAtomic": "1000000",
+    "maximumInputAtomic": "2000000",
+    "maximumQuoteLifetimeSeconds": 20
+  },
+  "x402": {
+    "version": 2,
+    "scheme": "versus-atomic-exact",
+    "compatibility": "controlled-fixture-extension"
+  },
+  "connectivity": {
+    "productionWaku": false,
+    "productionFunds": false,
+    "mainnetDeployment": false
+  }
+}

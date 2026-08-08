@@ -1,0 +1,29 @@
+{
+  "schema": "versus-fx-evm-build-freeze",
+  "schemaVersion": 1,
+  "adapter": {
+    "id": "evm-htlc",
+    "version": 1,
+    "contract": "EvmHtlcV1",
+    "sourcePath": "versus/contracts/fx/EvmHtlcV1.sol"
+  },
+  "sourceControl": {
+    "tag": "agentic-fx-phase3-v1"
+  },
+  "compiler": {
+    "version": "0.8.26",
+    "longVersion": "0.8.26+commit.8a97fa7a",
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 1
+    }
+  },
+  "sourceSha256": "0xeecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9",
+  "compilerInputSourceSha256": "0xeecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9",
+  "creationCodeHash": "0x3c4cee1b9c7037826031d76fb13c3f8947042cbd446d4f3ede4010fff8116096",
+  "runtimeTemplateHash": "0x1ef750ffab7e2455aa74fb6fd29dc302dc0f63e3dd5aceaec1e77dadbbf9dd3e",
+  "creationCodeBytes": 4154,
+  "runtimeTemplateBytes": 3601
+}

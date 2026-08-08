@@ -140,6 +140,143 @@ The validation auditor treats evidence integrity and release readiness as separa
 
 The Signal screen renders a stable local neighborhood from real recent authors. Distance reflects interaction/attention, node size reflects local trust/attention rather than wealth, lines reflect recent contact, and stance colors show support, dissent, or neutrality.
 
+## Agentic FX laboratory
+
+Agentic FX remains disabled and separate from the production Cypher economy.
+Phase 7 adds an optional headless broker sidecar around the Phase 6 Waku RFQ
+network. A wallet outside Versus signs its own short-lived RFQ; the broker
+republishes those exact bytes, gathers dealer-signed quotes, runs the public
+deterministic compiler, and returns every considered quote inside a
+broker-signed proposal with one explicit fee. Requesters reproduce the route
+locally, may query several brokers concurrently, or compile directly with a
+zero fee.
+
+Broker payment is modeled as a requester-signed voucher bound to a selected
+proposal. The reference fee ledger releases it only after the acceptance,
+source claim, destination claim, completion lineage, and both independent
+chain verifications agree. No real broker payment is enabled in Phase 7. The
+broker owns no settlement key, principal, Waku authority, dealer price, or
+completion attestation. Aggregate broker metrics are signed but disclose no
+RFQ, inventory, wallet relationship, or private trade state. The deployed
+relay process does not import broker semantics.
+
+Phase 9 exposes a wallet-agnostic requester funding SDK without granting
+Versus endpoint-payment authority. An x402 `PAYMENT-REQUIRED` challenge is
+parsed locally into only its required EVM chain, token, and exact amount. The
+endpoint URL, resource, description, and payment recipient never enter Waku;
+the signed RFQ keeps `x402Commitment` null. Broker proposals are reproduced
+locally, the requester-selected output address is bound into the signed
+acceptance, and encrypted HTLC recovery exists before settlement begins. The
+SDK emits `fundsReady`
+only after an independent verifier confirms the exact chain, token, amount,
+beneficiary, transaction, and confirmations. It then stops. The requester's
+own x402 client may spend those funds later, producing separate payment and
+resource-delivery evidence.
+
+A later public-testnet composition exposes the complete requester-secret V3
+swap through the existing broker HTTP service. It uses x402's `402`,
+`PAYMENT-REQUIRED`, `PAYMENT-SIGNATURE`, and `PAYMENT-RESPONSE` mechanics with
+the custom `versus-atomic-fx-v3` scheme. One requester SDK call performs
+separate acceptance and source-funding challenges because a safe source HTLC
+cannot be constructed until the selected dealer signs its reservation and
+source beneficiary. The signed RFQ commits to the destination, source refund,
+secret hash, and exact asset pair. The endpoint accepts only a raw source
+transaction whose signer, chain, adapter, calldata, and value exactly match
+the frozen V3 funding template, and broadcasts the same transaction at most
+once.
+
+The requester then announces the confirmed source lock, polls public trade
+status, and reveals its locally encrypted secret only after a matching
+destination lock arrives. The endpoint relays that signed reveal and waits for
+completion. It never receives a signing key and cannot redirect either HTLC.
+Its private swap journal excludes raw transactions and plaintext secrets;
+the secret becomes visible to its normal Waku coordination journal only at
+the same moment it is intentionally published to the network. This endpoint
+is disabled by default, restricted to the frozen Base Sepolia and Arbitrum
+Sepolia V3 manifest, and does not authorize mainnet.
+
+Generic x402 `exact` support adds a separate Phase 13 public-testnet domain
+for official Circle USDC. A stock x402 EVM client signs one EIP-3009
+authorization for an all-in maximum. The selected relay submits that
+authorization to a frozen CREATE2 factory whose deterministic escrow commits
+the payer, exact source principal, source beneficiary, refund path, secret
+hash, timeout, facilitator recipient, and facilitator fee. One atomic
+transaction pays the disclosed relay fee and activates the V3 source HTLC;
+if either leg fails, the authorization remains unconsumed. The relay earns
+for successful facilitation rather than packet forwarding, and competing
+relays may publish different fixed fees within the caller's bound. Native ETH
+and tokens without EIP-3009 remain on the custom atomic endpoint.
+
+Phase 10 places that requester and dealer machinery behind the desktop's
+physical FX surface. The requester chooses an exact-output pair and amount,
+enters any valid destination address, compares locally verified quote data,
+and explicitly accepts one route. Quote discovery accepts any positive
+representable amount; requester devices do not reuse their local dealer size
+policy as an RFQ gate. Each dealer independently applies its own order,
+inventory, gas, and exposure limits and may simply return no quote. Quote
+prices expire until acceptance. A
+timely acceptance is published immediately over Waku and must receive the
+selected dealer's signed reservation before the funding address appears; the
+original quote deadline no longer applies after that point. The LCD displays
+the separate reservation countdown. Before any source lock, the requester may
+publish a signed cancellation bound to both the acceptance and reservation;
+all journals then terminate the trade and the dealer releases it. Merely
+closing the screen does not cancel. An external wallet then sends the
+displayed source asset to a domain-separated local requester address. An
+ERC-20 route requires a confirmed post-baseline token transfer; a native route
+requires a confirmed post-baseline ETH balance increase. Only funding received
+during that reservation can start settlement. The signed acceptance binds the
+arbitrary destination into both Waku coordination and the destination HTLC.
+Refunds return to the local requester address, never to an inferred external
+sender.
+
+V2 settlement is source-first. The dealer commits a durably encrypted secret
+hash in its quote; after reservation, the requester locks source against that
+hash. Only an independently verified source lock permits the dealer to fund
+destination. The dealer then claims source, revealing the secret, and normally
+executes the destination claim itself to receive the signed executor bounty.
+The destination remains permissionlessly claimable for liveness. Restart-safe
+client keepers automatically submit eligible source and destination refunds,
+while fixed onchain refund addresses prevent either keeper from redirecting
+funds.
+
+Dealer keys, requester keys, and broker keys are separately derived from the
+backed-up Cypher wallet. Dealer inventory therefore cannot be satisfied by
+temporary requester funding. Dealer quoting remains disabled by default and
+is bounded by local asset toggles, order caps, exposure journals, and Phase 8
+guards. Waku transports signed coordination only; chain reads independently
+decide lock, claim, completion, and refund state. Recovery persists an
+encrypted secret before acceptance, never rebroadcasts uncertain actions, and
+scans HTLC events only from the frozen adapter deployment blocks.
+
+Dealer route admission separates the two legs: the destination asset requires
+unreserved output inventory, while an enabled source asset requires only the
+source-chain gas needed to claim the requester's lock. A dealer does not need
+duplicate source inventory merely to accept that asset.
+
+Each FX chain is enabled through its native coin before any token on that
+chain. Native ETH is itself quoteable inventory through the separate frozen
+`evm-native-htlc-v1` capability; it is not routed through or represented by the
+ERC-20 adapter. Source and destination adapter IDs are signed independently on
+every route. A fresh signed relay ETH/USD reference converts native atomic
+amounts into risk values, and native quoting fails closed when that reference
+expires. The desktop subtracts active reservations, an operating gas reserve,
+and the estimated transaction fee before advertising native inventory.
+
+The desktop independently checks both the dealer and requester role wallets
+against a local minimum-gas policy, supports an optional private local RPC
+override, and refreshes visible inventory through bounded single-flight reads.
+Dealing must be disarmed before a confirmed dealer-wallet withdrawal.
+History exposes explicit reconciliation for interrupted trades; restart only
+resumes an owner-armed dealer when the same gas, inventory, and policy gates
+still pass. Scrubbed evidence retains public route, state, timing,
+confirmation, and transaction hashes while excluding role addresses, secrets,
+custom RPC URLs, and private inventory.
+
+The disabled public-testnet cohort is frozen by deployment ID
+`0x2baf66b4211ecbc126916260c0a671e745e3184275744fb15bd5d5069b575fc3`,
+which binds both adapter families on Base Sepolia and Arbitrum Sepolia.
+
 ## Safety
 
 - Ownerless after one-shot bootstrap: no pause, owner, or upgrade proxy.

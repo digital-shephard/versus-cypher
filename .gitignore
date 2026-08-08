@@ -67,6 +67,7 @@ research/package-smoke/
 research/**/current.json
 research/waku-lab/cluster.json
 research/waku-lab/latest-preflight.json
+fx-simulation-runs/
 
 # Tool-specific local settings
 .claude/settings.local.json

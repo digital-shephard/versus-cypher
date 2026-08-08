@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, clipboard, safeStorage, dialog, powerMonitor } = require("electron");
+const crypto = require("node:crypto");
 const path = require("path");
 const fs = require("fs");
 const { Wallet } = require("ethers");
@@ -35,6 +36,12 @@ const { RainInbox } = require("./rain-inbox");
 const { acknowledgeGraduation, recordGraduationTransition } = require("./graduation");
 const { quarantineDatabaseFiles } = require("./local-recovery");
 const { applyPackagedProductionDeployment } = require("./runtime-deployment");
+const { FxDesktopService } = require("./fx-desktop-service");
+const { FxDesktopNetworkRuntime } = require("./fx-desktop-network");
+const { FxEvmCohort } = require("./fx-evm-cohort");
+const { loadFxMarketRuntime } = require("./fx-market-runtime");
+const { fxRoleWalletProvider } = require("./fx-role-wallet");
+const { combinedWakuState } = require("./service-status");
 const {
   launchAtLoginAccepted,
   readWindowsRunValue,
@@ -115,13 +122,21 @@ const SETTINGS_PATH = path.join(app.getPath("userData"), "settings.json");
 const OPERATION_JOURNAL_PATH = path.join(app.getPath("userData"), "economic-operations.json");
 const NETWORK_DATA_DIR = path.join(app.getPath("userData"), "network");
 const RAIN_INBOX_PATH = path.join(app.getPath("userData"), "verified-rain.json");
+const FX_STATE_PATH = path.join(app.getPath("userData"), "fx", "state.json");
+const FX_RECOVERY_DIR = path.join(app.getPath("userData"), "fx", "recovery");
+const FX_NETWORK_DIR = path.join(app.getPath("userData"), "fx", "network");
+const FX_RECOVERY_KEY_PATH = path.join(
+  app.getPath("userData"),
+  "fx",
+  "recovery-key.json"
+);
 const RENDERER_PATH = path.join(__dirname, "..", "renderer", "index.html");
 const TRUSTED_RENDERER_URL = trustedFileUrl(RENDERER_PATH);
 const registerIpcHandle = createTrustedIpcRegistrar(ipcMain, TRUSTED_RENDERER_URL);
-const WIN_W = 390;
+const WIN_W = 454;
 const WIN_H = 640;
 
-/** Local demo stand-in for the roughly $10 funded hatch. */
+/** Local demo stand-in for the funded hatch amount, never for market pricing. */
 const DEMO_DEPOSIT_WEI = "3000000000000000";
 
 let mainWindow = null;
@@ -144,6 +159,10 @@ let updateService = null;
 let pendingRestoreRecovery = null;
 let hatchQuoteCache = null;
 let hatchQuoteInFlight = null;
+let fxReferenceQuoteService = null;
+let fxReferenceQuoteCache = null;
+const fxUsdReferenceCache = new Map();
+const fxUsdReferenceInFlight = new Map();
 let foregroundRefreshInFlight = null;
 let publicClassRefreshInFlight = null;
 let networkClockOffsetMs = 0;
@@ -154,6 +173,112 @@ const healthMonitor = new HealthMonitor();
 const faultInjector = new FaultInjector((!app.isPackaged || WALKTHROUGH_PROFILE) ? process.env.VERSUS_FAULTS : "");
 const operationJournal = new OperationJournal({ filePath: OPERATION_JOURNAL_PATH });
 const rainInbox = new RainInbox({ filePath: RAIN_INBOX_PATH });
+const fxWalletProvider = fxRoleWalletProvider(ensureWallet);
+const fxMarketRuntime = loadFxMarketRuntime();
+const fxNativeUsdPriceProvider = async ({ configuration } = {}) => {
+  const symbol = configuration?.nativeSymbol || "ETH";
+  return getFxUsdReference(symbol);
+};
+const fxAssetUsdPriceProvider = async ({ symbol } = {}) => {
+  if (symbol === "USDC") return 1_000_000n;
+  return getFxUsdReference(symbol);
+};
+const fxEvmCohort = new FxEvmCohort({
+  walletProvider: fxWalletProvider,
+  configurations: fxMarketRuntime?.configurations,
+  settlementVersion: 3,
+});
+const fxNetworkRuntime = new FxDesktopNetworkRuntime({
+  dataDirectory: FX_NETWORK_DIR,
+  walletProvider: fxWalletProvider,
+  evm: fxEvmCohort,
+  deploymentId: fxMarketRuntime?.deploymentId,
+  coordinationDomain: fxMarketRuntime?.coordinationDomain,
+  nativeUsdPriceProvider: fxNativeUsdPriceProvider,
+  assetUsdPriceProvider: fxAssetUsdPriceProvider,
+  brokerObservationWindowMs: 5_000,
+  brokerQuoteSettleWindowMs: 1_250,
+  dealerObservationWindowMs: 250,
+  now: () => Math.floor(networkNowMs() / 1000),
+  protocolVersion: 3,
+});
+const fxDesktopService = new FxDesktopService({
+  statePath: FX_STATE_PATH,
+  recoveryDirectory: FX_RECOVERY_DIR,
+  walletProvider: () => fxWalletProvider("requester"),
+  recoveryPasswordProvider: ensureFxRecoveryPassword,
+  deploymentId: fxNetworkRuntime.deploymentId,
+  supportedChains: fxMarketRuntime?.chains,
+  supportedPositions: fxMarketRuntime?.positions,
+  environment: fxMarketRuntime?.releaseStage || "public-testnet",
+  productionFunds: fxMarketRuntime?.releaseStage?.startsWith("mainnet") === true,
+  queryRoutes: (input) => fxNetworkRuntime.queryRoutes(input),
+  reservationExecutor: (input) => fxNetworkRuntime.reserveRequester(input),
+  cancellationExecutor: (input) => fxNetworkRuntime.cancelRequester(input),
+  sourceFundingPlanner: ({ prepared }) =>
+    fxEvmCohort.captureFunding({
+      chainId: prepared.inputChainId,
+      token: prepared.inputToken,
+      address: prepared.sourceFundingAddress,
+      requiredAtomic: prepared.inputAmountAtomic,
+    }),
+  sourceFundingVerifier: ({ prepared, fundingBaseline }) =>
+    fxEvmCohort.verifyFunding({
+      baseline: fundingBaseline,
+      requiredAtomic:
+        fundingBaseline.requiredFundingAtomic ||
+        prepared.inputAmountAtomic,
+    }),
+  settlementExecutor: (input) => fxNetworkRuntime.executeRequester(input),
+  destinationVerifier: ({ settlement }) => settlement.destinationObservation,
+  settlementReconciler: (input) => fxNetworkRuntime.reconcileRequester(input),
+  refundExecutor: (input) => fxNetworkRuntime.refundRequester(input),
+  dealerController: fxNetworkRuntime,
+  nativeUsdPriceProvider: fxNativeUsdPriceProvider,
+  assetUsdPriceProvider: fxAssetUsdPriceProvider,
+  now: () => Math.floor(networkNowMs() / 1000),
+  protocolVersion: 3,
+});
+
+fxDesktopService.on("changed", (snapshot) => {
+  sendRenderer("fx:changed", snapshot);
+});
+fxNetworkRuntime.on("trade", (update) => {
+  try {
+    fxDesktopService.recordRuntimeTrade(update);
+  } catch (error) {
+    console.error("Versus FX trade persistence error:", error.message);
+    healthMonitor.report(error, {
+      channel: "fx",
+      operation: "trade_persistence",
+    });
+  }
+});
+fxNetworkRuntime.on("status", () => {
+  const fxWakuState = combinedWakuState("not_configured", fxNetworkRuntime.status());
+  recordActivityState("fx-waku-state", {
+    channel: "waku",
+    direction: "local",
+    operation: "fx_mesh_state",
+    destination: "versus_fx",
+    status: ["ready", "live", "caught_up"].includes(fxWakuState)
+      ? "ready"
+      : fxWakuState === "offline"
+        ? "off"
+        : "wait",
+  });
+  if (["ready", "live", "caught_up"].includes(fxWakuState)) {
+    healthMonitor.resolve("waku_unavailable");
+  }
+  sendRenderer("fx:changed", fxDesktopService.snapshot());
+});
+fxNetworkRuntime.on("error", (error) => {
+  console.error("Versus FX runtime error:", error);
+  healthMonitor.report(error, {
+    channel: "fx",
+    operation: "distributed_settlement",
+  });
+});
 
 function updateNetworkClockOffset(value) {
   if (value == null) return networkClockOffsetMs;
@@ -198,6 +323,92 @@ async function getCachedHatchQuote() {
       });
   }
   return hatchQuoteInFlight;
+}
+
+async function getFxReferenceHatchQuote() {
+  try {
+    const quote = await getCachedHatchQuote();
+    if (quote) return quote;
+  } catch (error) {
+    if (
+      app.isPackaged ||
+      process.env.VERSUS_FX_DEVELOPMENT !== "1"
+    ) {
+      throw error;
+    }
+  }
+  if (
+    app.isPackaged ||
+    process.env.VERSUS_FX_DEVELOPMENT !== "1"
+  ) {
+    return null;
+  }
+  const now = Date.now();
+  if (
+    fxReferenceQuoteCache &&
+    now - fxReferenceQuoteCache.at < HATCH_QUOTE_MAX_AGE_MS
+  ) {
+    return fxReferenceQuoteCache.quote;
+  }
+  if (!fxReferenceQuoteService) {
+    const deploymentPath = path.resolve(
+      __dirname,
+      "../../../versus/deployments/base.json"
+    );
+    if (!fs.existsSync(deploymentPath)) return null;
+    fxReferenceQuoteService = createChainRainService(
+      loadChainConfig({
+        ...process.env,
+        VERSUS_DEPLOYMENT: deploymentPath,
+      })
+    );
+  }
+  const quote = await fxReferenceQuoteService.quoteHatchTarget();
+  updateNetworkClockOffset(quote.clockOffsetMs);
+  fxReferenceQuoteCache = { quote, at: Date.now() };
+  return quote;
+}
+
+async function getFxPricingService() {
+  if (chainRainService?.fxUsdPrice) return chainRainService;
+  if (app.isPackaged || process.env.VERSUS_FX_DEVELOPMENT !== "1") return null;
+  if (!fxReferenceQuoteService) {
+    const deploymentPath = path.resolve(
+      __dirname,
+      "../../../versus/deployments/base.json"
+    );
+    if (!fs.existsSync(deploymentPath)) return null;
+    fxReferenceQuoteService = createChainRainService(
+      loadChainConfig({
+        ...process.env,
+        VERSUS_DEPLOYMENT: deploymentPath,
+      })
+    );
+  }
+  return fxReferenceQuoteService;
+}
+
+async function getFxUsdReference(symbol) {
+  symbol = String(symbol || "").toUpperCase();
+  const now = Date.now();
+  const cached = fxUsdReferenceCache.get(symbol);
+  if (cached && now - cached.at < 60_000) return cached.value;
+  if (!fxUsdReferenceInFlight.has(symbol)) {
+    const request = (async () => {
+      const service = await getFxPricingService();
+      if (!service?.fxUsdPrice) {
+        throw new Error(`fresh signed relay ${symbol || "asset"}/USD quote is unavailable`);
+      }
+      const value = BigInt(await service.fxUsdPrice({ symbol }));
+      if (value <= 0n) throw new Error(`fresh signed relay ${symbol}/USD quote is unavailable`);
+      fxUsdReferenceCache.set(symbol, { value, at: Date.now() });
+      return value;
+    })().finally(() => {
+      fxUsdReferenceInFlight.delete(symbol);
+    });
+    fxUsdReferenceInFlight.set(symbol, request);
+  }
+  return fxUsdReferenceInFlight.get(symbol);
 }
 
 function publishHealth(snapshot = healthMonitor.snapshot()) {
@@ -310,11 +521,16 @@ function serviceActivitySnapshot() {
   const settings = loadSettings();
   let transport = null;
   try { transport = networkService?.status?.().transportStatus || null; } catch (_) {}
+  let fxStatus = null;
+  try { fxStatus = fxNetworkRuntime.status(); } catch (_) {}
   return {
     version: 1,
     telemetry: "none",
     chain: chainConfigError ? "error" : chainRainService ? "base" : "local_sim",
-    waku: transport?.state || (networkUnavailableReason ? "off" : "not_configured"),
+    waku: combinedWakuState(
+      transport?.state || (networkUnavailableReason ? "off" : "not_configured"),
+      fxStatus
+    ),
     brain: settings.brain.kind === "off" ? "off" : settings.brain.kind,
     health: healthMonitor.snapshot(),
     events: activityBus.snapshot(),
@@ -354,10 +570,16 @@ function refreshHealthSnapshot() {
   try {
     const status = networkService?.status?.();
     const transportState = String(status?.transportStatus?.state || "").toLowerCase();
-    if (["offline", "error"].includes(transportState)) {
+    const combinedTransportState = combinedWakuState(
+      transportState || (networkUnavailableReason ? "off" : "not_configured"),
+      fxNetworkRuntime.status()
+    );
+    if (["offline", "error"].includes(combinedTransportState)) {
       healthMonitor.report(Object.assign(new Error("Waku relay is unavailable"), { code: "WAKU_UNAVAILABLE" }), {
         channel: "waku", operation: "mesh_state",
       });
+    } else if (["ready", "live", "caught_up"].includes(combinedTransportState)) {
+      healthMonitor.resolve("waku_unavailable");
     }
     if (transportState === "degraded_store") {
       healthMonitor.report(Object.assign(new Error("Waku Store history is unavailable"), { code: "WAKU_STORE_UNAVAILABLE" }), {
@@ -650,7 +872,27 @@ function ensureWallet() {
   return w;
 }
 
+function ensureFxRecoveryPassword() {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error("OS credential encryption is unavailable");
+  }
+  const stored = loadJson(FX_RECOVERY_KEY_PATH, null);
+  if (stored?.encryptedPassword) {
+    return safeStorage.decryptString(
+      Buffer.from(stored.encryptedPassword, "base64")
+    );
+  }
+  const password = crypto.randomBytes(32).toString("base64url");
+  saveJson(FX_RECOVERY_KEY_PATH, {
+    version: 1,
+    keyProtection: "electron-safe-storage-v1",
+    encryptedPassword: safeStorage.encryptString(password).toString("base64"),
+  });
+  return password;
+}
+
 function loadSettings() {
+  const fxDevelopmentAvailable = process.env.VERSUS_FX_DEVELOPMENT === "1";
   const stored = loadJson(SETTINGS_PATH, null);
   if (stored) {
     let apiKey = "";
@@ -658,10 +900,17 @@ function loadSettings() {
       if (!safeStorage.isEncryptionAvailable()) throw new Error("OS credential encryption is unavailable");
       apiKey = safeStorage.decryptString(Buffer.from(stored.encryptedApiKey, "base64"));
     }
-    return normalizeSettings({ ...stored, brain: { ...(stored.brain || {}), apiKey } });
+    return {
+      ...normalizeSettings(
+        { ...stored, brain: { ...(stored.brain || {}), apiKey } },
+        { fxDevelopmentAvailable }
+      ),
+      fxDevelopmentAvailable,
+    };
   }
   const envConfig = loadAgentBrainConfig(process.env);
-  return normalizeSettings({
+  return {
+    ...normalizeSettings({
     launchAtLogin: false,
     brain: envConfig ? {
       kind: new Set(["codex", "claude"]).has(envConfig.mode)
@@ -673,14 +922,18 @@ function loadSettings() {
       apiKey: envConfig.apiKey,
       autostart: envConfig.autostart,
     } : { kind: "off" },
-  });
+    }, { fxDevelopmentAvailable }),
+    fxDevelopmentAvailable,
+  };
 }
 
 function saveSettings(input) {
   const previous = loadSettings();
   const submittedKey = input.brain && Object.hasOwn(input.brain, "apiKey") ? input.brain.apiKey : undefined;
   const resolvedApiKey = submittedKey === "" && input.brain?.hasApiKey ? previous.brain.apiKey : submittedKey;
-  const merged = normalizeSettings({
+  const fxDevelopmentAvailable = process.env.VERSUS_FX_DEVELOPMENT === "1";
+  const merged = {
+    ...normalizeSettings({
     ...previous,
     ...input,
     brain: {
@@ -688,7 +941,9 @@ function saveSettings(input) {
       ...(input.brain || {}),
       apiKey: resolvedApiKey === undefined ? previous.brain.apiKey : resolvedApiKey,
     },
-  });
+    }, { fxDevelopmentAvailable }),
+    fxDevelopmentAvailable,
+  };
   if (merged.brain.apiKey && !safeStorage.isEncryptionAvailable()) throw new Error("OS credential encryption is unavailable");
   const { apiKey, ...brain } = merged.brain;
   const persisted = {
@@ -850,7 +1105,11 @@ function refreshForegroundServices() {
   foregroundRefreshInFlight = (async () => {
     const [chainResult] = await Promise.allSettled([reconcileChainState()]);
     const [networkResult] = await Promise.allSettled([
-      ensureNetworkService().then((service) => service?.catchUpRain?.() || { attempted: false, received: 0 }),
+      ensureNetworkService().then(async (service) => {
+        if (!service) return { attempted: false, received: 0 };
+        await service.resumeTransport?.();
+        return service.catchUpRain?.() || { attempted: false, received: 0 };
+      }),
     ]);
     if (chainResult.status === "rejected") {
       console.error("Versus foreground chain reconciliation error:", chainResult.reason?.message || chainResult.reason);
@@ -1527,6 +1786,9 @@ app.whenReady().then(() => {
   applyLaunchAtLogin(settings.launchAtLogin);
   createWindow();
   createTray();
+  fxNetworkRuntime.warmRequester().catch((error) => {
+    console.error("Versus FX requester warm-up error:", error.message);
+  });
   if (chainRainService && loadState()?.phase !== "active") {
     getCachedHatchQuote().catch((error) => {
       console.error("Versus hatch quote prefetch error:", error.message);
@@ -1562,6 +1824,9 @@ app.whenReady().then(() => {
     .finally(async () => {
       await reconcileOperationJournal().catch((error) => console.error("Versus operation reconciliation error:", error.message));
       await ensureNetworkService().catch((error) => console.error("Versus network start error:", error.message));
+      await fxDesktopService.resumeDealer().catch((error) => {
+        console.error("Versus FX dealer resume error:", error.message);
+      });
       startDailyLifecycle();
     });
   startStateSync();
@@ -1589,6 +1854,7 @@ app.on("before-quit", () => {
   stopSignalPublicationRetries();
   dailyLifecycleScheduler?.stop();
   networkService?.close().catch(() => {});
+  fxNetworkRuntime.close().catch(() => {});
   updateService?.stop();
 });
 
@@ -1642,6 +1908,98 @@ registerIpcHandle("wallet:getAddressQr", async () => {
       light: "#e3edcfff",
     },
   });
+});
+
+function assertEvmAddress(value) {
+  const address = typeof value === "string" ? value.trim() : "";
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) throw new Error("address is invalid");
+  return address;
+}
+
+registerIpcHandle("fx:addressQr", async (_event, payload) => {
+  return QRCode.toDataURL(assertEvmAddress(payload?.address), {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 144,
+    color: {
+      dark: "#173d32ff",
+      light: "#e3edcfff",
+    },
+  });
+});
+
+registerIpcHandle("fx:copyAddress", (_event, payload) => {
+  const address = assertEvmAddress(payload?.address);
+  clipboard.writeText(address);
+  return address;
+});
+
+registerIpcHandle("fx:snapshot", (_event, payload) =>
+  fxDesktopService.refresh({ force: payload?.force === true })
+);
+
+registerIpcHandle("fx:setPolicy", (_event, payload) =>
+  fxDesktopService.setPolicy(payload?.patch || {})
+);
+
+registerIpcHandle("fx:setPositionEnabled", (_event, payload) =>
+  fxDesktopService.setPositionEnabled(
+    payload?.id,
+    payload?.enabled === true
+  )
+);
+
+registerIpcHandle("fx:setChainSettings", (_event, payload) =>
+  fxDesktopService.setChainSettings(payload?.chainId, payload?.patch || {})
+);
+
+registerIpcHandle("fx:withdrawPosition", (_event, payload) =>
+  fxDesktopService.withdrawPosition(payload || {})
+);
+
+registerIpcHandle("fx:requestQuote", (_event, payload) =>
+  fxDesktopService.requestQuote(payload || {})
+);
+
+registerIpcHandle("fx:acceptQuote", (_event, payload) =>
+  fxDesktopService.acceptQuote(payload?.tradeId)
+);
+
+registerIpcHandle("fx:checkFunding", (_event, payload) =>
+  fxDesktopService.checkFunding(payload?.tradeId)
+);
+
+registerIpcHandle("fx:cancel", (_event, payload) =>
+  fxDesktopService.cancelTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:reconcile", (_event, payload) =>
+  fxDesktopService.reconcileTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:refund", (_event, payload) =>
+  fxDesktopService.refundTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:refundDealer", (_event, payload) =>
+  fxDesktopService.refundDealerTrade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:trade", (_event, payload) =>
+  fxDesktopService.trade(payload?.tradeId)
+);
+
+registerIpcHandle("fx:exportEvidence", async () => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Export Agentic FX evidence",
+    defaultPath: path.join(
+      app.getPath("documents"),
+      `versus-fx-evidence-${new Date().toISOString().slice(0, 10)}.json`
+    ),
+    filters: [{ name: "JSON", extensions: ["json"] }],
+  });
+  if (result.canceled || !result.filePath) return null;
+  return fxDesktopService.exportEvidence(result.filePath);
 });
 
 registerIpcHandle("rain:next", () => rainInbox.next());
@@ -1896,6 +2254,8 @@ registerIpcHandle("settings:testBrain", async (_e, input = null) => {
       ...(input.brain || {}),
       apiKey: input.brain?.apiKey || (input.brain?.hasApiKey ? previous.brain.apiKey : ""),
     },
+  }, {
+    fxDevelopmentAvailable: process.env.VERSUS_FX_DEVELOPMENT === "1",
   }) : previous;
   if (settings.brain.kind === "off") return { ok: true, status: "off" };
   const config = loadAgentBrainConfig(brainEnvironment(settings, process.env));

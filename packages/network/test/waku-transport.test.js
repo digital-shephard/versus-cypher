@@ -149,6 +149,63 @@ test("Waku transport exposes reconnecting, caught-up, degraded Store, and offlin
   assert.equal(transport.status().state, "offline");
 });
 
+test("Waku transport rebuilds subscriptions after resume when peers vanished", async () => {
+  const first = createFakeWaku();
+  const second = createFakeWaku();
+  let starts = 0;
+  const transport = new WakuPostcardTransport({
+    chainId: 8453,
+    contractAddress: CONTRACT,
+    launchId: 27,
+    sdkLoader: async () => ({ Protocols: { LightPush: "lightpush", Filter: "filter" } }),
+    nodeFactory: async () => {
+      starts += 1;
+      return starts === 1 ? first : second;
+    },
+  });
+  await transport.start();
+  await transport.storeCatchUp;
+  first.peers = [];
+
+  const resumed = await transport.ensureConnected();
+  await transport.storeCatchUp;
+  assert.equal(resumed.restarted, true);
+  assert.equal(starts, 2);
+  assert.equal(first.stopped, true);
+  assert.equal(second.callbacks.has(transport.contentTopic), true);
+  assert.equal(transport.status().state, "caught_up");
+  await transport.close();
+});
+
+test("Waku transport watchdog reconnects and catches up after a quiet peer loss", async () => {
+  const first = createFakeWaku();
+  const second = createFakeWaku();
+  let starts = 0;
+  const transport = new WakuPostcardTransport({
+    chainId: 8453,
+    contractAddress: CONTRACT,
+    launchId: 27,
+    reconnectPollMs: 10,
+    reconnectBackoffMaxMs: 40,
+    sdkLoader: async () => ({ Protocols: { LightPush: "lightpush", Filter: "filter" } }),
+    nodeFactory: async () => {
+      starts += 1;
+      return starts === 1 ? first : second;
+    },
+  });
+  await transport.start();
+  await transport.storeCatchUp;
+  first.peers = [];
+
+  await waitUntil(() => starts === 2 && transport.status().state === "caught_up");
+  assert.equal(first.stopped, true);
+  assert.equal(second.callbacks.has(transport.contentTopic), true);
+  assert.equal(transport.status().reconnect.active, true);
+  assert.equal(transport.status().reconnect.failures, 0);
+  await transport.close();
+  assert.equal(transport.status().reconnect.active, false);
+});
+
 test("Waku Store failure preserves live transport as degraded", async () => {
   const fakeWaku = createFakeWaku({ storeError: "store peer unavailable" });
   const transport = new WakuPostcardTransport({

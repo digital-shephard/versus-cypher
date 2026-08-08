@@ -1,6 +1,6 @@
 {
   "kind": "versus-base-build-freeze",
-  "generatedAt": "2026-07-13T12:20:50.170Z",
+  "generatedAt": "2026-07-30T01:01:01.236Z",
   "note": "Compare against freshly compiled artifacts before the first Base deployment transaction.",
   "solidity": "0.8.26",
   "compiler": {
@@ -34,10 +34,14 @@
       }
     }
   },
-  "compilerInputSha256": "8ac9aed7a69947a23130393b6622962d72b60d0a8a543afb765a8e700802ea60",
+  "compilerInputSha256": "74b38b546e0f43280013047eeeecdecc196d91616fd449405b3280c04c54e2f6",
   "importedSources": {
-    "treeSha256": "ab6178f8e68c7ad731f9a4721785bc11653de796a15f43b5fb37493ef3c4cdf5",
+    "treeSha256": "a63b4ef0ab1eec9e4ee0e51f4c4eefd852ee1f4089f594363de6c139b161b1bd",
     "files": [
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC1271.sol",
+        "sha256": "2d17bba201aa2f9c55e317315b872272a60361848dfceb6b1e77081265c79a27"
+      },
       {
         "path": "@openzeppelin/contracts/interfaces/IERC1363.sol",
         "sha256": "9c3a75a925a6dac9e88b03cddc58d42fe3131b0aaaad84408521f3f7af2f991b"
@@ -49,6 +53,14 @@
       {
         "path": "@openzeppelin/contracts/interfaces/IERC20.sol",
         "sha256": "0158e2d3e0e28bedd99eec13dcf1a8aa3a70a5b7e4bb2ad709609c95fcc740d1"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC5267.sol",
+        "sha256": "f89772d2d4fafcbef8b73bb10ee9a3373edec2eedb2f1b302320915b351dc3d1"
+      },
+      {
+        "path": "@openzeppelin/contracts/interfaces/IERC7913.sol",
+        "sha256": "f66aad4249885b0f11369bfa825dded60aa4baa0d76d9becdac9daa48c350350"
       },
       {
         "path": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
@@ -107,12 +119,40 @@
         "sha256": "94e409e8f6e3184236651a6cc2b1a6a3ea0f0a25eb85b71e524ad5791bb2fbc8"
       },
       {
+        "path": "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol",
+        "sha256": "cff7c20aed945d939b764d876adbd42e1b7725d62d5b1f2bd303db237567b575"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/ShortStrings.sol",
+        "sha256": "1cfa08d3c551e9ec0b9cd249b09987f04e7e90f352e1a5e3b0d6a3bc426b3de7"
+      },
+      {
         "path": "@openzeppelin/contracts/utils/StorageSlot.sol",
         "sha256": "75704538dcb223239280c6726d9a31cf769a7816718517c997fc7d63bdb70778"
       },
       {
         "path": "@openzeppelin/contracts/utils/Strings.sol",
         "sha256": "e318709bbe73a7831d64c1351e8bdc43780b245f25191234e361e6ab9b98c67b"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/TransientSlot.sol",
+        "sha256": "ea92f361d697ba8b1fbd322b4d84b989998862c21fbebfa4b45289dc94a9eea2"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+        "sha256": "ba7c2d314fcd61c9783e0b3f0c664d004b76b408fda6a84edc8267d17c5012d6"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/EIP712.sol",
+        "sha256": "2845caaaf70757b6cce612ae4ffbec2c382cb3d1cb9765c98fa649c0f5f1c794"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol",
+        "sha256": "538a0d7c4f0ec5a8562f58561890f7b49d14580674ecf58bc5f505b45c73df65"
+      },
+      {
+        "path": "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol",
+        "sha256": "acc520422fac0a9edb85d7268085a63219a0db9e4406cd155d5c74c94e35f590"
       },
       {
         "path": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
@@ -159,12 +199,48 @@
         "sha256": "8a0091ccefc04dc11b3363ad84e54618f3d295237977682a027ffaaabb1441e3"
       },
       {
+        "path": "contracts/fx/EvmHtlcV1.sol",
+        "sha256": "eecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9"
+      },
+      {
+        "path": "contracts/fx/EvmHtlcV2.sol",
+        "sha256": "63e07c459657d05ba2131aa3161b60de3a54a706f329006a7f549ea440ec086c"
+      },
+      {
+        "path": "contracts/fx/EvmHtlcV3.sol",
+        "sha256": "fcdef75ab5add995a809a2631cab73f6e6b72e40ee6bee7e91b8a6b1c7e01921"
+      },
+      {
+        "path": "contracts/fx/EvmNativeHtlcV1.sol",
+        "sha256": "ea81dd22c015e56d4e631e340fab5593397952fca5470635fc8d4b2bdb922ad4"
+      },
+      {
+        "path": "contracts/fx/EvmNativeHtlcV2.sol",
+        "sha256": "388a0dee03c7f0470494a351ba4b25904c388e231a413f2d8b78395f819d3ffd"
+      },
+      {
+        "path": "contracts/fx/EvmNativeHtlcV3.sol",
+        "sha256": "a23e6d5118ca862eb55fb7d70e2b1cb5b7ec94c403cf101e29797d2e31b6d1b6"
+      },
+      {
+        "path": "contracts/fx/SameChainSettlementV1.sol",
+        "sha256": "5581ccb170e3e4961a8b0e859ea0b8a06c8bb8f19c685f7539491f0cede4a4c4"
+      },
+      {
         "path": "contracts/launch/ClassToken.sol",
         "sha256": "1c7fc3193ae2756e015d40bf409188d1aa9191d22533d95fade1af1991892761"
       },
       {
         "path": "contracts/launch/GraduationModule.sol",
         "sha256": "753e13a405d444c6ff388c84279d96888329b0648f70f47f8ce3126639cd1604"
+      },
+      {
+        "path": "contracts/test/FxNativeRecipients.sol",
+        "sha256": "bc0a7ee2aac2042d5a7e3c3eb2e6932479925f53e4e51b0e109aea58a21e5fa0"
+      },
+      {
+        "path": "contracts/test/FxTestTokens.sol",
+        "sha256": "163a644896543a8819ac7ca939ca0de58b06f534a6481091b8c2e222260a032f"
       },
       {
         "path": "contracts/test/MockUSDC.sol",

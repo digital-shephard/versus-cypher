@@ -16,12 +16,12 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      chainId: 31337,
+      chainId: Number(process.env.LOCAL_CHAIN_ID || 31337),
       hardfork: "cancun",
     },
     localhost: {
       url: process.env.LOCAL_RPC_URL || "http://127.0.0.1:8545",
-      chainId: 31337,
+      chainId: Number(process.env.LOCAL_CHAIN_ID || 31337),
     },
     baseFork: {
       url: process.env.VERSUS_BASE_FORK_RPC_URL || "http://127.0.0.1:8546",
@@ -32,11 +32,32 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 84532,
     },
+    arbitrumSepolia: {
+      url:
+        process.env.ARBITRUM_SEPOLIA_RPC_URL ||
+        "https://sepolia-rollup.arbitrum.io/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 421614,
+    },
+    avalancheFuji: {
+      url:
+        process.env.AVALANCHE_FUJI_RPC_URL ||
+        "https://api.avax-test.network/ext/bc/C/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 43113,
+    },
     base: {
       url: process.env.BASE_RPC_URL || "https://mainnet.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 8453,
       gasPrice: 10_000_000,
+    },
+    avalanche: {
+      url:
+        process.env.AVALANCHE_RPC_URL ||
+        "https://api.avax.network/ext/bc/C/rpc",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 43114,
     },
   },
   gasReporter: {
@@ -44,9 +65,10 @@ module.exports = {
     currency: "USD",
   },
   etherscan: {
-    apiKey: {
-      base: process.env.BASESCAN_API_KEY || "",
-    },
+    apiKey:
+      process.env.ETHERSCAN_API_KEY ||
+      process.env.BASESCAN_API_KEY ||
+      "",
   },
   paths: {
     sources: "./contracts",

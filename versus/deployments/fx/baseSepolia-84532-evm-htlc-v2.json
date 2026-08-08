@@ -1,0 +1,85 @@
+{
+  "schema": "versus-fx-evm-v2-capabilities",
+  "schemaVersion": 2,
+  "settlementMode": "dealer-secret-destination-first",
+  "builds": {
+    "native": {
+      "adapterId": "evm-native-htlc-v2",
+      "adapterVersion": 2,
+      "contract": "EvmNativeHtlcV2",
+      "sourcePath": "versus/contracts/fx/EvmNativeHtlcV2.sol",
+      "sourceTag": "agentic-fx-settlement-v2",
+      "compiler": "0.8.26",
+      "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0x388a0dee03c7f0470494a351ba4b25904c388e231a413f2d8b78395f819d3ffd",
+      "creationCodeHash": "0x80c5c73be5e4087a99996289793c96bbca0e619bb3e2c1ee5b117b87574c5f1b",
+      "runtimeTemplateHash": "0xfa02867d64b66662d28360be718eaa5308548c777ecb84c0fa23a0f1c0333d40",
+      "creationCodeBytes": 2863,
+      "runtimeTemplateBytes": 2586
+    },
+    "erc20": {
+      "adapterId": "evm-htlc-v2",
+      "adapterVersion": 2,
+      "contract": "EvmHtlcV2",
+      "sourcePath": "versus/contracts/fx/EvmHtlcV2.sol",
+      "sourceTag": "agentic-fx-settlement-v2",
+      "compiler": "0.8.26",
+      "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0x63e07c459657d05ba2131aa3161b60de3a54a706f329006a7f549ea440ec086c",
+      "creationCodeHash": "0x1479a15d2aabfdcb2880211cbb156a64a8cad9fe672a6ad29557a03c2f63c37e",
+      "runtimeTemplateHash": "0x7219093960cf387f98928de7f10e8bfe04761b36dd051f38330d24931b2ec80e",
+      "creationCodeBytes": 4330,
+      "runtimeTemplateBytes": 3777
+    }
+  },
+  "capabilities": [
+    {
+      "chainId": "84532",
+      "native": {
+        "adapterAddress": "0x1e933ccffaa2cd384d3df751ff7a25183682dc61",
+        "runtimeCodeHash": "0x3b5f9f7adda6539cc45add266431952a009bfc3b875961dc1717c229382d24ef",
+        "deploymentBlock": 44781959,
+        "assetId": "native:eth"
+      },
+      "erc20": {
+        "adapterAddress": "0x0fa1152f8c51ce05cd61d1ca98515a409ed23c14",
+        "runtimeCodeHash": "0x6ce994564a669982cbf9ab2ea7fd31b247fd9b123e8d9f2cc35ef3227aff2399",
+        "deploymentBlock": 44781962,
+        "asset": {
+          "address": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "runtimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b",
+          "symbol": "tUSDC",
+          "decimals": 6,
+          "standard": "ERC20"
+        }
+      },
+      "confirmationPolicy": {
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 12
+      },
+      "timeoutPolicy": {
+        "minimumSeconds": 60,
+        "maximumSeconds": 604800,
+        "minimumCrossChainDeltaSeconds": 3600,
+        "minimumDestinationRelayWindowSeconds": 3600
+      }
+    }
+  ],
+  "evidence": {
+    "deployer": "0xc69f8ec01a8e86ed071b410683ba005c8a925cf8",
+    "native": {
+      "transactionHash": "0x004cc8530acee47b860bdd5cc1aecc898cf5469f990b3904485c2d32ba6ca176",
+      "gasUsed": "637801"
+    },
+    "erc20": {
+      "transactionHash": "0x37943166ea69f60c30ca2e1e1a69f1789d161c026ab3e1bf0631459932688c45",
+      "gasUsed": "902063"
+    }
+  }
+}

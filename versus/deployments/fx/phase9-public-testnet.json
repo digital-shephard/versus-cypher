@@ -1,0 +1,161 @@
+{
+  "schema": "versus-fx-phase9-public-testnet",
+  "schemaVersion": 1,
+  "environment": "public-testnet",
+  "enabledByDefault": false,
+  "productionFunds": false,
+  "deploymentId": "0x2baf66b4211ecbc126916260c0a671e745e3184275744fb15bd5d5069b575fc3",
+  "nativeAssetWireAddress": "0x0000000000000000000000000000000000000000",
+  "erc20Manifest": {
+    "schema": "versus-fx-adapter-capabilities",
+    "schemaVersion": 1,
+    "adapter": {
+      "id": "evm-htlc",
+      "version": 1,
+      "contract": "EvmHtlcV1",
+      "sourcePath": "versus/contracts/fx/EvmHtlcV1.sol"
+    },
+    "build": {
+      "compiler": "0.8.26",
+      "evmVersion": "cancun",
+      "sourceTag": "agentic-fx-phase3-v1",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0xeecd72d7f67c6337e560864ec445c7d909b86f23e1393c52bfabd36571ee77d9",
+      "creationCodeHash": "0x3c4cee1b9c7037826031d76fb13c3f8947042cbd446d4f3ede4010fff8116096"
+    },
+    "capabilities": [
+      {
+        "chainId": "421614",
+        "adapterAddress": "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
+        "runtimeCodeHash": "0xc94314a8281f517e2e48a95a2ad5bb408ff1ec748fbcac37030dfaed144e033d",
+        "asset": {
+          "address": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "runtimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b",
+          "symbol": "tUSDC",
+          "decimals": 6,
+          "standard": "ERC20",
+          "features": {
+            "feeOnTransfer": false,
+            "rebasing": false,
+            "callbacks": false,
+            "issuerControls": "documented"
+          }
+        },
+        "confirmationPolicy": {
+          "requiredConfirmations": 2,
+          "reorgSafetyBlocks": 20
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 120
+        }
+      },
+      {
+        "chainId": "84532",
+        "adapterAddress": "0xe7a02dd38f9191d8ee20daa24b4feee911da334d",
+        "runtimeCodeHash": "0xc94314a8281f517e2e48a95a2ad5bb408ff1ec748fbcac37030dfaed144e033d",
+        "asset": {
+          "address": "0xcba3d9354dd4c30bb6961abb4473a6340486e01b",
+          "runtimeCodeHash": "0x47270bb5191904282585120908012270a6b00247826d4a262e824e2a41f0de7b",
+          "symbol": "tUSDC",
+          "decimals": 6,
+          "standard": "ERC20",
+          "features": {
+            "feeOnTransfer": false,
+            "rebasing": false,
+            "callbacks": false,
+            "issuerControls": "documented"
+          }
+        },
+        "confirmationPolicy": {
+          "requiredConfirmations": 2,
+          "reorgSafetyBlocks": 12
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 120
+        }
+      }
+    ]
+  },
+  "nativeManifest": {
+    "schema": "versus-fx-native-adapter-capabilities",
+    "schemaVersion": 1,
+    "adapter": {
+      "id": "evm-native-htlc",
+      "version": 1,
+      "contract": "EvmNativeHtlcV1",
+      "sourcePath": "versus/contracts/fx/EvmNativeHtlcV1.sol"
+    },
+    "build": {
+      "compiler": "0.8.26",
+      "evmVersion": "cancun",
+      "sourceTag": "agentic-fx-native-v1",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0xea81dd22c015e56d4e631e340fab5593397952fca5470635fc8d4b2bdb922ad4",
+      "creationCodeHash": "0xda6b8e42b4b22c07cda53b08db6091e78ea3a884905703c69f18e9494e7f2244"
+    },
+    "capabilities": [
+      {
+        "chainId": "84532",
+        "adapterAddress": "0x7c917f09e1de03977acc14575b56932aa55da543",
+        "runtimeCodeHash": "0x752e5fe73aed992241e138ff550d4ab7fc127230b802e70b9c87239fec60f082",
+        "deploymentBlock": 44762481,
+        "asset": {
+          "assetId": "native:eth",
+          "symbol": "ETH",
+          "decimals": 18,
+          "standard": "NATIVE"
+        },
+        "confirmationPolicy": {
+          "requiredConfirmations": 2,
+          "reorgSafetyBlocks": 12
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 120
+        }
+      },
+      {
+        "chainId": "421614",
+        "adapterAddress": "0x7c917f09e1de03977acc14575b56932aa55da543",
+        "runtimeCodeHash": "0x752e5fe73aed992241e138ff550d4ab7fc127230b802e70b9c87239fec60f082",
+        "deploymentBlock": 292433456,
+        "asset": {
+          "assetId": "native:eth",
+          "symbol": "ETH",
+          "decimals": 18,
+          "standard": "NATIVE"
+        },
+        "confirmationPolicy": {
+          "requiredConfirmations": 2,
+          "reorgSafetyBlocks": 20
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 120
+        }
+      }
+    ]
+  },
+  "nativeDeploymentEvidence": {
+    "84532": {
+      "transactionHash": "0x55a66556f1341153ac50119cbf8ec672dba9f7787ed1de3f8a38127a887fe429",
+      "deployer": "0xc69f8ec01a8e86ed071b410683ba005c8a925cf8",
+      "gasUsed": "594779",
+      "verificationUrl": "https://sepolia.basescan.org/address/0x7c917f09e1de03977acc14575b56932aa55da543#code"
+    },
+    "421614": {
+      "transactionHash": "0x6f94dc7382583a69dc9fafed3b0e73c5e5894a0e222582437afd170df84e4856",
+      "deployer": "0xc69f8ec01a8e86ed071b410683ba005c8a925cf8",
+      "gasUsed": "620024",
+      "verificationUrl": "https://sepolia.arbiscan.io/address/0x7c917f09e1de03977acc14575b56932aa55da543#code"
+    }
+  }
+}

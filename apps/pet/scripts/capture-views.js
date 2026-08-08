@@ -11,10 +11,20 @@ const fs = require("fs");
 const QRCode = require("qrcode");
 
 const OUT = process.env.SHOT_DIR || path.join(__dirname, "..", "shots");
-const WIN_W = 390;
+const WIN_W = 454;
 const WIN_H = 640;
+const PREVIEW_FX_TAPE = process.argv.includes("--preview-fx-tape");
+const PREVIEW_FX_REQUESTER = process.argv.includes("--preview-fx-requester");
+const CAPTURE_FX_REQUESTER = process.argv.includes("--capture-fx-requester");
+const CAPTURE_RUNTIME = path.join(
+  path.parse(__dirname).root,
+  "tmp",
+  "versus-pet-capture",
+  String(process.pid)
+);
 
 const STUB_ADDR = "0xA11CE00000000000000000000000000000000BEE";
+let harnessWindow = null;
 
 /** Rich active-bond fixture: mid-fill class, real-looking stats. */
 const ACTIVE_BOND = {
@@ -53,6 +63,172 @@ let agentState = {
   lastError: null,
 };
 let networkLaunchId = "42";
+const FX_CAPTURE_TRADE_ID = `0x${"ab".repeat(32)}`;
+let fxCaptureSnapshot = {
+  version: 2,
+  enabled: true,
+  environment: "public-testnet",
+  productionFunds: false,
+  requesterAddress: "0xB0B000000000000000000000000000000000CAFE",
+  brokerConfigured: true,
+  settlementConfigured: true,
+  policy: {
+    armed: false,
+    minimumTradeUsd: 1,
+    maximumTradeUsd: 50,
+    maximumExposureUsd: 1_000,
+    maximumRequesterExposureUsd: 100,
+    maximumAssetExposureUsd: 500,
+    maximumGasUsd: 5,
+    maximumOverheadBps: 100,
+    minimumSpreadBps: 25,
+    inventoryPremiumBps: 0,
+    quoteLifetimeSeconds: 30,
+    reservationSeconds: 90,
+  },
+  chains: [
+    {
+      chainId: "84532",
+      chainKey: "base-sepolia",
+      chain: "BASE SEPOLIA",
+      nativeAsset: "ETH",
+      nativeDecimals: 18,
+      minimumGasUsd: 1,
+      enabled: true,
+      rpcUrl: "",
+      address: STUB_ADDR,
+      dealerAddress: STUB_ADDR,
+      requesterAddress: "0xB0B000000000000000000000000000000000CAFE",
+      dealerBalanceAtomic: "1000000000000000",
+      requesterBalanceAtomic: "1000000000000000",
+      dealerGasReady: true,
+      requesterGasReady: true,
+      gasReady: true,
+    },
+    {
+      chainId: "421614",
+      chainKey: "arbitrum-sepolia",
+      chain: "ARBITRUM SEPOLIA",
+      nativeAsset: "ETH",
+      nativeDecimals: 18,
+      minimumGasUsd: 1,
+      enabled: true,
+      rpcUrl: "",
+      address: STUB_ADDR,
+      dealerAddress: STUB_ADDR,
+      requesterAddress: "0xB0B000000000000000000000000000000000CAFE",
+      dealerBalanceAtomic: "1000000000000000",
+      requesterBalanceAtomic: "1000000000000000",
+      dealerGasReady: true,
+      requesterGasReady: true,
+      gasReady: true,
+    },
+  ],
+  positions: [
+    {
+      id: "base-sepolia-usdc",
+      chainId: "84532",
+      chainKey: "base-sepolia",
+      chain: "BASE SEPOLIA",
+      asset: "USDC",
+      decimals: 6,
+      assetAddress: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      enabled: true,
+      usable: true,
+      address: STUB_ADDR,
+      availableAtomic: "0",
+      reservedAtomic: "0",
+      activeLocks: 0,
+    },
+    {
+      id: "arbitrum-sepolia-usdc",
+      chainId: "421614",
+      chainKey: "arbitrum-sepolia",
+      chain: "ARBITRUM SEPOLIA",
+      asset: "USDC",
+      decimals: 6,
+      assetAddress: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+      enabled: true,
+      usable: true,
+      address: STUB_ADDR,
+      availableAtomic: "0",
+      reservedAtomic: "0",
+      activeLocks: 0,
+    },
+  ],
+  trades: [],
+  observations: [],
+};
+
+function fxCaptureTrade(state = "quoted") {
+  const now = new Date().toISOString();
+  const trade = {
+    tradeId: FX_CAPTURE_TRADE_ID,
+    role: "requester",
+    state,
+    sourcePositionId: "base-sepolia-usdc",
+    destinationPositionId: "arbitrum-sepolia-usdc",
+    source: {
+      chainId: "84532",
+      chain: "BASE SEPOLIA",
+      asset: "USDC",
+      decimals: 6,
+      token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    },
+    destination: {
+      chainId: "421614",
+      chain: "ARBITRUM SEPOLIA",
+      asset: "USDC",
+      decimals: 6,
+      token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+      address: "0x1234567890abcdef1234567890abcdef12345678",
+      addressShort: "0x1234\u20265678",
+    },
+    outputAmountAtomic: "10000000",
+    outputAmountDisplay: "10.0 USDC",
+    inputAmountDisplay: "10.035 USDC",
+    route: {
+      dealer: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      spreadBps: 25,
+      brokerFeeAtomic: "10000",
+      dealerPrincipalAtomic: "10000000",
+      dealerSpreadAtomic: "25000",
+      dealerOperatingCostAtomic: "0",
+      estimatedCompletionSeconds: 24,
+      expiresAt: Math.floor(Date.now() / 1000) + 30,
+      totalInputAtomic: "10035000",
+    },
+    timeline: [
+      { state: "quoted", at: now },
+    ],
+    createdAt: now,
+    updatedAt: now,
+    endpointPaymentAuthorized: false,
+    endpointPaymentSubmitted: false,
+  };
+  if (state !== "quoted") {
+    trade.funding = {
+      address: STUB_ADDR,
+      addressShort: "0xA11C\u20260BEE",
+      chainId: "84532",
+      token: trade.source.token,
+      amountAtomic: "10035000",
+      expiresAt: Math.floor(Date.now() / 1000) + 600,
+    };
+    trade.timeline.push(
+      { state: "accepted", at: now },
+      { state: "awaiting_source_funds", at: now },
+    );
+  }
+  if (state === "funds_ready") {
+    trade.timeline.push(
+      { state: "source_lock_confirmed", at: now },
+      { state: "destination_lock_confirmed", at: now },
+      { state: "funds_ready", at: now },
+    );
+  }
+  return trade;
+}
 
 const HEALTH_FIXTURE = {
   version: 1,
@@ -115,6 +291,68 @@ function stubIpc() {
   }));
   ipcMain.handle("wallet:copyAddress", () => STUB_ADDR);
   ipcMain.handle("wallet:copyPrivateKey", () => true);
+  ipcMain.handle("fx:addressQr", (_event, { address }) => QRCode.toDataURL(address, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 144,
+    color: { dark: "#173d32ff", light: "#e3edcfff" },
+  }));
+  ipcMain.handle("fx:copyAddress", (_event, { address }) => address);
+  ipcMain.handle("fx:snapshot", () => structuredClone(fxCaptureSnapshot));
+  ipcMain.handle("fx:setPolicy", (_event, { patch }) => {
+    fxCaptureSnapshot.policy = { ...fxCaptureSnapshot.policy, ...patch };
+    return structuredClone(fxCaptureSnapshot);
+  });
+  ipcMain.handle("fx:setPositionEnabled", (_event, { id, enabled }) => {
+    const position = fxCaptureSnapshot.positions.find((entry) => entry.id === id);
+    if (position) position.enabled = enabled === true;
+    return structuredClone(fxCaptureSnapshot);
+  });
+  ipcMain.handle("fx:setChainSettings", (_event, { chainId, patch }) => {
+    const chain = fxCaptureSnapshot.chains.find(
+      (entry) => entry.chainId === String(chainId)
+    );
+    if (chain) Object.assign(chain, patch);
+    return structuredClone(fxCaptureSnapshot);
+  });
+  ipcMain.handle("fx:withdrawPosition", (_event, input) => ({
+    ...structuredClone(fxCaptureSnapshot),
+    inventoryTransfer: {
+      ...input,
+      transactionHash: `0x${"77".repeat(32)}`,
+    },
+  }));
+  ipcMain.handle("fx:requestQuote", () => {
+    const trade = fxCaptureTrade("quoted");
+    fxCaptureSnapshot.trades = [trade];
+    return structuredClone(trade);
+  });
+  ipcMain.handle("fx:acceptQuote", async () => {
+    const trade = fxCaptureTrade("awaiting_source_funds");
+    fxCaptureSnapshot.trades = [trade];
+    return structuredClone(trade);
+  });
+  ipcMain.handle("fx:checkFunding", () => {
+    const trade = fxCaptureTrade("funds_ready");
+    fxCaptureSnapshot.trades = [trade];
+    return structuredClone(trade);
+  });
+  ipcMain.handle("fx:cancel", () => {
+    const trade = fxCaptureTrade("cancelled");
+    trade.timeline.push({
+      state: "cancelled",
+      at: new Date().toISOString(),
+    });
+    trade.cancellation = {
+      reason: "owner_cancelled",
+    };
+    fxCaptureSnapshot.trades = [trade];
+    return structuredClone(trade);
+  });
+  ipcMain.handle("fx:refund", () => structuredClone(fxCaptureSnapshot.trades[0]));
+  ipcMain.handle("fx:reconcile", () => structuredClone(fxCaptureSnapshot.trades[0]));
+  ipcMain.handle("fx:trade", () => structuredClone(fxCaptureSnapshot.trades[0] || null));
+  ipcMain.handle("fx:exportEvidence", () => null);
   ipcMain.handle("wallet:beginFunding", async () => ({
     address: STUB_ADDR,
     qr: await QRCode.toDataURL(STUB_ADDR, { margin: 1, width: 144 }),
@@ -225,8 +463,8 @@ function stubIpc() {
   }));
   ipcMain.handle("settings:save", (_event, settings) => settings);
   ipcMain.handle("settings:testBrain", () => ({ ok: true, silent: false, model: "gemma-3-12b-it" }));
-  ipcMain.handle("window:close", () => {});
-  ipcMain.handle("window:quit", () => {});
+  ipcMain.handle("window:close", () => harnessWindow?.close());
+  ipcMain.handle("window:quit", () => app.quit());
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -244,7 +482,14 @@ function exec(win, code) {
 }
 
 async function main() {
-  app.setPath("userData", path.join(app.getPath("temp"), "versus-pet-shots"));
+  fs.mkdirSync(CAPTURE_RUNTIME, { recursive: true });
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch(
+    "disk-cache-dir",
+    path.join(CAPTURE_RUNTIME, "cache")
+  );
+  app.setPath("userData", path.join(CAPTURE_RUNTIME, "profile"));
+  app.setPath("cache", path.join(CAPTURE_RUNTIME, "cache"));
   await app.whenReady();
   fs.mkdirSync(OUT, { recursive: true });
   stubIpc();
@@ -252,7 +497,7 @@ async function main() {
   const win = new BrowserWindow({
     width: WIN_W,
     height: WIN_H,
-    show: false,
+    show: PREVIEW_FX_TAPE || PREVIEW_FX_REQUESTER,
     frame: false,
     transparent: true,
     resizable: false,
@@ -263,9 +508,10 @@ async function main() {
       contextIsolation: true,
       nodeIntegration: false,
       backgroundThrottling: false,
-      offscreen: true, // full-rate rAF without showing a window
+      offscreen: !(PREVIEW_FX_TAPE || PREVIEW_FX_REQUESTER), // full-rate rAF without showing a window
     },
   });
+  harnessWindow = win;
   win.webContents.setFrameRate(60);
   win.webContents.on("console-message", (_e, level, message) => {
     if (level >= 2) console.error(`[renderer] ${message}`);
@@ -273,6 +519,55 @@ async function main() {
 
   await win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   await sleep(900);
+
+  if (PREVIEW_FX_REQUESTER || CAPTURE_FX_REQUESTER) {
+    await exec(win, `
+      __pet.setBond(${JSON.stringify(ACTIVE_BOND)});
+      __pet.showClass();
+      __pet.setSurface("fx");
+      document.getElementById("fx-open-swap").click();
+      document.getElementById("fx-swap-amount").value = "10";
+      document.getElementById("fx-swap-recipient").value = "0x1234567890abcdef1234567890abcdef12345678";
+      document.getElementById("fx-swap-recipient").dispatchEvent(new Event("blur"));
+    `);
+    await sleep(650);
+    if (PREVIEW_FX_REQUESTER) return;
+    await shoot(win, "10f-fx-requester-entry");
+    await exec(win, `document.getElementById("fx-get-quotes").click();`);
+    await sleep(300);
+    await shoot(win, "10f-fx-requester-quote");
+    await exec(win, `document.getElementById("fx-requester-back").click();`);
+    await sleep(180);
+    await shoot(win, "10f-fx-requester-return");
+    await exec(win, `document.getElementById("fx-get-quotes").click();`);
+    await sleep(300);
+    await exec(win, `document.getElementById("fx-accept-quote").click();`);
+    await sleep(750);
+    await shoot(win, "10f-fx-requester-funding");
+    await exec(win, `document.getElementById("fx-check-funding").click();`);
+    await sleep(450);
+    await shoot(win, "10f-fx-requester-settled");
+    console.log(`done \u2192 ${OUT}`);
+    app.exit(0);
+    return;
+  }
+
+  if (PREVIEW_FX_TAPE) {
+    await exec(win, `
+      __pet.setBond(${JSON.stringify(ACTIVE_BOND)});
+      __pet.showClass();
+      __pet.setFxDemo(true);
+      __pet.setSurface("fx");
+      __pet.setFxMode("tape");
+      __pet.playFxTapeDemo(850);
+    `);
+    const replay = setInterval(() => {
+      if (win.isDestroyed()) return;
+      exec(win, `__pet.playFxTapeDemo(850);`).catch(() => {});
+    }, 5_600);
+    win.once("closed", () => clearInterval(replay));
+    return;
+  }
 
   const settingsHitTarget = await win.webContents.executeJavaScript(`(() => {
     const button = document.getElementById("btn-settings");
@@ -560,6 +855,56 @@ async function main() {
   await sleep(650);
   await shoot(win, "10c-mode-signal-brain");
 
+  await exec(win, `__pet.setSurface("cypher"); __pet.setFxMode("desk"); document.getElementById("btn-fx-wheel").click();`);
+  await sleep(450);
+  const fxSurface = await win.webContents.executeJavaScript(`document.getElementById("shell").dataset.surface`, true);
+  if (fxSurface !== "fx") throw new Error(`FX wheel did not open the FX surface: ${fxSurface}`);
+  await shoot(win, "10d-fx-desk");
+
+  for (const mode of ["stock", "tape", "risk"]) {
+    await exec(win, `document.getElementById("btn-mode").click();`);
+    await sleep(250);
+    const visibleMode = await win.webContents.executeJavaScript(`document.getElementById("shell").dataset.fxMode`, true);
+    if (visibleMode !== mode) throw new Error(`MODE did not advance FX tab to ${mode}: ${visibleMode}`);
+    await shoot(win, `10d-fx-${mode}`);
+  }
+
+  // Sample dealer rows so the populated layouts stay reviewable while the FX backend is unbuilt.
+  await exec(win, `__pet.setFxDemo(true);`);
+  await exec(win, `__pet.setFxMode("desk");`);
+  await sleep(800);
+  await shoot(win, "10e-fx-desk-open");
+  for (const mode of ["stock", "tape", "risk"]) {
+    await exec(win, `__pet.setFxMode("${mode}");`);
+    await sleep(250);
+    await shoot(win, `10e-fx-${mode}-populated`);
+  }
+  await exec(win, `__pet.setFxMode("tape"); __pet.playFxTapeDemo(700);`);
+  await sleep(140);
+  await shoot(win, "10e-fx-tape-feed-empty");
+  await sleep(520);
+  await shoot(win, "10e-fx-tape-feed-first");
+  await sleep(760);
+  await shoot(win, "10e-fx-tape-feed-second");
+  await exec(win, `__pet.setFxMode("stock"); document.getElementById("fx-add-position").click();`);
+  await sleep(250);
+  await shoot(win, "10e-fx-supported-assets");
+  await exec(win, `document.querySelector('#fx-add-position-sheet [data-fx-sheet-close]').click();`);
+  await exec(win, `document.querySelector('[data-position-id="base-sepolia-usdc"] .fx-act-fill').click();`);
+  await sleep(400);
+  await shoot(win, "10e-fx-deposit-sheet");
+  await exec(win, `document.querySelector('#fx-deposit-sheet [data-fx-sheet-close]').click(); document.querySelector('[data-position-id="base-sepolia-usdc"] .fx-bay-acts .fx-act:nth-child(2)').click();`);
+  await sleep(250);
+  await shoot(win, "10e-fx-withdraw-sheet");
+  await exec(win, `document.querySelector('#fx-withdraw-sheet [data-fx-sheet-close]').click(); __pet.setFxDemo(false); __pet.setFxMode("desk");`);
+  await sleep(200);
+
+  await exec(win, `document.getElementById("btn-fx-wheel").click();`);
+  await sleep(250);
+  const cypherSurface = await win.webContents.executeJavaScript(`document.getElementById("shell").dataset.surface`, true);
+  if (cypherSurface !== "cypher") throw new Error(`FX wheel did not return to the Cypher surface: ${cypherSurface}`);
+  await exec(win, `__pet.setMode("network");`);
+  await sleep(200);
   await exec(win, `document.getElementById("btn-help").click();`);
   await sleep(300);
   await shoot(win, "11-help-basics");

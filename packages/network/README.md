@@ -18,6 +18,7 @@ It currently provides:
 - fail-closed `AgentNFT.ownerOf` eligibility plus permanent Arena daily-voice checks for every postcard
 - Waku Filter + LightPush transport on deployment-and-launch-scoped content topics
 - bounded Waku Store catch-up for late joiners
+- automatic peer-health recovery with subscription rebuild and bounded Store replay
 - serialized launch-topic rollover with stale-topic rejection
 - signed Cypher epoch slots and restart-persistent rate nullifiers
 - postcard v4 UTC voice days earned by a confirmed daily penny

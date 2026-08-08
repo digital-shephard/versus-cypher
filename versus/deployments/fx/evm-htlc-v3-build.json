@@ -1,0 +1,41 @@
+{
+  "schema": "versus-fx-evm-v3-build-freeze",
+  "schemaVersion": 3,
+  "settlementMode": "requester-secret-source-first-compact",
+  "builds": {
+    "native": {
+      "adapterId": "evm-native-htlc-v3",
+      "adapterVersion": 3,
+      "contract": "EvmNativeHtlcV3",
+      "sourcePath": "versus/contracts/fx/EvmNativeHtlcV3.sol",
+      "sourceTag": "agentic-fx-requester-secret-v3",
+      "compiler": "0.8.26",
+      "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0xa23e6d5118ca862eb55fb7d70e2b1cb5b7ec94c403cf101e29797d2e31b6d1b6",
+      "creationCodeHash": "0xc661336012b2e2629502dd380520ca449b875d447db917826ba741df3c4e0d54",
+      "runtimeTemplateHash": "0x7c425905df36ba2ceeedbef5e0cefd2d44fe16f32c671c5a3f3fc117d8d007ce",
+      "creationCodeBytes": 3223,
+      "runtimeTemplateBytes": 2875
+    },
+    "erc20": {
+      "adapterId": "evm-htlc-v3",
+      "adapterVersion": 3,
+      "contract": "EvmHtlcV3",
+      "sourcePath": "versus/contracts/fx/EvmHtlcV3.sol",
+      "sourceTag": "agentic-fx-requester-secret-v3",
+      "compiler": "0.8.26",
+      "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+      "evmVersion": "cancun",
+      "optimizerRuns": 1,
+      "viaIR": true,
+      "sourceSha256": "0xfcdef75ab5add995a809a2631cab73f6e6b72e40ee6bee7e91b8a6b1c7e01921",
+      "creationCodeHash": "0x9fabd7ae8433f0e1696e94b1faf83a0138d297d3b293909ef80b1de32c181e3f",
+      "runtimeTemplateHash": "0x742f48b4fc1caf97f55a02da259ea78ba744f76f0198c901d178a5f5bba18cfd",
+      "creationCodeBytes": 5657,
+      "runtimeTemplateBytes": 5047
+    }
+  }
+}

@@ -355,6 +355,14 @@ class PetNetworkService {
     return transport.catchUpRain();
   }
 
+  async resumeTransport() {
+    const transport = this.node.transport;
+    if (!this.started || typeof transport?.ensureConnected !== "function") {
+      return { restarted: false, status: transport?.status?.() || null };
+    }
+    return transport.ensureConnected();
+  }
+
   async connect(peerUrl) {
     await this.node.connect(peerUrl);
     return this.status();

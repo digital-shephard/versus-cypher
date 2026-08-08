@@ -1,0 +1,48 @@
+{
+  "schema": "versus-fx-native-adapter-capabilities",
+  "schemaVersion": 1,
+  "adapter": {
+    "id": "evm-native-htlc",
+    "version": 1,
+    "contract": "EvmNativeHtlcV1",
+    "sourcePath": "versus/contracts/fx/EvmNativeHtlcV1.sol"
+  },
+  "build": {
+    "compiler": "0.8.26",
+    "evmVersion": "cancun",
+    "sourceTag": "agentic-fx-native-v1",
+    "optimizerRuns": 1,
+    "viaIR": true,
+    "sourceSha256": "0xea81dd22c015e56d4e631e340fab5593397952fca5470635fc8d4b2bdb922ad4",
+    "creationCodeHash": "0xda6b8e42b4b22c07cda53b08db6091e78ea3a884905703c69f18e9494e7f2244"
+  },
+  "capabilities": [
+    {
+      "chainId": "84532",
+      "adapterAddress": "0x7c917f09e1de03977acc14575b56932aa55da543",
+      "runtimeCodeHash": "0x752e5fe73aed992241e138ff550d4ab7fc127230b802e70b9c87239fec60f082",
+      "deploymentBlock": 44762481,
+      "asset": {
+        "assetId": "native:eth",
+        "symbol": "ETH",
+        "decimals": 18,
+        "standard": "NATIVE"
+      },
+      "confirmationPolicy": {
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 12
+      },
+      "timeoutPolicy": {
+        "minimumSeconds": 60,
+        "maximumSeconds": 604800,
+        "minimumCrossChainDeltaSeconds": 120
+      }
+    }
+  ],
+  "evidence": {
+    "transactionHash": "0x55a66556f1341153ac50119cbf8ec672dba9f7787ed1de3f8a38127a887fe429",
+    "deployer": "0xc69f8ec01a8e86ed071b410683ba005c8a925cf8",
+    "gasUsed": "594779",
+    "verificationUrl": "https://sepolia.basescan.org/address/0x7c917f09e1de03977acc14575b56932aa55da543#code"
+  }
+}

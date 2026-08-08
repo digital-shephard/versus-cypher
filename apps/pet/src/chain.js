@@ -18,6 +18,10 @@ const {
   splitDepositWei,
   validateNodeHatchQuote,
 } = require("./base-rpc");
+const {
+  fetchNodeFxUsdPrice,
+  fxPriceReferenceEndpointsFromEnv,
+} = require("./fx-price-reference");
 
 const LOCAL_FIXTURE_DEPOSIT_WEI = 3_000_000_000_000_000n;
 const LOCAL_FIXTURE_DEPOSIT_MICROS = 10_000_000n;
@@ -260,6 +264,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
   const trustedQuoteSigners = config.deployment.rainAttestors || [];
   const quoteEndpoints = hatchQuoteEndpointsFromEnv(config.env || process.env);
   const classStateEndpoints = classStateEndpointsFromEnv(config.env || process.env);
+  const fxPriceReferenceEndpoints = fxPriceReferenceEndpointsFromEnv(config.env || process.env);
   const nodeQuotesEnabled = chainId === 8453 && config.env?.VERSUS_HATCH_QUOTE_ENABLED !== "0" && trustedQuoteSigners.length > 0;
   const nodeClassStateEnabled = chainId === 8453 && config.env?.VERSUS_CLASS_STATE_ENABLED !== "0" && trustedQuoteSigners.length > 0;
   const signalSigners = new Map();
@@ -404,6 +409,13 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
 
   return {
     readPublicClassState,
+    async fxUsdPrice({ symbol }) {
+      return fetchNodeFxUsdPrice({
+        symbol,
+        endpoints: fxPriceReferenceEndpoints,
+        trustedSigners: trustedQuoteSigners,
+      });
+    },
     async transactionStatus(transactionHash) {
       if (!/^0x[a-f0-9]{64}$/i.test(String(transactionHash || ""))) throw new RangeError("transaction hash is invalid");
       const receipt = await provider.getTransactionReceipt(transactionHash);

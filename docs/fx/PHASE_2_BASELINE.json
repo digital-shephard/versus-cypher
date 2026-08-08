@@ -1,0 +1,21 @@
+{
+  "schema": "versus-fx-phase2-benchmark",
+  "version": 1,
+  "date": "2026-07-25",
+  "node": "v25.2.1",
+  "platform": "win32-x64",
+  "samplesPerScenario": 40,
+  "results": {
+    "success": {
+      "p50Milliseconds": 179.986,
+      "p95Milliseconds": 196.122,
+      "maximumMilliseconds": 220.761
+    },
+    "sourceRefund": {
+      "p50Milliseconds": 68.888,
+      "p95Milliseconds": 71.813,
+      "maximumMilliseconds": 73.396
+    }
+  },
+  "scope": "Local deterministic simulator only; no RPC, Waku, chain, or funds."
+}

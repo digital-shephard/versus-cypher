@@ -33,6 +33,31 @@ contextBridge.exposeInMainWorld("versus", {
   getAddressQr: () => ipcRenderer.invoke("wallet:getAddressQr"),
   copyAddress: () => ipcRenderer.invoke("wallet:copyAddress"),
   copyPrivateKey: () => ipcRenderer.invoke("wallet:copyPrivateKey"),
+  fxAddressQr: (address) => ipcRenderer.invoke("fx:addressQr", { address }),
+  fxCopyAddress: (address) => ipcRenderer.invoke("fx:copyAddress", { address }),
+  fxSnapshot: (force = false) => ipcRenderer.invoke("fx:snapshot", { force }),
+  fxSetPolicy: (patch) => ipcRenderer.invoke("fx:setPolicy", { patch }),
+  fxSetPositionEnabled: (id, enabled) =>
+    ipcRenderer.invoke("fx:setPositionEnabled", { id, enabled }),
+  fxSetChainSettings: (chainId, patch) =>
+    ipcRenderer.invoke("fx:setChainSettings", { chainId, patch }),
+  fxWithdrawPosition: (input) =>
+    ipcRenderer.invoke("fx:withdrawPosition", input),
+  fxRequestQuote: (input) => ipcRenderer.invoke("fx:requestQuote", input),
+  fxAcceptQuote: (tradeId) => ipcRenderer.invoke("fx:acceptQuote", { tradeId }),
+  fxCheckFunding: (tradeId) => ipcRenderer.invoke("fx:checkFunding", { tradeId }),
+  fxCancel: (tradeId) => ipcRenderer.invoke("fx:cancel", { tradeId }),
+  fxReconcile: (tradeId) => ipcRenderer.invoke("fx:reconcile", { tradeId }),
+  fxRefund: (tradeId) => ipcRenderer.invoke("fx:refund", { tradeId }),
+  fxRefundDealer: (tradeId) =>
+    ipcRenderer.invoke("fx:refundDealer", { tradeId }),
+  fxTrade: (tradeId) => ipcRenderer.invoke("fx:trade", { tradeId }),
+  fxExportEvidence: () => ipcRenderer.invoke("fx:exportEvidence"),
+  onFxChanged: (callback) => {
+    const listener = (_event, snapshot) => callback(snapshot);
+    ipcRenderer.on("fx:changed", listener);
+    return () => ipcRenderer.removeListener("fx:changed", listener);
+  },
   createWalletBackup: (password) => ipcRenderer.invoke("wallet:createBackup", { password }),
   restoreWalletBackup: (password) => ipcRenderer.invoke("wallet:restoreBackup", { password }),
   createCypherArchive: (password) => ipcRenderer.invoke("cypher:createArchive", { password }),

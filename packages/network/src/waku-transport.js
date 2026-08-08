@@ -8,6 +8,8 @@ const DEFAULT_WAKU_SHARD_COUNT = 8;
 const DEFAULT_WAKU_STORE_HISTORY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_WAKU_STORE_MESSAGE_LIMIT = 256;
 const DEFAULT_WAKU_STORE_PAGE_SIZE = 64;
+const DEFAULT_WAKU_RECONNECT_POLL_MS = 15_000;
+const DEFAULT_WAKU_RECONNECT_BACKOFF_MAX_MS = 120_000;
 const WAKU_ARTIFACT_KIND = "versus-artifact";
 const WAKU_ARTIFACT_VERSION = 1;
 
@@ -64,6 +66,8 @@ class WakuPostcardTransport extends EventEmitter {
     storeHistoryMs = DEFAULT_WAKU_STORE_HISTORY_MS,
     storeMessageLimit = DEFAULT_WAKU_STORE_MESSAGE_LIMIT,
     storePageSize = DEFAULT_WAKU_STORE_PAGE_SIZE,
+    reconnectPollMs = DEFAULT_WAKU_RECONNECT_POLL_MS,
+    reconnectBackoffMaxMs = DEFAULT_WAKU_RECONNECT_BACKOFF_MAX_MS,
     sdkLoader = () => import("@waku/sdk"),
     nodeFactory = null,
     allowInsecureWebSockets = false,
@@ -81,6 +85,12 @@ class WakuPostcardTransport extends EventEmitter {
     }
     if (!Number.isInteger(minimumPeerCount) || minimumPeerCount < 1 || minimumPeerCount > 32) {
       throw new RangeError("minimumPeerCount must be between 1 and 32");
+    }
+    if (!Number.isInteger(reconnectPollMs) || reconnectPollMs < 10) {
+      throw new RangeError("reconnectPollMs must be at least 10 milliseconds");
+    }
+    if (!Number.isInteger(reconnectBackoffMaxMs) || reconnectBackoffMaxMs < reconnectPollMs) {
+      throw new RangeError("reconnectBackoffMaxMs must be at least reconnectPollMs");
     }
     this.connectionless = true;
     this.handlesPropagation = true;
@@ -113,6 +123,8 @@ class WakuPostcardTransport extends EventEmitter {
     this.storeHistoryMs = storeHistoryMs;
     this.storeMessageLimit = storeMessageLimit;
     this.storePageSize = storePageSize;
+    this.reconnectPollMs = reconnectPollMs;
+    this.reconnectBackoffMaxMs = reconnectBackoffMaxMs;
     this.sdkLoader = sdkLoader;
     this.nodeFactory = nodeFactory;
     this.allowInsecureWebSockets = Boolean(allowInsecureWebSockets);
@@ -129,6 +141,12 @@ class WakuPostcardTransport extends EventEmitter {
     this.protocolCounts = { lightPush: 0, filter: 0, store: 0, relay: 0 };
     this.storeCatchUp = null;
     this.launchSwitch = Promise.resolve();
+    this.reconnectInFlight = null;
+    this.reconnectWatchdogTimer = null;
+    this.reconnectWatchdogInFlight = null;
+    this.reconnectDesired = false;
+    this.reconnectFailures = 0;
+    this.nextReconnectAt = 0;
     this.lastHistorySync = null;
     this.connectionState = "offline";
     this.connectionStateChangedAt = Date.now();
@@ -174,8 +192,76 @@ class WakuPostcardTransport extends EventEmitter {
       protocolCounts: { ...this.protocolCounts },
       storeEnabled: this.enableStore,
       historySync: this.lastHistorySync,
+      reconnect: {
+        active: Boolean(this.reconnectWatchdogTimer),
+        failures: this.reconnectFailures,
+        nextAttemptAt: this.nextReconnectAt || null,
+      },
       error: this.connectionError,
     };
+  }
+
+  resetReconnectBackoff() {
+    this.reconnectFailures = 0;
+    this.nextReconnectAt = 0;
+  }
+
+  recordReconnectFailure() {
+    this.reconnectFailures += 1;
+    const delay = Math.min(
+      this.reconnectPollMs * (2 ** Math.min(this.reconnectFailures - 1, 8)),
+      this.reconnectBackoffMaxMs
+    );
+    this.nextReconnectAt = Date.now() + delay;
+  }
+
+  startReconnectWatchdog() {
+    if (this.reconnectWatchdogTimer || !this.reconnectDesired) return;
+    this.reconnectWatchdogTimer = setInterval(() => {
+      this.runReconnectWatchdog().catch((error) => {
+        this.connectionError = error.message;
+      });
+    }, this.reconnectPollMs);
+    this.reconnectWatchdogTimer.unref?.();
+  }
+
+  stopReconnectWatchdog() {
+    if (this.reconnectWatchdogTimer) clearInterval(this.reconnectWatchdogTimer);
+    this.reconnectWatchdogTimer = null;
+    this.reconnectWatchdogInFlight = null;
+    this.resetReconnectBackoff();
+  }
+
+  async runReconnectWatchdog() {
+    if (!this.reconnectDesired || this.reconnectWatchdogInFlight) {
+      return this.reconnectWatchdogInFlight;
+    }
+    if (Date.now() < this.nextReconnectAt) return null;
+    this.reconnectWatchdogInFlight = (async () => {
+      try {
+        if (this.started && this.node) {
+          await this.refreshPeerDiagnostics();
+          if (
+            this.protocolCounts.lightPush >= this.minimumPeerCount &&
+            this.protocolCounts.filter >= this.minimumPeerCount
+          ) {
+            this.resetReconnectBackoff();
+            return { restarted: false, status: this.status() };
+          }
+        }
+        this.setConnectionState("reconnecting");
+        const result = await this.ensureConnected({ force: true, watchdog: true });
+        this.resetReconnectBackoff();
+        return result;
+      } catch (error) {
+        this.recordReconnectFailure();
+        this.setConnectionState("offline", error.message);
+        return { restarted: false, error: error.message, status: this.status() };
+      }
+    })().finally(() => {
+      this.reconnectWatchdogInFlight = null;
+    });
+    return this.reconnectWatchdogInFlight;
   }
 
   async listen() {
@@ -212,7 +298,9 @@ class WakuPostcardTransport extends EventEmitter {
     return { peerCount: this.connectedPeerCount, peers: this.connectedPeers, protocolCounts: this.protocolCounts };
   }
 
-  async start() {
+  async start({ reconnect = false } = {}) {
+    if (!reconnect) this.reconnectDesired = true;
+    if (reconnect && !this.reconnectDesired) return this.status();
     if (this.started) return;
     this.setConnectionState("reconnecting");
     try {
@@ -270,6 +358,8 @@ class WakuPostcardTransport extends EventEmitter {
         this.rainSubscription = true;
       }
       this.started = true;
+      this.resetReconnectBackoff();
+      this.startReconnectWatchdog();
       this.setConnectionState(this.classifyConnectionState());
       this.emit("ready", { contentTopic: this.contentTopic, peerCount: this.connectedPeerCount });
       this.storeCatchUp = this.catchUp();
@@ -278,6 +368,35 @@ class WakuPostcardTransport extends EventEmitter {
       this.setConnectionState("offline", error.message);
       throw error;
     }
+  }
+
+  async ensureConnected({ force = false, watchdog = false } = {}) {
+    if (!watchdog) this.reconnectDesired = true;
+    if (this.reconnectInFlight) return this.reconnectInFlight;
+    this.reconnectInFlight = (async () => {
+      if (!force && this.started && this.node) {
+        try {
+          await this.refreshPeerDiagnostics();
+          if (
+            this.protocolCounts.lightPush >= this.minimumPeerCount &&
+            this.protocolCounts.filter >= this.minimumPeerCount
+          ) {
+            this.storeCatchUp = this.catchUp();
+            if (this.rainDecoder) this.rainStoreCatchUp = this.catchUpRain();
+            return { restarted: false, status: this.status() };
+          }
+        } catch (error) {
+          this.connectionError = error.message;
+        }
+      }
+      await this.close({ preserveReconnect: true });
+      if (!this.reconnectDesired) return { restarted: false, status: this.status() };
+      await this.start({ reconnect: true });
+      return { restarted: true, status: this.status() };
+    })().finally(() => {
+      this.reconnectInFlight = null;
+    });
+    return this.reconnectInFlight;
   }
 
   onRainMessage(message, { history = false, contentTopic = this.rainContentTopic } = {}) {
@@ -564,9 +683,17 @@ class WakuPostcardTransport extends EventEmitter {
     return this.connectedPeers;
   }
 
-  async close() {
+  async close({ preserveReconnect = false } = {}) {
+    if (!preserveReconnect) {
+      this.reconnectDesired = false;
+      this.stopReconnectWatchdog();
+    }
     await this.launchSwitch.catch(() => {});
-    if (!this.node) return;
+    if (!this.node) {
+      this.started = false;
+      this.setConnectionState("offline");
+      return;
+    }
     clearTimeout(this.peerRefreshTimer);
     this.peerRefreshTimer = null;
     this.node.libp2p?.removeEventListener?.("peer:connect", this.onPeerTopologyChange);
@@ -593,6 +720,8 @@ class WakuPostcardTransport extends EventEmitter {
 }
 
 module.exports = {
+  DEFAULT_WAKU_RECONNECT_BACKOFF_MAX_MS,
+  DEFAULT_WAKU_RECONNECT_POLL_MS,
   DEFAULT_WAKU_STORE_HISTORY_MS,
   DEFAULT_WAKU_STORE_MESSAGE_LIMIT,
   DEFAULT_WAKU_STORE_PAGE_SIZE,
