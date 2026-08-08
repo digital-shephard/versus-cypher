@@ -35,6 +35,27 @@ function integer(name, fallback) {
   return value;
 }
 
+const X402_PUBLIC_TESTNET_RPCS = Object.freeze({
+  "43113": "FX_X402_AVALANCHE_FUJI_RPC_URL",
+  "84532": "FX_X402_BASE_SEPOLIA_RPC_URL",
+});
+
+function publicTestnetProviderConfiguration(manifest, env = process.env) {
+  const chainIds = manifest.capabilities
+    .map((item) => String(item.chainId))
+    .sort();
+  const supported = Object.keys(X402_PUBLIC_TESTNET_RPCS).sort();
+  if (chainIds.join(",") !== supported.join(",")) {
+    throw new Error("FX x402 runtime is restricted to the frozen public testnets");
+  }
+  return Object.fromEntries(chainIds.map((chainId) => {
+    const variable = X402_PUBLIC_TESTNET_RPCS[chainId];
+    const url = String(env[variable] || "").trim();
+    if (!url) throw new Error(`${variable} is required`);
+    return [chainId, { chainId: Number(chainId), url }];
+  }));
+}
+
 async function loadSigner() {
   const sources = [
     process.env.FX_PHASE7_BROKER_KEYSTORE,
@@ -176,24 +197,15 @@ async function main() {
     if (manifest.deploymentId !== deploymentId) {
       throw new Error("FX x402 manifest and coordination deployment differ");
     }
-    const chainIds = manifest.capabilities
-      .map((item) => String(item.chainId))
-      .sort();
-    if (chainIds.join(",") !== "421614,84532") {
-      throw new Error("FX x402 runtime is restricted to the public testnets");
-    }
-    const providers = {
-      "84532": new JsonRpcProvider(
-        required("FX_X402_BASE_SEPOLIA_RPC_URL"),
-        84532,
-        { staticNetwork: true }
-      ),
-      "421614": new JsonRpcProvider(
-        required("FX_X402_ARBITRUM_SEPOLIA_RPC_URL"),
-        421614,
-        { staticNetwork: true }
-      ),
-    };
+    const providerConfiguration = publicTestnetProviderConfiguration(manifest);
+    const providers = Object.fromEntries(
+      Object.entries(providerConfiguration).map(([chainId, configuration]) => [
+        chainId,
+        new JsonRpcProvider(configuration.url, configuration.chainId, {
+          staticNetwork: true,
+        }),
+      ])
+    );
     const handlers = [];
     if (x402Enabled) {
       x402Coordinator = new FxX402SwapCoordinator({
@@ -327,7 +339,11 @@ async function main() {
   process.once("SIGTERM", () => stop().finally(() => process.exit(0)));
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack || error.message}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack || error.message}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { publicTestnetProviderConfiguration };
