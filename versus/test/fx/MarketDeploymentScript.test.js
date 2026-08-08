@@ -47,4 +47,19 @@ describe("FX market deployment runtime visibility", function () {
     )).to.throw("differs from frozen artifact");
     expect(fs.readFileSync(outputPath, "utf8")).to.equal(frozen);
   });
+
+  it("accepts Windows checkout line endings without weakening byte checks", function () {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-market-crlf-"));
+    const outputPath = path.join(directory, "deployment.json");
+    fs.writeFileSync(outputPath, '{\r\n  "deploymentId": "0x01"\r\n}\r\n');
+
+    expect(writeFrozenArtifact(
+      outputPath,
+      '{\n  "deploymentId": "0x01"\n}\n'
+    )).to.equal("unchanged-platform-eol");
+    expect(() => writeFrozenArtifact(
+      outputPath,
+      '{\n  "deploymentId": "0x02"\n}\n'
+    )).to.throw("differs from frozen artifact");
+  });
 });
