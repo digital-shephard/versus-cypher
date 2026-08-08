@@ -307,6 +307,11 @@ test("real signed requester and deterministic dealer coordinate over isolated Wa
   const route = requester.selectRoute(rfq.tradeId);
   assert.equal(route.dealer, dealerWallet.address.toLowerCase());
 
+  const replayed = once(dealer, "quoteReplayed");
+  assert.equal(dealerSession.ingest(rfq, { live: true }).status, "duplicate");
+  const [replayedQuote] = await replayed;
+  assert.equal(replayedQuote.id, route.quoteId);
+
   const reserved = once(requester, "reserved");
   const secretHash = keccak256(toUtf8Bytes("phase-6-secret"));
   const accepted = await requester.accept({

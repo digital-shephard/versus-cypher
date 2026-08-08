@@ -189,7 +189,12 @@ class FxCoordinationSession extends EventEmitter {
   ingest(envelope, metadata = {}) {
     try {
       const admitted = this.admission(envelope, metadata);
-      if (admitted.duplicate) return { status: "duplicate" };
+      if (admitted.duplicate) {
+        if (!metadata.history) {
+          this.emit("duplicate", admitted.envelope, metadata);
+        }
+        return { status: "duplicate" };
+      }
       const result = this.journal.apply(admitted.envelope, {
         now: this.now(),
         temporal: metadata.desktopRecovery !== true,

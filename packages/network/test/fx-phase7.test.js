@@ -694,6 +694,34 @@ test("broker returns shortly after the first verified quote", async (t) => {
   assert.equal(broker.status().quoteSettleWindowMs, 1_250);
 });
 
+test("broker safely rebroadcasts the same RFQ when discovery is quiet", async (t) => {
+  const context = await fixture();
+  const signer = Wallet.createRandom();
+  const session = new FakeBrokerSession({ signer, quote: context.quote });
+  let waits = 0;
+  const broker = new FxPublicBroker({
+    session,
+    signer,
+    brokerFeeAtomic: "0",
+    observationWindowMs: 30,
+    quoteSettleWindowMs: 0,
+    rfqRebroadcastIntervalMs: 10,
+    now: () => NOW + 3,
+    waitForQuote: async () => {
+      waits += 1;
+      if (waits === 2) session.emit("accepted", context.quote, { live: true });
+    },
+    sleep: async () => {},
+  });
+  await broker.start();
+  t.after(() => broker.close());
+
+  const proposal = await broker.requestRoute(context.rfq);
+  assert.equal(proposal.route.quoteId, context.quote.id);
+  assert.equal(session.published.length, 2);
+  assert.equal(session.published[0].id, session.published[1].id);
+});
+
 test("self-routing reports an empty dealer response without exposing compiler internals", async (t) => {
   const context = await fixture();
   const signer = Wallet.createRandom();

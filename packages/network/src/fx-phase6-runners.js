@@ -43,18 +43,38 @@ class FxDeterministicDealer extends EventEmitter {
     }
     this.pendingRfqs = new Map();
     this.quotes = new Map();
+    this.quoteReplayCounts = new Map();
     this.historicalRfqs = new Map();
     this.historicalAccepts = new Map();
     this.boundAccepted = (envelope, metadata) => {
       this.onEnvelope(envelope, metadata).catch((error) => this.emit("error", error));
     };
+    this.boundDuplicate = (envelope, metadata) => {
+      this.onDuplicate(envelope, metadata).catch((error) => this.emit("error", error));
+    };
   }
 
   async start() {
     this.session.on("accepted", this.boundAccepted);
+    this.session.on("duplicate", this.boundDuplicate);
     await this.session.start();
     await this.reconcileHistory();
     return this.status();
+  }
+
+  async onDuplicate(envelope, metadata = {}) {
+    if (envelope.type !== "fx_rfq") return;
+    const quote = this.quotes.get(envelope.tradeId);
+    if (
+      !quote ||
+      quote.payload.rfqId !== envelope.id ||
+      quote.expiresAt < this.now()
+    ) return;
+    const replayCount = this.quoteReplayCounts.get(envelope.tradeId) || 0;
+    if (replayCount >= 2) return;
+    this.quoteReplayCounts.set(envelope.tradeId, replayCount + 1);
+    await this.session.transport.publish(quote);
+    this.emit("quoteReplayed", quote, { rfq: envelope, ...metadata });
   }
 
   status() {
@@ -98,6 +118,7 @@ class FxDeterministicDealer extends EventEmitter {
     }
     if (envelope.type === "fx_cancel") {
       this.quotes.delete(envelope.tradeId);
+      this.quoteReplayCounts.delete(envelope.tradeId);
       this.historicalAccepts.delete(envelope.tradeId);
       this.emit("cancelled", envelope, metadata);
       return;
@@ -220,8 +241,10 @@ class FxDeterministicDealer extends EventEmitter {
 
   async close() {
     this.session.off("accepted", this.boundAccepted);
+    this.session.off("duplicate", this.boundDuplicate);
     for (const timer of this.pendingRfqs.values()) this.clearTimer(timer);
     this.pendingRfqs.clear();
+    this.quoteReplayCounts.clear();
     await this.session.close();
   }
 }

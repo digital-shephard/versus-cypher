@@ -212,6 +212,7 @@ class FxPublicBroker extends EventEmitter {
     brokerFeeAtomic = "0",
     observationWindowMs = 15_000,
     quoteSettleWindowMs = 1_250,
+    rfqRebroadcastIntervalMs = 5_000,
     maxReferenceAgeSeconds,
     maxTrackedTradeSets = 256,
     now = () => Math.floor(Date.now() / 1000),
@@ -230,6 +231,7 @@ class FxPublicBroker extends EventEmitter {
     this.brokerFeeAtomic = String(brokerFeeAtomic);
     this.observationWindowMs = Number(observationWindowMs);
     this.quoteSettleWindowMs = Number(quoteSettleWindowMs);
+    this.rfqRebroadcastIntervalMs = Number(rfqRebroadcastIntervalMs);
     this.maxReferenceAgeSeconds = maxReferenceAgeSeconds;
     this.maxTrackedTradeSets = Number(maxTrackedTradeSets);
     if (!/^\d+$/.test(this.brokerFeeAtomic)) {
@@ -240,6 +242,8 @@ class FxPublicBroker extends EventEmitter {
       this.observationWindowMs < 0 ||
       !Number.isSafeInteger(this.quoteSettleWindowMs) ||
       this.quoteSettleWindowMs < 0 ||
+      !Number.isSafeInteger(this.rfqRebroadcastIntervalMs) ||
+      this.rfqRebroadcastIntervalMs < 1 ||
       !Number.isSafeInteger(this.maxTrackedTradeSets) ||
       this.maxTrackedTradeSets < 1
     ) {
@@ -305,6 +309,7 @@ class FxPublicBroker extends EventEmitter {
       broker: this.metrics?.broker || null,
       observationWindowMs: this.observationWindowMs,
       quoteSettleWindowMs: this.quoteSettleWindowMs,
+      rfqRebroadcastIntervalMs: this.rfqRebroadcastIntervalMs,
       openTradeSets: this.quotes.size,
       transport: this.session.transport.status?.() || null,
     };
@@ -333,10 +338,43 @@ class FxPublicBroker extends EventEmitter {
     });
   }
 
-  async collectRouteQuotes(tradeId, maximumWaitMs) {
+  async collectRouteQuotes(tradeId, maximumWaitMs, rebroadcast = null) {
     const startedAt = Date.now();
+    if (
+      maximumWaitMs === 0 &&
+      (this.quotes.get(tradeId) || []).length === 0
+    ) {
+      await this.waitForQuote(tradeId, 0);
+    }
+    let rebroadcasts = 0;
+    while (
+      (this.quotes.get(tradeId) || []).length === 0 &&
+      rebroadcasts < 2
+    ) {
+      const remainingMs = Math.max(
+        0,
+        maximumWaitMs - (Date.now() - startedAt)
+      );
+      if (remainingMs === 0) break;
+      await this.waitForQuote(
+        tradeId,
+        Math.min(this.rfqRebroadcastIntervalMs, remainingMs)
+      );
+      if ((this.quotes.get(tradeId) || []).length > 0) break;
+      const remainingAfterWait = Math.max(
+        0,
+        maximumWaitMs - (Date.now() - startedAt)
+      );
+      if (remainingAfterWait === 0 || typeof rebroadcast !== "function") break;
+      await rebroadcast();
+      rebroadcasts += 1;
+    }
     if ((this.quotes.get(tradeId) || []).length === 0) {
-      await this.waitForQuote(tradeId, maximumWaitMs);
+      const remainingMs = Math.max(
+        0,
+        maximumWaitMs - (Date.now() - startedAt)
+      );
+      if (remainingMs > 0) await this.waitForQuote(tradeId, remainingMs);
     }
     if ((this.quotes.get(tradeId) || []).length === 0) return;
     const remainingMs = Math.max(
@@ -382,7 +420,8 @@ class FxPublicBroker extends EventEmitter {
       );
       await this.collectRouteQuotes(
         verifiedRfq.tradeId,
-        Math.min(this.observationWindowMs, remainingMs)
+        Math.min(this.observationWindowMs, remainingMs),
+        () => this.session.transport.publish(verifiedRfq)
       );
       quotes = [...(this.quotes.get(verifiedRfq.tradeId) || [])];
       if (quotes.length === 0) {
