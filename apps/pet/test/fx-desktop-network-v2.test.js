@@ -357,6 +357,102 @@ function sessionFactory({ root, bus, now, deploymentId = DEPLOYMENT_ID }) {
   };
 }
 
+test("dealer arming can retry after a transient Filter rejection", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-dealer-retry-"));
+  const bus = new FakeWakuBus();
+  const roles = {
+    requester: Wallet.createRandom(),
+    dealer: Wallet.createRandom(),
+    broker: Wallet.createRandom(),
+    relayer: Wallet.createRandom(),
+  };
+  const evm = new FakeV2Evm(roles);
+  let rejectDealerSubscription = true;
+  const runtime = new FxDesktopNetworkRuntime({
+    dataDirectory: root,
+    walletProvider: (role) => ({
+      address: roles[role].address,
+      privateKey: roles[role].privateKey,
+    }),
+    evm,
+    deploymentId: DEPLOYMENT_ID,
+    now: () => evm.now,
+    nativeUsdPriceProvider: async () => 3_000_000_000n,
+    protocolVersion: 2,
+    sessionFactory: ({ role, fileName, signer }) => {
+      const journal = new FxTradeJournal({
+        filePath: path.join(root, fileName),
+        deploymentId: DEPLOYMENT_ID,
+        now: () => evm.now,
+        minimumTimeoutDeltaSeconds: 3_600,
+      });
+      const transport = new FxWakuTransport({
+        deploymentId: DEPLOYMENT_ID,
+        bootstrapPeers: ["relay-a"],
+        now: () => evm.now * 1_000,
+        sdkLoader: async () => ({
+          Protocols: { LightPush: "lightpush", Filter: "filter" },
+        }),
+        nodeFactory: async () => {
+          const node = bus.node();
+          if (role === "dealer" && rejectDealerSubscription) {
+            const subscribe = node.filter.subscribe.bind(node.filter);
+            node.filter.subscribe = async (...arguments_) => {
+              if (rejectDealerSubscription) {
+                rejectDealerSubscription = false;
+                return false;
+              }
+              return subscribe(...arguments_);
+            };
+          }
+          return node;
+        },
+      });
+      return {
+        journal,
+        session: new FxCoordinationSession({
+          deploymentId: DEPLOYMENT_ID,
+          signer,
+          role,
+          journal,
+          transport,
+          now: () => evm.now,
+        }),
+      };
+    },
+  });
+  t.after(async () => {
+    await runtime.close().catch(() => {});
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+  const input = {
+    policy: {
+      minimumTradeUsd: 0.01,
+      maximumTradeUsd: 50,
+      maximumExposureUsd: 1_000,
+      maximumRequesterExposureUsd: 100,
+      maximumAssetExposureUsd: 500,
+      maximumGasUsd: 5,
+      maximumOverheadBps: 500,
+      minimumSpreadBps: 25,
+      inventoryPremiumBps: 0,
+    },
+    positions: [{
+      id: "base-sepolia-eth",
+      enabled: true,
+      chainId: BASE,
+      assetAddress: FX_NATIVE_ETH_ADDRESS,
+    }],
+  };
+
+  await assert.rejects(runtime.armDealer(input), /Filter rejected/);
+  assert.equal(runtime.status().dealer.active, false);
+  assert.equal(runtime.dealer, null);
+
+  const armed = await runtime.armDealer(input);
+  assert.equal(armed.active, true);
+});
+
 test("V2 delivers exact destination funds through a paid relay with no requester destination gas", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-v2-e2e-"));
   const bus = new FakeWakuBus();

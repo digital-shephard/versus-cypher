@@ -2185,14 +2185,23 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.dealer.on("error", (error) => {
       this.emit("error", error);
     });
-    await Promise.all([
-      this.dealer.start(),
-      this.ensureRelayerSession(),
-    ]);
-    this.#startRecoveryLoop();
-    await this.reconcileDealerExposure({ force: true });
-    this.emit("status", this.status());
-    return this.status().dealer;
+    try {
+      await Promise.all([
+        this.dealer.start(),
+        this.ensureRelayerSession(),
+      ]);
+      this.#startRecoveryLoop();
+      await this.reconcileDealerExposure({ force: true });
+      this.emit("status", this.status());
+      return this.status().dealer;
+    } catch (error) {
+      // A public Filter subscription can fail after the dealer object and its
+      // journals have been installed. Roll that partial arm back completely so
+      // the owner's next attempt creates a fresh transport instead of returning
+      // the permanently inactive dealer left by the failed start.
+      await this.disarmDealer().catch(() => {});
+      throw error;
+    }
   }
 
   async inventorySnapshot(positions, { maximumAgeMs = 15_000 } = {}) {
