@@ -527,7 +527,7 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.doesNotMatch(dealerToggle, /fxSetEnabled/);
   assert.doesNotMatch(service, /Enable the FX lab before requesting a quote/);
   assert.match(renderer, /SEARCHING ONLINE DEALERS \\u00b7 THIS CAN TAKE A FEW SECONDS/);
-  assert.match(main, /brokerObservationWindowMs: 5_000/);
+  assert.match(main, /brokerObservationWindowMs: 15_000/);
   assert.match(main, /brokerQuoteSettleWindowMs: 1_250/);
   assert.match(main, /dealerObservationWindowMs: 250/);
   assert.match(main, /fxNetworkRuntime\.warmRequester\(\)/);

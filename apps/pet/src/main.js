@@ -196,7 +196,11 @@ const fxNetworkRuntime = new FxDesktopNetworkRuntime({
   coordinationDomain: fxMarketRuntime?.coordinationDomain,
   nativeUsdPriceProvider: fxNativeUsdPriceProvider,
   assetUsdPriceProvider: fxAssetUsdPriceProvider,
-  brokerObservationWindowMs: 5_000,
+  // Public Filter + LightPush delivery can take several seconds even while
+  // every relay is healthy. Keep the broker aligned with the network
+  // package's public-route default so a valid remote quote is not discarded
+  // merely because it arrived after the old UI-oriented five-second window.
+  brokerObservationWindowMs: 15_000,
   brokerQuoteSettleWindowMs: 1_250,
   dealerObservationWindowMs: 250,
   now: () => Math.floor(networkNowMs() / 1000),
