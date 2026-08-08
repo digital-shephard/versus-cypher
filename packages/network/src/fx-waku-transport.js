@@ -297,6 +297,11 @@ class FxWakuTransport extends EventEmitter {
       this.historyCatchUp = this.catchUp();
       return this.status();
     } catch (error) {
+      // A failed Filter subscription can happen after the node has connected and
+      // some topics are already active. Tear that partial node down before a
+      // caller retries so stale subscriptions do not consume relay capacity or
+      // deliver duplicate messages into the replacement transport.
+      await this.close({ preserveReconnect: true }).catch(() => {});
       this.setState("offline", error.message);
       throw error;
     }

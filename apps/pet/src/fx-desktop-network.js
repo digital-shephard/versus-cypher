@@ -249,11 +249,13 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     this.dealerPositions = [];
     this.processing = new Map();
     this.relayerProcessing = new Map();
+    this.eventProcessing = new Set();
     this.inventoryCache = null;
     this.dealerRecoveries = [];
     this.lastDealerReconcileAt = 0;
     this.recoveryTimer = null;
     this.recoveryInFlight = null;
+    this.closing = false;
     this.localSessions = new Set();
     this.localSessionListeners = new Map();
     this.dealerSecretDirectory = path.join(
@@ -569,10 +571,11 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   #startRecoveryLoop() {
-    if (this.recoveryTimer) return;
+    if (this.recoveryTimer || this.closing) return;
     const run = () => {
+      if (this.closing) return;
       this.reconcileAutomaticRecoveries().catch((error) => {
-        this.emit("error", error);
+        if (!this.closing) this.emit("error", error);
       });
     };
     this.recoveryTimer = setInterval(run, FX_RECOVERY_POLL_MS);
@@ -581,6 +584,7 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   async reconcileAutomaticRecoveries() {
+    if (this.closing) return this.status();
     if (this.recoveryInFlight) return this.recoveryInFlight;
     this.recoveryInFlight = (async () => {
       if (this.dealer) {
@@ -2136,8 +2140,12 @@ class FxDesktopNetworkRuntime extends EventEmitter {
       protocolVersion: this.protocolVersion,
     });
     this.dealerSession.on("accepted", (envelope, metadata) => {
-      this.#onDealerEnvelope(envelope, metadata).catch((error) => {
-        this.emit("error", error);
+      const operation = this.#onDealerEnvelope(envelope, metadata).finally(() => {
+        this.eventProcessing.delete(operation);
+      });
+      this.eventProcessing.add(operation);
+      operation.catch((error) => {
+        if (!this.closing) this.emit("error", error);
       });
     });
     this.dealer.on("quoted", (quote) => {
@@ -4148,15 +4156,27 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   async close() {
+    this.closing = true;
     if (this.recoveryTimer) {
       clearInterval(this.recoveryTimer);
       this.recoveryTimer = null;
     }
+    await this.recoveryInFlight?.catch(() => {});
+    await Promise.allSettled([
+      ...this.processing.values(),
+      ...this.relayerProcessing.values(),
+      ...this.eventProcessing.values(),
+    ]);
     await Promise.allSettled([
       this.broker?.close?.(),
       this.requesterSession?.close?.(),
       this.relayerSession?.close?.(),
       this.dealer?.close?.(),
+    ]);
+    await Promise.allSettled([
+      ...this.processing.values(),
+      ...this.relayerProcessing.values(),
+      ...this.eventProcessing.values(),
     ]);
     for (const session of [...this.localSessions]) {
       this.#unregisterLocalSession(session);

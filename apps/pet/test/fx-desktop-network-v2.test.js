@@ -1456,3 +1456,60 @@ test("V3 dealer resumes a source claim after crashing behind destination executi
   assert.equal(actionCount(harness.evm, "claim", "source"), 1);
   assert.equal(runtime.exposureJournal.activeTrades().length, 0);
 });
+
+test("runtime close waits for in-flight recovery before closing journals", async (t) => {
+  const harness = v2Harness(t, {
+    tradeId: `0x${"59".repeat(32)}`,
+    protocolVersion: 3,
+  });
+  const runtime = harness.createRuntime();
+  let releaseRecovery;
+  let journalClosed = false;
+  runtime.exposureJournal = {
+    close() {
+      journalClosed = true;
+    },
+  };
+  runtime.dealerSession = {};
+  runtime.reconcileDealerExposure = () => new Promise((resolve) => {
+    releaseRecovery = resolve;
+  });
+
+  const recovery = runtime.reconcileAutomaticRecoveries();
+  await waitUntil(() => releaseRecovery, { label: "recovery start" });
+  const closing = runtime.close();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(journalClosed, false);
+
+  releaseRecovery({});
+  await recovery;
+  await closing;
+  assert.equal(journalClosed, true);
+});
+
+test("runtime close waits for tracked envelope handlers", async (t) => {
+  const harness = v2Harness(t, {
+    tradeId: `0x${"5a".repeat(32)}`,
+    protocolVersion: 3,
+  });
+  const runtime = harness.createRuntime();
+  let releaseHandler;
+  let journalClosed = false;
+  runtime.exposureJournal = {
+    close() {
+      journalClosed = true;
+    },
+  };
+  const handler = new Promise((resolve) => {
+    releaseHandler = resolve;
+  });
+  runtime.eventProcessing.add(handler);
+
+  const closing = runtime.close();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(journalClosed, false);
+
+  releaseHandler();
+  await closing;
+  assert.equal(journalClosed, true);
+});

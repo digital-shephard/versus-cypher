@@ -197,6 +197,56 @@ test("FX Waku watchdog reconnects every topic after a quiet peer loss", async ()
   assert.equal(transport.status().reconnect.active, false);
 });
 
+test("FX Waku startup failure tears down partial subscriptions before retry", async () => {
+  const now = { value: 1_800_000_000 };
+  const bus = new FakeWakuBus();
+  let starts = 0;
+  let failedNode;
+  let failedNodeStops = 0;
+  const transport = new FxWakuTransport({
+    deploymentId: DEPLOYMENT_ID,
+    bootstrapPeers: BOOTSTRAPS,
+    now: () => now.value * 1000,
+    sdkLoader: async () => ({ Protocols: { LightPush: "lightpush", Filter: "filter" } }),
+    nodeFactory: async () => {
+      starts += 1;
+      const node = bus.node();
+      if (starts === 1) {
+        failedNode = node;
+        const stop = node.stop.bind(node);
+        const subscribe = node.filter.subscribe.bind(node.filter);
+        let subscriptions = 0;
+        node.filter.subscribe = async (...arguments_) => {
+          subscriptions += 1;
+          if (subscriptions === 2) return false;
+          return subscribe(...arguments_);
+        };
+        node.stop = async () => {
+          failedNodeStops += 1;
+          await stop();
+        };
+      }
+      return node;
+    },
+  });
+
+  await assert.rejects(
+    transport.start(),
+    /FX Waku Filter rejected/
+  );
+  assert.equal(failedNodeStops, 1);
+  assert.equal(bus.nodes.has(failedNode), false);
+  assert.equal(transport.node, null);
+  assert.equal(transport.encoders.size, 0);
+  assert.equal(transport.decoders.size, 0);
+  assert.equal(transport.status().state, "offline");
+
+  await transport.start();
+  assert.equal(starts, 2);
+  assert.equal(transport.status().state, "ready");
+  await transport.close();
+});
+
 test("a frozen coordination domain scopes Waku topics without replacing deployment identity", () => {
   const deploymentTopics = createFxContentTopics({
     deploymentId: DEPLOYMENT_ID,

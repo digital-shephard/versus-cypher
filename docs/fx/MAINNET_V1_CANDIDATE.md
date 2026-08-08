@@ -110,9 +110,20 @@ freezes and requires an exact object match.
 
 Automated acceptance currently passes the complete desktop and network suites,
 all V3 and exact Hardhat tests, and the deep V3 and exact Foundry fuzz/invariant
-profiles.
-Physical two-machine swaps and Circle-faucet stablecoin/x402 runs remain a
-separate cohort gate and are not implied by those automated results.
+profiles. The funded single-workstation live-chain cohort also passes all 30
+routes, both-chain zero-gas recipients, both-chain timeout/refunds, mid-swap
+restart recovery, stale-price and unavailable-RPC rejection, deterministic
+relay reconnect, and four stock generic x402 exact payments covering USDC and
+EURC as inputs on both chains.
+
+This evidence does not substitute for a physical second machine. A diagnostic
+public-Waku coordination run subsequently connected to both Versus relays,
+used two LightPush, Filter, and Store peers, recovered the RFQ through Store,
+and produced matching requester/dealer state hashes. One earlier explicit
+attempt had a transient Filter-subscription failure; transport startup now
+tears down every partial subscription before retry so it cannot leak relay
+capacity or duplicate deliveries. Physical two-machine settlement,
+public-relay reconnect, and public-relay x402 remain separate open gates.
 
 ## Acceptance gates
 
@@ -126,6 +137,13 @@ separate cohort gate and are not implied by those automated results.
 8. Run generic exact x402 inputs for USDC and EURC through both public relays.
 9. Complete an adversarial review of the frozen artifacts and all deployment records.
 10. Merge the reviewed branch to `main` only after testnet acceptance. Mainnet deployment happens from that reviewed merge commit, after a separate human address/hash review and explicit authorization.
+
+Gates 1-4 and 9 are complete. Gates 5-8 are complete only for the funded
+single-workstation live-chain cohort; their physical two-machine/public-relay
+forms remain open. The dated review is preserved
+in [`PUBLIC_TESTNET_V1_ADVERSARIAL_REVIEW_2026-08-07.md`](./PUBLIC_TESTNET_V1_ADVERSARIAL_REVIEW_2026-08-07.md).
+It closes frozen-artifact and deployment-record validation findings but does
+not close the physical acceptance gates or authorize mainnet.
 
 ## Commands
 
@@ -141,6 +159,16 @@ $env:FX_EXPLORER_VERIFY="true"
 npm run fx:market:verify:base-sepolia --prefix versus
 npm run fx:market:verify:avalanche-fuji --prefix versus
 npm run fx:market:assemble:testnet --prefix versus
+
+$env:VERSUS_FX_TESTNET_ACCEPT="I_UNDERSTAND_PUBLIC_TESTNET_ONLY"
+npm run acceptance:fx-public-testnet --prefix apps/pet
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --x402
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --zero-destination-gas
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --restart-mid-swap
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --timeout-refund
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --stale-price
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --stale-rpc
+npm run acceptance:fx-public-testnet --prefix apps/pet -- --relay-reconnect
 
 $env:VERSUS_FX_MARKET_DEPLOYMENT=(Resolve-Path ".\versus\deployments\fx\public-testnet-v1-market-deployment.json")
 $env:VERSUS_FX_DEVELOPMENT="1"

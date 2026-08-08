@@ -6,7 +6,7 @@ const { x402Client } = require("@x402/core/client");
 const { ExactEvmScheme } = require("@x402/evm/exact/client");
 const { wrapFetchWithPayment } = require("@x402/fetch");
 
-const TESTNETS = new Set(["eip155:84532", "eip155:421614"]);
+const TESTNETS = new Set(["eip155:43113", "eip155:84532"]);
 const TERMINAL = new Set(["complete", "refunded", "defaulted"]);
 
 function required(name) {

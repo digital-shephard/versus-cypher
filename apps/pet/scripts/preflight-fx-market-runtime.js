@@ -3,7 +3,10 @@ const path = require("node:path");
 const { Contract, Wallet, getAddress, keccak256 } = require("ethers");
 const { FxEvmCohort } = require("../src/fx-evm-cohort");
 const { loadFxMarketRuntime } = require("../src/fx-market-runtime");
-const { fetchNodeFxPriceReference } = require("../src/fx-price-reference");
+const {
+  fetchNodeFxPriceReference,
+  fxPriceReferenceEndpointsFromEnv,
+} = require("../src/fx-price-reference");
 
 const MAXIMUM_BLOCK_AGE_SECONDS = 120;
 const EXACT_FACTORY_ABI = Object.freeze([
@@ -175,7 +178,9 @@ async function main() {
     "base.json"
   ));
   const prices = await fetchNodeFxPriceReference({
+    endpoints: fxPriceReferenceEndpointsFromEnv(environment),
     trustedSigners: baseDeployment.rainAttestors,
+    timeoutMs: 10_000,
   });
   assert(prices.freshness === "fresh", "signed FX price quorum is stale");
   for (const symbol of runtime.nativePriceSymbols.concat("EURC")) {
