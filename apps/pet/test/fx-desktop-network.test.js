@@ -118,6 +118,53 @@ test("foreground recovery resumes every active FX transport", async (t) => {
   ]);
 });
 
+test("foreground recovery recreates missing requester roles sequentially", async (t) => {
+  const { runtime } = fixture();
+  t.after(() => runtime.close());
+  const calls = [];
+  const session = (role) => ({
+    async resume() {
+      calls.push(`resume:${role}`);
+    },
+    status() {
+      return { active: true, transport: { state: "ready" } };
+    },
+    async close() {},
+  });
+  runtime.ensureBroker = async () => {
+    calls.push("ensure:broker");
+    runtime.broker ||= {
+      session: session("broker"),
+      status: () => ({ active: true }),
+      async close() {},
+    };
+    return runtime.broker;
+  };
+  runtime.ensureRequesterSession = async () => {
+    calls.push("ensure:requester");
+    runtime.requesterSession ||= session("requester");
+    return runtime.requesterSession;
+  };
+  runtime.ensureRelayerSession = async () => {
+    calls.push("ensure:relayer");
+    runtime.relayerSession ||= session("relayer");
+    return runtime.relayerSession;
+  };
+
+  assert.deepEqual(await runtime.resumeTransports(), {
+    attempted: ["broker", "requester", "relayer"],
+    force: false,
+  });
+  assert.deepEqual(calls, [
+    "ensure:broker",
+    "ensure:requester",
+    "ensure:relayer",
+    "resume:broker",
+    "resume:requester",
+    "resume:relayer",
+  ]);
+});
+
 test("desktop self-routing waits for one internal broker startup", async (t) => {
   let releaseStartup;
   const startupGate = new Promise((resolve) => {

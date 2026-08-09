@@ -450,11 +450,9 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   async queryRoutes({ rfq }) {
-    const [broker] = await Promise.all([
-      this.ensureBroker(),
-      this.ensureRequesterSession(),
-      this.ensureRelayerSession(),
-    ]);
+    const broker = await this.ensureBroker();
+    await this.ensureRequesterSession();
+    await this.ensureRelayerSession();
     const startedAt = Date.now();
     const proposal = await broker.requestRoute(rfq);
     this.ingestRequesterPackage(proposal);
@@ -471,15 +469,19 @@ class FxDesktopNetworkRuntime extends EventEmitter {
   }
 
   async warmRequester() {
-    await Promise.all([
-      this.ensureBroker(),
-      this.ensureRequesterSession(),
-      this.ensureRelayerSession(),
-    ]);
+    await this.ensureBroker();
+    await this.ensureRequesterSession();
+    await this.ensureRelayerSession();
     return this.status();
   }
 
   async resumeTransports({ force = false } = {}) {
+    // A partial public Filter failure rolls back only the role that failed.
+    // Recreate every requester-side role before reconnecting so foreground
+    // recovery cannot leave that missing role offline for the process lifetime.
+    await this.ensureBroker();
+    await this.ensureRequesterSession();
+    await this.ensureRelayerSession();
     const targets = [];
     const sessions = new Set();
     const addSession = (role, session) => {
