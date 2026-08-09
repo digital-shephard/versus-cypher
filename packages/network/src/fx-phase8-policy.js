@@ -8,6 +8,7 @@ const {
 const {
   canonicalJson,
   FX_MAX_REFERENCE_AGE_SECONDS,
+  FX_ROUTE_CLOCK_SKEW_SECONDS,
   selectSingleDealerRoute,
   verifyFxEnvelope,
 } = require("./fx-protocol");
@@ -404,6 +405,7 @@ function verifyStaticSourcePackage({
     {
       now: verified.accept.createdAt,
       policy: verified.rfq.payload.quotePolicy,
+      clockSkewSeconds: FX_ROUTE_CLOCK_SKEW_SECONDS,
     }
   );
   if (

@@ -6,6 +6,7 @@ const {
   advanceFxCaseState,
   advanceFxState,
   canonicalJson,
+  FX_ROUTE_CLOCK_SKEW_SECONDS,
   selectSingleDealerRoute,
   verifyFxEnvelope,
 } = require("./fx-protocol");
@@ -306,7 +307,11 @@ class FxTradeJournal {
         const route = selectSingleDealerRoute(
           rfq,
           [{ quote, brokerFeeAtomic: message.payload.brokerFeeAtomic }],
-          { now: message.createdAt, policy: rfq.payload.quotePolicy }
+          {
+            now: message.createdAt,
+            policy: rfq.payload.quotePolicy,
+            clockSkewSeconds: FX_ROUTE_CLOCK_SKEW_SECONDS,
+          }
         );
         if (
           message.sender !== rfq.sender ||

@@ -3,6 +3,7 @@ const { randomBytes, hexlify } = require("ethers");
 const {
   FX_V2_VERSION,
   FX_V3_VERSION,
+  FX_ROUTE_CLOCK_SKEW_SECONDS,
   selectSingleDealerRoute,
 } = require("./fx-protocol");
 
@@ -333,6 +334,7 @@ class FxRequesterBroker extends EventEmitter {
     return selectSingleDealerRoute(rfq, candidates, {
       now: this.now(),
       policy: policy || rfq.payload.quotePolicy,
+      clockSkewSeconds: FX_ROUTE_CLOCK_SKEW_SECONDS,
     });
   }
 

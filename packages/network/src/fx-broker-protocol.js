@@ -7,6 +7,7 @@ const {
 } = require("ethers");
 const {
   canonicalJson,
+  FX_ROUTE_CLOCK_SKEW_SECONDS,
   selectSingleDealerRoute,
   verifyFxEnvelope,
 } = require("./fx-protocol");
@@ -16,7 +17,7 @@ const FX_BROKER_FEE_VOUCHER_SCHEMA = "versus-fx-broker-fee-voucher";
 const FX_BROKER_METRICS_SCHEMA = "versus-fx-broker-metrics";
 const FX_BROKER_VERSION = 1;
 const FX_BROKER_PAYMENT_MODE = "verified-completion-v1";
-const FX_BROKER_CLOCK_SKEW_SECONDS = 5;
+const FX_BROKER_CLOCK_SKEW_SECONDS = FX_ROUTE_CLOCK_SKEW_SECONDS;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
 const SIGNATURE_PATTERN = /^0x[0-9a-fA-F]{130}$/;
