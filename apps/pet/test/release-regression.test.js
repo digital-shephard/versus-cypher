@@ -192,6 +192,20 @@ test("foreground recovery reconciles Base and replays missed verified rain", () 
   assert.match(renderer, /nextCommitAt \|\| 0\) - networkNowMs\(\) \/ 1000/);
 });
 
+test("public Waku bootstrap is dual-stack instead of IPv4-only", () => {
+  const network = fs.readFileSync(path.join(root, "src", "network.js"), "utf8");
+  const fxNetwork = fs.readFileSync(
+    path.join(root, "src", "fx-desktop-network.js"),
+    "utf8"
+  );
+
+  for (const source of [network, fxNetwork]) {
+    assert.match(source, /\/dns\/relay-a\.versuscypher\.com\/tcp\/443\/wss/);
+    assert.match(source, /\/dns\/relay-b\.versuscypher\.com\/tcp\/443\/wss/);
+    assert.doesNotMatch(source, /\/dns4\/relay-[ab]\.versuscypher\.com/);
+  }
+});
+
 test("public weather is signed cached and private state is one block-pinned Multicall", () => {
   const chain = fs.readFileSync(path.join(root, "src", "chain.js"), "utf8");
   const main = fs.readFileSync(path.join(root, "src", "main.js"), "utf8");

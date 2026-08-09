@@ -14,8 +14,8 @@ const {
 const { NETWORKS } = require("./phase5-testnet-config");
 
 const BOOTSTRAPS = [
-  "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
-  "/dns4/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
+  "/dns/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
+  "/dns/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
 ];
 
 function waitFor(emitter, event, timeoutMs = 90_000) {
@@ -349,7 +349,7 @@ async function main() {
       testnetFundsOnly: true,
       productionWaku: true,
       configuredBootstrapPeers: peers.map((peer) => {
-        const match = peer.match(/\/dns4\/([^/]+)/);
+        const match = peer.match(/\/dns(?:4|6)?\/([^/]+)/);
         return match ? match[1] : "non-dns-bootstrap";
       }),
       ephemeralCoordinationIdentities: true,

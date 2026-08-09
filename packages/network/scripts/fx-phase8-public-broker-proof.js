@@ -23,8 +23,8 @@ const DEPLOYMENT_ID =
   "0xd0935aa32dc4d37e33180ac9409c993b7bf39749ff375df4da033bd106c0983e";
 const TEST_TOKEN = "0xcba3d9354dd4c30bb6961abb4473a6340486e01b";
 const DEFAULT_BOOTSTRAPS = [
-  "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
-  "/dns4/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
+  "/dns/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
+  "/dns/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
 ];
 const DEFAULT_CLOCK_RPCS = DEFAULT_FX_CLOCK_RPCS;
 

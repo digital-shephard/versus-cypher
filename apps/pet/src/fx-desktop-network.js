@@ -22,8 +22,8 @@ const FX_PUBLIC_TESTNET_COORDINATION_DOMAIN =
   "0x6e5a6b5ed65eac32898129a87fbcb68b870469b348c52645fe2170f03e04df9a";
 
 const FX_PUBLIC_WAKU_PEERS = Object.freeze([
-  "/dns4/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
-  "/dns4/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
+  "/dns/relay-a.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAmCQArrt8ND7sTzPCg76YmQPab7HKjSrVZeyeTVZdQyPWy",
+  "/dns/relay-b.versuscypher.com/tcp/443/wss/p2p/16Uiu2HAkx96y18XpzAybpmi1zzdMQZFvsRPZfkku8R9T4KJFMr2P",
 ]);
 const FX_V2_SOURCE_REFUND_SECONDS = 7_200;
 const FX_V2_DESTINATION_REFUND_SECONDS = 600;
