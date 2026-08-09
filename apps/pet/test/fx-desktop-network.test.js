@@ -69,6 +69,55 @@ function fixture(overrides = {}, runtimeOverrides = {}) {
   return { runtime, roles, calls };
 }
 
+test("foreground recovery resumes every active FX transport", async (t) => {
+  const { runtime } = fixture();
+  t.after(() => runtime.close());
+  const calls = [];
+  const makeSession = (role) => ({
+    async resume(options) {
+      calls.push([role, options]);
+    },
+    status() {
+      return { active: true, transport: { state: "ready" } };
+    },
+    async close() {},
+  });
+  runtime.broker = {
+    session: makeSession("broker"),
+    status: () => ({ active: true }),
+    async close() {},
+  };
+  runtime.requesterSession = makeSession("requester");
+  runtime.relayerSession = makeSession("relayer");
+  runtime.dealerSession = makeSession("dealer-session");
+  runtime.dealer = {
+    async resume(options) {
+      calls.push(["dealer", options]);
+    },
+    status: () => ({ active: true }),
+    async close() {},
+  };
+
+  assert.deepEqual(await runtime.resumeTransports(), {
+    attempted: ["broker", "requester", "relayer", "dealer"],
+    force: false,
+  });
+  assert.deepEqual(await runtime.resumeTransports({ force: true }), {
+    attempted: ["broker", "requester", "relayer", "dealer"],
+    force: true,
+  });
+  assert.deepEqual(calls, [
+    ["broker", { force: false }],
+    ["requester", { force: false }],
+    ["relayer", { force: false }],
+    ["dealer", { force: false }],
+    ["broker", { force: true }],
+    ["requester", { force: true }],
+    ["relayer", { force: true }],
+    ["dealer", { force: true }],
+  ]);
+});
+
 test("desktop self-routing waits for one internal broker startup", async (t) => {
   let releaseStartup;
   const startupGate = new Promise((resolve) => {

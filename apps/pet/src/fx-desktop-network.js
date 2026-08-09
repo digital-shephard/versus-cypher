@@ -479,6 +479,50 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return this.status();
   }
 
+  async resumeTransports({ force = false } = {}) {
+    const targets = [];
+    const sessions = new Set();
+    const addSession = (role, session) => {
+      if (!session || sessions.has(session) || typeof session.resume !== "function") {
+        return;
+      }
+      sessions.add(session);
+      targets.push({
+        role,
+        resume: () => session.resume({ force: force === true }),
+      });
+    };
+    addSession("broker", this.broker?.session);
+    addSession("requester", this.requesterSession);
+    addSession("relayer", this.relayerSession);
+    if (this.dealer && typeof this.dealer.resume === "function") {
+      sessions.add(this.dealerSession);
+      targets.push({
+        role: "dealer",
+        resume: () => this.dealer.resume({ force: force === true }),
+      });
+    } else {
+      addSession("dealer", this.dealerSession);
+    }
+    const results = await Promise.allSettled(
+      targets.map((target) => target.resume())
+    );
+    const failedRoles = results.flatMap((result, index) =>
+      result.status === "rejected" ? [targets[index].role] : []
+    );
+    this.emit("status", this.status());
+    if (failedRoles.length) {
+      throw new FxDesktopNetworkError(
+        `FX transport resume failed for ${failedRoles.join(", ")}`,
+        "TRANSPORT_RESUME_FAILED"
+      );
+    }
+    return {
+      attempted: targets.map((target) => target.role),
+      force: force === true,
+    };
+  }
+
   async ensureRequesterSession() {
     if (this.requesterSession) return this.requesterSession;
     if (this.requesterStart) return this.requesterStart;

@@ -289,8 +289,10 @@ class FxCoordinationSession extends EventEmitter {
     return envelope;
   }
 
-  async resume() {
-    const result = await this.transport.ensureConnected();
+  async resume({ force = false } = {}) {
+    const result = await this.transport.ensureConnected({
+      force: force === true,
+    });
     if (this.transport.historyCatchUp) await this.transport.historyCatchUp;
     this.retryPending();
     return result;

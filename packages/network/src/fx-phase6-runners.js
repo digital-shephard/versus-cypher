@@ -169,8 +169,8 @@ class FxDeterministicDealer extends EventEmitter {
     this.historicalAccepts.clear();
   }
 
-  async resume() {
-    const result = await this.session.resume();
+  async resume(options = {}) {
+    const result = await this.session.resume(options);
     await this.reconcileHistory();
     return result;
   }
@@ -377,8 +377,8 @@ class FxRequesterBroker extends EventEmitter {
     return accept;
   }
 
-  async resume() {
-    return this.session.resume();
+  async resume(options = {}) {
+    return this.session.resume(options);
   }
 
   async close() {

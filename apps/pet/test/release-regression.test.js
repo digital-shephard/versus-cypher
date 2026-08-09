@@ -178,9 +178,12 @@ test("foreground recovery reconciles Base and replays missed verified rain", () 
 
   assert.match(network, /async catchUpRain\(\)[\s\S]*transport\.catchUpRain\(\)/);
   assert.match(foreground, /Promise\.allSettled\(\[[\s\S]*reconcileChainState\(\)[\s\S]*catchUpRain/);
+  assert.match(foreground, /fxNetworkRuntime\.resumeTransports\(\)/);
   assert.match(foreground, /rainInbox\.pending\(\)[\s\S]*rain:available/);
   assert.match(main, /mainWindow\.on\("restore"[\s\S]*refreshForegroundServices\(\)/);
+  assert.match(main, /mainWindow\.on\("focus"[\s\S]*refreshForegroundServices\(\)/);
   assert.match(main, /powerMonitor\.on\("resume"[\s\S]*refreshForegroundServices\(\)/);
+  assert.match(main, /powerMonitor\.on\("resume"[\s\S]*setTimeout\([\s\S]*refreshForegroundServices\(\)[\s\S]*3_000/);
   assert.match(main, /registerIpcHandle\("service:foreground", \(\) => refreshForegroundServices\(\)\)/);
   assert.match(preload, /refreshForeground: \(\) => ipcRenderer\.invoke\("service:foreground"\)/);
   assert.match(renderer, /visibilitychange[\s\S]*refreshForegroundState\(\)/);

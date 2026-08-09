@@ -110,6 +110,37 @@ function createJournal(directory, name, now) {
   });
 }
 
+test("coordination resume can force an immediate transport replacement", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "versus-fx-force-resume-"));
+  const now = { value: 1_800_000_000 };
+  const bus = new FakeWakuBus();
+  const journal = createJournal(directory, "force-resume", now);
+  const transport = createTransport(bus, now);
+  const ensureConnected = transport.ensureConnected.bind(transport);
+  const calls = [];
+  transport.ensureConnected = async (options) => {
+    calls.push(options);
+    return ensureConnected(options);
+  };
+  const session = new FxCoordinationSession({
+    deploymentId: DEPLOYMENT_ID,
+    signer: Wallet.createRandom(),
+    role: "broker",
+    journal,
+    transport,
+    now: () => now.value,
+  });
+  t.after(async () => {
+    await session.close();
+    journal.close();
+  });
+  await session.start();
+
+  await session.resume({ force: true });
+
+  assert.deepEqual(calls, [{ force: true }]);
+});
+
 function rfqPayload(now) {
   return {
     outputChainId: "421614",

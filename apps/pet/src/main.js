@@ -1107,19 +1107,23 @@ function reconcileChainState() {
 function refreshForegroundServices() {
   if (foregroundRefreshInFlight) return foregroundRefreshInFlight;
   foregroundRefreshInFlight = (async () => {
-    const [chainResult] = await Promise.allSettled([reconcileChainState()]);
-    const [networkResult] = await Promise.allSettled([
+    const [chainResult, networkResult, fxResult] = await Promise.allSettled([
+      reconcileChainState(),
       ensureNetworkService().then(async (service) => {
         if (!service) return { attempted: false, received: 0 };
         await service.resumeTransport?.();
         return service.catchUpRain?.() || { attempted: false, received: 0 };
       }),
+      fxNetworkRuntime.resumeTransports(),
     ]);
     if (chainResult.status === "rejected") {
       console.error("Versus foreground chain reconciliation error:", chainResult.reason?.message || chainResult.reason);
     }
     if (networkResult.status === "rejected") {
       console.error("Versus foreground rain catch-up error:", networkResult.reason?.message || networkResult.reason);
+    }
+    if (fxResult.status === "rejected") {
+      console.error("Versus foreground FX reconnect error:", fxResult.reason?.message || fxResult.reason);
     }
     const pending = rainInbox.pending();
     if (pending > 0) sendRenderer("rain:available", { pending });
@@ -1716,6 +1720,11 @@ function createWindow() {
       console.error("Versus restored foreground refresh error:", error.message);
     });
   });
+  mainWindow.on("focus", () => {
+    refreshForegroundServices().catch((error) => {
+      console.error("Versus focused foreground refresh error:", error.message);
+    });
+  });
   mainWindow.loadFile(RENDERER_PATH);
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -1841,6 +1850,12 @@ app.whenReady().then(() => {
     dailyLifecycleScheduler?.wake("resume", { ignoreBackoff: true }).catch((error) => {
       console.error("Versus resume lifecycle error:", error.message);
     });
+    const retry = setTimeout(() => {
+      refreshForegroundServices().catch((error) => {
+        console.error("Versus delayed resume refresh error:", error.message);
+      });
+    }, 3_000);
+    retry.unref?.();
   });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
