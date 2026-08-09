@@ -116,14 +116,14 @@ restart recovery, stale-price and unavailable-RPC rejection, deterministic
 relay reconnect, and four stock generic x402 exact payments covering USDC and
 EURC as inputs on both chains.
 
-This evidence does not substitute for a physical second machine. A diagnostic
-public-Waku coordination run subsequently connected to both Versus relays,
-used two LightPush, Filter, and Store peers, recovered the RFQ through Store,
-and produced matching requester/dealer state hashes. One earlier explicit
-attempt had a transient Filter-subscription failure; transport startup now
-tears down every partial subscription before retry so it cannot leak relay
-capacity or duplicate deliveries. Physical two-machine settlement,
-public-relay reconnect, and public-relay x402 remain separate open gates.
+Physical acceptance subsequently passed with a Windows requester and a
+separate macOS dealer using both public Versus relays. All 30 unique route pairs
+reached `funds_ready`; the public transport recovered from `wait` to `ready`
+and `caught_up`; and four stock x402 exact payments completed with USDC and
+EURC as inputs on each chain. The macOS dealer also remained armed with two
+LightPush, Filter, and Store peers over an IPv6-only T-Mobile path. The
+sanitized evidence and public transaction hashes are preserved in
+[`PUBLIC_TESTNET_V1_PHYSICAL_ACCEPTANCE_2026-08-09.md`](./PUBLIC_TESTNET_V1_PHYSICAL_ACCEPTANCE_2026-08-09.md).
 
 ## Acceptance gates
 
@@ -138,12 +138,15 @@ public-relay reconnect, and public-relay x402 remain separate open gates.
 9. Complete an adversarial review of the frozen artifacts and all deployment records.
 10. Merge the reviewed branch to `main` only after testnet acceptance. Mainnet deployment happens from that reviewed merge commit, after a separate human address/hash review and explicit authorization.
 
-Gates 1-4 and 9 are complete. Gates 5-8 are complete only for the funded
-single-workstation live-chain cohort; their physical two-machine/public-relay
-forms remain open. The dated review is preserved
+Gates 1-9 are complete for the public-testnet candidate. The controlled failure
+matrix remains backed by the funded single-workstation live-chain cohort; its
+public-relay reconnect component, the complete 30-route market, and all four
+generic x402 exact inputs also passed the physical two-device campaign. The
+dated review is preserved
 in [`PUBLIC_TESTNET_V1_ADVERSARIAL_REVIEW_2026-08-07.md`](./PUBLIC_TESTNET_V1_ADVERSARIAL_REVIEW_2026-08-07.md).
-It closes frozen-artifact and deployment-record validation findings but does
-not close the physical acceptance gates or authorize mainnet.
+The physical checkpoint is preserved in
+[`PUBLIC_TESTNET_V1_PHYSICAL_ACCEPTANCE_2026-08-09.md`](./PUBLIC_TESTNET_V1_PHYSICAL_ACCEPTANCE_2026-08-09.md).
+Neither document authorizes mainnet.
 
 ## Commands
 

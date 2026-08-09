@@ -3,9 +3,9 @@
 Date: 2026-08-07
 
 Result: **accepted for the frozen artifacts and the single-workstation
-Base Sepolia/Avalanche Fuji live-chain cohort**. This review does not authorize
-mainnet, production funds, or an unrestricted release. Physical two-machine,
-public-relay reconnect, and public-relay x402 acceptance remain open.
+Base Sepolia/Avalanche Fuji live-chain cohort**. The separate physical gates
+subsequently passed on 2026-08-09. Neither checkpoint authorizes mainnet,
+production funds, or an unrestricted release.
 
 ## Scope
 
@@ -164,7 +164,7 @@ fixed lifecycle. The restart run also emitted harmless replay warnings after
 the source claim completed; these remain review evidence rather than being
 silently relabeled.
 
-### Remaining physical boundary
+### Physical boundary follow-up
 
 A diagnostic public-Waku coordination run connected to both Versus relays with
 two LightPush, two Filter, and two Store peers. It recovered the RFQ through
@@ -178,10 +178,14 @@ failure after partial subscription did not close the node. The transport now
 tears down partial subscriptions and the node before a retry; a regression test
 covers rejection followed by a clean successful start.
 
-The successful diagnostic does not convert the single workstation into a
-physical two-device result. Public-relay disconnect/reconnect, public-relay
-x402, and genuine two-machine settlement remain unaccepted. Mainnet remains
-blocked.
+The diagnostic did not itself convert the single workstation into a physical
+two-device result. That boundary was closed by the later Windows-requester and
+macOS-dealer campaign: 30 unique route pairs reached `funds_ready`, public Waku
+recovered from `wait` to `ready` and `caught_up`, and stock x402 exact payments
+completed with USDC and EURC as inputs on both chains. See
+[`PUBLIC_TESTNET_V1_PHYSICAL_ACCEPTANCE_2026-08-09.md`](./PUBLIC_TESTNET_V1_PHYSICAL_ACCEPTANCE_2026-08-09.md).
+Mainnet remains blocked pending its separate final ceremony and explicit
+authorization.
 
-After the lifecycle and Waku startup-cleanup fixes, all 254 network tests and
-all 221 desktop tests pass.
+After the physical-acceptance fixes, all 259 network tests and all 225 desktop
+tests pass.
