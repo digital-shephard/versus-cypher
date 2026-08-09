@@ -64,8 +64,11 @@ test("Base owner reconciliation uses one RPC call after the signed public snapsh
     signer: attestor.address,
   };
   snapshot.signature = await attestor.signMessage(classStateMessage(snapshot));
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => ({ ok: true, json: async () => snapshot });
+  let relayFetchCalls = 0;
+  const relayFetch = async () => {
+    relayFetchCalls += 1;
+    return { ok: true, json: async () => snapshot };
+  };
   let rpcCalls = 0;
   const provider = {
     async call(request) {
@@ -93,18 +96,15 @@ test("Base owner reconciliation uses one RPC call after the signed public snapsh
       return MULTICALL.encodeFunctionResult("aggregate3", [returnData]);
     },
   };
-  try {
-    const service = createChainRainService({
-      deployment: { chainId: 8453, contracts: addresses, rainAttestors: [attestor.address] },
-      env: { VERSUS_CLASS_STATE_ENDPOINTS: "https://relay.test/v1/class-state" },
-    }, { provider });
-    const state = await service.readState({ address: owner, agentId: 7 });
-    assert.equal(rpcCalls, 1);
-    assert.equal(state.classPotMicros, 80_000n);
-    assert.equal(state.classAgents, 2);
-    assert.equal(state.runway, 6_900_000n);
-    assert.equal(state.owner, owner);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  const service = createChainRainService({
+    deployment: { chainId: 8453, contracts: addresses, rainAttestors: [attestor.address] },
+    env: { VERSUS_CLASS_STATE_ENDPOINTS: "https://relay.test/v1/class-state" },
+  }, { provider, fetchImpl: relayFetch });
+  const state = await service.readState({ address: owner, agentId: 7 });
+  assert.equal(relayFetchCalls, 1);
+  assert.equal(rpcCalls, 1);
+  assert.equal(state.classPotMicros, 80_000n);
+  assert.equal(state.classAgents, 2);
+  assert.equal(state.runway, 6_900_000n);
+  assert.equal(state.owner, owner);
 });

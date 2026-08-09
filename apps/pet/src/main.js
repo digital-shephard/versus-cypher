@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, clipboard, safeStorage, dialog, powerMonitor } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, clipboard, safeStorage, dialog, powerMonitor, net } = require("electron");
 const crypto = require("node:crypto");
 const path = require("path");
 const fs = require("fs");
@@ -160,6 +160,11 @@ let pendingRestoreRecovery = null;
 let hatchQuoteCache = null;
 let hatchQuoteInFlight = null;
 let fxReferenceQuoteService = null;
+
+// Relay HTTPS reads use Chromium's network stack so desktop DNS behavior matches
+// the Waku transport on IPv6-only and NAT64 networks. Signature and quorum
+// validation remain in the shared relay clients.
+const desktopRelayFetch = (...args) => net.fetch(...args);
 let fxReferenceQuoteCache = null;
 const fxUsdReferenceCache = new Map();
 const fxUsdReferenceInFlight = new Map();
@@ -364,7 +369,8 @@ async function getFxReferenceHatchQuote() {
       loadChainConfig({
         ...process.env,
         VERSUS_DEPLOYMENT: deploymentPath,
-      })
+      }),
+      { fetchImpl: desktopRelayFetch }
     );
   }
   const quote = await fxReferenceQuoteService.quoteHatchTarget();
@@ -386,7 +392,8 @@ async function getFxPricingService() {
       loadChainConfig({
         ...process.env,
         VERSUS_DEPLOYMENT: deploymentPath,
-      })
+      }),
+      { fetchImpl: desktopRelayFetch }
     );
   }
   return fxReferenceQuoteService;
@@ -456,7 +463,9 @@ async function observeActivity(event, task) {
 }
 
 try {
-  chainRainService = createChainRainService(loadChainConfig());
+  chainRainService = createChainRainService(loadChainConfig(), {
+    fetchImpl: desktopRelayFetch,
+  });
 } catch (err) {
   chainConfigError = err;
   console.error("Versus chain configuration error:", err.message);

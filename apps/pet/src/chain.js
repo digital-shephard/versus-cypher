@@ -251,7 +251,10 @@ function localFixtureTargetPlan(targetMicros, requiredRunwayMicros = MIN_HATCH_R
   return plan;
 }
 
-function createChainRainService(config, { provider: injectedProvider = null } = {}) {
+function createChainRainService(
+  config,
+  { provider: injectedProvider = null, fetchImpl = globalThis.fetch } = {}
+) {
   if (!config) return null;
   const chainId = Number(config.deployment.chainId);
   const provider =
@@ -277,6 +280,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
       chainId,
       arena: addresses.arena,
       syndicate: addresses.syndicate,
+      fetchImpl,
     });
   }
 
@@ -414,6 +418,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
         symbol,
         endpoints: fxPriceReferenceEndpoints,
         trustedSigners: trustedQuoteSigners,
+        fetchImpl,
       });
     },
     async transactionStatus(transactionHash) {
@@ -440,6 +445,7 @@ function createChainRainService(config, { provider: injectedProvider = null } = 
             trustedSigners: trustedQuoteSigners,
             chainId,
             arena: addresses.arena,
+            fetchImpl,
           });
         } catch (error) {
           console.error("Versus node hatch quote unavailable; using direct Base quote:", error.message);
