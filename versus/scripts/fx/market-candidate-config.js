@@ -234,6 +234,49 @@ async function preflightMarketChainAcrossRpcs(
   };
 }
 
+async function preflightMarketDeploymentAcrossRpcs(
+  network,
+  record,
+  {
+    environment = process.env,
+    providerFactory = providerFor,
+    preflight = preflightMarketDeployment,
+  } = {}
+) {
+  const rpcUrls = rpcUrlsFor(network, environment);
+  assert(
+    rpcUrls.length >= 2,
+    `${network.name} mainnet deployment preflight requires pinned primary and fallback RPCs`
+  );
+  const results = [];
+  for (let index = 0; index < rpcUrls.length; index += 1) {
+    try {
+      results.push(await preflight(
+        providerFactory(network, rpcUrls[index]),
+        network,
+        record
+      ));
+    } catch (error) {
+      throw new Error(
+        `${network.name} RPC ${index + 1}/${rpcUrls.length} deployment preflight failed: ${sanitizedRpcFailure(error)}`
+      );
+    }
+  }
+  const baseline = JSON.stringify(results[0]);
+  assert(
+    results.every((result) => JSON.stringify(result) === baseline),
+    `${network.name} primary and fallback deployment evidence differs`
+  );
+  return {
+    evidence: results[0],
+    consensus: {
+      chainId: network.chainId,
+      endpointCount: rpcUrls.length,
+      identical: true,
+    },
+  };
+}
+
 async function preflightMarketDeployment(provider, network, record) {
   assert(record.marketId, "deployment record is missing marketId");
   const nativeCode = await provider.getCode(record.native.address);
@@ -324,6 +367,7 @@ module.exports = {
   preflightMarketChain,
   preflightMarketChainAcrossRpcs,
   preflightMarketDeployment,
+  preflightMarketDeploymentAcrossRpcs,
   providerFor,
   readMarket,
   rpcUrlsFor,

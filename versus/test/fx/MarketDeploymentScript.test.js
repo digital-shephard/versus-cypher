@@ -11,9 +11,20 @@ const {
 const {
   networkFor,
   preflightMarketChainAcrossRpcs,
+  preflightMarketDeploymentAcrossRpcs,
   readMarket,
   rpcUrlsFor,
 } = require("../../scripts/fx/market-candidate-config");
+const {
+  DEPLOY_CONFIRMATION,
+  validateMainnetAssembleAuthorization,
+  validateMainnetDeployAuthorization,
+  validateMainnetVerifyAuthorization,
+} = require("../../scripts/fx/mainnet-market-guard");
+const {
+  bufferedGas,
+  deploymentOverrides,
+} = require("../../scripts/fx/deploy-market-v1-mainnet");
 
 function mainnetNetwork(chainId) {
   const market = readMarket(path.resolve(__dirname, "../.."), "mainnet");
@@ -116,5 +127,85 @@ describe("FX market deployment runtime visibility", function () {
       providerFactory: () => ({}),
       preflight: async () => ({ value: index++ }),
     })).to.be.rejectedWith("primary and fallback RPC preflight results differ");
+  });
+
+  it("requires independent explicit guards for mainnet deploy verify and assembly", function () {
+    const network = mainnetNetwork("8453");
+    const market = readMarket(path.resolve(__dirname, "../.."), "mainnet");
+    const environment = {
+      FX_MARKET_MAINNET_DEPLOY: DEPLOY_CONFIRMATION,
+      FX_MARKET_MAINNET_CHAIN: network.chainId,
+      FX_MARKET_MAINNET_MARKET_ID: market.marketId,
+      FX_MARKET_MAINNET_MAX_FEE_PER_GAS_WEI: "1000000000",
+      FX_MARKET_MAINNET_MAX_GAS_PER_DEPLOYMENT: "10000000",
+      FX_MARKET_MAINNET_MAX_CHAIN_DEPLOY_COST_WEI: "50000000000000000",
+      FX_MAINNET_DEPLOYER_KEYSTORE: path.resolve("mainnet-deployer.json"),
+      FX_MAINNET_DEPLOYER_PASSWORD_FILE: path.resolve("mainnet-password.txt"),
+    };
+    expect(validateMainnetDeployAuthorization(
+      environment,
+      network,
+      market.marketId
+    )).to.deep.equal({
+      maximumFeePerGasWei: 1_000_000_000n,
+      maximumGasPerDeployment: 10_000_000n,
+      maximumChainDeploymentCostWei: 50_000_000_000_000_000n,
+    });
+    expect(() => validateMainnetDeployAuthorization(
+      { ...environment, FX_MARKET_MAINNET_CHAIN: "43114" },
+      network,
+      market.marketId
+    )).to.throw("FX_MARKET_MAINNET_CHAIN must equal 8453");
+    expect(() => validateMainnetVerifyAuthorization({}, network)).to.throw(
+      "authorize explorer verification"
+    );
+    expect(() => validateMainnetAssembleAuthorization({})).to.throw(
+      "after reviewing every mainnet address and hash"
+    );
+  });
+
+  it("caps buffered deployment gas and fee data before signing", async function () {
+    expect(bufferedGas(101n)).to.equal(122n);
+    const overrides = await deploymentOverrides({
+      estimateGas: async () => 100n,
+      getFeeData: async () => ({
+        maxFeePerGas: 20n,
+        maxPriorityFeePerGas: 2n,
+      }),
+    }, {}, "0x0000000000000000000000000000000000000001", {
+      maximumGasPerDeployment: 120n,
+      maximumFeePerGasWei: 20n,
+    });
+    expect(overrides).to.deep.equal({
+      gasLimit: 120n,
+      maxFeePerGas: 20n,
+      maxPriorityFeePerGas: 2n,
+    });
+    await expect(deploymentOverrides({
+      estimateGas: async () => 101n,
+      getFeeData: async () => ({ gasPrice: 20n }),
+    }, {}, "0x0000000000000000000000000000000000000001", {
+      maximumGasPerDeployment: 120n,
+      maximumFeePerGasWei: 20n,
+    })).to.be.rejectedWith("exceeds reviewed ceiling");
+  });
+
+  it("requires identical deployed runtime evidence from both mainnet RPCs", async function () {
+    const network = mainnetNetwork("8453");
+    const result = await preflightMarketDeploymentAcrossRpcs(network, {}, {
+      environment: {},
+      providerFactory: (_network, rpcUrl) => ({ rpcUrl }),
+      preflight: async (_provider, candidate) => ({
+        chainId: candidate.chainId,
+        native: "0x0000000000000000000000000000000000000001",
+      }),
+    });
+    expect(result.consensus.endpointCount).to.equal(2);
+    let index = 0;
+    await expect(preflightMarketDeploymentAcrossRpcs(network, {}, {
+      environment: {},
+      providerFactory: () => ({}),
+      preflight: async () => ({ runtime: index++ }),
+    })).to.be.rejectedWith("primary and fallback deployment evidence differs");
   });
 });

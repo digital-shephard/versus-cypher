@@ -44,14 +44,19 @@ const V3_BUILDS = {
   erc20: { ...BUILD, adapterId: "evm-htlc-v3", contract: "EvmHtlcV3" },
 };
 
-function fixture() {
+function fixture(profile = "testnet") {
   const root = path.resolve(__dirname, "..", "..", "..");
+  const fileName = profile === "mainnet"
+    ? "mainnet-v1-market-candidate.json"
+    : "public-testnet-v1-market-candidate.json";
   const market = JSON.parse(fs.readFileSync(
-    path.join(root, "versus", "deployments", "fx", "public-testnet-v1-market-candidate.json"),
+    path.join(root, "versus", "deployments", "fx", fileName),
     "utf8"
   ));
   const records = market.chains.map((chain, chainIndex) => ({
-    schema: "versus-fx-market-v1-testnet-chain",
+    schema: profile === "mainnet"
+      ? "versus-fx-market-v1-mainnet-chain"
+      : "versus-fx-market-v1-testnet-chain",
     schemaVersion: 1,
     chainId: chain.chainId,
     name: chain.name,
@@ -121,6 +126,24 @@ test("assembled market deployment binds two native and four stablecoin capabilit
     desktop.configurations["43113"].nativeGasReserveWei,
     "50000000000000000"
   );
+});
+
+test("mainnet assembly requires the distinct mainnet chain-record schema", () => {
+  const { market, records } = fixture("mainnet");
+  const deployment = buildFxMarketDeployment({
+    market,
+    chainRecords: records,
+    v3Builds: V3_BUILDS,
+    exactBuild: EXACT_BUILD,
+  });
+  assert.equal(deployment.releaseStage, "mainnet-v1-candidate");
+  records[0].schema = "versus-fx-market-v1-testnet-chain";
+  assert.throws(() => buildFxMarketDeployment({
+    market,
+    chainRecords: records,
+    v3Builds: V3_BUILDS,
+    exactBuild: EXACT_BUILD,
+  }), /record schema is unsupported/);
 });
 
 test("assembly fails closed before explorer verification", () => {

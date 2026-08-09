@@ -172,8 +172,11 @@ function requireCanonicalMatch(actual, expected, message) {
 }
 
 function assertChainRecord(record, chain, market, v3Builds, exactBuild) {
+  const expectedSchema = market.releaseStage === "mainnet-v1-candidate"
+    ? "versus-fx-market-v1-mainnet-chain"
+    : "versus-fx-market-v1-testnet-chain";
   requireCondition(
-    record?.schema === "versus-fx-market-v1-testnet-chain" &&
+    record?.schema === expectedSchema &&
       record.schemaVersion === 1,
     `chain ${chain.chainId} deployment record schema is unsupported`
   );

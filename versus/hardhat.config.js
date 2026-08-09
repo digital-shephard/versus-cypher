@@ -47,7 +47,7 @@ module.exports = {
       chainId: 43113,
     },
     base: {
-      url: process.env.BASE_RPC_URL || "https://mainnet.base.org",
+      url: process.env.BASE_RPC_URL || "https://base-rpc.publicnode.com",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 8453,
       gasPrice: 10_000_000,

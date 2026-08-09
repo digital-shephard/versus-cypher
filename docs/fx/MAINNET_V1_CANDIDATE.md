@@ -189,5 +189,42 @@ npm start --prefix apps/pet
 
 The desktop refuses candidate market JSON and accepts only the assembled,
 explorer-verified deployment artifact through an absolute path. No command in
-this document authorizes or performs a mainnet deployment, and no mainnet
-deployment script is included in this candidate.
+this document authorizes or performs a mainnet deployment.
+
+## Guarded mainnet tooling
+
+The accepted candidate now includes deploy, explorer-verify, and assemble
+tooling, but every state-changing entry point fails closed by default. Merely
+running an npm command is insufficient. Deployment additionally requires:
+
+- the exact broadcast acknowledgement
+  `FX_MARKET_MAINNET_DEPLOY=I_UNDERSTAND_THIS_BROADCASTS_MAINNET`;
+- the reviewed chain ID, market ID, and full 40-character source commit;
+- a clean tracked worktree and index at that source commit;
+- two pinned RPCs whose dependency preflights agree;
+- explicit per-deployment gas, fee-per-gas, and total chain-deployment cost
+  ceilings; and
+- absolute paths to a separate mainnet deployer keystore and password file.
+
+The deployer simulates each creation on both RPCs before signing, journals each
+confirmed deployment, and requires both RPCs to agree on receipt block and
+runtime hash before continuing. It refuses to overwrite a public chain record.
+Verification has a separate acknowledgement and chain binding. Assembly has a
+third acknowledgement, requires both verified chain records to name the same
+reviewed commit, repeats both-RPC runtime/immutable preflight, and creates the
+final artifact exclusively.
+
+The guarded commands are:
+
+```powershell
+npm run fx:market:deploy:base --prefix versus
+npm run fx:market:deploy:avalanche --prefix versus
+npm run fx:market:verify:base --prefix versus
+npm run fx:market:verify:avalanche --prefix versus
+npm run fx:market:assemble:mainnet --prefix versus
+```
+
+These command names are documentation, not authorization. Do not set their
+guards or fund a deployer until the final human address/hash review explicitly
+authorizes mainnet. The tiny post-deployment canary remains a separate explicit
+authorization after assembly.
