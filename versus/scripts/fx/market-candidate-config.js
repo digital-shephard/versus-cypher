@@ -38,6 +38,8 @@ const NETWORKS = Object.freeze({
     key: "baseSepolia",
     id: "base-sepolia",
     publicRpcUrl: "https://sepolia.base.org",
+    publicRpcUrls: Object.freeze(["https://sepolia.base.org"]),
+    rpcListEnvironmentVariable: "BASE_SEPOLIA_RPC_URLS",
     explorerAddressUrl: "https://sepolia.basescan.org/address",
     deploymentAllowed: true,
   }),
@@ -45,13 +47,22 @@ const NETWORKS = Object.freeze({
     key: "avalancheFuji",
     id: "avalanche-fuji",
     publicRpcUrl: "https://api.avax-test.network/ext/bc/C/rpc",
+    publicRpcUrls: Object.freeze([
+      "https://api.avax-test.network/ext/bc/C/rpc",
+    ]),
+    rpcListEnvironmentVariable: "AVALANCHE_FUJI_RPC_URLS",
     explorerAddressUrl: "https://testnet.snowtrace.io/address",
     deploymentAllowed: true,
   }),
   "8453": Object.freeze({
     key: "base",
     id: "base",
-    publicRpcUrl: "https://mainnet.base.org",
+    publicRpcUrl: "https://base-rpc.publicnode.com",
+    publicRpcUrls: Object.freeze([
+      "https://base-rpc.publicnode.com",
+      "https://base.drpc.org",
+    ]),
+    rpcListEnvironmentVariable: "BASE_RPC_URLS",
     explorerAddressUrl: "https://basescan.org/address",
     deploymentAllowed: false,
   }),
@@ -59,6 +70,11 @@ const NETWORKS = Object.freeze({
     key: "avalanche",
     id: "avalanche",
     publicRpcUrl: "https://api.avax.network/ext/bc/C/rpc",
+    publicRpcUrls: Object.freeze([
+      "https://api.avax.network/ext/bc/C/rpc",
+      "https://avalanche-c-chain-rpc.publicnode.com",
+    ]),
+    rpcListEnvironmentVariable: "AVALANCHE_RPC_URLS",
     explorerAddressUrl: "https://snowtrace.io/address",
     deploymentAllowed: false,
   }),
@@ -66,6 +82,13 @@ const NETWORKS = Object.freeze({
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function sanitizedRpcFailure(error) {
+  return String(error?.message || error || "unknown failure").replace(
+    /https?:\/\/[^\s"')]+/gi,
+    "[redacted-rpc]"
+  );
 }
 
 function readMarket(contractsRoot, profile) {
@@ -87,12 +110,27 @@ function networkFor(market, networkId) {
   return { ...network, ...chain };
 }
 
-function providerFor(network) {
-  const rpcUrl = process.env[network.rpcEnvironmentVariable] || network.publicRpcUrl;
+function rpcUrlsFor(network, environment = process.env) {
+  const configured = String(
+    environment[network.rpcListEnvironmentVariable] ||
+      environment[network.rpcEnvironmentVariable] ||
+      ""
+  )
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const defaults = network.publicRpcUrls || [network.publicRpcUrl];
+  return [...new Set(configured.length ? configured : defaults)];
+}
+
+function providerFor(network, rpcUrl = rpcUrlsFor(network)[0]) {
   assert(rpcUrl, `${network.rpcEnvironmentVariable} is required`);
   return new JsonRpcProvider(rpcUrl, BigInt(network.chainId), {
     staticNetwork: true,
     cacheTimeout: -1,
+    // Some public providers reject JSON-RPC batches even for ordinary view
+    // calls. Sequential requests make the cross-provider preflight comparable.
+    batchMaxCount: 1,
   });
 }
 
@@ -153,6 +191,46 @@ async function preflightMarketChain(provider, network) {
     requiredConfirmations: network.requiredConfirmations,
     reorgSafetyBlocks: network.reorgSafetyBlocks,
     assets,
+  };
+}
+
+async function preflightMarketChainAcrossRpcs(
+  network,
+  {
+    environment = process.env,
+    providerFactory = providerFor,
+    preflight = preflightMarketChain,
+  } = {}
+) {
+  const rpcUrls = rpcUrlsFor(network, environment);
+  if (!network.deploymentAllowed) {
+    assert(
+      rpcUrls.length >= 2,
+      `${network.name} mainnet preflight requires pinned primary and fallback RPCs`
+    );
+  }
+  const results = [];
+  for (let index = 0; index < rpcUrls.length; index += 1) {
+    try {
+      results.push(await preflight(providerFactory(network, rpcUrls[index]), network));
+    } catch (error) {
+      throw new Error(
+        `${network.name} RPC ${index + 1}/${rpcUrls.length} preflight failed: ${sanitizedRpcFailure(error)}`
+      );
+    }
+  }
+  const baseline = JSON.stringify(results[0]);
+  assert(
+    results.every((result) => JSON.stringify(result) === baseline),
+    `${network.name} primary and fallback RPC preflight results differ`
+  );
+  return {
+    evidence: results[0],
+    consensus: {
+      chainId: network.chainId,
+      endpointCount: rpcUrls.length,
+      identical: true,
+    },
   };
 }
 
@@ -244,7 +322,9 @@ module.exports = {
   assert,
   networkFor,
   preflightMarketChain,
+  preflightMarketChainAcrossRpcs,
   preflightMarketDeployment,
   providerFor,
   readMarket,
+  rpcUrlsFor,
 };

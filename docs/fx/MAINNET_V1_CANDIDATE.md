@@ -50,6 +50,15 @@ The machine-readable freeze also binds each stablecoin runtime-code hash, EIP-71
 
 The native reserves are local dealing safeguards, not contract ceilings. Operators may keep larger reserves.
 
+Mainnet dependency preflight uses two pinned RPCs per chain and requires
+byte-for-byte identical token metadata, runtime hashes, domain separators, and
+EIP-3009 probe results from the primary and fallback. Base defaults to
+`base-rpc.publicnode.com` and `base.drpc.org`; Avalanche defaults to its public
+C-Chain RPC and PublicNode. Operators may replace each pair with comma-separated
+`BASE_RPC_URLS` and `AVALANCHE_RPC_URLS`. A missing endpoint, failed call, or
+divergent result blocks the preflight. The rate-limited `mainnet.base.org`
+endpoint is intentionally not a production default.
+
 ## Price formation
 
 USDC uses a one-dollar reference. EURC, ETH, and AVAX use independently

@@ -1,8 +1,7 @@
 const path = require("node:path");
 const {
   networkFor,
-  preflightMarketChain,
-  providerFor,
+  preflightMarketChainAcrossRpcs,
   readMarket,
 } = require("./market-candidate-config");
 
@@ -15,14 +14,18 @@ async function main() {
     ? market.chains.map((chain) => networkFor(market, chain.chainId))
     : [networkFor(market, requestedNetwork)];
   const evidence = [];
+  const rpcConsensus = [];
   for (const network of networks) {
-    evidence.push(await preflightMarketChain(providerFor(network), network));
+    const result = await preflightMarketChainAcrossRpcs(network);
+    evidence.push(result.evidence);
+    rpcConsensus.push(result.consensus);
   }
   console.log(JSON.stringify({
     profile,
     marketId: market.marketId,
     releaseStage: market.releaseStage,
     routeCount: market.routes.length,
+    rpcConsensus,
     evidence,
   }, null, 2));
 }
