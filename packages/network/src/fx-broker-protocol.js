@@ -169,7 +169,7 @@ function verifyQuoteSet(rfq, quotes, { now, maxReferenceAgeSeconds } = {}) {
   const verified = quotes.map((candidate) => {
     const quote = verifyFxEnvelope(candidate, {
       now,
-      clockSkewSeconds: 0,
+      clockSkewSeconds: FX_BROKER_CLOCK_SKEW_SECONDS,
       temporal: now !== undefined,
     });
     if (
@@ -190,7 +190,11 @@ function verifyQuoteSet(rfq, quotes, { now, maxReferenceAgeSeconds } = {}) {
   selectSingleDealerRoute(
     rfq,
     verified.map((quote) => ({ quote, brokerFeeAtomic: "0" })),
-    { now, maxReferenceAgeSeconds }
+    {
+      now,
+      maxReferenceAgeSeconds,
+      clockSkewSeconds: FX_BROKER_CLOCK_SKEW_SECONDS,
+    }
   );
   return verified;
 }
@@ -231,6 +235,7 @@ async function createBrokerRouteProposal({
       now,
       policy: policy || verifiedRfq.payload.quotePolicy,
       maxReferenceAgeSeconds,
+      clockSkewSeconds: FX_BROKER_CLOCK_SKEW_SECONDS,
     }
   );
   const selectedQuote = verifiedQuotes.find((quote) => quote.id === route.quoteId);
@@ -349,6 +354,7 @@ function verifyBrokerRouteProposal(input, {
       now: validationNow,
       policy: input.policy,
       maxReferenceAgeSeconds,
+      clockSkewSeconds: FX_BROKER_CLOCK_SKEW_SECONDS,
     }
   );
   if (!jsonEqual(route, input.route)) {
@@ -408,7 +414,12 @@ function compileSelfRoutedProposal(rfq, quotes, {
   const route = selectSingleDealerRoute(
     verifiedRfq,
     verifiedQuotes.map((quote) => ({ quote, brokerFeeAtomic: "0" })),
-    { now, policy: policy || verifiedRfq.payload.quotePolicy, maxReferenceAgeSeconds }
+    {
+      now,
+      policy: policy || verifiedRfq.payload.quotePolicy,
+      maxReferenceAgeSeconds,
+      clockSkewSeconds: FX_BROKER_CLOCK_SKEW_SECONDS,
+    }
   );
   return {
     mode: "self-routed",

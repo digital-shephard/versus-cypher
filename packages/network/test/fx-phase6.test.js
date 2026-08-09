@@ -49,11 +49,15 @@ class FakeWakuBus {
       createDecoder({ contentTopic }) { return { contentTopic }; },
       filter: {
         async subscribe(decoder, callback) {
-          callbacks.set(decoder.contentTopic, callback);
+          for (const value of Array.isArray(decoder) ? decoder : [decoder]) {
+            callbacks.set(value.contentTopic, callback);
+          }
           return true;
         },
         async unsubscribe(decoder) {
-          callbacks.delete(decoder.contentTopic);
+          for (const value of Array.isArray(decoder) ? decoder : [decoder]) {
+            callbacks.delete(value.contentTopic);
+          }
           return true;
         },
       },
@@ -69,7 +73,11 @@ class FakeWakuBus {
         async send(encoder, message) {
           const entry = {
             topic: encoder.contentTopic,
-            message: { ...message, hashStr: `fake-${bus.history.length + 1}` },
+            message: {
+              ...message,
+              contentTopic: encoder.contentTopic,
+              hashStr: `fake-${bus.history.length + 1}`,
+            },
           };
           bus.history.push(entry);
           if (!bus.drop) {
@@ -246,11 +254,9 @@ test("FX Waku startup failure tears down partial subscriptions before retry", as
         failedNode = node;
         const stop = node.stop.bind(node);
         const subscribe = node.filter.subscribe.bind(node.filter);
-        let subscriptions = 0;
         node.filter.subscribe = async (...arguments_) => {
-          subscriptions += 1;
-          if (subscriptions === 2) return false;
-          return subscribe(...arguments_);
+          await subscribe(...arguments_);
+          return false;
         };
         node.stop = async () => {
           failedNodeStops += 1;

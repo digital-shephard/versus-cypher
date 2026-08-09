@@ -694,6 +694,14 @@ test("broker returns shortly after the first verified quote", async (t) => {
   assert.equal(broker.status().quoteSettleWindowMs, 1_250);
 });
 
+test("broker compilation tolerates bounded dealer clock skew", async () => {
+  const context = await fixture();
+
+  assert.doesNotThrow(() =>
+    compileSelfRoutedProposal(context.rfq, [context.quote], { now: NOW })
+  );
+});
+
 test("broker safely rebroadcasts the same RFQ when discovery is quiet", async (t) => {
   const context = await fixture();
   const signer = Wallet.createRandom();

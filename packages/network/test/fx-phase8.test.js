@@ -66,11 +66,15 @@ class Phase8WakuBus {
       },
       filter: {
         async subscribe(decoder, callback) {
-          callbacks.set(decoder.contentTopic, callback);
+          for (const value of Array.isArray(decoder) ? decoder : [decoder]) {
+            callbacks.set(value.contentTopic, callback);
+          }
           return true;
         },
         async unsubscribe(decoder) {
-          callbacks.delete(decoder.contentTopic);
+          for (const value of Array.isArray(decoder) ? decoder : [decoder]) {
+            callbacks.delete(value.contentTopic);
+          }
           return true;
         },
       },
@@ -88,6 +92,7 @@ class Phase8WakuBus {
             topic: encoder.contentTopic,
             message: {
               ...message,
+              contentTopic: encoder.contentTopic,
               hashStr: `phase8-${bus.history.length + 1}`,
             },
           };

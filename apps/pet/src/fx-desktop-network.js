@@ -451,11 +451,11 @@ class FxDesktopNetworkRuntime extends EventEmitter {
 
   async queryRoutes({ rfq }) {
     const broker = await this.ensureBroker();
-    await this.ensureRequesterSession();
+    const requester = await this.ensureRequesterSession();
     await this.ensureRelayerSession();
     const startedAt = Date.now();
     const proposal = await broker.requestRoute(rfq);
-    this.ingestRequesterPackage(proposal);
+    this.ingestRequesterPackage(proposal, null, requester);
     return {
       selected: proposal,
       proposals: [proposal],
@@ -762,8 +762,13 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     });
   }
 
-  ingestRequesterPackage(proposal, acceptance) {
-    const session = this.requesterSession;
+  ingestRequesterPackage(proposal, acceptance, session = this.requesterSession) {
+    if (!session) {
+      throw new FxDesktopNetworkError(
+        "requester coordination session is unavailable",
+        "REQUESTER_SESSION_UNAVAILABLE"
+      );
+    }
     for (const envelope of [
       proposal.rfq,
       ...proposal.quotes,

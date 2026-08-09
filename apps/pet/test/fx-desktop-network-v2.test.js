@@ -62,11 +62,15 @@ class FakeWakuBus {
       },
       filter: {
         async subscribe(decoder, callback) {
-          callbacks.set(decoder.contentTopic, callback);
+          for (const value of Array.isArray(decoder) ? decoder : [decoder]) {
+            callbacks.set(value.contentTopic, callback);
+          }
           return true;
         },
         async unsubscribe(decoder) {
-          callbacks.delete(decoder.contentTopic);
+          for (const value of Array.isArray(decoder) ? decoder : [decoder]) {
+            callbacks.delete(value.contentTopic);
+          }
           return true;
         },
       },
@@ -86,6 +90,7 @@ class FakeWakuBus {
             topic: encoder.contentTopic,
             message: {
               ...message,
+              contentTopic: encoder.contentTopic,
               hashStr: `v2-${bus.history.length + 1}`,
             },
           };

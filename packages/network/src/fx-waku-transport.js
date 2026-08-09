@@ -276,19 +276,31 @@ class FxWakuTransport extends EventEmitter {
       ) {
         throw new Error("FX Waku transport did not find the required peers");
       }
-      for (const topic of [
+      const topics = [
         this.topics.discovery,
         ...this.topics.coordination,
         ...this.topics.evidence,
-      ]) {
+      ];
+      for (const topic of topics) {
         const encoder = this.node.createEncoder({ contentTopic: topic, ephemeral: false });
         const decoder = this.node.createDecoder({ contentTopic: topic });
-        const subscribed = await this.node.filter.subscribe(decoder, (message) => {
-          this.onMessage(message, { topic, history: false });
-        });
-        if (!subscribed) throw new Error(`FX Waku Filter rejected ${topic}`);
         this.encoders.set(topic, encoder);
         this.decoders.set(topic, decoder);
+      }
+      // Submit the deployment's bounded topic set atomically. Repeated
+      // subscribe mutations can race Filter peer renewal and leave the final
+      // evidence criterion rejected even though the relay has ample capacity.
+      const subscribed = await this.node.filter.subscribe(
+        [...this.decoders.values()],
+        (message) => {
+          this.onMessage(message, {
+            topic: String(message?.contentTopic || ""),
+            history: false,
+          });
+        }
+      );
+      if (!subscribed) {
+        throw new Error("FX Waku Filter rejected the deployment topic set");
       }
       this.started = true;
       this.resetReconnectBackoff();
@@ -497,8 +509,9 @@ class FxWakuTransport extends EventEmitter {
       this.setState("offline");
       return;
     }
-    for (const decoder of this.decoders.values()) {
-      await this.node.filter.unsubscribe(decoder).catch(() => false);
+    const decoders = [...this.decoders.values()];
+    if (decoders.length) {
+      await this.node.filter.unsubscribe(decoders).catch(() => false);
     }
     await this.node.stop();
     this.node = null;

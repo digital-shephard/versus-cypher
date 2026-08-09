@@ -1235,6 +1235,7 @@ function advanceFxCaseState(currentState, event) {
 
 function selectSingleDealerRoute(rfqEnvelope, candidates, options = {}) {
   const now = options.now ?? Math.floor(Date.now() / 1000);
+  const quoteClockSkewSeconds = options.clockSkewSeconds ?? 0;
   const maxReferenceAgeSeconds =
     options.maxReferenceAgeSeconds ?? FX_MAX_REFERENCE_AGE_SECONDS;
   const rfq = verifyFxEnvelope(rfqEnvelope, { now, clockSkewSeconds: 0 });
@@ -1250,7 +1251,10 @@ function selectSingleDealerRoute(rfqEnvelope, candidates, options = {}) {
     assertAllowedKeys(candidate, ["quote", "brokerFeeAtomic"], "route candidate");
     let quote;
     try {
-      quote = verifyFxEnvelope(candidate.quote, { now, clockSkewSeconds: 0 });
+      quote = verifyFxEnvelope(candidate.quote, {
+        now,
+        clockSkewSeconds: quoteClockSkewSeconds,
+      });
     } catch (_) {
       continue;
     }
