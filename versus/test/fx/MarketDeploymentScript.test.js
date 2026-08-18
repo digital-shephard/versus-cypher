@@ -24,6 +24,7 @@ const {
 const {
   bufferedGas,
   deploymentOverrides,
+  finalizeDeployment,
 } = require("../../scripts/fx/deploy-market-v1-mainnet");
 
 function mainnetNetwork(chainId) {
@@ -87,8 +88,8 @@ describe("FX market deployment runtime visibility", function () {
 
   it("pins two production RPCs per mainnet chain", function () {
     expect(rpcUrlsFor(mainnetNetwork("8453"), {})).to.deep.equal([
-      "https://base-rpc.publicnode.com",
       "https://public.1rpc.io/base",
+      "https://base-mainnet.public.blastapi.io",
     ]);
     expect(rpcUrlsFor(mainnetNetwork("43114"), {})).to.deep.equal([
       "https://api.avax.network/ext/bc/C/rpc",
@@ -188,6 +189,30 @@ describe("FX market deployment runtime visibility", function () {
       maximumGasPerDeployment: 120n,
       maximumFeePerGasWei: 20n,
     })).to.be.rejectedWith("exceeds reviewed ceiling");
+  });
+
+  it("finalizes a crash-safe broadcast journal without permitting evidence drift", function () {
+    const pending = {
+      address: "0x0000000000000000000000000000000000000001",
+      transactionHash: `0x${"01".repeat(32)}`,
+    };
+    const evidence = {
+      deploymentBlock: 123,
+      gasUsed: "456",
+      runtimeCodeHash: `0x${"02".repeat(32)}`,
+    };
+    expect(finalizeDeployment(pending, evidence)).to.deep.equal({
+      ...pending,
+      ...evidence,
+    });
+    expect(() => finalizeDeployment({
+      ...pending,
+      deploymentBlock: 122,
+    }, evidence)).to.throw("deployment block mismatch");
+    expect(() => finalizeDeployment({
+      ...pending,
+      runtimeCodeHash: `0x${"03".repeat(32)}`,
+    }, evidence)).to.throw("runtime code hash mismatch");
   });
 
   it("requires identical deployed runtime evidence from both mainnet RPCs", async function () {

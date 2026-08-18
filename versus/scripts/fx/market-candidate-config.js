@@ -57,10 +57,10 @@ const NETWORKS = Object.freeze({
   "8453": Object.freeze({
     key: "base",
     id: "base",
-    publicRpcUrl: "https://base-rpc.publicnode.com",
+    publicRpcUrl: "https://public.1rpc.io/base",
     publicRpcUrls: Object.freeze([
-      "https://base-rpc.publicnode.com",
       "https://public.1rpc.io/base",
+      "https://base-mainnet.public.blastapi.io",
     ]),
     rpcListEnvironmentVariable: "BASE_RPC_URLS",
     explorerAddressUrl: "https://basescan.org/address",

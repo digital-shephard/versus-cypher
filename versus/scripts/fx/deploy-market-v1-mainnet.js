@@ -95,18 +95,45 @@ async function assertDeploymentVisible(providers, deployed, confirmations) {
       "deployment is not confirmed and visible through every pinned RPC"
     );
     evidence.push({
-      blockNumber: Number(receipt.blockNumber),
+      deploymentBlock: Number(receipt.blockNumber),
+      gasUsed: receipt.gasUsed.toString(),
       runtimeCodeHash: keccak256(code),
     });
   }
   assert(
     evidence.every((item) =>
-      item.blockNumber === evidence[0].blockNumber &&
+      item.deploymentBlock === evidence[0].deploymentBlock &&
+      item.gasUsed === evidence[0].gasUsed &&
       item.runtimeCodeHash === evidence[0].runtimeCodeHash
     ),
     "pinned RPCs disagree on deployment receipt or runtime code"
   );
   return evidence[0];
+}
+
+function finalizeDeployment(previous, observed) {
+  if (previous.deploymentBlock != null) {
+    assert(
+      previous.deploymentBlock === observed.deploymentBlock,
+      "deployment block mismatch"
+    );
+  }
+  if (previous.gasUsed != null) {
+    assert(previous.gasUsed === observed.gasUsed, "deployment gas mismatch");
+  }
+  if (previous.runtimeCodeHash != null) {
+    assert(
+      previous.runtimeCodeHash === observed.runtimeCodeHash,
+      "runtime code hash mismatch"
+    );
+  }
+  return {
+    address: previous.address,
+    transactionHash: previous.transactionHash,
+    deploymentBlock: observed.deploymentBlock,
+    gasUsed: observed.gasUsed,
+    runtimeCodeHash: observed.runtimeCodeHash,
+  };
 }
 
 async function deployOrResume({
@@ -123,12 +150,10 @@ async function deployOrResume({
   const previous = journal.deployments[key];
   if (previous) {
     const observed = await assertDeploymentVisible(providers, previous, confirmations);
-    assert(
-      observed.runtimeCodeHash === previous.runtimeCodeHash &&
-        observed.blockNumber === previous.deploymentBlock,
-      `${key} journal does not match pinned RPC evidence`
-    );
-    return previous;
+    const finalized = finalizeDeployment(previous, observed);
+    journal.deployments[key] = finalized;
+    writeJson(journalPath, journal, { privateFile: true });
+    return finalized;
   }
 
   const primary = providers[0];
@@ -153,20 +178,19 @@ async function deployOrResume({
   );
   const contract = await factory.deploy(...args, overrides);
   const transaction = contract.deploymentTransaction();
+  const pending = {
+    address: (await contract.getAddress()).toLowerCase(),
+    transactionHash: transaction.hash.toLowerCase(),
+  };
+  journal.deployments[key] = pending;
+  writeJson(journalPath, journal, { privateFile: true });
   const receipt = await transaction.wait(confirmations);
   assert(receipt && Number(receipt.status) === 1, `${key} deployment failed`);
-  const address = (await contract.getAddress()).toLowerCase();
   const observed = await assertDeploymentVisible(providers, {
-    address,
+    address: pending.address,
     transactionHash: receipt.hash.toLowerCase(),
   }, confirmations);
-  const deployed = {
-    address,
-    transactionHash: receipt.hash.toLowerCase(),
-    deploymentBlock: observed.blockNumber,
-    gasUsed: receipt.gasUsed.toString(),
-    runtimeCodeHash: observed.runtimeCodeHash,
-  };
+  const deployed = finalizeDeployment(pending, observed);
   journal.deployments[key] = deployed;
   writeJson(journalPath, journal, { privateFile: true });
   return deployed;
@@ -322,4 +346,5 @@ if (require.main === module) {
 module.exports = {
   bufferedGas,
   deploymentOverrides,
+  finalizeDeployment,
 };
