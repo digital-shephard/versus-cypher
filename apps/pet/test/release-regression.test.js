@@ -512,6 +512,14 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   assert.doesNotMatch(html, /id="fx-settlement-timeline"/);
   assert.match(html, /id="fx-requester-compose"/);
   assert.match(html, /id="fx-requester-title" aria-label="Back to swap form">SWAP/);
+  assert.match(html, /id="fx-requester-environment">TESTNET/);
+  assert.match(html, /id="fx-asset-picker-environment">TESTNET/);
+  assert.match(renderer, /snapshot\.productionFunds === true \? "MAINNET" : "TESTNET"/);
+  assert.match(renderer, /fxDesktopSnapshot\?\.productionFunds === true \? "MAINNET" : "TESTNET"/);
+  assert.match(preflight, /"mainnet-v1-candidate"/);
+  assert.match(preflight, /avalanche-43114-market-v1-mainnet\.json/);
+  assert.match(preflight, /base-8453-market-v1-mainnet\.json/);
+  assert.doesNotMatch(preflight, /runtime preflight is restricted to the public-testnet candidate/);
   assert.doesNotMatch(html, /id="fx-copy-funding"[^>]*>COPY ADDRESS/);
   assert.doesNotMatch(html, /CONNECT WALLET/i);
   assert.match(renderer, /function fxShortAddress[\s\S]*\u2026/);

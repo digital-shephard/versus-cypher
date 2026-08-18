@@ -17,6 +17,22 @@ const PUBLIC_TESTNET_RPCS = Object.freeze({
   BASE_SEPOLIA_RPC_URL: "https://sepolia.base.org",
   AVALANCHE_FUJI_RPC_URL: "https://api.avax-test.network/ext/bc/C/rpc",
 });
+const RUNTIME_PROFILES = Object.freeze({
+  "public-testnet-v1-candidate": Object.freeze({
+    rpcDefaults: PUBLIC_TESTNET_RPCS,
+    chainRecordFiles: Object.freeze([
+      "avalancheFuji-43113-market-v1-testnet.json",
+      "baseSepolia-84532-market-v1-testnet.json",
+    ]),
+  }),
+  "mainnet-v1-candidate": Object.freeze({
+    rpcDefaults: Object.freeze({}),
+    chainRecordFiles: Object.freeze([
+      "avalanche-43114-market-v1-mainnet.json",
+      "base-8453-market-v1-mainnet.json",
+    ]),
+  }),
+});
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -58,10 +74,8 @@ async function main() {
   const repositoryRoot = path.resolve(__dirname, "..", "..", "..");
   const runtime = loadFxMarketRuntime(process.env);
   assert(runtime, "VERSUS_FX_MARKET_DEPLOYMENT is required");
-  assert(
-    runtime.releaseStage === "public-testnet-v1-candidate",
-    "runtime preflight is restricted to the public-testnet candidate"
-  );
+  const profile = RUNTIME_PROFILES[runtime.releaseStage];
+  assert(profile, `unsupported runtime release stage: ${runtime.releaseStage}`);
 
   const wallets = Object.fromEntries(
     ["requester", "dealer", "broker", "relayer"].map((role) => [
@@ -71,13 +85,19 @@ async function main() {
   );
   const environment = {
     ...process.env,
-    BASE_SEPOLIA_RPC_URL:
-      process.env.BASE_SEPOLIA_RPC_URL ||
-      PUBLIC_TESTNET_RPCS.BASE_SEPOLIA_RPC_URL,
-    AVALANCHE_FUJI_RPC_URL:
-      process.env.AVALANCHE_FUJI_RPC_URL ||
-      PUBLIC_TESTNET_RPCS.AVALANCHE_FUJI_RPC_URL,
+    ...Object.fromEntries(Object.entries(profile.rpcDefaults).map(([key, value]) => [
+      key,
+      process.env[key] || value,
+    ])),
   };
+  if (runtime.releaseStage === "mainnet-v1-candidate") {
+    for (const chain of runtime.chains) {
+      assert(
+        String(environment[chain.rpcEnvironmentVariable] || "").trim(),
+        `${chain.rpcEnvironmentVariable} is required for mainnet preflight`
+      );
+    }
+  }
   const cohort = new FxEvmCohort({
     walletProvider: (role) => wallets[role] || wallets.requester,
     configurations: runtime.configurations,
@@ -90,10 +110,7 @@ async function main() {
     "deployments",
     "fx"
   );
-  const chainRecords = new Map([
-    "avalancheFuji-43113-market-v1-testnet.json",
-    "baseSepolia-84532-market-v1-testnet.json",
-  ].map((fileName) => {
+  const chainRecords = new Map(profile.chainRecordFiles.map((fileName) => {
     const record = JSON.parse(fs.readFileSync(path.join(deploymentRoot, fileName), "utf8"));
     return [String(record.chainId), record];
   }));
@@ -188,8 +205,9 @@ async function main() {
   }
 
   process.stdout.write(`${JSON.stringify({
-    schema: "versus-fx-public-testnet-runtime-preflight",
+    schema: "versus-fx-market-runtime-preflight",
     schemaVersion: 1,
+    releaseStage: runtime.releaseStage,
     deploymentId: runtime.deploymentId,
     coordinationDomain: runtime.coordinationDomain,
     positions: runtime.positions.length,

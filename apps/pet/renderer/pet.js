@@ -1415,6 +1415,11 @@ function fxTradeReceipt(trade) {
 function applyFxSnapshot(snapshot) {
   if (!snapshot) return;
   fxDesktopSnapshot = snapshot;
+  const environmentLabel = snapshot.productionFunds === true ? "MAINNET" : "TESTNET";
+  for (const id of ["fx-requester-environment", "fx-asset-picker-environment"]) {
+    const node = $(id);
+    if (node) node.textContent = environmentLabel;
+  }
   fxChains = (snapshot.chains || []).map((chain) => ({
     ...chain,
     chainKey: chain.chainKey?.includes("arbitrum") ? "arbitrum" : "base",
@@ -2068,7 +2073,7 @@ function fxChainOptionNode(chain) {
   );
   const groupMeta = fxNode("span", "fx-chain-group-meta");
   groupMeta.append(
-    fxNode("small", null, "TESTNET"),
+    fxNode("small", null, fxDesktopSnapshot?.productionFunds === true ? "MAINNET" : "TESTNET"),
     fxNode("i", "fx-chain-caret"),
   );
   groupHead.append(groupIdentity, groupMeta);
