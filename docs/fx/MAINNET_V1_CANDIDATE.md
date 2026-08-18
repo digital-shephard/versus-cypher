@@ -53,11 +53,11 @@ The native reserves are local dealing safeguards, not contract ceilings. Operato
 Mainnet dependency preflight uses two pinned RPCs per chain and requires
 byte-for-byte identical token metadata, runtime hashes, domain separators, and
 EIP-3009 probe results from the primary and fallback. Base defaults to
-`base-rpc.publicnode.com` and `base.drpc.org`; Avalanche defaults to its public
+`base-rpc.publicnode.com` and `public.1rpc.io/base`; Avalanche defaults to its public
 C-Chain RPC and PublicNode. Operators may replace each pair with comma-separated
 `BASE_RPC_URLS` and `AVALANCHE_RPC_URLS`. A missing endpoint, failed call, or
-divergent result blocks the preflight. The rate-limited `mainnet.base.org`
-endpoint is intentionally not a production default.
+divergent result blocks the preflight. The rate-limited `mainnet.base.org` and
+free-plan-limited `base.drpc.org` endpoints are intentionally not production defaults.
 
 ## Price formation
 

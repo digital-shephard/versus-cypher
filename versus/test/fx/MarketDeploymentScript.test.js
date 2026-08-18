@@ -88,7 +88,7 @@ describe("FX market deployment runtime visibility", function () {
   it("pins two production RPCs per mainnet chain", function () {
     expect(rpcUrlsFor(mainnetNetwork("8453"), {})).to.deep.equal([
       "https://base-rpc.publicnode.com",
-      "https://base.drpc.org",
+      "https://public.1rpc.io/base",
     ]);
     expect(rpcUrlsFor(mainnetNetwork("43114"), {})).to.deep.equal([
       "https://api.avax.network/ext/bc/C/rpc",
