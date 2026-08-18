@@ -30,6 +30,11 @@ ETH/AVAX/EURC price quorum.
 - Terminal desktop state: `funds_ready`
 - Trade ID: `0x716e96c415c27cbfeb8ef6d0d958ed5268c211892b297754b21cb9098ee3bc67`
 
+After the receipt and dual-RPC audit completed, the macOS operator disarmed the
+dealer at HEAD `3b733243b925179b31d7f10caaf2e367528f17f5`. The process remained healthy
+with two LightPush, two Filter, and two Store peers and no sanitized error. No
+additional transaction was sent during shutdown.
+
 The requester runtime identified itself as `mainnet-v1-candidate`, exposed
 `productionFunds: true`, rendered `MAINNET` on both swap surfaces, and bound the
 recipient to the requester identity accepted by the prior physical 30-route

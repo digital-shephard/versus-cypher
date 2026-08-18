@@ -47,7 +47,9 @@ delivered exactly `0.01 AVAX` to the requester on Avalanche C-Chain.
 The Base source-lock transaction and Avalanche destination transaction both
 returned successful, identical receipt block/hash results from two RPCs per
 chain. The desktop reached `funds_ready`, observed the full destination amount,
-and reported no terminal failure. The V3 and exact build freezes were then
+and reported no terminal failure. The macOS dealer was then disarmed while its
+public Waku peer counts remained healthy at two LightPush, Filter, and Store
+peers, with no sanitized error. The V3 and exact build freezes were then
 regenerated with byte-for-byte zero diff. Public hashes, blocks, runtime
 preflight output, identities, and residual gates are recorded in
 [`MAINNET_V1_CANARY_2026-08-17.md`](./MAINNET_V1_CANARY_2026-08-17.md).
