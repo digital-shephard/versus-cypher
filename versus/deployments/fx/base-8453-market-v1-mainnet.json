@@ -1,0 +1,195 @@
+{
+  "schema": "versus-fx-market-v1-mainnet-chain",
+  "schemaVersion": 1,
+  "sourceCommit": "cc99a5acce22df2fd77a288b13cf7bf8a90c6bb1",
+  "marketId": "0x86072d56f6246bda48655ddb14cfeb74b905eb854e648311aea6204125ffded8",
+  "chainId": "8453",
+  "name": "Base",
+  "builds": {
+    "v3": {
+      "native": {
+        "adapterId": "evm-native-htlc-v3",
+        "adapterVersion": 3,
+        "contract": "EvmNativeHtlcV3",
+        "sourcePath": "versus/contracts/fx/EvmNativeHtlcV3.sol",
+        "sourceTag": "agentic-fx-requester-secret-v3",
+        "compiler": "0.8.26",
+        "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+        "evmVersion": "cancun",
+        "optimizerRuns": 1,
+        "viaIR": true,
+        "sourceSha256": "0xa23e6d5118ca862eb55fb7d70e2b1cb5b7ec94c403cf101e29797d2e31b6d1b6",
+        "creationCodeHash": "0xc661336012b2e2629502dd380520ca449b875d447db917826ba741df3c4e0d54",
+        "runtimeTemplateHash": "0x7c425905df36ba2ceeedbef5e0cefd2d44fe16f32c671c5a3f3fc117d8d007ce",
+        "creationCodeBytes": 3223,
+        "runtimeTemplateBytes": 2875
+      },
+      "erc20": {
+        "adapterId": "evm-htlc-v3",
+        "adapterVersion": 3,
+        "contract": "EvmHtlcV3",
+        "sourcePath": "versus/contracts/fx/EvmHtlcV3.sol",
+        "sourceTag": "agentic-fx-requester-secret-v3",
+        "compiler": "0.8.26",
+        "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+        "evmVersion": "cancun",
+        "optimizerRuns": 1,
+        "viaIR": true,
+        "sourceSha256": "0xfcdef75ab5add995a809a2631cab73f6e6b72e40ee6bee7e91b8a6b1c7e01921",
+        "creationCodeHash": "0x9fabd7ae8433f0e1696e94b1faf83a0138d297d3b293909ef80b1de32c181e3f",
+        "runtimeTemplateHash": "0x742f48b4fc1caf97f55a02da259ea78ba744f76f0198c901d178a5f5bba18cfd",
+        "creationCodeBytes": 5657,
+        "runtimeTemplateBytes": 5047
+      }
+    },
+    "exact": {
+      "schema": "versus-fx-evm-exact-build-freeze",
+      "schemaVersion": 1,
+      "settlementMode": "x402-exact-eip3009-to-v3",
+      "sourceTag": "generic-x402-exact-v1",
+      "builds": {
+        "EvmExactHtlcEscrow": {
+          "contract": "EvmExactHtlcEscrow",
+          "sourcePath": "versus/contracts/fx/EvmExactHtlcFactory.sol",
+          "compiler": "0.8.26",
+          "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+          "evmVersion": "cancun",
+          "optimizerRuns": 1,
+          "viaIR": true,
+          "sourceSha256": "0x97b4caab838829722cf4ff0661ae5f6b5cfef2cd6a5c50088c45d879efd8854b",
+          "creationCodeHash": "0x1c8fcf54ce1bd3650fd52099d5cb844441e30b84b0953439a6848363fbc20d73",
+          "runtimeTemplateHash": "0xca416ce6298dd4d5ccfdaedbefa7e2ac33c5f7145d5cc6690a48cef99f3b3ab1",
+          "creationCodeBytes": 5642,
+          "runtimeTemplateBytes": 4888
+        },
+        "EvmExactHtlcFactory": {
+          "contract": "EvmExactHtlcFactory",
+          "sourcePath": "versus/contracts/fx/EvmExactHtlcFactory.sol",
+          "compiler": "0.8.26",
+          "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+          "evmVersion": "cancun",
+          "optimizerRuns": 1,
+          "viaIR": true,
+          "sourceSha256": "0x97b4caab838829722cf4ff0661ae5f6b5cfef2cd6a5c50088c45d879efd8854b",
+          "creationCodeHash": "0xff1515855930ce92d65f68a90565b708460f99c9dc5919103a23cbd06076d3ed",
+          "runtimeTemplateHash": "0x84b2a849a93a969099ecaf58cc6fc041a2d437a35ded02d1ccbc43a125f8a218",
+          "creationCodeBytes": 8803,
+          "runtimeTemplateBytes": 8380
+        }
+      }
+    }
+  },
+  "native": {
+    "address": "0x07d33b60292515781c3d806fb82b4bdad6e1058f",
+    "transactionHash": "0x3d229904dfa09055b51fa5123334e622145cf1c2e3de04e25aa3be196b7f1978",
+    "deploymentBlock": 50115282,
+    "gasUsed": "678993",
+    "runtimeCodeHash": "0x8fd3f182c87483d8ac3ea80b2a827eb8a71b26e51f7f29261f12e4ea141052ff"
+  },
+  "erc20s": [
+    {
+      "symbol": "USDC",
+      "asset": {
+        "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "symbol": "USDC",
+        "kind": "erc20",
+        "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "decimals": 6,
+        "stable": true,
+        "x402ExactInput": true,
+        "name": "USD Coin",
+        "eip712Version": "2",
+        "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+        "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+      },
+      "adapter": {
+        "address": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+        "transactionHash": "0x2ddc89fb7785d4e775bb4f58853d6b71111b71bd18f6b2ab19e24075b25d9e39",
+        "deploymentBlock": 50115396,
+        "gasUsed": "1164385",
+        "runtimeCodeHash": "0x3c7d3d3bf4ad9ed360545bbc2895a7d8bc9c268547db2b2455bacda034af2e9e"
+      },
+      "exactFactory": {
+        "address": "0x5ca6e205dbe159e7b9f564f8b49a3f2ef3d9adac",
+        "transactionHash": "0xcacfcb3f7ef20349d69e0c0e8077029c8282e44b557da6168d213d279fcbd839",
+        "deploymentBlock": 50115401,
+        "gasUsed": "1862226",
+        "runtimeCodeHash": "0x4c19a2f2c73ec819bc3e48c4ed5eb57d20a20339cb8eb7dd0098da8575ea33a7"
+      }
+    },
+    {
+      "symbol": "EURC",
+      "asset": {
+        "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "symbol": "EURC",
+        "kind": "erc20",
+        "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "decimals": 6,
+        "stable": true,
+        "x402ExactInput": true,
+        "name": "EURC",
+        "eip712Version": "2",
+        "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+        "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+      },
+      "adapter": {
+        "address": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+        "transactionHash": "0x97dff69f503f87c4ea0f6b2f722f51ade7279c0e1074732e24f7ddcffc0eb527",
+        "deploymentBlock": 50115405,
+        "gasUsed": "1164385",
+        "runtimeCodeHash": "0x62d07299d6f6250ab3d7e7569e16ab432f8d14f6c8508bf4789115369ee3ff09"
+      },
+      "exactFactory": {
+        "address": "0x33c669215394e53b7d92930b430b593d9c9fa302",
+        "transactionHash": "0x1938a7664d3d61a56be969ae668c74482db681071fee132f3a31dd78c4a46225",
+        "deploymentBlock": 50115447,
+        "gasUsed": "1862226",
+        "runtimeCodeHash": "0x0d62030204371a6217ce77c291354276f0b39baaae05b077cd676fea18d2ea2a"
+      }
+    }
+  ],
+  "confirmationPolicy": {
+    "requiredConfirmations": 2,
+    "reorgSafetyBlocks": 12
+  },
+  "timeoutPolicy": {
+    "minimumSeconds": 60,
+    "maximumSeconds": 604800,
+    "minimumCrossChainDeltaSeconds": 3600,
+    "destinationRelayWindowSeconds": 3600,
+    "genericQuoteLifetimeSeconds": 120,
+    "settlementLifetimeSeconds": 7200
+  },
+  "evidence": {
+    "deployer": "0xf7cbd55e19fc551341cc7db49d9b39c83c0c2a4b",
+    "verificationStatus": "verified",
+    "nativeVerification": "verified",
+    "erc20Verification": {
+      "USDC": {
+        "adapterStatus": "verified",
+        "exactFactoryStatus": "verified"
+      },
+      "EURC": {
+        "adapterStatus": "verified",
+        "exactFactoryStatus": "verified"
+      }
+    },
+    "verifiedAt": "2026-08-18T02:34:14.150Z",
+    "preflight": {
+      "chainId": "8453",
+      "native": "0x07d33b60292515781c3d806fb82b4bdad6e1058f",
+      "erc20s": [
+        {
+          "symbol": "USDC",
+          "adapter": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+          "exactFactory": "0x5ca6e205dbe159e7b9f564f8b49a3f2ef3d9adac"
+        },
+        {
+          "symbol": "EURC",
+          "adapter": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+          "exactFactory": "0x33c669215394e53b7d92930b430b593d9c9fa302"
+        }
+      ]
+    }
+  }
+}

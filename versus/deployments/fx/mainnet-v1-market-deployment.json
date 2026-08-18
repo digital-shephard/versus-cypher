@@ -1,0 +1,1340 @@
+{
+  "schema": "versus-fx-market-deployment",
+  "schemaVersion": 1,
+  "marketId": "0x86072d56f6246bda48655ddb14cfeb74b905eb854e648311aea6204125ffded8",
+  "releaseStage": "mainnet-v1-candidate",
+  "deploymentId": "0x950fecd8a9d624ef88690f9ee455d36437934f5499c2ba3a4c1674df871b57f2",
+  "coordinationDomain": "0xd67858f889c63e8979f846f938ab3089ad7c3defaeb124fdc0bbf269c137e046",
+  "market": {
+    "schema": "versus-fx-market-candidate",
+    "schemaVersion": 1,
+    "releaseStage": "mainnet-v1-candidate",
+    "sameChainRoutes": true,
+    "chains": [
+      {
+        "chainId": "8453",
+        "name": "Base",
+        "nativeSymbol": "ETH",
+        "rpcEnvironmentVariable": "BASE_RPC_URL",
+        "nativeGasReserveAtomic": "250000000000000",
+        "minimumGasUsd": 1,
+        "requiredConfirmations": 2,
+        "reorgSafetyBlocks": 12,
+        "assets": [
+          {
+            "positionId": "8453:0x0000000000000000000000000000000000000000",
+            "symbol": "ETH",
+            "kind": "native",
+            "token": "0x0000000000000000000000000000000000000000",
+            "decimals": 18,
+            "stable": false,
+            "x402ExactInput": false
+          },
+          {
+            "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "symbol": "USDC",
+            "kind": "erc20",
+            "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "USD Coin",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+            "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+          },
+          {
+            "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+            "symbol": "EURC",
+            "kind": "erc20",
+            "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "EURC",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+            "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+          }
+        ]
+      },
+      {
+        "chainId": "43114",
+        "name": "Avalanche C-Chain",
+        "nativeSymbol": "AVAX",
+        "rpcEnvironmentVariable": "AVALANCHE_RPC_URL",
+        "nativeGasReserveAtomic": "50000000000000000",
+        "minimumGasUsd": 1,
+        "requiredConfirmations": 1,
+        "reorgSafetyBlocks": 1,
+        "assets": [
+          {
+            "positionId": "43114:0x0000000000000000000000000000000000000000",
+            "symbol": "AVAX",
+            "kind": "native",
+            "token": "0x0000000000000000000000000000000000000000",
+            "decimals": 18,
+            "stable": false,
+            "x402ExactInput": false
+          },
+          {
+            "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+            "symbol": "USDC",
+            "kind": "erc20",
+            "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "USD Coin",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+            "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+          },
+          {
+            "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+            "symbol": "EURC",
+            "kind": "erc20",
+            "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+            "decimals": 6,
+            "stable": true,
+            "x402ExactInput": true,
+            "name": "Euro Coin",
+            "eip712Version": "2",
+            "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+            "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+          }
+        ]
+      }
+    ],
+    "timeoutPolicy": {
+      "minimumSeconds": 60,
+      "maximumSeconds": 604800,
+      "minimumCrossChainDeltaSeconds": 3600,
+      "destinationRelayWindowSeconds": 3600,
+      "genericQuoteLifetimeSeconds": 120,
+      "settlementLifetimeSeconds": 7200
+    },
+    "economics": {
+      "defaultDealerSpreadBps": 5,
+      "facilitatorFeeAtomic": "1000",
+      "onchainMaximumTrade": null,
+      "operatorLimitsAreOffchain": true
+    },
+    "marketId": "0x86072d56f6246bda48655ddb14cfeb74b905eb854e648311aea6204125ffded8",
+    "routes": [
+      {
+        "routeId": "8453:0x0000000000000000000000000000000000000000->8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "8453:0x0000000000000000000000000000000000000000->8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "8453:0x0000000000000000000000000000000000000000->43114:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "8453:0x0000000000000000000000000000000000000000->43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "8453:0x0000000000000000000000000000000000000000->43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913->8453:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913->8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913->43114:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913->43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913->43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42->8453:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42->8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42->43114:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42->43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42->43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+        "input": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0x0000000000000000000000000000000000000000->8453:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43114:0x0000000000000000000000000000000000000000->8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43114:0x0000000000000000000000000000000000000000->8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "sameChain": false,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43114:0x0000000000000000000000000000000000000000->43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43114:0x0000000000000000000000000000000000000000->43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "sameChain": true,
+        "x402ExactEligible": false
+      },
+      {
+        "routeId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e->8453:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e->8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e->8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e->43114:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e->43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd->8453:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x0000000000000000000000000000000000000000",
+          "symbol": "ETH",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd->8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+          "domainSeparator": "0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd->8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "output": {
+          "chainId": "8453",
+          "chainName": "Base",
+          "positionId": "8453:0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "EURC",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+          "domainSeparator": "0xec4dcbded0afd42599589b79220899bbe000bb5ea66d6f1bc176e78d094203bb"
+        },
+        "sameChain": false,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd->43114:0x0000000000000000000000000000000000000000",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0x0000000000000000000000000000000000000000",
+          "symbol": "AVAX",
+          "kind": "native",
+          "token": "0x0000000000000000000000000000000000000000",
+          "decimals": 18,
+          "stable": false,
+          "x402ExactInput": false
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      },
+      {
+        "routeId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd->43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "input": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "symbol": "EURC",
+          "kind": "erc20",
+          "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "Euro Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+          "domainSeparator": "0x094e957ad84a5711a2d13ea2ddcfe3947fe1704472f07bf8a49718f55a65f4b1"
+        },
+        "output": {
+          "chainId": "43114",
+          "chainName": "Avalanche C-Chain",
+          "positionId": "43114:0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "symbol": "USDC",
+          "kind": "erc20",
+          "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+          "decimals": 6,
+          "stable": true,
+          "x402ExactInput": true,
+          "name": "USD Coin",
+          "eip712Version": "2",
+          "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+          "domainSeparator": "0xbbea200329a938bc3438984a49cb0732e66d66d7bd59c127abacc1710e77f7b3"
+        },
+        "sameChain": true,
+        "x402ExactEligible": true
+      }
+    ]
+  },
+  "v3": {
+    "schema": "versus-fx-evm-v3-capabilities",
+    "schemaVersion": 3,
+    "settlementMode": "requester-secret-source-first-compact",
+    "deploymentId": "0x950fecd8a9d624ef88690f9ee455d36437934f5499c2ba3a4c1674df871b57f2",
+    "coordinationDomain": "0xd67858f889c63e8979f846f938ab3089ad7c3defaeb124fdc0bbf269c137e046",
+    "builds": {
+      "native": {
+        "adapterId": "evm-native-htlc-v3",
+        "adapterVersion": 3,
+        "contract": "EvmNativeHtlcV3",
+        "sourcePath": "versus/contracts/fx/EvmNativeHtlcV3.sol",
+        "sourceTag": "agentic-fx-requester-secret-v3",
+        "compiler": "0.8.26",
+        "evmVersion": "cancun",
+        "optimizerRuns": 1,
+        "viaIR": true,
+        "sourceSha256": "0xa23e6d5118ca862eb55fb7d70e2b1cb5b7ec94c403cf101e29797d2e31b6d1b6",
+        "creationCodeHash": "0xc661336012b2e2629502dd380520ca449b875d447db917826ba741df3c4e0d54"
+      },
+      "erc20": {
+        "adapterId": "evm-htlc-v3",
+        "adapterVersion": 3,
+        "contract": "EvmHtlcV3",
+        "sourcePath": "versus/contracts/fx/EvmHtlcV3.sol",
+        "sourceTag": "agentic-fx-requester-secret-v3",
+        "compiler": "0.8.26",
+        "evmVersion": "cancun",
+        "optimizerRuns": 1,
+        "viaIR": true,
+        "sourceSha256": "0xfcdef75ab5add995a809a2631cab73f6e6b72e40ee6bee7e91b8a6b1c7e01921",
+        "creationCodeHash": "0x9fabd7ae8433f0e1696e94b1faf83a0138d297d3b293909ef80b1de32c181e3f"
+      }
+    },
+    "capabilities": [
+      {
+        "chainId": "8453",
+        "native": {
+          "adapterAddress": "0x07d33b60292515781c3d806fb82b4bdad6e1058f",
+          "runtimeCodeHash": "0x8fd3f182c87483d8ac3ea80b2a827eb8a71b26e51f7f29261f12e4ea141052ff",
+          "deploymentBlock": 50115282,
+          "assetId": "native:eth"
+        },
+        "erc20": {
+          "adapterAddress": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+          "runtimeCodeHash": "0x62d07299d6f6250ab3d7e7569e16ab432f8d14f6c8508bf4789115369ee3ff09",
+          "deploymentBlock": 50115405,
+          "asset": {
+            "address": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+            "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+            "symbol": "EURC",
+            "decimals": 6,
+            "standard": "ERC20"
+          }
+        },
+        "erc20s": [
+          {
+            "adapterAddress": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+            "runtimeCodeHash": "0x62d07299d6f6250ab3d7e7569e16ab432f8d14f6c8508bf4789115369ee3ff09",
+            "deploymentBlock": 50115405,
+            "asset": {
+              "address": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+              "runtimeCodeHash": "0xdc7d03167b2b33566fa1cf50046e5bf4828f6d401678ed832d2cd7973ea17380",
+              "symbol": "EURC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          },
+          {
+            "adapterAddress": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+            "runtimeCodeHash": "0x3c7d3d3bf4ad9ed360545bbc2895a7d8bc9c268547db2b2455bacda034af2e9e",
+            "deploymentBlock": 50115396,
+            "asset": {
+              "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "runtimeCodeHash": "0xa6705a10bb756b5dea144591118be77d7af0c3eee3bf2dfe2583dcb0364fefab",
+              "symbol": "USDC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          }
+        ],
+        "confirmationPolicy": {
+          "requiredConfirmations": 2,
+          "reorgSafetyBlocks": 12
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 3600,
+          "minimumDestinationRelayWindowSeconds": 3600
+        }
+      },
+      {
+        "chainId": "43114",
+        "native": {
+          "adapterAddress": "0x07d33b60292515781c3d806fb82b4bdad6e1058f",
+          "runtimeCodeHash": "0x64d772896d01eee4373c9daac60dd84bc201db51b66810937112349b653d68fb",
+          "deploymentBlock": 93071476,
+          "assetId": "native:avax"
+        },
+        "erc20": {
+          "adapterAddress": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+          "runtimeCodeHash": "0x23c3879b31facd7f313528a32601e798e53ceec951ec9de2b0fe5e481bd0b70c",
+          "deploymentBlock": 93071481,
+          "asset": {
+            "address": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+            "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+            "symbol": "USDC",
+            "decimals": 6,
+            "standard": "ERC20"
+          }
+        },
+        "erc20s": [
+          {
+            "adapterAddress": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+            "runtimeCodeHash": "0x23c3879b31facd7f313528a32601e798e53ceec951ec9de2b0fe5e481bd0b70c",
+            "deploymentBlock": 93071481,
+            "asset": {
+              "address": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+              "runtimeCodeHash": "0x7140a935aa3bb55d334d6d325fea277e47674770b10823feefa6f8b2c58af5fc",
+              "symbol": "USDC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          },
+          {
+            "adapterAddress": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+            "runtimeCodeHash": "0x2a5db0c8c14c9d5aa3d7f043a2b418f9f5d54d88fb78eaaae59ab4beb086bec4",
+            "deploymentBlock": 93071495,
+            "asset": {
+              "address": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+              "runtimeCodeHash": "0x42a47b737fee964fdbcf73dd74b14defc4ad7e9c78763772f7cdb9ca31bf3710",
+              "symbol": "EURC",
+              "decimals": 6,
+              "standard": "ERC20"
+            }
+          }
+        ],
+        "confirmationPolicy": {
+          "requiredConfirmations": 1,
+          "reorgSafetyBlocks": 1
+        },
+        "timeoutPolicy": {
+          "minimumSeconds": 60,
+          "maximumSeconds": 604800,
+          "minimumCrossChainDeltaSeconds": 3600,
+          "minimumDestinationRelayWindowSeconds": 3600
+        }
+      }
+    ]
+  },
+  "exact": {
+    "build": {
+      "schema": "versus-fx-evm-exact-build-freeze",
+      "schemaVersion": 1,
+      "settlementMode": "x402-exact-eip3009-to-v3",
+      "sourceTag": "generic-x402-exact-v1",
+      "builds": {
+        "EvmExactHtlcEscrow": {
+          "contract": "EvmExactHtlcEscrow",
+          "sourcePath": "versus/contracts/fx/EvmExactHtlcFactory.sol",
+          "compiler": "0.8.26",
+          "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+          "evmVersion": "cancun",
+          "optimizerRuns": 1,
+          "viaIR": true,
+          "sourceSha256": "0x97b4caab838829722cf4ff0661ae5f6b5cfef2cd6a5c50088c45d879efd8854b",
+          "creationCodeHash": "0x1c8fcf54ce1bd3650fd52099d5cb844441e30b84b0953439a6848363fbc20d73",
+          "runtimeTemplateHash": "0xca416ce6298dd4d5ccfdaedbefa7e2ac33c5f7145d5cc6690a48cef99f3b3ab1",
+          "creationCodeBytes": 5642,
+          "runtimeTemplateBytes": 4888
+        },
+        "EvmExactHtlcFactory": {
+          "contract": "EvmExactHtlcFactory",
+          "sourcePath": "versus/contracts/fx/EvmExactHtlcFactory.sol",
+          "compiler": "0.8.26",
+          "compilerLongVersion": "0.8.26+commit.8a97fa7a",
+          "evmVersion": "cancun",
+          "optimizerRuns": 1,
+          "viaIR": true,
+          "sourceSha256": "0x97b4caab838829722cf4ff0661ae5f6b5cfef2cd6a5c50088c45d879efd8854b",
+          "creationCodeHash": "0xff1515855930ce92d65f68a90565b708460f99c9dc5919103a23cbd06076d3ed",
+          "runtimeTemplateHash": "0x84b2a849a93a969099ecaf58cc6fc041a2d437a35ded02d1ccbc43a125f8a218",
+          "creationCodeBytes": 8803,
+          "runtimeTemplateBytes": 8380
+        }
+      }
+    },
+    "factories": [
+      {
+        "chainId": "43114",
+        "symbol": "EURC",
+        "token": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+        "tokenName": "Euro Coin",
+        "tokenVersion": "2",
+        "htlc": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x33c669215394e53b7d92930b430b593d9c9fa302",
+        "runtimeCodeHash": "0xc4f418ca589e717094932614189926119fe1371f657f64e2fb0c3ece93daf4e8",
+        "deploymentBlock": 93071505
+      },
+      {
+        "chainId": "43114",
+        "symbol": "USDC",
+        "token": "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+        "tokenName": "USD Coin",
+        "tokenVersion": "2",
+        "htlc": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x5ca6e205dbe159e7b9f564f8b49a3f2ef3d9adac",
+        "runtimeCodeHash": "0x5c5b4bc33e06873ca6d207785c9c985ece8d927cd65c1cd4762c9f996cb7dbaf",
+        "deploymentBlock": 93071487
+      },
+      {
+        "chainId": "8453",
+        "symbol": "EURC",
+        "token": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+        "tokenName": "EURC",
+        "tokenVersion": "2",
+        "htlc": "0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x33c669215394e53b7d92930b430b593d9c9fa302",
+        "runtimeCodeHash": "0x0d62030204371a6217ce77c291354276f0b39baaae05b077cd676fea18d2ea2a",
+        "deploymentBlock": 50115447
+      },
+      {
+        "chainId": "8453",
+        "symbol": "USDC",
+        "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+        "tokenName": "USD Coin",
+        "tokenVersion": "2",
+        "htlc": "0x8088fd55e9dc7b1bf448d44210703facfa2c68fe",
+        "facilitatorFeeAtomic": "1000",
+        "facilitatorRecipient": null,
+        "address": "0x5ca6e205dbe159e7b9f564f8b49a3f2ef3d9adac",
+        "runtimeCodeHash": "0x4c19a2f2c73ec819bc3e48c4ed5eb57d20a20339cb8eb7dd0098da8575ea33a7",
+        "deploymentBlock": 50115401
+      }
+    ]
+  }
+}

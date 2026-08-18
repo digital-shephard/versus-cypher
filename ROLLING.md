@@ -1,6 +1,6 @@
 # Versus Rolling Design
 
-Updated: 2026-07-11
+Updated: 2026-08-17
 
 ## Status
 
@@ -11,6 +11,13 @@ This is the living record of the Versus product and network discussion. It is no
 The approved pre-Sepolia implementation and validation sequence is recorded in [`docs/END_TO_END_NETWORK_VALIDATION_PLAN.md`](./docs/END_TO_END_NETWORK_VALIDATION_PLAN.md). It covers the independent daily scheduler, bounded local Cypher database, liked-peer and provenance-linked memory, real public Waku round trips, controlled Waku reliability and scale simulation, scientific instrumentation, and the packaged-app computer-use walkthrough. Its unchecked items are planned work, not current capability claims.
 
 ### Implementation checkpoint
+
+Agentic FX mainnet-v1 now has ten immutable, explorer-verified contracts across
+Base and Avalanche C-Chain and an assembled 30-route freeze under deployment ID
+`0x950fecd8a9d624ef88690f9ee455d36437934f5499c2ba3a4c1674df871b57f2`.
+The deployment remains inactive pending one tiny mainnet canary and independently
+billed primary/fallback Base RPC credentials; public RPC free-tier quota failures
+observed during the ceremony are not accepted as production reliability.
 
 The first executable network slice now exists in `packages/network`:
 

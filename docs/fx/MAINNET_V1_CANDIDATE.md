@@ -1,6 +1,7 @@
 # Agentic FX mainnet-v1 candidate
 
-Status: **not deployed**. This document freezes the candidate market and the acceptance path. It does not authorize a mainnet transaction.
+Status: **deployed and explorer verified; not activated**. The tiny mainnet canary
+and production RPC credential gate remain open.
 
 ## Product name versus contract version
 
@@ -14,6 +15,25 @@ The public product release may be called **Agentic FX v1**. The reviewed settlem
 | Avalanche C-Chain | 43114 | AVAX | USDC, EURC |
 
 All six positions are tradeable. Every directed route except a position back to itself is supported: **30 routes total**, including **12 same-chain routes**. Native assets are available through the direct Versus swap flow. USDC and EURC may additionally be generic x402 exact inputs because their frozen contracts expose the required authorization surface.
+
+The ten immutable contracts were deployed from reviewed source commit
+`cc99a5acce22df2fd77a288b13cf7bf8a90c6bb1`. Both chains used the same dedicated
+deployer and nonce sequence, so corresponding contracts have the same address.
+Runtime hashes remain chain-specific where constructor immutables differ.
+
+| Contract | Base | Avalanche C-Chain |
+| --- | --- | --- |
+| Native V3 | [`0x07d33b...1058f`](https://basescan.org/address/0x07d33b60292515781c3d806fb82b4bdad6e1058f#code) | [`0x07d33b...1058f`](https://snowtrace.io/address/0x07d33b60292515781c3d806fb82b4bdad6e1058f#code) |
+| USDC V3 | [`0x8088fd...c68fe`](https://basescan.org/address/0x8088fd55e9dc7b1bf448d44210703facfa2c68fe#code) | [`0x8088fd...c68fe`](https://snowtrace.io/address/0x8088fd55e9dc7b1bf448d44210703facfa2c68fe#code) |
+| USDC exact | [`0x5ca6e2...9adac`](https://basescan.org/address/0x5ca6e205dbe159e7b9f564f8b49a3f2ef3d9adac#code) | [`0x5ca6e2...9adac`](https://snowtrace.io/address/0x5ca6e205dbe159e7b9f564f8b49a3f2ef3d9adac#code) |
+| EURC V3 | [`0x4f512a...10b11`](https://basescan.org/address/0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11#code) | [`0x4f512a...10b11`](https://snowtrace.io/address/0x4f512abbfbc9af01b4f0acdf66a728f9ec110b11#code) |
+| EURC exact | [`0x33c669...fa302`](https://basescan.org/address/0x33c669215394e53b7d92930b430b593d9c9fa302#code) | [`0x33c669...fa302`](https://snowtrace.io/address/0x33c669215394e53b7d92930b430b593d9c9fa302#code) |
+
+The assembled freeze is `versus/deployments/fx/mainnet-v1-market-deployment.json`,
+with deployment ID
+`0x950fecd8a9d624ef88690f9ee455d36437934f5499c2ba3a4c1674df871b57f2`
+and coordination domain
+`0xd67858f889c63e8979f846f938ab3089ad7c3defaeb124fdc0bbf269c137e046`.
 
 No onchain maximum trade amount is introduced. Dealer maximum trade, requester exposure, asset exposure, total exposure, gas, and spread remain local operator policy. Actual fills remain bounded by signed requester maximum input, dealer inventory, gas economics, and contract integer limits.
 
@@ -59,6 +79,12 @@ C-Chain RPC and PublicNode. Operators may replace each pair with comma-separated
 divergent result blocks the preflight. The rate-limited `mainnet.base.org` and
 free-plan-limited `base.drpc.org` endpoints, and PublicNode's token-gated archive
 reads are intentionally not production deployment defaults.
+
+The deployment ceremony also proved that unauthenticated free tiers can exhaust
+their archive or request quotas during confirmation polling. Production activation
+therefore requires operator-supplied, independently billed primary/fallback Base
+RPC URLs with identical preflight results; the public endpoints are ceremony and
+development fallbacks, not an uptime commitment.
 
 ## Price formation
 
