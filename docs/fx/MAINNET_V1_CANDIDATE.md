@@ -1,7 +1,7 @@
 # Agentic FX mainnet-v1 candidate
 
-Status: **deployed and explorer verified; not activated**. The tiny mainnet canary
-and production RPC credential gate remain open.
+Status: **deployed, explorer verified, and canary proven; not generally
+activated**. The production RPC credential gate remains open.
 
 ## Product name versus contract version
 
@@ -34,6 +34,27 @@ with deployment ID
 `0x950fecd8a9d624ef88690f9ee455d36437934f5499c2ba3a4c1674df871b57f2`
 and coordination domain
 `0xd67858f889c63e8979f846f938ab3089ad7c3defaeb124fdc0bbf269c137e046`.
+
+## Tiny mainnet canary
+
+The explicitly authorized two-device canary passed on 2026-08-17. The accepted
+Windows requester `0x84859767a13eecebed772e1cf53db2b344befc71`
+selected the separate macOS dealer
+`0xd8a36db2706170df8c6ebafd005a885b442cd9c7` through the public Waku
+mesh. The 5 bps quote locked exactly `0.0000338381914206 ETH` on Base and
+delivered exactly `0.01 AVAX` to the requester on Avalanche C-Chain.
+
+The Base source-lock transaction and Avalanche destination transaction both
+returned successful, identical receipt block/hash results from two RPCs per
+chain. The desktop reached `funds_ready`, observed the full destination amount,
+and reported no terminal failure. The V3 and exact build freezes were then
+regenerated with byte-for-byte zero diff. Public hashes, blocks, runtime
+preflight output, identities, and residual gates are recorded in
+[`MAINNET_V1_CANARY_2026-08-17.md`](./MAINNET_V1_CANARY_2026-08-17.md).
+
+The canary proves one bounded route, not fleet uptime or general activation.
+Paid, independently administered primary/fallback production RPCs and the
+normal release controls remain mandatory.
 
 No onchain maximum trade amount is introduced. Dealer maximum trade, requester exposure, asset exposure, total exposure, gas, and spread remain local operator policy. Actual fills remain bounded by signed requester maximum input, dealer inventory, gas economics, and contract integer limits.
 
@@ -251,7 +272,6 @@ npm run fx:market:verify:avalanche --prefix versus
 npm run fx:market:assemble:mainnet --prefix versus
 ```
 
-These command names are documentation, not authorization. Do not set their
-guards or fund a deployer until the final human address/hash review explicitly
-authorizes mainnet. The tiny post-deployment canary remains a separate explicit
-authorization after assembly.
+These command names are documentation, not authorization. The completed
+deployment and canary do not authorize another deployment, an unrestricted
+dealer, or general mainnet activation.

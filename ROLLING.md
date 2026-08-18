@@ -15,9 +15,15 @@ The approved pre-Sepolia implementation and validation sequence is recorded in [
 Agentic FX mainnet-v1 now has ten immutable, explorer-verified contracts across
 Base and Avalanche C-Chain and an assembled 30-route freeze under deployment ID
 `0x950fecd8a9d624ef88690f9ee455d36437934f5499c2ba3a4c1674df871b57f2`.
-The deployment remains inactive pending one tiny mainnet canary and independently
-billed primary/fallback Base RPC credentials; public RPC free-tier quota failures
-observed during the ceremony are not accepted as production reliability.
+The two-device tiny mainnet canary passed on 2026-08-17: a Windows requester
+locked exactly `0.0000338381914206 ETH` on Base and the separate macOS dealer
+delivered exactly `0.01 AVAX` on Avalanche at the configured 5 bps floor. Both
+receipts and final requester balances agreed across two RPCs per chain. The
+deployment is still not generally activated pending independently billed
+primary/fallback Base RPC credentials; public RPC free-tier quota failures
+observed during the ceremony are not accepted as production reliability. The
+public evidence is recorded in
+[`docs/fx/MAINNET_V1_CANARY_2026-08-17.md`](./docs/fx/MAINNET_V1_CANARY_2026-08-17.md).
 
 The first executable network slice now exists in `packages/network`:
 
