@@ -407,11 +407,19 @@ class FxEvmCohort {
     const configuration = this.configuration(chainId);
     if (!this.providers.has(configuration.chainId)) {
       const override = this.rpcOverrides.get(configuration.chainId);
-      const primaryUrl = String(
+      const configuredPrimary =
         override?.primary ||
           this.environment[configuration.rpcEnvironmentVariable] ||
-          configuration.rpcUrl
-      ).trim();
+          configuration.rpcUrl;
+      const primaryUrl = typeof configuredPrimary === "string"
+        ? configuredPrimary.trim()
+        : "";
+      if (!primaryUrl) {
+        throw new FxEvmCohortError(
+          `${configuration.name} primary RPC is required`,
+          "RPC_REQUIRED"
+        );
+      }
       const fallbackUrl = String(override?.fallback || "").trim();
       const primary = this.providerFactory(primaryUrl, configuration.chainId);
       this.providers.set(

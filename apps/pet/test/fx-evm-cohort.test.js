@@ -228,6 +228,33 @@ test("FX RPC setup validates primary and backup independently before failover is
   );
 });
 
+test("FX mainnet-style configurations fail closed before constructing an undefined RPC", () => {
+  let providerCreated = false;
+  const configuration = {
+    ...FX_TESTNET_CHAINS["84532"],
+    rpcUrl: undefined,
+    rpcEnvironmentVariable: "MISSING_MAINNET_RPC_URL",
+  };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": configuration },
+    environment: {},
+    providerFactory: () => {
+      providerCreated = true;
+      throw new Error("provider should not be constructed");
+    },
+  });
+
+  assert.throws(
+    () => cohort.provider("84532"),
+    (error) => error.code === "RPC_REQUIRED"
+  );
+  assert.equal(providerCreated, false);
+});
+
 test("native ETH funding is verified from a post-baseline balance increase", async () => {
   let blockNumber = 100;
   let balance = 5n * 10n ** 18n;
