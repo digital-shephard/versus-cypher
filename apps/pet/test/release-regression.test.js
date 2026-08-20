@@ -338,6 +338,7 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.match(html, /id="fx-add-position"[\s\S]*data-fx-stock-filter="all"[\s\S]*data-fx-stock-filter="funded"[\s\S]*data-fx-stock-filter="active"/);
   assert.match(html, /<small>STOCK VALUE<\/small>/);
   assert.match(html, /id="fx-add-position-sheet"[\s\S]*fx-position-back[\s\S]*SUPPORTED ASSETS[\s\S]*id="fx-position-options"/);
+  assert.match(html, /id="fx-rpc-sheet"[\s\S]*id="fx-rpc-primary"[\s\S]*id="fx-rpc-fallback"[\s\S]*VERIFY &amp; ENABLE/);
   assert.match(html, /data-fx-panel="risk"[\s\S]*PER REQUESTER[\s\S]*PER ASSET[\s\S]*MAX GAS[\s\S]*INVENTORY PREMIUM/);
   assert.doesNotMatch(html, /MAX OVERHEAD|fx-risk-overhead/);
   assert.doesNotMatch(html, /id="fx-position-done"|id="fx-position-note"/);
@@ -367,7 +368,10 @@ test("FX stock uses a canonical supported-asset catalog instead of manual token 
   assert.match(renderer, /body\.inert = !willExpand[\s\S]*body\.inert = !expanded/);
   assert.match(renderer, /bay\.availableMicros \+ bay\.reservedMicros > 0[\s\S]*bay\.reservedMicros > 0 \|\| bay\.inFlight > 0/);
   assert.match(renderer, /toggle\.disabled = locked \|\| \(!selected && !chain\?\.dealerGasReady\)/);
-  assert.match(renderer, /function fxChainOptionNode\(chain\)[\s\S]*DEPOSITED[\s\S]*CUSTOM RPC \(OPTIONAL\)/);
+  assert.match(renderer, /function openFxRpcSheet\(chain,[\s\S]*PRIMARY RPC[\s\S]*VERIFY & ENABLE/);
+  assert.match(renderer, /function fxChainOptionNode\(chain\)[\s\S]*DEPOSITED[\s\S]*PRIMARY RPC REQUIRED[\s\S]*fx-rpc-manage/);
+  assert.match(renderer, /function fxChainOptionNode\(chain\)[\s\S]*!chain\.enabled[\s\S]*openFxRpcSheet\(chain, \{ enable: true \}\)/);
+  assert.doesNotMatch(renderer, /chain\.rpcUrl|chain\.rpcFallbackUrl/);
   assert.doesNotMatch(renderer, /fx-chain-funding|`FUND \$\{label\}`/);
   assert.match(renderer, /function renderFxPositionOptions\(\)[\s\S]*host\.replaceChildren\(\.\.\.nodes\)/);
   assert.doesNotMatch(renderer, /function fxAdvancedLimitNode|fx-position-section-label", "LIMITS"/);
@@ -410,6 +414,10 @@ test("Phase 10 keeps the requester flow simple and the economic runtime fail clo
   const preload = fs.readFileSync(path.join(root, "src", "preload.js"), "utf8");
   const service = fs.readFileSync(path.join(root, "src", "fx-desktop-service.js"), "utf8");
   const cohort = fs.readFileSync(path.join(root, "src", "fx-evm-cohort.js"), "utf8");
+  const preflight = fs.readFileSync(
+    path.join(root, "scripts", "preflight-fx-market-runtime.js"),
+    "utf8"
+  );
   const roles = fs.readFileSync(path.join(root, "src", "fx-role-wallet.js"), "utf8");
   const capture = fs.readFileSync(path.join(root, "scripts", "capture-views.js"), "utf8");
 

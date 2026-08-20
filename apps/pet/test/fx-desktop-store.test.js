@@ -145,6 +145,8 @@ test("FX chains persist role gas readiness and protect enabled token positions",
     store.setChainSettings("84532", {
       enabled: true,
       rpcUrl: "https://rpc.example/private-key",
+      rpcFallbackUrl: "https://backup.example/private-key",
+      rpcValidatedAt: "2026-08-20T12:00:00.000Z",
     });
     store.recordChain("84532", {
       dealerAddress: "0x1111111111111111111111111111111111111111",
@@ -171,9 +173,14 @@ test("FX chains persist role gas readiness and protect enabled token positions",
     assert.equal(chain.dealerGasReady, true);
     assert.equal(chain.requesterGasReady, true);
     assert.equal(chain.rpcUrl, "https://rpc.example/private-key");
+    assert.equal(
+      chain.rpcFallbackUrl,
+      "https://backup.example/private-key"
+    );
+    assert.equal(chain.rpcValidatedAt, "2026-08-20T12:00:00.000Z");
     assert.doesNotMatch(
       JSON.stringify(restored.scrubbedEvidence()),
-      /rpc\.example|private-key|1111111111|2222222222/
+      /rpc\.example|backup\.example|private-key|1111111111|2222222222/
     );
   } finally {
     temporary.cleanup();

@@ -1316,6 +1316,8 @@ let fxSheetChain = null;
 let fxSheetChainRole = "dealer";
 let fxStockFilter = "all";
 let fxExpandedChains = new Set();
+let fxRpcChainId = null;
+let fxRpcEnableRequested = false;
 let fxTapeDemoTimers = [];
 let fxDesktopSnapshot = null;
 let fxRequesterTrade = null;
@@ -1981,6 +1983,115 @@ function closeFxSheets() {
   $("fx-deposit-sheet")?.classList.add("hidden");
   $("fx-withdraw-sheet")?.classList.add("hidden");
   $("fx-add-position-sheet")?.classList.add("hidden");
+  $("fx-rpc-sheet")?.classList.add("hidden");
+  fxRpcChainId = null;
+  fxRpcEnableRequested = false;
+}
+
+function closeFxRpcSheet() {
+  $("fx-rpc-sheet")?.classList.add("hidden");
+  fxRpcChainId = null;
+  fxRpcEnableRequested = false;
+}
+
+function openFxRpcSheet(chain, { enable = false } = {}) {
+  fxRpcChainId = chain.chainId;
+  fxRpcEnableRequested = enable === true;
+  const production = fxDesktopSnapshot?.productionFunds === true;
+  const primary = $("fx-rpc-primary");
+  const fallback = $("fx-rpc-fallback");
+  primary.value = "";
+  fallback.value = "";
+  primary.placeholder = chain.rpc?.primaryConfigured
+    ? `Configured: ${chain.rpc.primaryHost}`
+    : "https://your-provider.example";
+  fallback.placeholder = chain.rpc?.fallbackConfigured
+    ? `Configured: ${chain.rpc.fallbackHost}`
+    : "https://another-provider.example";
+  primary.parentElement.querySelector("small").textContent =
+    `PRIMARY RPC ${MIDDOT} ${production ? "REQUIRED" : "OPTIONAL"}`;
+  $("fx-rpc-title").textContent = enable ? "ENABLE CHAIN" : "CHAIN RPC";
+  $("fx-rpc-chain").textContent = chain.chain;
+  const configured = [
+    chain.rpc?.primaryConfigured
+      ? `PRIMARY ${chain.rpc.primaryHost}`
+      : production
+        ? "PRIMARY REQUIRED"
+        : "DEFAULT PUBLIC RPC",
+    chain.rpc?.fallbackConfigured
+      ? `BACKUP ${chain.rpc.fallbackHost}`
+      : "BACKUP OFF",
+  ].join(` ${MIDDOT} `);
+  const status = $("fx-rpc-status");
+  status.classList.remove("is-error");
+  status.textContent = `${configured}. Enter only the endpoint you want to change; each supplied endpoint is verified before activation.`;
+  $("fx-rpc-save").textContent = enable ? "VERIFY & ENABLE" : "VERIFY & SAVE";
+  $("fx-rpc-clear-fallback").classList.toggle(
+    "hidden",
+    !chain.rpc?.fallbackConfigured
+  );
+  $("fx-rpc-sheet").classList.remove("hidden");
+  primary.focus();
+}
+
+async function saveFxRpcSettings() {
+  const chain = fxChains.find((candidate) => candidate.chainId === fxRpcChainId);
+  if (!chain) return;
+  const primary = $("fx-rpc-primary").value.trim();
+  const fallback = $("fx-rpc-fallback").value.trim();
+  const production = fxDesktopSnapshot?.productionFunds === true;
+  const status = $("fx-rpc-status");
+  if (production && !primary && !chain.rpc?.primaryConfigured) {
+    status.textContent = "Enter a primary RPC URL to enable this chain.";
+    status.classList.add("is-error");
+    return;
+  }
+  const patch = {};
+  if (primary) patch.rpcUrl = primary;
+  if (fallback) patch.rpcFallbackUrl = fallback;
+  if (fxRpcEnableRequested) patch.enabled = true;
+  const button = $("fx-rpc-save");
+  button.disabled = true;
+  button.textContent = "VERIFYING...";
+  status.classList.remove("is-error");
+  status.textContent = "Checking chain ID, live head, and frozen contract bytecode...";
+  try {
+    applyFxSnapshot(
+      await window.versus.fxSetChainSettings(chain.chainId, patch)
+    );
+    closeFxRpcSheet();
+    renderFxPositionOptions();
+  } catch (error) {
+    status.textContent = error.message || "RPC verification failed.";
+    status.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+    button.textContent = fxRpcEnableRequested
+      ? "VERIFY & ENABLE"
+      : "VERIFY & SAVE";
+  }
+}
+
+async function clearFxRpcFallback() {
+  const chain = fxChains.find((candidate) => candidate.chainId === fxRpcChainId);
+  if (!chain) return;
+  const button = $("fx-rpc-clear-fallback");
+  button.disabled = true;
+  try {
+    applyFxSnapshot(
+      await window.versus.fxSetChainSettings(chain.chainId, {
+        rpcFallbackUrl: "",
+      })
+    );
+    closeFxRpcSheet();
+    renderFxPositionOptions();
+  } catch (error) {
+    const status = $("fx-rpc-status");
+    status.textContent = error.message || "Backup RPC unchanged.";
+    status.classList.add("is-error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function fxPositionOptionNode(position) {
@@ -2105,6 +2216,13 @@ function fxChainOptionNode(chain) {
   toggle.setAttribute("aria-checked", chain.enabled ? "true" : "false");
   toggle.append(fxNode("i"));
   toggle.addEventListener("click", async () => {
+    if (
+      !chain.enabled &&
+      fxDesktopSnapshot?.productionFunds === true
+    ) {
+      openFxRpcSheet(chain, { enable: true });
+      return;
+    }
     toggle.disabled = true;
     try {
       applyFxSnapshot(
@@ -2125,35 +2243,17 @@ function fxChainOptionNode(chain) {
     controls,
   );
 
-  const rpc = fxNode("label", "fx-rpc-field");
-  rpc.append(fxNode("small", null, "CUSTOM RPC (OPTIONAL)"));
-  const input = fxNode("input");
-  input.type = "url";
-  input.spellcheck = false;
-  input.autocomplete = "off";
-  input.placeholder = "PUBLIC RPC";
-  input.value = chain.rpcUrl || "";
-  const saveRpc = async () => {
-    const value = input.value.trim();
-    if (value === (chain.rpcUrl || "")) return;
-    input.disabled = true;
-    try {
-      applyFxSnapshot(
-        await window.versus.fxSetChainSettings(chain.chainId, {
-          rpcUrl: value,
-        })
-      );
-      renderFxPositionOptions();
-    } catch (error) {
-      toast(error.message || "RPC unchanged");
-      input.disabled = false;
-    }
-  };
-  input.addEventListener("blur", saveRpc);
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") input.blur();
-  });
-  rpc.append(input);
+  const rpc = fxNode("div", "fx-rpc-field");
+  const rpcState = chain.rpc?.primaryConfigured
+    ? `PRIMARY ${chain.rpc.primaryHost} ${MIDDOT} BACKUP ${chain.rpc.fallbackConfigured ? chain.rpc.fallbackHost : "OFF"}`
+    : fxDesktopSnapshot?.productionFunds === true
+      ? "PRIMARY RPC REQUIRED"
+      : "PUBLIC RPC DEFAULT";
+  rpc.append(fxNode("small", null, rpcState));
+  const rpcButton = fxNode("button", "fx-rpc-manage", "CONFIGURE");
+  rpcButton.type = "button";
+  rpcButton.addEventListener("click", () => openFxRpcSheet(chain));
+  rpc.append(rpcButton);
   const bodyClip = fxNode("div");
   bodyClip.append(
     head,
@@ -3110,6 +3210,12 @@ function wireFxControls() {
   wireFxAddressInput($("fx-swap-recipient"));
   wireFxAddressInput($("fx-withdraw-dest"));
   $("fx-add-position")?.addEventListener("click", openFxAddPositionSheet);
+  $("fx-rpc-back")?.addEventListener("click", closeFxRpcSheet);
+  $("fx-rpc-save")?.addEventListener("click", saveFxRpcSettings);
+  $("fx-rpc-clear-fallback")?.addEventListener(
+    "click",
+    clearFxRpcFallback
+  );
   $("fx-refresh-stock")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
     button.disabled = true;

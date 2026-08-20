@@ -513,6 +513,18 @@
               </div>
             </div>
 
+            <div class="fx-sheet hidden" id="fx-rpc-sheet" role="dialog" aria-modal="true" aria-label="Configure chain RPC">
+              <div class="fx-sheet-card fx-rpc-card">
+                <header><b id="fx-rpc-title">CHAIN RPC</b><button type="button" class="fx-sheet-close" id="fx-rpc-back" aria-label="Back to supported assets">&times;</button></header>
+                <p class="fx-sheet-route" id="fx-rpc-chain">BASE</p>
+                <label class="fx-field"><small>PRIMARY RPC &middot; REQUIRED</small><input id="fx-rpc-primary" type="url" spellcheck="false" autocomplete="off" placeholder="https://your-provider.example" /></label>
+                <label class="fx-field"><small>BACKUP RPC &middot; OPTIONAL</small><input id="fx-rpc-fallback" type="url" spellcheck="false" autocomplete="off" placeholder="https://another-provider.example" /></label>
+                <p class="fx-sheet-note" id="fx-rpc-status">Each endpoint is checked against this chain and the frozen contracts before activation.</p>
+                <button type="button" class="fx-act fx-act-fill" id="fx-rpc-save">VERIFY &amp; ENABLE</button>
+                <button type="button" class="fx-act hidden" id="fx-rpc-clear-fallback">REMOVE BACKUP</button>
+              </div>
+            </div>
+
             <section class="fx-requester hidden" id="fx-requester" role="dialog" aria-modal="true" aria-label="Request an FX swap">
               <header class="fx-requester-head">
                 <button type="button" id="fx-requester-back" aria-label="Close swap">&lt;</button>

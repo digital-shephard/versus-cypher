@@ -115,6 +115,14 @@ function normalizedRpcUrl(value) {
   return parsed.toString();
 }
 
+function rpcHostname(value) {
+  try {
+    return new URL(String(value || "")).hostname;
+  } catch {
+    return "";
+  }
+}
+
 function publicRoute(quote) {
   const route = quote.proposal.route;
   const selected = quote.proposal.quotes.find(
@@ -281,7 +289,14 @@ class FxDesktopService extends EventEmitter {
     this.refreshInFlight = null;
     this.dealerRouteSignature = "";
     for (const chain of this.store.snapshot().chains || []) {
-      if (chain.rpcUrl) {
+      if (!chain.rpcUrl) continue;
+      if (this.dealerController?.setRpcUrls) {
+        this.dealerController.setRpcUrls(
+          chain.chainId,
+          chain.rpcUrl,
+          chain.rpcFallbackUrl || ""
+        );
+      } else {
         this.dealerController?.setRpcUrl?.(chain.chainId, chain.rpcUrl);
       }
     }
@@ -357,26 +372,40 @@ class FxDesktopService extends EventEmitter {
       configured: false,
       active: false,
     };
-    const chains = (state.chains || []).map((chain) => ({
-      ...chain,
-      balanceDisplay: atomicDisplay(
-        chain.balanceAtomic || "0",
-        chain.nativeDecimals,
-        chain.nativeAsset
-      ),
-      dealerBalanceDisplay: atomicDisplay(
-        chain.dealerBalanceAtomic || "0",
-        chain.nativeDecimals,
-        chain.nativeAsset
-      ),
-      requesterBalanceDisplay: atomicDisplay(
-        chain.requesterBalanceAtomic || "0",
-        chain.nativeDecimals,
-        chain.nativeAsset
-      ),
-      balanceUsd:
-        Number(BigInt(chain.balanceUsdMicros || "0")) / 1_000_000,
-    }));
+    const chains = (state.chains || []).map((chain) => {
+      const {
+        rpcUrl,
+        rpcFallbackUrl,
+        ...safeChain
+      } = chain;
+      return {
+        ...safeChain,
+        rpc: {
+          primaryConfigured: Boolean(rpcUrl),
+          fallbackConfigured: Boolean(rpcFallbackUrl),
+          primaryHost: rpcHostname(rpcUrl),
+          fallbackHost: rpcHostname(rpcFallbackUrl),
+          validatedAt: chain.rpcValidatedAt || null,
+        },
+        balanceDisplay: atomicDisplay(
+          chain.balanceAtomic || "0",
+          chain.nativeDecimals,
+          chain.nativeAsset
+        ),
+        dealerBalanceDisplay: atomicDisplay(
+          chain.dealerBalanceAtomic || "0",
+          chain.nativeDecimals,
+          chain.nativeAsset
+        ),
+        requesterBalanceDisplay: atomicDisplay(
+          chain.requesterBalanceAtomic || "0",
+          chain.nativeDecimals,
+          chain.nativeAsset
+        ),
+        balanceUsd:
+          Number(BigInt(chain.balanceUsdMicros || "0")) / 1_000_000,
+      };
+    });
     const positions = state.positions.map((position) => {
       const chain = chains.find(
         (candidate) => candidate.chainId === position.chainId
@@ -619,8 +648,68 @@ class FxDesktopService extends EventEmitter {
     }
     const next = { ...patch };
     if ("rpcUrl" in next) next.rpcUrl = normalizedRpcUrl(next.rpcUrl);
-    if ("rpcUrl" in next) {
-      this.dealerController?.setRpcUrl?.(chain.chainId, next.rpcUrl);
+    if ("rpcFallbackUrl" in next) {
+      next.rpcFallbackUrl = normalizedRpcUrl(next.rpcFallbackUrl);
+    }
+    const rpcChanged =
+      "rpcUrl" in next || "rpcFallbackUrl" in next;
+    if (
+      rpcChanged &&
+      this.dealerController?.status?.().dealer?.active
+    ) {
+      throw new FxDesktopError(
+        "Disarm FX dealing before changing an RPC",
+        "DEALER_ACTIVE"
+      );
+    }
+    const primaryRpcUrl = "rpcUrl" in next ? next.rpcUrl : chain.rpcUrl;
+    const fallbackRpcUrl = "rpcFallbackUrl" in next
+      ? next.rpcFallbackUrl
+      : chain.rpcFallbackUrl || "";
+    if (fallbackRpcUrl && fallbackRpcUrl === primaryRpcUrl) {
+      throw new FxDesktopError(
+        "Backup RPC must be a different endpoint",
+        "INVALID_RPC_URL"
+      );
+    }
+    if (this.productionFunds && next.enabled === true && !primaryRpcUrl) {
+      throw new FxDesktopError(
+        `${chain.chain} requires a primary RPC before it can be enabled`,
+        "RPC_REQUIRED"
+      );
+    }
+    const shouldValidate = Boolean(primaryRpcUrl) && (
+      rpcChanged || (this.productionFunds && next.enabled === true)
+    );
+    if (shouldValidate) {
+      if (!this.dealerController?.validateRpcUrls) {
+        if (this.productionFunds) {
+          throw new FxDesktopError(
+            "RPC validation is unavailable on this build",
+            "RPC_VALIDATION_UNAVAILABLE"
+          );
+        }
+      } else {
+        await this.dealerController.validateRpcUrls(
+          chain.chainId,
+          primaryRpcUrl,
+          fallbackRpcUrl
+        );
+        next.rpcValidatedAt = new Date().toISOString();
+      }
+    } else if (rpcChanged && !primaryRpcUrl) {
+      next.rpcValidatedAt = null;
+    }
+    if (rpcChanged) {
+      if (this.dealerController?.setRpcUrls) {
+        this.dealerController.setRpcUrls(
+          chain.chainId,
+          primaryRpcUrl,
+          fallbackRpcUrl
+        );
+      } else {
+        this.dealerController?.setRpcUrl?.(chain.chainId, primaryRpcUrl);
+      }
     }
     if (next.enabled === true && !state.enabled) {
       this.store.setEnabled(true);
@@ -644,6 +733,17 @@ class FxDesktopService extends EventEmitter {
   async setPolicy(patch) {
     const requested = object(patch, "FX policy");
     if (requested.armed === true) {
+      if (this.productionFunds) {
+        const missingRpc = this.store.snapshot().chains.find(
+          (chain) => chain.enabled && !chain.rpcUrl
+        );
+        if (missingRpc) {
+          throw new FxDesktopError(
+            `${missingRpc.chain} requires a primary RPC before dealing can be armed`,
+            "RPC_REQUIRED"
+          );
+        }
+      }
       if (!this.store.snapshot().enabled) {
         await this.setEnabled(true);
       }
@@ -802,6 +902,13 @@ class FxDesktopService extends EventEmitter {
       !this.dealerController?.armDealer
     ) {
       return this.snapshot();
+    }
+    if (
+      this.productionFunds &&
+      state.chains.some((chain) => chain.enabled && !chain.rpcUrl)
+    ) {
+      this.store.setPolicy({ armed: false });
+      return this.#emit();
     }
     await this.refresh({ force: true });
     const snapshot = this.snapshot();

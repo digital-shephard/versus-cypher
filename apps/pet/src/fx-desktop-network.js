@@ -287,6 +287,18 @@ class FxDesktopNetworkRuntime extends EventEmitter {
     return this.evm.setRpcUrl(chainId, rpcUrl);
   }
 
+  setRpcUrls(chainId, primaryRpcUrl, fallbackRpcUrl = "") {
+    return this.evm.setRpcUrls(chainId, primaryRpcUrl, fallbackRpcUrl);
+  }
+
+  validateRpcUrls(chainId, primaryRpcUrl, fallbackRpcUrl = "") {
+    return this.evm.validateRpcUrls(
+      chainId,
+      primaryRpcUrl,
+      fallbackRpcUrl
+    );
+  }
+
   async chainGasSnapshot(chains) {
     return Promise.all(
       chains.map(async (chain) => {

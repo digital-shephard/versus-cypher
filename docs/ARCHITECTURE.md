@@ -264,8 +264,17 @@ expires. The desktop subtracts active reservations, an operating gas reserve,
 and the estimated transaction fee before advertising native inventory.
 
 The desktop independently checks both the dealer and requester role wallets
-against a local minimum-gas policy, supports an optional private local RPC
-override, and refreshes visible inventory through bounded single-flight reads.
+against a local minimum-gas policy and refreshes visible inventory through
+bounded single-flight reads. Public-testnet builds retain their frozen public
+RPC defaults. A mainnet dealer must configure one primary RPC for each chain
+before that chain can be enabled; one backup RPC is optional. Every supplied
+endpoint is independently checked for the expected chain, a current head, and
+the frozen cohort contracts before it is installed. When a backup is present,
+the primary has priority and the backup takes over after a bounded stall or
+failure. With no backup, primary failure closes that chain rather than silently
+falling through to a bundled public endpoint. Credential-bearing URLs remain
+in main-process local state; the renderer receives only configured flags and
+provider hostnames.
 Dealing must be disarmed before a confirmed dealer-wallet withdrawal.
 History exposes explicit reconciliation for interrupted trades; restart only
 resumes an owner-armed dealer when the same gas, inventory, and policy gates

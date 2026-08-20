@@ -855,6 +855,73 @@ test("dealer native gas gates token support independently of personal swap gas",
   );
 });
 
+test("mainnet dealer chains require a verified primary RPC and accept one optional backup", async () => {
+  const validations = [];
+  const configured = [];
+  const dealerController = {
+    status: () => ({ dealer: { configured: true, active: false } }),
+    async validateRpcUrls(chainId, primaryRpcUrl, fallbackRpcUrl) {
+      validations.push({ chainId, primaryRpcUrl, fallbackRpcUrl });
+      if (fallbackRpcUrl.includes("wrong")) {
+        const error = new Error("backup RPC returned the wrong chain");
+        error.code = "WRONG_CHAIN";
+        throw error;
+      }
+      return {
+        primary: { chainId, blockNumber: 100 },
+        fallback: fallbackRpcUrl
+          ? { chainId, blockNumber: 101 }
+          : null,
+      };
+    },
+    setRpcUrls(chainId, primaryRpcUrl, fallbackRpcUrl) {
+      configured.push({ chainId, primaryRpcUrl, fallbackRpcUrl });
+    },
+  };
+  const { service } = fixture({
+    dealerController,
+    productionFunds: true,
+  });
+
+  await assert.rejects(
+    service.setChainSettings("84532", { enabled: true }),
+    (error) => error.code === "RPC_REQUIRED"
+  );
+  await assert.rejects(
+    service.setChainSettings("84532", {
+      enabled: true,
+      rpcUrl: "https://primary.example/key",
+      rpcFallbackUrl: "https://wrong.example/key",
+    }),
+    (error) => error.code === "WRONG_CHAIN"
+  );
+  assert.equal(configured.length, 0);
+
+  const snapshot = await service.setChainSettings("84532", {
+    enabled: true,
+    rpcUrl: "https://primary.example/key",
+    rpcFallbackUrl: "https://backup.example/key",
+  });
+  assert.equal(snapshot.chains[0].enabled, true);
+  assert.deepEqual(snapshot.chains[0].rpc, {
+    primaryConfigured: true,
+    fallbackConfigured: true,
+    primaryHost: "primary.example",
+    fallbackHost: "backup.example",
+    validatedAt: snapshot.chains[0].rpc.validatedAt,
+  });
+  assert.match(snapshot.chains[0].rpc.validatedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(Object.hasOwn(snapshot.chains[0], "rpcUrl"), false);
+  assert.equal(Object.hasOwn(snapshot.chains[0], "rpcFallbackUrl"), false);
+  assert.doesNotMatch(JSON.stringify(snapshot), /primary\.example\/key|backup\.example\/key/);
+  assert.deepEqual(configured, [{
+    chainId: "84532",
+    primaryRpcUrl: "https://primary.example/key",
+    fallbackRpcUrl: "https://backup.example/key",
+  }]);
+  assert.equal(validations.length, 2);
+});
+
 test("a funded native ETH position can arm without a USDC token bay", async () => {
   const dealer = Wallet.createRandom().address.toLowerCase();
   const requesterRole = Wallet.createRandom().address.toLowerCase();

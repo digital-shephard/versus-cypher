@@ -1,7 +1,9 @@
 # Agentic FX mainnet-v1 candidate
 
 Status: **deployed, explorer verified, and canary proven; not generally
-activated**. The production RPC credential gate remains open.
+activated**. Mainnet dealer activation now requires an owner-supplied primary
+RPC per enabled chain and accepts one optional backup; release activation
+remains a separate gate.
 
 ## Product name versus contract version
 
@@ -55,8 +57,11 @@ preflight output, identities, and residual gates are recorded in
 [`MAINNET_V1_CANARY_2026-08-17.md`](./MAINNET_V1_CANARY_2026-08-17.md).
 
 The canary proves one bounded route, not fleet uptime or general activation.
-Paid, independently administered primary/fallback production RPCs and the
-normal release controls remain mandatory.
+The canary does not supply a shared production RPC service. Each mainnet dealer
+must configure and pass preflight on its own primary endpoint per enabled
+chain. A separately administered backup is strongly recommended but optional;
+without one, a primary outage fails closed. The normal release controls remain
+mandatory.
 
 No onchain maximum trade amount is introduced. Dealer maximum trade, requester exposure, asset exposure, total exposure, gas, and spread remain local operator policy. Actual fills remain bounded by signed requester maximum input, dealer inventory, gas economics, and contract integer limits.
 
@@ -104,10 +109,12 @@ free-plan-limited `base.drpc.org` endpoints, and PublicNode's token-gated archiv
 reads are intentionally not production deployment defaults.
 
 The deployment ceremony also proved that unauthenticated free tiers can exhaust
-their archive or request quotas during confirmation polling. Production activation
-therefore requires operator-supplied, independently billed primary/fallback Base
-RPC URLs with identical preflight results; the public endpoints are ceremony and
-development fallbacks, not an uptime commitment.
+their archive or request quotas during confirmation polling. Deployment,
+assembly, and release verification therefore continue to require two pinned
+RPCs with identical preflight results. Desktop dealer activation is deliberately
+different: the owner supplies one required primary per enabled chain and may
+supply one optional backup. Both are independently preflighted when present,
+and no bundled public mainnet endpoint is used as a silent dealer fallback.
 
 ## Price formation
 

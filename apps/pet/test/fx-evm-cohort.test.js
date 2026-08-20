@@ -148,6 +148,86 @@ test("FX funding baseline rejects assets outside the frozen cohort", async () =>
   );
 });
 
+test("FX RPC setup validates primary and backup independently before failover is installed", async () => {
+  const created = [];
+  const destroyed = [];
+  let fallbackInput = null;
+  const providerFactory = (url) => {
+    const provider = {
+      url,
+      async getNetwork() {
+        return { chainId: 84532n };
+      },
+      async getCode() {
+        return "0x01";
+      },
+      async getBlockNumber() {
+        return url.includes("backup") ? 102 : 101;
+      },
+      async getBlock() {
+        return { timestamp: url.includes("stale") ? 1 : 995 };
+      },
+      destroy() {
+        destroyed.push(url);
+      },
+    };
+    created.push(provider);
+    return provider;
+  };
+  const combined = { kind: "fallback" };
+  const cohort = new FxEvmCohort({
+    walletProvider: () => ({
+      address: RECIPIENT,
+      privateKey: Wallet.createRandom().privateKey,
+    }),
+    configurations: { "84532": FX_TESTNET_CHAINS["84532"] },
+    providerFactory,
+    fallbackProviderFactory(providers, chainId) {
+      fallbackInput = { providers, chainId };
+      return combined;
+    },
+    now: () => 1_000,
+  });
+
+  const validation = await cohort.validateRpcUrls(
+    "84532",
+    "https://primary.example/key",
+    "https://backup.example/key"
+  );
+  assert.deepEqual(validation, {
+    primary: { chainId: "84532", blockNumber: 101, blockTimestamp: 995 },
+    fallback: { chainId: "84532", blockNumber: 102, blockTimestamp: 995 },
+  });
+  assert.deepEqual(destroyed, [
+    "https://primary.example/key",
+    "https://backup.example/key",
+  ]);
+
+  cohort.setRpcUrls(
+    "84532",
+    "https://primary.example/key",
+    "https://backup.example/key"
+  );
+  assert.equal(cohort.provider("84532"), combined);
+  assert.equal(fallbackInput.chainId, "84532");
+  assert.deepEqual(
+    fallbackInput.providers.map((provider) => provider.url),
+    ["https://primary.example/key", "https://backup.example/key"]
+  );
+  await assert.rejects(
+    cohort.validateRpcUrls(
+      "84532",
+      "https://same.example/key",
+      "https://same.example/key"
+    ),
+    (error) => error.code === "RPC_DUPLICATE"
+  );
+  await assert.rejects(
+    cohort.validateRpcUrls("84532", "https://stale.example/key"),
+    (error) => error.code === "RPC_STALE"
+  );
+});
+
 test("native ETH funding is verified from a post-baseline balance increase", async () => {
   let blockNumber = 100;
   let balance = 5n * 10n ** 18n;

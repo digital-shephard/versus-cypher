@@ -1,5 +1,6 @@
 const {
   Contract,
+  FallbackProvider,
   Interface,
   JsonRpcProvider,
   Wallet,
@@ -352,11 +353,23 @@ class FxEvmCohort {
     environment = process.env,
     providerFactory = (url, chainId) =>
       new JsonRpcProvider(url, Number(chainId), { staticNetwork: true }),
+    fallbackProviderFactory = (providers, chainId) =>
+      new FallbackProvider(
+        providers.map((provider, index) => ({
+          provider,
+          priority: index + 1,
+          stallTimeout: 1_000,
+          weight: 1,
+        })),
+        Number(chainId),
+        { quorum: 1 }
+      ),
     contractFactory = (address, abi, runner) =>
       new Contract(address, abi, runner),
     walletFactory = (privateKey, provider) =>
       new Wallet(privateKey, provider),
     settlementVersion = 1,
+    now = () => Math.floor(Date.now() / 1_000),
   } = {}) {
     if (typeof walletProvider !== "function") {
       throw new TypeError("FX EVM cohort requires a wallet provider");
@@ -365,8 +378,10 @@ class FxEvmCohort {
     this.configurations = configurations;
     this.environment = environment;
     this.providerFactory = providerFactory;
+    this.fallbackProviderFactory = fallbackProviderFactory;
     this.contractFactory = contractFactory;
     this.walletFactory = walletFactory;
+    this.now = now;
     this.settlementVersion = Number(settlementVersion);
     if (![1, 2, 3].includes(this.settlementVersion)) {
       throw new TypeError("FX EVM cohort settlement version is unsupported");
@@ -391,14 +406,25 @@ class FxEvmCohort {
   provider(chainId) {
     const configuration = this.configuration(chainId);
     if (!this.providers.has(configuration.chainId)) {
-      const url = String(
-        this.rpcOverrides.get(configuration.chainId) ||
+      const override = this.rpcOverrides.get(configuration.chainId);
+      const primaryUrl = String(
+        override?.primary ||
           this.environment[configuration.rpcEnvironmentVariable] ||
           configuration.rpcUrl
       ).trim();
+      const fallbackUrl = String(override?.fallback || "").trim();
+      const primary = this.providerFactory(primaryUrl, configuration.chainId);
       this.providers.set(
         configuration.chainId,
-        this.providerFactory(url, configuration.chainId)
+        fallbackUrl
+          ? this.fallbackProviderFactory(
+              [
+                primary,
+                this.providerFactory(fallbackUrl, configuration.chainId),
+              ],
+              configuration.chainId
+            )
+          : primary
       );
     }
     return this.providers.get(configuration.chainId);
@@ -441,15 +467,23 @@ class FxEvmCohort {
   }
 
   setRpcUrl(chainId, rpcUrl = "") {
+    return this.setRpcUrls(chainId, rpcUrl, "").primary;
+  }
+
+  setRpcUrls(chainId, primaryRpcUrl = "", fallbackRpcUrl = "") {
     const configuration = this.configuration(chainId);
-    const normalized = String(rpcUrl || "").trim();
-    if (normalized) this.rpcOverrides.set(configuration.chainId, normalized);
-    else this.rpcOverrides.delete(configuration.chainId);
+    const primary = String(primaryRpcUrl || "").trim();
+    const fallback = String(fallbackRpcUrl || "").trim();
+    if (primary) {
+      this.rpcOverrides.set(configuration.chainId, { primary, fallback });
+    } else {
+      this.rpcOverrides.delete(configuration.chainId);
+    }
     const provider = this.providers.get(configuration.chainId);
     provider?.destroy?.();
     this.providers.delete(configuration.chainId);
     this.preflights.delete(configuration.chainId);
-    return normalized;
+    return { primary, fallback };
   }
 
   wallet(chainId, role = "requester") {
@@ -460,11 +494,7 @@ class FxEvmCohort {
     return this.walletFactory(local.privateKey, this.provider(chainId));
   }
 
-  async preflight(chainId) {
-    const configuration = this.configuration(chainId);
-    if (!this.preflights.has(configuration.chainId)) {
-      const promise = (async () => {
-        const provider = this.provider(configuration.chainId);
+  async #preflightProvider(configuration, provider) {
         const network = await provider.getNetwork();
         if (String(network.chainId) !== configuration.chainId) {
           throw new FxEvmCohortError(
@@ -581,7 +611,70 @@ class FxEvmCohort {
           }
         }
         return configuration;
-      })().catch((error) => {
+  }
+
+  async validateRpcUrls(chainId, primaryRpcUrl, fallbackRpcUrl = "") {
+    const configuration = this.configuration(chainId);
+    const primary = String(primaryRpcUrl || "").trim();
+    const fallback = String(fallbackRpcUrl || "").trim();
+    if (!primary) {
+      throw new FxEvmCohortError(
+        `${configuration.name} primary RPC is required`,
+        "RPC_REQUIRED"
+      );
+    }
+    if (fallback && fallback === primary) {
+      throw new FxEvmCohortError(
+        `${configuration.name} backup RPC must be a different endpoint`,
+        "RPC_DUPLICATE"
+      );
+    }
+    const urls = [primary, ...(fallback ? [fallback] : [])];
+    const results = await Promise.all(urls.map(async (url) => {
+      const provider = this.providerFactory(url, configuration.chainId);
+      try {
+        await this.#preflightProvider(configuration, provider);
+        const [blockNumberValue, latestBlock] = await Promise.all([
+          provider.getBlockNumber(),
+          provider.getBlock("latest"),
+        ]);
+        const blockNumber = Number(blockNumberValue);
+        const blockTimestamp = Number(latestBlock?.timestamp);
+        const ageSeconds = this.now() - blockTimestamp;
+        if (
+          !Number.isSafeInteger(blockNumber) ||
+          blockNumber <= 0 ||
+          !Number.isSafeInteger(blockTimestamp) ||
+          ageSeconds > 600 ||
+          ageSeconds < -120
+        ) {
+          throw new FxEvmCohortError(
+            `${configuration.name} RPC did not return a current chain head`,
+            "RPC_STALE"
+          );
+        }
+        return {
+          chainId: configuration.chainId,
+          blockNumber,
+          blockTimestamp,
+        };
+      } finally {
+        provider?.destroy?.();
+      }
+    }));
+    return {
+      primary: results[0],
+      fallback: results[1] || null,
+    };
+  }
+
+  async preflight(chainId) {
+    const configuration = this.configuration(chainId);
+    if (!this.preflights.has(configuration.chainId)) {
+      const promise = this.#preflightProvider(
+        configuration,
+        this.provider(configuration.chainId)
+      ).catch((error) => {
         this.preflights.delete(configuration.chainId);
         throw error;
       });

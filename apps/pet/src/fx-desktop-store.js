@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const FX_DESKTOP_STATE_VERSION = 4;
+const FX_DESKTOP_STATE_VERSION = 5;
 const HASH_PATTERN = /^0x[0-9a-f]{64}$/;
 const FX_TRADE_STATES = Object.freeze([
   "draft",
@@ -145,6 +145,8 @@ function initialState(deploymentId = null, catalog = {}) {
       ...chain,
       enabled: false,
       rpcUrl: "",
+      rpcFallbackUrl: "",
+      rpcValidatedAt: null,
       address: null,
       dealerAddress: null,
       requesterAddress: null,
@@ -236,7 +238,7 @@ function atomicWrite(filePath, value) {
 function normalizeLoadedState(value, deploymentId = null, catalog = {}) {
   if (
     !value ||
-    ![1, 2, 3, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
+    ![1, 2, 3, 4, FX_DESKTOP_STATE_VERSION].includes(Number(value.version))
   ) {
     return initialState(deploymentId, catalog);
   }
@@ -281,6 +283,14 @@ function normalizeLoadedState(value, deploymentId = null, catalog = {}) {
         ...(loaded || {}),
         enabled: loaded?.enabled === true,
         rpcUrl: typeof loaded?.rpcUrl === "string" ? loaded.rpcUrl : "",
+        rpcFallbackUrl:
+          typeof loaded?.rpcFallbackUrl === "string"
+            ? loaded.rpcFallbackUrl
+            : "",
+        rpcValidatedAt:
+          typeof loaded?.rpcValidatedAt === "string"
+            ? loaded.rpcValidatedAt
+            : null,
         address: loaded?.address || null,
         dealerAddress: loaded?.dealerAddress || loaded?.address || null,
         requesterAddress: loaded?.requesterAddress || null,
@@ -518,6 +528,12 @@ class FxDesktopStore {
     }
     if ("enabled" in patch) chain.enabled = patch.enabled === true;
     if ("rpcUrl" in patch) chain.rpcUrl = String(patch.rpcUrl || "").trim();
+    if ("rpcFallbackUrl" in patch) {
+      chain.rpcFallbackUrl = String(patch.rpcFallbackUrl || "").trim();
+    }
+    if ("rpcValidatedAt" in patch) {
+      chain.rpcValidatedAt = patch.rpcValidatedAt || null;
+    }
     if (!chain.enabled) {
       chain.dealerGasReady = false;
       chain.requesterGasReady = false;

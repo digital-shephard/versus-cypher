@@ -1,6 +1,6 @@
 # Versus Rolling Design
 
-Updated: 2026-08-17
+Updated: 2026-08-20
 
 ## Status
 
@@ -19,9 +19,13 @@ The two-device tiny mainnet canary passed on 2026-08-17: a Windows requester
 locked exactly `0.0000338381914206 ETH` on Base and the separate macOS dealer
 delivered exactly `0.01 AVAX` on Avalanche at the configured 5 bps floor. Both
 receipts and final requester balances agreed across two RPCs per chain. The
-deployment is still not generally activated pending independently billed
-primary/fallback Base RPC credentials; public RPC free-tier quota failures
-observed during the ceremony are not accepted as production reliability. The
+deployment is still not generally activated. Mainnet dealer onboarding now
+requires one owner-supplied, preflighted primary RPC per enabled chain and
+accepts one optional backup; a missing backup means primary failure closes the
+chain. The app does not silently substitute bundled public mainnet RPCs.
+Deployment and release verification still use two pinned agreeing endpoints,
+and public RPC free-tier quota failures observed during the ceremony are not
+accepted as production reliability. The
 public evidence is recorded in
 [`docs/fx/MAINNET_V1_CANARY_2026-08-17.md`](./docs/fx/MAINNET_V1_CANARY_2026-08-17.md).
 
